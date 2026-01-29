@@ -1,0 +1,15 @@
+body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: #f8fafc;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* 🔥 FORCE LOGIN PAGE BACKGROUND TO WORK */
+body.login-mode,
+body.login-mode #root {
+    background: transparent !important;
+}

@@ -1,0 +1,95 @@
+.modern-map-page {
+    padding: 20px;
+    background: #f9fafb;
+    min-height: 100vh;
+}
+
+/* ✅ Toolbar Layout */
+.tracking-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.tracking-toolbar h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #14532d;
+}
+
+.tracking-toolbar p {
+    margin: 0;
+    font-size: 14px;
+    color: gray;
+}
+
+/* ✅ Date Filter Box */
+.date-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #14532d;
+}
+
+/* ✅ Modern Date Input */
+.modern-datepicker {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    font-weight: 600;
+    background: white;
+    cursor: pointer;
+    outline: none;
+    min-width: 180px;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.modern-datepicker:hover {
+    border-color: #14532d;
+}
+
+/* ✅ Calendar Popup Above Map */
+.datepicker-popper {
+    z-index: 9999 !important;
+}
+
+/* ✅ Calendar Popup Styling */
+.react-datepicker {
+    border-radius: 16px !important;
+    overflow: hidden;
+    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.25);
+}
+
+.react-datepicker__header {
+    background: #14532d !important;
+    border-bottom: none !important;
+}
+
+.react-datepicker__current-month {
+    color: white !important;
+    font-weight: bold;
+}
+
+.react-datepicker__day--selected {
+    background: #14532d !important;
+    color: white !important;
+}
+
+/* ✅ Map Card */
+.map-card {
+    margin-top: 10px;
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0px 8px 22px rgba(0, 0, 0, 0.15);
+}
+
+.modern-map {
+    height: 85vh;
+    width: 100%;
+}

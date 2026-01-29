@@ -1,0 +1,108 @@
+/* Background */
+.agri-action-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, #0b3d22, #041f11);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+/* Container */
+.agri-action {
+    position: relative;
+    text-align: center;
+    color: #eafff1;
+}
+
+/* Plant */
+.plant {
+    width: 54px;
+    height: 54px;
+    animation: plantHealthy 1.1s ease-in-out infinite;
+}
+
+/* Spray line */
+.spray-line {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    width: 2px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.4);
+    transform: translateX(-50%);
+    animation: sprayDrop 1.1s ease-in-out infinite;
+}
+
+/* Spray particles */
+.spray-particles {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, #ffffffaa 20%, transparent 60%);
+    border-radius: 50%;
+    transform: translateX(-50%);
+    animation: particlesFade 1.1s ease-in-out infinite;
+}
+
+/* Text */
+.brand-text {
+    margin-top: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+/* Animations */
+@keyframes sprayDrop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -4px);
+    }
+
+    40% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 0;
+        transform: translate(-50%, 6px);
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes particlesFade {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -6px) scale(0.6);
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, 6px) scale(1);
+    }
+}
+
+@keyframes plantHealthy {
+    0% {
+        filter: brightness(0.85);
+    }
+
+    50% {
+        filter: brightness(1.15);
+    }
+
+    100% {
+        filter: brightness(0.85);
+    }
+}

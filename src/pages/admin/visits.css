@@ -1,0 +1,119 @@
+.visits-page {
+    padding: 25px;
+    font-family: Inter, sans-serif;
+}
+
+/* ✅ Header */
+.visits-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.visits-header p {
+    margin-top: 4px;
+    color: gray;
+    font-size: 14px;
+}
+
+/* ✅ Card */
+.visits-card {
+    margin-top: 20px;
+    background: white;
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: 0px 5px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* ✅ Table */
+.visits-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.visits-table th {
+    background: #14532d;
+    color: white;
+    padding: 14px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.visits-table td {
+    padding: 13px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.visits-table tbody tr:hover {
+    background: #f9fafb;
+    transition: 0.2s;
+}
+
+/* ✅ Attachments Column Layout Fix */
+.file-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.file-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ✅ File Type Badge */
+.file-type {
+    min-width: 60px;
+    text-align: center;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+}
+
+/* ✅ Buttons Modern */
+.file-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    min-width: 90px;
+    padding: 6px 10px;
+
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+/* ✅ View Button */
+.file-btn.view {
+    background: #2563eb;
+    color: white;
+}
+
+.file-btn.view:hover {
+    background: #1d4ed8;
+}
+
+/* ✅ Download Button */
+.file-btn.download {
+    background: #14532d;
+    color: white;
+}
+
+.file-btn.download:hover {
+    background: #0f3d22;
+}
+
+/* ✅ No File */
+.no-file {
+    font-size: 13px;
+    color: gray;
+}
