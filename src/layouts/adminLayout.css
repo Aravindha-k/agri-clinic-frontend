@@ -1,41 +1,71 @@
-    .admin-layout {
-        display: flex;
-        min-height: 100vh;
-        background: #f8fafc;
-    }
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #f8fafc;
+}
 
-    /* Sidebar fixed */
-    .sidebar {
-        width: 250px;
-        position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-    }
+/* ✅ FIX HEADER FULL WIDTH */
+.admin-header {
+    height: 65px;
+    background: linear-gradient(90deg, #14532d, #166534, #15803d);
+    color: white;
 
-    /* Main area */
-    .main-area {
-        flex: 1;
-        margin-left: 250px;
-        display: flex;
-        flex-direction: column;
-        width: calc(100% - 250px);
-    }
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 
-    /* Top navbar */
-    .topbar {
-        height: 65px;
-        background: white;
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        padding: 0 25px;
-        border-bottom: 1px solid #e5e7eb;
-    }
+    padding: 0 25px;
 
-    /* Page content */
-    .page-content {
-        flex: 1;
-        padding: 30px;
-        width: 100%;
-    }
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    z-index: 1000;
+}
+
+
+/* ✅ Sidebar Starts Below Header */
+.sidebar {
+    top: 65px !important;
+    /* ✅ Push Sidebar Down */
+    height: calc(100vh - 65px);
+}
+
+/* ✅ Main Content Spacing */
+.main-area {
+    flex: 1;
+    margin-left: 250px;
+    margin-top: 65px;
+    /* ✅ Push content below header */
+}
+
+.page-content {
+    padding: 25px;
+    min-height: calc(100vh - 65px);
+
+    /* ✅ Govt Light Green Wash */
+    background: #ecfdf5;
+}
+
+
+
+/* ✅ Header Right */
+.header-right {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.logout-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    background: #dc2626;
+}

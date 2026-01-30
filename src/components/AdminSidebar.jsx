@@ -1,51 +1,64 @@
-import React from "react";
-import { NavLink } from "react-router-dom"; // ✅ REQUIRED IMPORT
+import { NavLink } from "react-router-dom";
+import {
+    LayoutDashboard,
+    Users,
+    MapPin,
+    Tractor,
+} from "lucide-react";
+
 import "./adminSidebar.css";
 
 export default function AdminSidebar() {
+    const menuItems = [
+        {
+            name: "Dashboard",
+            path: "/admin/dashboard",
+            icon: <LayoutDashboard size={18} />,
+        },
+        {
+            name: "Employees",
+            path: "/admin/employees",
+            icon: <Users size={18} />,
+        },
+        {
+            name: "Visits",
+            path: "/admin/visits",
+            icon: <MapPin size={18} />,
+        },
+        {
+            name: "Tracking",
+            path: "/admin/tracking",
+            icon: <Tractor size={18} />,
+        },
+    ];
+
     return (
         <aside className="sidebar">
-            <div className="sidebar-header">
-                🌱 <span>Kavya Agri Clinic</span>
+            {/* ✅ Logo */}
+            <div className="sidebar-logo">
+                <div className="logo-icon">🌱</div>
+                <h2>Kavya Agri Clinic</h2>
             </div>
 
+            {/* ✅ Menu */}
             <nav className="sidebar-menu">
-                <NavLink
-                    to="/admin/dashboard"
-                    className={({ isActive }) =>
-                        isActive ? "menu-item active" : "menu-item"
-                    }
-                >
-                    📊 Dashboard
-                </NavLink>
-
-                <NavLink
-                    to="/admin/employees"
-                    className={({ isActive }) =>
-                        isActive ? "menu-item active" : "menu-item"
-                    }
-                >
-                    👥 Employees
-                </NavLink>
-
-                <NavLink
-                    to="/admin/visits"
-                    className={({ isActive }) =>
-                        isActive ? "menu-item active" : "menu-item"
-                    }
-                >
-                    📍 Visits
-                </NavLink>
-
-                <NavLink
-                    to="/admin/tracking"
-                    className={({ isActive }) =>
-                        isActive ? "menu-item active" : "menu-item"
-                    }
-                >
-                    🛰️ Tracking
-                </NavLink>
+                {menuItems.map((item) => (
+                    <NavLink
+                        key={item.name}
+                        to={item.path}
+                        className="sidebar-link"
+                    >
+                        <span className="icon">{item.icon}</span>
+                        <span className="text">{item.name}</span>
+                    </NavLink>
+                ))}
             </nav>
+
+            {/* ✅ Footer */}
+            <div className="sidebar-footer">
+                <p>Admin Panel</p>
+                <span>Version 1.0</span>
+            </div>
         </aside>
     );
 }

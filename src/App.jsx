@@ -85,13 +85,13 @@ export default function App() {
       {loading && <AgriActionLoader />}
 
       <Routes>
-        {/* DEFAULT */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        {/* ROOT */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* LOGIN */}
         <Route path="/login" element={<AdminLogin />} />
 
-        {/* ADMIN */}
+        {/* ADMIN (PROTECTED) */}
         <Route
           path="/admin"
           element={
@@ -100,7 +100,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="employees" element={<Employees />} />
           <Route path="visits" element={<Visits />} />
@@ -109,7 +109,7 @@ export default function App() {
         </Route>
 
         {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </>
   );
