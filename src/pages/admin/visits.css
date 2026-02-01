@@ -117,3 +117,26 @@
     font-size: 13px;
     color: gray;
 }
+
+.visits-table td {
+    position: relative;
+    z-index: 1;
+    overflow: visible;
+}
+
+.file-actions,
+.file-box {
+    pointer-events: auto !important;
+}
+
+.file-btn {
+    pointer-events: auto !important;
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+}
+
+.visits-card {
+    position: relative;
+    z-index: 1;
+}
