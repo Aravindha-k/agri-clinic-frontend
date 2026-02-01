@@ -1,10 +1,17 @@
+/* ============================= */
+/* ✅ ADMIN LAYOUT BASE */
+/* ============================= */
+
 .admin-layout {
     display: flex;
     min-height: 100vh;
     background: #f8fafc;
 }
 
-/* ✅ FIX HEADER FULL WIDTH */
+/* ============================= */
+/* ✅ HEADER */
+/* ============================= */
+
 .admin-header {
     height: 65px;
     background: linear-gradient(90deg, #14532d, #166534, #15803d);
@@ -14,7 +21,7 @@
     align-items: center;
     justify-content: space-between;
 
-    padding: 0 25px;
+    padding: 0 20px;
 
     position: fixed;
     top: 0;
@@ -24,38 +31,95 @@
     z-index: 1000;
 }
 
+/* ============================= */
+/* ✅ SIDEBAR (DESKTOP DEFAULT) */
+/* ============================= */
 
-/* ✅ Sidebar Starts Below Header */
 .sidebar {
-    top: 65px !important;
-    /* ✅ Push Sidebar Down */
-    height: calc(100vh - 65px);
+    width: 250px;
+    position: fixed;
+    left: 0;
+    top: 65px;
+    bottom: 0;
+
+    background: linear-gradient(180deg, #14532d, #064e3b);
 }
 
-/* ✅ Main Content Spacing */
+/* ============================= */
+/* ✅ MAIN AREA */
+/* ============================= */
+
 .main-area {
     flex: 1;
     margin-left: 250px;
     margin-top: 65px;
-    /* ✅ Push content below header */
+
+    width: calc(100% - 250px);
+    overflow-x: hidden;
 }
+
+/* ============================= */
+/* ✅ PAGE CONTENT */
+/* ============================= */
 
 .page-content {
     padding: 25px;
-    min-height: calc(100vh - 65px);
-
-    /* ✅ Govt Light Green Wash */
     background: #ecfdf5;
+    min-height: calc(100vh - 65px);
+    width: 100%;
 }
 
+/* ============================= */
+/* ✅ RESPONSIVE - TABLET */
+/* ============================= */
 
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 200px;
+    }
 
-/* ✅ Header Right */
-.header-right {
-    display: flex;
-    gap: 15px;
-    align-items: center;
+    .main-area {
+        margin-left: 200px;
+        width: calc(100% - 200px);
+    }
+
+    .page-content {
+        padding: 18px;
+    }
 }
+
+/* ============================= */
+/* ✅ RESPONSIVE - MOBILE */
+/* ============================= */
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        top: 0;
+    }
+
+    .main-area {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .page-content {
+        padding: 15px;
+    }
+
+    .admin-header {
+        flex-direction: column;
+        height: auto;
+        padding: 12px;
+        gap: 10px;
+    }
+}
+
+/* ============================= */
+/* ✅ LOGOUT BUTTON */
+/* ============================= */
 
 .logout-btn {
     background: #ef4444;

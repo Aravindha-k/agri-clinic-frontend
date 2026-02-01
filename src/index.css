@@ -1,7 +1,16 @@
+/* ✅ GLOBAL UI SCALE FIX (Render Text Too Big) */
+html {
+    font-size: 15px;
+    /* Default is 16px, slightly reduced */
+    -webkit-text-size-adjust: 100%;
+}
+
 body {
     margin: 0;
     font-family: Inter, Arial, sans-serif;
     background: #f8fafc;
+
+    overflow-x: hidden;
 }
 
 * {

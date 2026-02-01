@@ -1,40 +1,50 @@
+/* ============================= */
+/* ✅ MAIN DASHBOARD WRAPPER */
+/* ============================= */
+
 .dashboard {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 25px;
-}
 
-.dashboard {
     background: #f0fdf4;
-    /* ✅ Light Green Tint */
-    padding: 15px;
+    padding: 18px;
     border-radius: 18px;
 }
 
-/* ✅ Page Title */
+/* ============================= */
+/* ✅ PAGE TITLE */
+/* ============================= */
+
 .page-title h1 {
-    font-size: 28px;
+    font-size: clamp(20px, 2vw, 28px);
     font-weight: 800;
 }
 
 .page-title p {
     color: gray;
     margin-top: 4px;
+    font-size: clamp(13px, 1vw, 15px);
 }
 
-/* ✅ Cards */
+/* ============================= */
+/* ✅ DASHBOARD TOP CARDS */
+/* ============================= */
+
 .cards-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 18px;
 }
 
+/* ✅ Card */
 .card {
-    padding: 20px;
+    padding: clamp(14px, 1.5vw, 20px);
     border-radius: 18px;
     color: white;
     font-weight: 600;
+
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
     transition: 0.25s;
 }
@@ -43,12 +53,13 @@
     transform: translateY(-5px);
 }
 
+/* ✅ Card Value */
 .value {
-    font-size: 30px;
-    margin-top: 10px;
+    font-size: clamp(20px, 2vw, 30px);
+    margin-top: 8px;
 }
 
-/* ✅ Card Header Layout */
+/* ✅ Card Header */
 .card-top {
     display: flex;
     align-items: center;
@@ -67,7 +78,7 @@
     align-items: center;
 }
 
-/* ✅ Agri Color Themes */
+/* ✅ Theme Gradients */
 .highlight-green {
     background: linear-gradient(135deg, #166534, #14532d);
 }
@@ -84,19 +95,24 @@
     background: linear-gradient(135deg, #ca8a04, #92400e);
 }
 
+/* ============================= */
+/* ✅ ANALYTICS + VISITS ROW */
+/* ============================= */
 
-/* ✅ Layout Row */
 .dashboard-row {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 20px;
 }
 
-/* ✅ Box */
+/* ✅ Glass Box */
 .box {
-    background: white;
-    padding: 18px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(6px);
+
+    padding: clamp(14px, 1.5vw, 18px);
     border-radius: 18px;
+
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
 }
 
@@ -107,12 +123,6 @@
     align-items: center;
 }
 
-.box-header span {
-    font-size: 12px;
-    color: gray;
-}
-
-/* ✅ Link Button */
 .link-btn {
     border: none;
     background: none;
@@ -132,8 +142,10 @@
     padding: 15px;
 }
 
+/* ============================= */
+/* ✅ VISITS LIST */
+/* ============================= */
 
-/* ✅ Visits */
 .visit-item {
     display: flex;
     justify-content: space-between;
@@ -145,30 +157,15 @@
     font-weight: bold;
 }
 
-.date {
-    font-size: 12px;
+.visit-date {
+    font-size: 13px;
     color: gray;
 }
 
-/* ✅ Badge */
-.badge {
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
-}
+/* ============================= */
+/* ✅ EMPLOYEE GRID */
+/* ============================= */
 
-.pending {
-    background: #fff7ed;
-    color: #ea580c;
-}
-
-.completed {
-    background: #ecfdf5;
-    color: #16a34a;
-}
-
-/* ✅ Employees */
 .employee-grid {
     margin-top: 14px;
     display: grid;
@@ -181,7 +178,6 @@
     padding: 14px;
     border-radius: 14px;
     border: 1px solid #e5e7eb;
-    transition: 0.2s;
 }
 
 .emp-card:hover {
@@ -192,24 +188,18 @@
     font-weight: 700;
 }
 
-/* ✅ Responsive */
-@media (max-width: 900px) {
-    .cards-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+/* ============================= */
+/* ✅ RESPONSIVE FIX */
+/* ============================= */
 
+@media (max-width: 900px) {
     .dashboard-row {
         grid-template-columns: 1fr;
     }
 }
 
-.visit-date {
-    font-size: 13px;
-    color: gray;
-    font-weight: 500;
-}
-
-.box {
-    background: rgba(255, 255, 255, 0.94);
-    backdrop-filter: blur(6px);
+@media (max-width: 600px) {
+    .cards-grid {
+        grid-template-columns: 1fr;
+    }
 }
