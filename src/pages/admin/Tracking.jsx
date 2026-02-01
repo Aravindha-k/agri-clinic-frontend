@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 
-import "./Tracking.css";
+import "./tracking.css";
+
 
 export default function Tracking() {
     const [employees, setEmployees] = useState([]);
