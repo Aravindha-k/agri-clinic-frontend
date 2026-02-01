@@ -1,17 +1,10 @@
-/* ============================= */
-/* ✅ ADMIN LAYOUT BASE */
-/* ============================= */
-
 .admin-layout {
     display: flex;
     min-height: 100vh;
     background: #f8fafc;
 }
 
-/* ============================= */
 /* ✅ HEADER */
-/* ============================= */
-
 .admin-header {
     height: 65px;
     background: linear-gradient(90deg, #14532d, #166534, #15803d);
@@ -27,77 +20,45 @@
     top: 0;
     left: 0;
     right: 0;
-
     z-index: 1000;
 }
 
-/* ============================= */
-/* ✅ SIDEBAR (DESKTOP DEFAULT) */
-/* ============================= */
-
+/* ✅ SIDEBAR DESKTOP */
 .sidebar {
     width: 250px;
     position: fixed;
     left: 0;
     top: 65px;
     bottom: 0;
-
     background: linear-gradient(180deg, #14532d, #064e3b);
 }
 
-/* ============================= */
-/* ✅ MAIN AREA */
-/* ============================= */
-
+/* ✅ MAIN AREA DESKTOP */
 .main-area {
     flex: 1;
     margin-left: 250px;
     margin-top: 65px;
-
     width: calc(100% - 250px);
     overflow-x: hidden;
 }
 
-/* ============================= */
 /* ✅ PAGE CONTENT */
-/* ============================= */
-
 .page-content {
     padding: 25px;
     background: #ecfdf5;
     min-height: calc(100vh - 65px);
-    width: 100%;
 }
 
-/* ============================= */
-/* ✅ RESPONSIVE - TABLET */
-/* ============================= */
+/* ---------------- MOBILE FIX ---------------- */
 
-@media (max-width: 1024px) {
-    .sidebar {
-        width: 200px;
-    }
-
-    .main-area {
-        margin-left: 200px;
-        width: calc(100% - 200px);
-    }
-
-    .page-content {
-        padding: 18px;
-    }
-}
-
-/* ============================= */
-/* ✅ RESPONSIVE - MOBILE */
-/* ============================= */
-
+/* ✅ MOBILE: Sidebar becomes TOP menu */
 @media (max-width: 768px) {
     .sidebar {
         position: relative;
         width: 100%;
         height: auto;
         top: 0;
+        border-radius: 0;
     }
 
     .main-area {
@@ -112,24 +73,7 @@
     .admin-header {
         flex-direction: column;
         height: auto;
-        padding: 12px;
+        padding: 10px;
         gap: 10px;
     }
-}
-
-/* ============================= */
-/* ✅ LOGOUT BUTTON */
-/* ============================= */
-
-.logout-btn {
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 6px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.logout-btn:hover {
-    background: #dc2626;
 }
