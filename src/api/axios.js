@@ -1,7 +1,15 @@
 import axios from "axios";
 
-// Use environment variable for API base URL, fallback to localhost for development
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1/";
+const LOCAL_API_BASE_URL = "http://localhost:8000/api/v1/";
+const PRODUCTION_API_BASE_URL = "https://agri-clinic-backend.onrender.com/api/v1/";
+const isLocalhost =
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+// Priority: explicit env var -> localhost in local dev -> Render backend in production
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (isLocalhost ? LOCAL_API_BASE_URL : PRODUCTION_API_BASE_URL);
 
 const instance = axios.create({
   baseURL,
