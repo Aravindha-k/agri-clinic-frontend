@@ -6,10 +6,20 @@ const isLocalhost =
   typeof window !== "undefined" &&
   ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
+const normalizeBaseURL = (url) => {
+  if (!url) return "";
+  return url.endsWith("/") ? url : `${url}/`;
+};
+
+const envBaseURL = normalizeBaseURL(import.meta.env.VITE_API_BASE_URL || "");
+const envIsLocalhost =
+  envBaseURL.includes("localhost") || envBaseURL.includes("127.0.0.1");
+
 // Priority: explicit env var -> localhost in local dev -> Render backend in production
 const baseURL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (isLocalhost ? LOCAL_API_BASE_URL : PRODUCTION_API_BASE_URL);
+  !isLocalhost && envIsLocalhost
+    ? PRODUCTION_API_BASE_URL
+    : envBaseURL || (isLocalhost ? LOCAL_API_BASE_URL : PRODUCTION_API_BASE_URL);
 
 const instance = axios.create({
   baseURL,
