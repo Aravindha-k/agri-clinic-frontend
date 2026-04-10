@@ -1,0 +1,855 @@
+{
+    "info": {
+        {
+            "name": "Admin Panel API Collection",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+            "description": "Postman collection generated from frontend API usage. All endpoints use {{base_url}} and require Bearer {{admin_token}}."
+        },
+        "variable": [
+            {
+                "key": "base_url",
+                "value": "http://localhost:8000/api/v1",
+                {},
+                {
+                    "key": "admin_token",
+                    "value": "",
+                    "type": "string"
+                }
+            ],
+            "item": [
+                {
+                    "name": "Auth",
+                    "item": [
+                        {
+                            "name": "Login",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        {}
+                                    ],
+                                    "url": {
+                                        "raw": "{{base_url}}/auth/login/",
+                                        "host": [
+                                            "{{base_url}}"
+                                        ],
+                                        "path": [
+                                            "body": {
+                                                "mode": "raw",
+                                                "raw": "{\n  \"username\": \"<string>\",\n  \"employee_id\": \"<string>\",\n  \"phone\": \"<string>\",\n  \"role\": \"<string>\",\n  \"password\": \"<string>\",\n  \"is_active_employee\": true\n}"
+                                            ]
+                                        },
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  \"username\": \"<string>\",\n  \"password\": \"<string>\"\n}"{}
+                                        },
+                                        {
+                                            "name": "Refresh Token",
+                                            "request": {
+                                                "method": "POST",
+                                                "header": [
+                                                    {
+                                                        "key": "Content-Type",
+                                                        "value": "application/json"
+                                                    }
+                                                ],
+                                                "url": {
+                                                    "raw": "{{base_url}}/auth/refresh/",
+                                                    "host": [
+                                                        "{{base_url}}"
+                                                    ],
+                                                    "path": [
+                                                        "auth",
+                                                        "refresh",
+                                                        ""
+                                                    ]
+                                                },
+                                                "body": {
+                                                    "mode": "raw",
+                                                    "raw": "{\n  \"refresh\": \"<refresh_token>\"\n}"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "name": "Logout",
+                                            "request": {
+                                                "method": "POST",
+                                                "header": [
+                                                    {
+                                                        "key": "Content-Type",
+                                                        "value": "application/json"
+                                                    },
+                                                    {
+                                                        "key": "Authorization",
+                                                        "value": "Bearer {{admin_token}}"
+                                                    }
+                                                ],
+                                                "url": {
+                                                    "raw": "{{base_url}}/auth/logout/",
+                                                    "host": [
+                                                        "{{base_url}}"
+                                                    ],
+                                                    "path": [
+                                                        "auth",
+                                                        "logout",
+                                                        ""
+                                                    ]
+                                                },
+                                                "body": {
+                                                    "mode": "raw",
+                                                    "raw": "{\n  \"refresh\": \"<refresh_token>\"\n}"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "name": "Get Current User",
+                                            "request": {
+                                                "method": "GET",
+                                                "header": [
+                                                    {
+                                                        "key": "Content-Type",
+                                                        "value": "application/json"
+                                                    },
+                                                    {
+                                                        "key": "Authorization",
+                                                        "value": "Bearer {{admin_token}}"
+                                                    }
+                                                ],
+                                                "url": {
+                                                    "raw": "{{base_url}}/employees/me/",
+                                                    "host": [
+                                                        "{{base_url}}"
+                                                    ],
+                                                    "path": [
+                                                        "employees",
+                                                        "me",
+                                                        ""
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "Dashboard",
+                                    "item": [
+                                        {
+                                            {
+                                                ""
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Get Admin Status",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{admin_token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/tracking/admin/status/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "tracking",
+                                                "admin",
+                                                "status",
+                                                ""
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Get Employee Route",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{admin_token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/tracking/admin/employee/:userId/route/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "tracking",
+                                                "admin",
+                                                "employee",
+                                                ":userId",
+                                                "route",
+                                                ""
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Get Employee Stats",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{admin_token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/tracking/employee-stats/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "tracking",
+                                                "employee-stats",
+                                                ""
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Employees",
+                            "item": [
+                                {
+                                    "name": "Get Employees",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{admin_token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/employees/employees/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "employees",
+                                                "employees",
+                                                ""
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Create Employee",
+                                    "request": {
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{admin_token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/employees/employees/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "employees",
+                                                "employees",
+                                                ""
+                                            ]
+                                        },
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  /* employee fields */\n}"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Update Employee",
+                                    "request": {
+                                        "method": "PUT",
+                                        "header": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            },
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{admin_token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/employees/employees/:id/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "employees",
+                                                "employees",
+                                                ":id",
+                                                ""
+                                            ]
+                                        },
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  /* employee fields */\n}"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "Patch Employee",
+                                    "request": {
+                                        "method": "PATCH",
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  \"username\": \"<string>\",\n  \"employee_id\": \"<string>\",\n  \"phone\": \"<string>\",\n  \"role\": \"<string>\",\n  \"password\": \"<string>\",\n  \"is_active_employee\": true\n}"
+                                        },
+                                        {
+                                            "key": "Authorization",
+                                            "value": "Bearer {{admin_token}}"
+                                        }
+                                    ],
+                                    "url": {
+                                        "raw": "{{base_url}}/employees/employees/:id/",
+                                        "host": [
+                                            "{{base_url}}"
+                                        ],
+                                        "path": [
+                                            "employees",
+                                            "employees",
+                                            ":id",
+                                            ""
+                                        ]
+                                    },
+                                    "body": {
+                                        "mode": "raw",
+                                        "raw": "{\n  /* employee fields */\n}"
+                                    }
+                                }
+                            },
+                            {
+                                "name": "Delete Employee",
+                                "request": {
+                                    "method": "DELETE",
+                                    "body": {
+                                        "mode": "raw",
+                                        "raw": "{\n  \"name\": \"<string>\",\n  \"phone\": \"<string>\",\n  \"district\": <district_id>,\n  \"taluk\": <taluk_id>,\n  \"village\": <village_id>,\n  \"total_area\": <number>\n}""value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/employees/employees/:id/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "employees",
+                                        "employees",
+                                        ":id",
+                                        ""
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Farmers",
+                    "item": [
+                        {
+                            "name": "Get Farmers",
+                            "request": {
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"farmer_name\": \"<string>\",\n  \"farmer_phone\": \"<string>\",\n  \"village_id\": <number>,\n  \"crop_id\": <number>,\n  \"problem_category_id\": <number|null>,\n  \"latitude\": <number>,\n  \"longitude\": <number>\n}""key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/farmers/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "farmers",
+                                    ""
+                                ]
+                            },
+                            "query": [
+                                {
+                                    "key": "...",
+                                    "value": "",
+                                    "description": "Farmer filter params"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Get Farmer Detail",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/farmers/:id/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "farmers",
+                                    ":id",
+                                    ""
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "Create Farmer",
+                        "request": {
+                            "method": "POST",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json""body": {
+                                        "mode": "raw",
+                                        "raw": "{\n  /* issue fields: see visit creation, or update as per backend */\n}""value": "Bearer {{admin_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/farmers/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "farmers",
+                                        ""
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  /* farmer fields */\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update Farmer",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/farmers/:id/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "farmers",
+                                        ":id",
+                                        ""
+                                    ]
+                                },
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  /* farmer fields */\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete Farmer",
+                            "request": {
+                                "method": "DELETE",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"fertilizer\": \"<string>\",\n  \"pesticide\": \"<string>\",\n  \"dosage\": \"<string>\",\n  \"notes\": \"<string>\"\n}""value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/farmers/:id/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "farmers",
+                                    ":id",
+                                    ""
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Visits",
+                "item": [
+                    {
+                        "name": "Get Visits",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/visits/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "visits",
+                                    ""
+                                ]
+                            },
+                            "query": [
+                                {
+                                    "key": "...",
+                                    "value": "",
+                                    "description": "Visit filter params"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Get Visit Stats",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/visits/stats/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "visits",
+                                    "stats",
+                                    ""
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "Get Visit Detail",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/visits/:id/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "visits",
+                                    ":id",
+                                    ""
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "Create Visit",
+                        "request": {
+                            "method": "POST",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/visits/create/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "visits",
+                                    "create",
+                                    ""
+                                ]
+                            },
+                            "body": {
+                                "mode": "raw",
+                                "raw": "{\n  /* visit fields */\n}"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Issues",
+                "item": [
+                    {
+                        "name": "Get Issues",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/issues/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "issues",
+                                    ""
+                                ]
+                            },
+                            "query": [
+                                {
+                                    "key": "...",
+                                    "value": "",
+                                    "description": "Issue filter params"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Get Issue Detail",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/issues/:id/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "issues",
+                                    ":id",
+                                    ""
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "Update Issue",
+                        "request": {
+                            "method": "PUT",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/issues/:id/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "issues",
+                                    ":id",
+                                    ""
+                                ]
+                            },
+                            "body": {
+                                "mode": "raw",
+                                "raw": "{\n  /* issue fields */\n}"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Add Recommendation",
+                        "request": {
+                            "method": "POST",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/issues/:issueId/recommend/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "issues",
+                                    ":issueId",
+                                    "recommend",
+                                    ""
+                                ]
+                            },
+                            "body": {
+                                "mode": "raw",
+                                "raw": "{\n  /* recommendation fields */\n}"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Crops",
+                "item": [
+                    {
+                        "name": "Get Crops",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/crops/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "crops",
+                                    ""
+                                ]
+                            },
+                            "query": [
+                                {
+                                    "key": "...",
+                                    "value": "",
+                                    "description": "Crop filter params"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Audit",
+                "item": [
+                    {
+                        "name": "Get Audit Logs",
+                        "request": {
+                            "method": "GET",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                },
+                                {
+                                    "key": "Authorization",
+                                    "value": "Bearer {{admin_token}}"
+                                }
+                            ],
+                            "url": {
+                                "raw": "{{base_url}}/audit/logs/",
+                                "host": [
+                                    "{{base_url}}"
+                                ],
+                                "path": [
+                                    "audit",
+                                    "logs",
+                                    ""
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        ]
+    }

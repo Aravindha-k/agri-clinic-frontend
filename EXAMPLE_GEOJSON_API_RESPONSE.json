@@ -1,0 +1,35 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": "emp-123",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    77.5946,
+                    12.9716
+                ]
+            },
+            "properties": {
+                "id": 123,
+                "employee_id": "EMP001",
+                "name": "John Doe",
+                "status": "online",
+                "last_update": "2024-06-01T10:00:00Z"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "emp-124",
+            "geometry": null,
+            "properties": {
+                "id": 124,
+                "employee_id": "EMP002",
+                "name": "Jane Smith",
+                "status": "offline",
+                "last_update": "2024-06-01T09:45:00Z"
+            }
+        }
+    ]
+}
