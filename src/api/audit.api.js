@@ -12,15 +12,10 @@ function extractAuditRecords(raw) {
 export const getAuditLogs = async () => {
     try {
         const res = await api.get("audit/logs/");
-        const records = extractAuditRecords(res.data);
-        if (records.length > 0) return records;
+        return extractAuditRecords(res.data);
     } catch (err) {
         const status = err?.response?.status;
-        if (status && status !== 404 && status !== 405) {
-            throw err;
-        }
+        if (status === 404 || status === 405) return [];
+        throw err;
     }
-
-    const fallback = await api.get("audit/");
-    return extractAuditRecords(fallback.data);
 };

@@ -7,6 +7,7 @@ import SlidePanel from "../../components/ui/SlidePanel";
 import { useToast } from "../../components/ui/Toast";
 
 const PER_PAGE = 15;
+const EMPTY = "-";
 
 export default function MasterFarmers() {
     const toast = useToast();
@@ -32,37 +33,39 @@ export default function MasterFarmers() {
             setRows(Array.isArray(farmers) ? farmers : []);
             setDistricts(Array.isArray(dists) ? dists : []);
             setVillages(Array.isArray(vils) ? vils : []);
-        } catch { toast("Failed to load farmers", "error"); }
-        finally { setLoading(false); }
+        } catch {
+            toast("Failed to load farmers", "error");
+        } finally {
+            setLoading(false);
+        }
     }, [toast]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const dMap = Object.fromEntries(districts.map((d) => [d.id, d.name]));
     const vMap = Object.fromEntries(villages.map((v) => [v.id, v]));
-    const vilName = (r) => vMap[r.village || r.village_id]?.name || "—";
+    const vilName = (r) => vMap[r.village || r.village_id]?.name || r.village_name || EMPTY;
     const distName = (r) => {
         const v = vMap[r.village || r.village_id];
-        if (!v) return "—";
-        return dMap[v.district || v.district_id] || "—";
+        if (!v) return r.district_name || EMPTY;
+        return dMap[v.district || v.district_id] || r.district_name || EMPTY;
     };
 
     const fVillages = fDist
-        ? villages.filter((v) => {
-            return String(v.district || v.district_id) === String(fDist);
-        })
+        ? villages.filter((v) => String(v.district || v.district_id) === String(fDist))
         : villages;
     const panelVillages = formDist
-        ? villages.filter((v) => {
-            return String(v.district || v.district_id) === String(formDist);
-        })
+        ? villages.filter((v) => String(v.district || v.district_id) === String(formDist))
         : villages;
 
     const q = search.toLowerCase();
     const filtered = rows.filter((r) => {
         if (q && !(r.name || "").toLowerCase().includes(q) && !(r.phone || "").includes(q)) return false;
         if (fVil && String(r.village || r.village_id) !== fVil) return false;
-        if (fDist) { const v = vMap[r.village || r.village_id]; if (!v || String(v.district || v.district_id) !== String(fDist)) return false; }
+        if (fDist) {
+            const v = vMap[r.village || r.village_id];
+            if (!v || String(v.district || v.district_id) !== String(fDist)) return false;
+        }
         return true;
     });
     const totalPages = Math.ceil(filtered.length / PER_PAGE);
@@ -72,26 +75,48 @@ export default function MasterFarmers() {
         if (mode === "edit" && item) {
             const v = vMap[item.village || item.village_id];
             setFormDist(v ? String(v.district || v.district_id) : "");
-        } else { setFormDist(""); }
+        } else {
+            setFormDist("");
+        }
         setPanel({ open: true, mode, item });
     };
 
     const toggleActive = async (r) => {
-        try { await patchFarmer(r.id, { is_active: !r.is_active }); toast(r.is_active ? "Farmer disabled" : "Farmer enabled"); fetchData(); }
-        catch { toast("Toggle failed", "error"); }
+        try {
+            await patchFarmer(r.id, { is_active: !r.is_active });
+            toast(r.is_active ? "Farmer disabled" : "Farmer enabled");
+            fetchData();
+        } catch {
+            toast("Toggle failed", "error");
+        }
     };
 
     const handleSave = async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const payload = { name: fd.get("name"), phone: fd.get("phone"), village: fd.get("village") || undefined, land_area: fd.get("land_area") || undefined, is_active: fd.get("is_active") === "on" };
+        const payload = {
+            name: fd.get("name"),
+            phone: fd.get("phone"),
+            village: fd.get("village") || undefined,
+            total_land_area: fd.get("total_land_area") || undefined,
+            is_active: fd.get("is_active") === "on",
+        };
         try {
             setSaving(true);
-            if (panel.mode === "edit") { await updateFarmer(panel.item.id, payload); toast("Farmer updated"); }
-            else { await createFarmer(payload); toast("Farmer created"); }
-            setPanel({ open: false, mode: "add", item: null }); fetchData();
-        } catch (err) { toast(err?.response?.data?.detail || "Save failed", "error"); }
-        finally { setSaving(false); }
+            if (panel.mode === "edit") {
+                await updateFarmer(panel.item.id, payload);
+                toast("Farmer updated");
+            } else {
+                await createFarmer(payload);
+                toast("Farmer created");
+            }
+            setPanel({ open: false, mode: "add", item: null });
+            fetchData();
+        } catch (err) {
+            toast(err?.response?.data?.detail || "Save failed", "error");
+        } finally {
+            setSaving(false);
+        }
     };
 
     const cls = "px-3 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none";
@@ -112,25 +137,35 @@ export default function MasterFarmers() {
                 <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3">
                     <div className="relative flex-1 min-w-[200px] max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search name or phone…" className={`w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition`} />
+                        <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search name or phone" className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" />
                     </div>
                     <select value={fDist} onChange={(e) => { setFDist(e.target.value); setFVil(""); setPage(1); }} className={`${cls} min-w-[140px]`}>
-                        <option value="">All Districts</option>{districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        <option value="">All Districts</option>
+                        {districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                     <select value={fVil} onChange={(e) => { setFVil(e.target.value); setPage(1); }} className={`${cls} min-w-[140px]`}>
-                        <option value="">All Villages</option>{fVillages.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        <option value="">All Villages</option>
+                        {fVillages.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
                 </div>
 
-                {loading ? <TableSkeleton rows={8} cols={7} /> : paginated.length === 0 ? (
+                {loading ? (
+                    <TableSkeleton rows={8} cols={6} />
+                ) : paginated.length === 0 ? (
                     <EmptyState icon={Sprout} title="No farmers found" subtitle="Add your first farmer above" />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                            <thead><tr className="bg-gray-50/80 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <th className="px-4 py-3">Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Village</th>
-                                <th className="px-4 py-3">District</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th>
-                            </tr></thead>
+                            <thead>
+                                <tr className="bg-gray-50/80 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <th className="px-4 py-3">Name</th>
+                                    <th className="px-4 py-3">Phone</th>
+                                    <th className="px-4 py-3">Village</th>
+                                    <th className="px-4 py-3">District</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {paginated.map((r) => (
                                     <tr key={r.id} className="hover:bg-gray-50/50 transition">
@@ -140,9 +175,8 @@ export default function MasterFarmers() {
                                                 <span className="font-medium text-gray-900">{r.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-500"><span className="inline-flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{r.phone || "—"}</span></td>
+                                        <td className="px-4 py-3 text-gray-500"><span className="inline-flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{r.phone || EMPTY}</span></td>
                                         <td className="px-4 py-3 text-gray-500">{vilName(r)}</td>
-                                        <td className="px-4 py-3 text-gray-500">{talName(r)}</td>
                                         <td className="px-4 py-3 text-gray-500">{distName(r)}</td>
                                         <td className="px-4 py-3"><Badge active={r.is_active !== false} /></td>
                                         <td className="px-4 py-3 text-right">
@@ -155,6 +189,8 @@ export default function MasterFarmers() {
                                         </td>
                                     </tr>
                                 ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
                 <div className="p-4 border-t border-gray-100"><Pagination page={page} totalPages={totalPages} onPageChange={setPage} /></div>
@@ -166,13 +202,13 @@ export default function MasterFarmers() {
                         <div><label className="block text-sm font-medium text-gray-700 mb-1">Name</label><input name="name" required defaultValue={panel.item?.name || ""} className={`w-full ${cls}`} /></div>
                         <div><label className="block text-sm font-medium text-gray-700 mb-1">Phone</label><input name="phone" defaultValue={panel.item?.phone || ""} className={`w-full ${cls}`} /></div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div><label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                            <select value={formDist} onChange={(e) => { setFormDist(e.target.value); }} className={`w-full ${cls}`}><option value="">Select</option>{districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                            <select value={formDist} onChange={(e) => setFormDist(e.target.value)} className={`w-full ${cls}`}><option value="">Select</option>{districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
                         <div><label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
                             <select name="village" defaultValue={panel.item?.village || panel.item?.village_id || ""} className={`w-full ${cls}`}><option value="">Select</option>{panelVillages.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></div>
                     </div>
-                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Land Area (acres)</label><input name="land_area" type="number" step="0.01" defaultValue={panel.item?.land_area || ""} className={`w-full ${cls}`} /></div>
+                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Land Area (acres)</label><input name="total_land_area" type="number" step="0.01" defaultValue={panel.item?.total_land_area || panel.item?.land_area || ""} className={`w-full ${cls}`} /></div>
                     <div className="flex items-center gap-2">
                         <input type="checkbox" name="is_active" defaultChecked={panel.item?.is_active !== false} className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
                         <label className="text-sm text-gray-700">Active</label>
@@ -184,5 +220,5 @@ export default function MasterFarmers() {
                 </form>
             </SlidePanel>
         </div>
-            );
+    );
 }

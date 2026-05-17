@@ -4,9 +4,18 @@ import { getFarmerDetail, getFarmerFields, getFarmerVisits } from "../api/farmer
 import {
     ArrowLeft, User, Phone, MapPin, Sprout, LandPlot, Leaf,
     Calendar, AlertCircle, RefreshCw, ChevronRight, Download,
-    FileText, Droplets, Layers, ClipboardList, Hash,
-    TrendingUp, CheckCircle2, Clock,
+    FileText, Droplets, Layers, ClipboardList, Hash, Edit2,
+    TrendingUp,
 } from "lucide-react";
+import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitFarmer";
+import {
+    resolveCropLabel,
+    resolveVillageLabel,
+    resolveDistrictLabel,
+    resolveFarmerLabel,
+    asDisplayString,
+} from "../utils/displayValue";
+import { GpsIndicator } from "../components/ui/command";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -17,21 +26,6 @@ const fmt = (d) => {
 };
 const totalAcreage = (fields) =>
     fields.reduce((s, f) => s + parseFloat(f.land_size ?? f.field_size ?? 0), 0).toFixed(1);
-
-/* ─── Status badge ─── */
-const StatusBadge = ({ status }) => {
-    const map = {
-        completed: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
-        pending: { cls: "bg-amber-50 text-amber-700 border-amber-200", icon: Clock },
-        verified: { cls: "bg-blue-50 text-blue-700 border-blue-200", icon: CheckCircle2 },
-    };
-    const { cls, icon: Icon } = map[(status || "").toLowerCase()] || { cls: "bg-gray-50 text-gray-500 border-gray-200", icon: Clock };
-    return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium rounded-full border ${cls} capitalize`}>
-            <Icon className="w-3 h-3" />{status || "—"}
-        </span>
-    );
-};
 
 /* ─── Sub-components ─── */
 const StatCard = ({ icon: Icon, label, value, color }) => (
@@ -85,14 +79,14 @@ function generatePDF(farmer, fields, visits) {
     doc.setFontSize(18).setFont("helvetica", "bold");
     doc.text(name, 20, 52);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(75, 85, 99);
-    doc.text(`Phone: ${farmer.phone || "—"}   District: ${farmer.district_name || farmer.district || "—"}   Village: ${farmer.village_name || farmer.village || "—"}`, 20, 64);
+    doc.text(`Phone: ${farmer.phone || "—"}   District: ${farmer.district_name || resolveDistrictLabel(farmer.district)}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
 
     /* stats row */
     const stats = [
         ["Fields", fields.length],
         ["Visits", visits.length],
         ["Acreage", `${totalAcreage(fields)} ac`],
-        ["Completed", visits.filter(v => v.status?.toLowerCase() === "completed").length],
+        ["With GPS", visits.filter(visitHasGps).length],
     ];
     stats.forEach(([lbl, val], i) => {
         const x = 14 + i * 46;
@@ -155,10 +149,13 @@ function generatePDF(farmer, fields, visits) {
         doc.text(`Visit History (${visits.length})`, 14, lastY);
         autoTable(doc, {
             startY: lastY + 4,
-            head: [["#", "Date", "Crop", "Status", "Village"]],
+            head: [["#", "Date & time", "Crop", "Employee", "Village"]],
             body: visits.map((v, i) => [
-                i + 1, fmt(v.visit_date || v.created_at),
-                v.crop_name || v.crop || "—", v.status || "—", v.village_name || "—",
+                i + 1,
+                visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at),
+                v.crop_name || resolveCropLabel(v?.crop),
+                visitEmployeeLabel(v),
+                v.village_name || resolveVillageLabel(v?.village),
             ]),
             styles: { fontSize: 9, cellPadding: 3 },
             headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold" },
@@ -197,8 +194,8 @@ function generateWord(farmer, fields, visits) {
         ? `<p style="color:#6b7280">No visits recorded.</p>`
         : `<h2 style="color:#166534;border-bottom:2px solid #16a34a;padding-bottom:4px">Visit History (${visits.length})</h2>
            <table border="1" style="border-collapse:collapse;width:100%;font-size:13px">
-           <tr style="background:#16a34a;color:white"><th>No.</th><th>Date</th><th>Crop</th><th>Status</th><th>Village</th></tr>
-           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${fmt(v.visit_date || v.created_at)}</td><td>${esc(v.crop_name || v.crop)}</td><td>${esc(v.status)}</td><td>${esc(v.village_name)}</td></tr>`).join("")}
+           <tr style="background:#16a34a;color:white"><th>No.</th><th>Date & time</th><th>Crop</th><th>Employee</th><th>Village</th></tr>
+           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(v.crop_name || resolveCropLabel(v?.crop))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
            </table>`;
 
     const html = `
@@ -223,13 +220,13 @@ function generateWord(farmer, fields, visits) {
 <p class="meta">Generated: ${new Date().toLocaleDateString("en-IN")} &nbsp;|&nbsp; AgriAdmin Enterprise</p>
 
 <h2>${esc(farmer.name)}</h2>
-<p>Phone: <strong>${esc(farmer.phone)}</strong> &nbsp;|&nbsp; District: <strong>${esc(farmer.district_name || farmer.district)}</strong> &nbsp;|&nbsp; Village: <strong>${esc(farmer.village_name || farmer.village)}</strong></p>
+<p>Phone: <strong>${esc(farmer.phone)}</strong> &nbsp;|&nbsp; District: <strong>${esc(farmer.district_name || resolveDistrictLabel(farmer.district))}</strong> &nbsp;|&nbsp; Village: <strong>${esc(farmer.village_name || resolveVillageLabel(farmer.village))}</strong></p>
 
 <div class="stat-row">
   <div class="stat"><div class="stat-val">${fields.length}</div><div class="stat-lbl">Fields</div></div>
   <div class="stat"><div class="stat-val">${visits.length}</div><div class="stat-lbl">Visits</div></div>
   <div class="stat"><div class="stat-val">${totalAcreage(fields)}</div><div class="stat-lbl">Acres</div></div>
-  <div class="stat"><div class="stat-val">${visits.filter(v => v.status?.toLowerCase() === "completed").length}</div><div class="stat-lbl">Completed</div></div>
+  <div class="stat"><div class="stat-val">${visits.filter(visitHasGps).length}</div><div class="stat-lbl">With GPS</div></div>
 </div>
 
 <h2>Personal &amp; Farm Details</h2>
@@ -238,7 +235,7 @@ function generateWord(farmer, fields, visits) {
 ${row("Full Name", farmer.name)}
 ${row("Phone", farmer.phone)}
 ${row("District", farmer.district_name || farmer.district)}
-${row("Village", farmer.village_name || farmer.village)}
+${row("Village", farmer.village_name || resolveVillageLabel(farmer.village))}
 ${row("Total Land Area", farmer.total_land_area ? farmer.total_land_area + " acres" : null)}
 ${row("Soil Type", farmer.soil_type)}
 ${row("Irrigation Type", farmer.irrigation_type)}
@@ -297,7 +294,16 @@ export default function FarmerDetail() {
             }
             if (visitsRes.status === "fulfilled") {
                 const d = visitsRes.value;
-                setVisits(Array.isArray(d) ? d : Array.isArray(d?.results) ? d.results : Array.isArray(d?.data) ? d.data : []);
+                const list = Array.isArray(d)
+                    ? d
+                    : Array.isArray(d?.results)
+                        ? d.results
+                        : Array.isArray(d?.data?.results)
+                            ? d.data.results
+                            : Array.isArray(d?.data)
+                                ? d.data
+                                : [];
+                setVisits(list);
             }
         } catch {
             setError("Failed to load farmer data");
@@ -362,9 +368,14 @@ export default function FarmerDetail() {
         </div>
     );
 
-    const completedVisits = visits.filter(v => v.status?.toLowerCase() === "completed").length;
-    const pendingVisits = visits.filter(v => v.status?.toLowerCase() === "pending").length;
+    const gpsVisits = visits.filter(visitHasGps).length;
     const acreage = totalAcreage(fields);
+    const lastVisitLabel =
+        visits.length > 0
+            ? visitWhenLabel(visits[0]) !== "—"
+                ? visitWhenLabel(visits[0])
+                : fmt(visits[0]?.visit_date || visits[0]?.created_at)
+            : "—";
 
     const TABS = [
         { id: "info", label: "Overview", icon: User },
@@ -384,6 +395,11 @@ export default function FarmerDetail() {
                     </button>
 
                     {/* Download dropdown */}
+                    <div className="flex items-center gap-2">
+                    <button onClick={() => navigate(`/farmers/${id}/edit`)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-semibold shadow-sm transition-all">
+                        <Edit2 className="w-4 h-4" /> Edit
+                    </button>
                     <div className="relative" ref={dlRef}>
                         <button
                             onClick={() => setDlOpen(o => !o)}
@@ -420,6 +436,7 @@ export default function FarmerDetail() {
                             </div>
                         )}
                     </div>
+                    </div>
                 </div>
 
                 {/* ── Hero banner ── */}
@@ -447,7 +464,7 @@ export default function FarmerDetail() {
                             <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-emerald-100 mt-1">
                                 <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.phone || "—"}</span>
                                 <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.district_name || farmer.district || "—"}</span>
-                                <span className="flex items-center gap-1.5"><Sprout className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.village_name || farmer.village || "—"}</span>
+                                <span className="flex items-center gap-1.5"><Sprout className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.village_name || resolveVillageLabel(farmer.village)}</span>
                                 {farmer.created_at && (
                                     <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />Since {fmt(farmer.created_at)}</span>
                                 )}
@@ -469,8 +486,8 @@ export default function FarmerDetail() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard icon={LandPlot} label="Total Fields" value={fields.length} color="bg-emerald-500" />
                     <StatCard icon={TrendingUp} label="Total Acreage" value={`${acreage} ac`} color="bg-teal-500" />
-                    <StatCard icon={CheckCircle2} label="Completed Visits" value={completedVisits} color="bg-blue-500" />
-                    <StatCard icon={Clock} label="Pending Visits" value={pendingVisits} color="bg-amber-500" />
+                    <StatCard icon={ClipboardList} label="Submitted Visits" value={visits.length} color="bg-blue-500" />
+                    <StatCard icon={MapPin} label="With GPS" value={gpsVisits} color="bg-teal-600" />
                 </div>
 
                 {/* ── Tabs ── */}
@@ -500,7 +517,7 @@ export default function FarmerDetail() {
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Location</h3>
                             <InfoRow icon={MapPin} label="District" value={farmer.district_name || farmer.district} />
-                            <InfoRow icon={MapPin} label="Village" value={farmer.village_name || farmer.village} />
+                            <InfoRow icon={MapPin} label="Village" value={farmer.village_name || resolveVillageLabel(farmer.village)} />
                         </div>
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Farm Details</h3>
@@ -512,9 +529,8 @@ export default function FarmerDetail() {
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Visit Summary</h3>
                             <div className="space-y-2">
                                 {[
-                                    { label: "Total Visits", val: visits.length, cls: "bg-gray-50 text-gray-700" },
-                                    { label: "Completed", val: completedVisits, cls: "bg-emerald-50 text-emerald-700" },
-                                    { label: "Pending", val: pendingVisits, cls: "bg-amber-50 text-amber-700" },
+                                    { label: "Submitted visits", val: visits.length, cls: "bg-gray-50 text-gray-700" },
+                                    { label: "With GPS", val: gpsVisits, cls: "bg-emerald-50 text-emerald-700" },
                                 ].map(({ label, val, cls }) => (
                                     <div key={label} className="flex items-center justify-between rounded-xl px-4 py-2.5 bg-gray-50">
                                         <span className="text-sm text-gray-600 font-medium">{label}</span>
@@ -523,7 +539,7 @@ export default function FarmerDetail() {
                                 ))}
                                 {visits.length > 0 && (
                                     <p className="pt-2 text-xs text-gray-400 px-1">
-                                        Last visit: <span className="font-semibold text-gray-600">{fmt(visits[0]?.visit_date || visits[0]?.created_at)}</span>
+                                        Last visit: <span className="font-semibold text-gray-600">{lastVisitLabel}</span>
                                     </p>
                                 )}
                             </div>
@@ -605,20 +621,35 @@ export default function FarmerDetail() {
                                         <div className="flex items-start gap-4 flex-1 min-w-0">
                                             {/* timeline dot */}
                                             <div className="flex flex-col items-center flex-shrink-0 pt-1">
-                                                <div className={`w-3 h-3 rounded-full border-2 ${v.status?.toLowerCase() === "completed" ? "bg-emerald-500 border-emerald-600"
-                                                        : v.status?.toLowerCase() === "pending" ? "bg-amber-400 border-amber-500"
-                                                            : "bg-gray-300 border-gray-400"}`} />
+                                                <div className={`w-3 h-3 rounded-full border-2 ${visitHasGps(v) ? "bg-emerald-500 border-emerald-600" : "bg-gray-300 border-gray-400"}`} />
                                                 {i < visits.length - 1 && <div className="w-px flex-1 bg-gray-100 mt-1 min-h-[28px]" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                                    <span className="text-sm font-bold text-gray-900">{fmt(v.visit_date || v.created_at)}</span>
-                                                    <StatusBadge status={v.status} />
+                                                    <span className="text-sm font-bold text-gray-900">
+                                                        {visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at)}
+                                                    </span>
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-1">
-                                                    {(v.crop_name || v.crop) && <span className="flex items-center gap-1"><Leaf className="w-3 h-3 text-emerald-400" />{v.crop_name || v.crop}</span>}
-                                                    {v.village_name && <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gray-400" />{v.village_name}</span>}
-                                                    {v.employee_name && <span className="flex items-center gap-1"><User className="w-3 h-3 text-gray-400" />{v.employee_name}</span>}
+                                                    {(v.crop_name || resolveCropLabel(v?.crop, "")) && (
+                                                        <span className="flex items-center gap-1">
+                                                            <Leaf className="w-3 h-3 text-emerald-400" />
+                                                            {v.crop_name || resolveCropLabel(v?.crop)}
+                                                        </span>
+                                                    )}
+                                                    {(v.village_name || resolveVillageLabel(v?.village, "")) && (
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin className="w-3 h-3 text-gray-400" />
+                                                            {v.village_name || resolveVillageLabel(v?.village)}
+                                                        </span>
+                                                    )}
+                                                    {visitEmployeeLabel(v) !== "—" && (
+                                                        <span className="flex items-center gap-1">
+                                                            <User className="w-3 h-3 text-gray-400" />
+                                                            {visitEmployeeLabel(v)}
+                                                        </span>
+                                                    )}
+                                                    <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
                                                 </div>
                                                 {v.notes && <p className="mt-1.5 text-xs text-gray-400 italic line-clamp-2">{v.notes}</p>}
                                             </div>

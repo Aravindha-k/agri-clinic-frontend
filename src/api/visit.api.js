@@ -1,73 +1,101 @@
 import api from "./axios";
+import { unwrapSuccessEnvelope, resolvePaginated } from "../utils/apiUnwrap";
+import { normalizeVisitRecord, normalizeVisitList, logVisitFarmerBlock } from "../utils/visitFarmer";
+import { isUnreachableError, backendUnavailableMessage } from "../utils/apiBackoff";
 
 const TAG = "[visit.api]";
 
-// List visits — GET /visits/
-export const getVisits = async (params) => {
-    try {
-        const response = await api.get("visits/", { params });
-        // Prefer .results, fallback to .data, fallback to array, fallback to []
-        if (Array.isArray(response.data?.results)) return response.data.results;
-        if (Array.isArray(response.data)) return response.data;
-        return [];
-    } catch (err) {
-        console.error(TAG, "getVisits failed:", err.response?.status, err.message);
-        return [];
-    }
+const cleanVisitPayload = (data = {}) => {
+  const payload = { ...data };
+  ["land_area", "latitude", "longitude"].forEach((field) => {
+    if (payload[field] === "") payload[field] = null;
+  });
+  ["next_visit_date", "visit_date", "visit_time"].forEach((field) => {
+    if (payload[field] === "") delete payload[field];
+  });
+  delete payload.employee_id;
+  delete payload.employee;
+  return payload;
 };
 
-// (Optional: If stats endpoint is not in requirements, you may remove this)
+function formatVisitError(err, label) {
+  if (isUnreachableError(err)) {
+    return new Error(backendUnavailableMessage());
+  }
+  const detail =
+    err?.response?.data?.detail ||
+    err?.response?.data?.message ||
+    err?.message ||
+    label;
+  return new Error(typeof detail === "string" ? detail : label);
+}
 
-// Get visit detail — GET /visits/{id}/
+// List visits - GET /admin/visits/ (global submitted visits, all employees)
+export const getVisits = async (params = {}) => {
+  const { status, limit, ...rest } = params;
+  const query = {
+    ordering: "-created_at",
+    page_size: rest.page_size ?? limit ?? 12,
+    ...rest,
+  };
+
+  try {
+    const response = await api.get("admin/visits/", { params: query });
+    const page = resolvePaginated(response);
+    const records = normalizeVisitList(page.results);
+    if (import.meta.env?.DEV && records[0]) {
+      logVisitFarmerBlock(records[0]);
+    }
+    return {
+      ...page,
+      results: records,
+    };
+  } catch (err) {
+    console.error(TAG, "getVisits failed:", err.response?.status, err.message);
+    throw formatVisitError(err, "Failed to load visits");
+  }
+};
+
+// Get visit detail - GET /admin/visits/{id}/
 export const getVisitDetail = async (id) => {
-    try {
-        const response = await api.get(`visits/${id}/`);
-        return response.data || {};
-    } catch (err) {
-        console.error(TAG, "getVisitDetail failed:", err.response?.status, err.message);
-        return {};
-    }
+  try {
+    const response = await api.get(`admin/visits/${id}/`);
+    const data = unwrapSuccessEnvelope(response) ?? {};
+    return normalizeVisitRecord(data && typeof data === "object" ? data : {});
+  } catch (err) {
+    console.error(TAG, `getVisitDetail(${id}) failed:`, err.response?.status, err.message);
+    throw formatVisitError(err, "Failed to load visit");
+  }
 };
 
-// Create visit — POST /visits/
+// Create visit - POST /visits/
 export const createVisit = async (data) => {
-    try {
-        const response = await api.post("visits/", data);
-        return response.data;
-    } catch (err) {
-        console.error(TAG, "createVisit failed:", err.response?.status, err.message);
-        throw err;
-    }
+  const response = await api.post("visits/", cleanVisitPayload(data));
+  const raw = unwrapSuccessEnvelope(response) ?? {};
+  return normalizeVisitRecord(raw && typeof raw === "object" ? raw : {});
 };
 
-// Upload photo — POST /visits/upload-photo/
+// Update visit - PATCH /visits/{id}/
+export const updateVisit = async (id, data) => {
+  const response = await api.patch(`visits/${id}/`, cleanVisitPayload(data));
+  const raw = unwrapSuccessEnvelope(response) ?? {};
+  return normalizeVisitRecord(raw && typeof raw === "object" ? raw : {});
+};
+
+// Upload photo - POST /visits/upload-photo/
 export const uploadVisitPhoto = async (data) => {
-    try {
-        const response = await api.post("visits/upload-photo/", data);
-        return response.data;
-    } catch (err) {
-        console.error(TAG, "uploadVisitPhoto failed:", err.response?.status, err.message);
-        throw err;
-    }
-};
-// Start visit — POST /visits/start/
-export const startVisit = async (data) => {
-    try {
-        const response = await api.post("visits/start/", data);
-        return response.data;
-    } catch (err) {
-        console.error(TAG, "startVisit failed:", err.response?.status, err.message);
-        throw err;
-    }
+  const response = await api.post("visits/upload-photo/", data);
+  return unwrapSuccessEnvelope(response) ?? {};
 };
 
-// Complete visit — POST /visits/{id}/complete/
-export const completeVisit = async (id) => {
-    try {
-        const response = await api.post(`visits/${id}/complete/`);
-        return response.data;
-    } catch (err) {
-        console.error(TAG, "completeVisit failed:", err.response?.status, err.message);
-        throw err;
-    }
+// Start visit - POST /visits/start/
+export const startVisit = async (data) => {
+  const response = await api.post("visits/start/", data);
+  return unwrapSuccessEnvelope(response) ?? {};
+};
+
+// Complete visit - POST /visits/{id}/complete/
+export const completeVisit = async (id, body = {}) => {
+  const response = await api.post(`visits/${id}/complete/`, body);
+  return unwrapSuccessEnvelope(response) ?? {};
 };

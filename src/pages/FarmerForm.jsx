@@ -12,7 +12,7 @@ export default function FarmerForm({ initial = {}, onSubmit, onCancel, loading =
         district_name: initial.district_name || "",
         village: initial.village || initial.village_id || "",
         village_name: initial.village_name || "",
-        total_area: initial.total_area || "",
+        total_land_area: initial.total_land_area || initial.total_area || "",
     });
 
     const set = (field, val) => setForm((f) => ({ ...f, [field]: val }));
@@ -28,7 +28,7 @@ export default function FarmerForm({ initial = {}, onSubmit, onCancel, loading =
             phone: form.phone,
             district: form.district || undefined,
             village: form.village || undefined,
-            total_area: form.total_area || undefined,
+            total_land_area: form.total_land_area || undefined,
         });
     };
 
@@ -64,7 +64,7 @@ export default function FarmerForm({ initial = {}, onSubmit, onCancel, loading =
             {/* Total Area */}
             <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Total Area (acres)</label>
-                <input type="number" step="0.01" min="0" value={form.total_area} onChange={(e) => set("total_area", e.target.value)}
+                <input type="number" step="0.01" min="0" value={form.total_land_area} onChange={(e) => set("total_land_area", e.target.value)}
                     placeholder="e.g. 5.5" className={inputClass} />
             </div>
 

@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { addRecommendation, getIssues } from "../api/issue.api";
+import {
+  asDisplayString,
+  resolveCropLabel,
+  resolveVillageLabel,
+  resolveFarmerLabel,
+  resolveEmployeeLabel,
+} from "../utils/displayValue";
 import SlidePanel from "../components/ui/SlidePanel";
 import {
     AlertTriangle, Search, X, RefreshCw, ChevronLeft, ChevronRight, AlertCircle,
@@ -9,13 +16,6 @@ import {
 } from "lucide-react";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
-const resolveList = (d) => {
-    if (Array.isArray(d)) return d;
-    if (d?.results) return d.results;
-    if (d?.data) return d.data;
-    return [];
-};
 
 const fmt = (d) => {
     if (!d) return "\u2014";
@@ -35,13 +35,27 @@ const getVisitId = (issue) => {
 };
 
 const getFarmerName = (issue) =>
-    issue?.farmer_name || issue?.farmer?.name || issue?.visit?.farmer_name || issue?.visit?.farmer?.name || "\u2014";
+    issue?.farmer_name ||
+    resolveFarmerLabel(issue?.farmer) ||
+    issue?.visit?.farmer_name ||
+    resolveFarmerLabel(issue?.visit?.farmer) ||
+    "\u2014";
 
 const getVillageName = (issue) =>
-    issue?.village_name || issue?.village || issue?.farmer?.village || issue?.visit?.village_name || issue?.visit?.village || issue?.visit?.farmer?.village || "\u2014";
+    issue?.village_name ||
+    resolveVillageLabel(issue?.village) ||
+    resolveVillageLabel(issue?.farmer?.village) ||
+    issue?.visit?.village_name ||
+    resolveVillageLabel(issue?.visit?.village) ||
+    resolveVillageLabel(issue?.visit?.farmer?.village) ||
+    "\u2014";
 
 const getCropName = (issue) =>
-    issue?.crop_name || issue?.crop?.crop_name || issue?.crop?.name || issue?.visit?.crop_name || issue?.visit?.crop?.crop_name || issue?.visit?.crop?.name || "\u2014";
+    issue?.crop_name ||
+    resolveCropLabel(issue?.crop) ||
+    issue?.visit?.crop_name ||
+    resolveCropLabel(issue?.visit?.crop) ||
+    "\u2014";
 
 const getIssueCategory = (issue) =>
     humanizeIssueType(
@@ -64,14 +78,15 @@ const getVisitDate = (issue) =>
     issue?.visit_date || issue?.created_at || issue?.timestamp || issue?.visit?.visit_date || issue?.visit?.timestamp || null;
 
 const getAgentName = (issue) =>
-    issue?.employee?.name || issue?.reported_by?.name || issue?.reported_by?.username || issue?.assigned_to?.name || issue?.assigned_to?.username || issue?.visit?.employee?.name || "\u2014";
+    issue?.employee_name ||
+    resolveEmployeeLabel(issue?.employee) ||
+    issue?.reported_by?.name ||
+    issue?.reported_by?.username ||
+    resolveEmployeeLabel(issue?.reported_by) ||
+    resolveEmployeeLabel(issue?.visit?.employee) ||
+    "\u2014";
 
-const safeStr = (v) => {
-    if (v == null) return "\u2014";
-    if (typeof v === "object") return v.name || v.crop_name || v.field_name || v.first_name || v.username || v.label || String(v.id || "\u2014");
-    const s = String(v);
-    return (s === "-" || s === "") ? "\u2014" : s;
-};
+const safeStr = (v) => asDisplayString(v);
 
 const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
 const TableSkeleton = () => (
@@ -178,11 +193,11 @@ export default function Issues() {
         setLoading(true);
         setError(null);
         try {
-            const raw = await getIssues({ page: 1, page_size: 200 });
-            const list = resolveList(raw);
+            const page = await getIssues({ page: 1, page_size: 200 });
+            const list = Array.isArray(page?.results) ? page.results : [];
             setIssues(list);
-        } catch {
-            setError("Failed to load issues.");
+        } catch (err) {
+            setError(err?.message || "Failed to load issues.");
             setIssues([]);
         } finally {
             setLoading(false);
@@ -191,7 +206,8 @@ export default function Issues() {
 
     useEffect(() => { fetchIssues(); }, [fetchIssues]);
 
-    const filteredIssues = issues.filter((issue) => {
+    const issueRows = Array.isArray(issues) ? issues : [];
+    const filteredIssues = issueRows.filter((issue) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
 

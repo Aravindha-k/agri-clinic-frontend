@@ -1,14 +1,25 @@
 import api from "./axios";
+import { unwrapSuccessEnvelope, getResponseBody } from "../utils/apiUnwrap";
+import { resolveGeoFeatures, normalizeTrackingStats } from "../utils/trackingNormalize";
+import { isUnreachableError } from "../utils/apiBackoff";
 
 const TAG = "[tracking.api]";
+
+function logTrackingError(fn, err) {
+    if (isUnreachableError(err)) {
+        console.warn(TAG, `${fn}: backend unreachable`);
+        return;
+    }
+    console.error(TAG, `${fn} failed:`, err.response?.status, err.message);
+}
 
 // Dashboard stats — GET /tracking/admin/dashboard-stats/
 export const getDashboardStats = async () => {
     try {
         const response = await api.get("tracking/admin/dashboard-stats/");
-        return response.data;
+        return normalizeTrackingStats(getResponseBody(response));
     } catch (err) {
-        console.error(TAG, "getDashboardStats failed:", err.response?.status, err.message);
+        logTrackingError("getDashboardStats", err);
         throw err;
     }
 };
@@ -19,7 +30,7 @@ export const getAdminStatus = async () => {
         const response = await api.get("tracking/admin/status/");
         return response.data;
     } catch (err) {
-        console.error(TAG, "getAdminStatus failed:", err.response?.status, err.message);
+        logTrackingError("getAdminStatus", err);
         throw err;
     }
 };
@@ -78,8 +89,13 @@ export const getEmployeeActivity = async (userId) => {
 export const getEmployeeGeo = async () => {
     try {
         const response = await api.get("tracking/admin/geo/employees/");
-        // Return the full GeoJSON FeatureCollection for frontend processing
-        return response.data;
+        const inner = unwrapSuccessEnvelope(response) ?? getResponseBody(response);
+        const features = resolveGeoFeatures(inner);
+        return {
+            type: "FeatureCollection",
+            features,
+            ...(typeof inner === "object" && inner !== null ? inner : {}),
+        };
     } catch (err) {
         console.error(TAG, "getEmployeeGeo failed:", err.response?.status, err.message);
         throw err;

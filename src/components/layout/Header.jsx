@@ -7,6 +7,7 @@ const PAGE_META = {
   "/dashboard": { name: "Dashboard", parent: null },
   "/employees": { name: "Employees", parent: null },
   "/farmers": { name: "Farmers", parent: null },
+  "/farmers/new": { name: "Add Farmer", parent: "Farmers" },
   "/visits": { name: "Visits", parent: null },
   "/visits/create": { name: "Create Visit", parent: "Visits" },
   "/tracking": { name: "Live Tracking", parent: null },
@@ -41,7 +42,8 @@ export default function Header({ onMenuClick }) {
   const meta = (() => {
     const p = location.pathname;
     if (PAGE_META[p]) return PAGE_META[p];
-    if (/^\/farmers\/\d+/.test(p)) return { name: "Farmer Detail", parent: "Farmers" };
+    if (/^\/farmers\/[^/]+\/edit/.test(p)) return { name: "Edit Farmer", parent: "Farmers" };
+    if (/^\/farmers\/[^/]+/.test(p)) return { name: "Farmer Detail", parent: "Farmers" };
     if (/^\/visits\/\d+\/edit/.test(p)) return { name: "Edit Visit", parent: "Visits" };
     if (/^\/visits\/\d+/.test(p)) return { name: "Visit Detail", parent: "Visits" };
     return { name: "Dashboard", parent: null };
@@ -78,15 +80,15 @@ export default function Header({ onMenuClick }) {
     <header
       className="sticky top-0 z-20"
       style={{
-        background: "rgba(248,252,249,0.88)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        borderBottom: "1px solid rgba(15,118,110,0.08)",
-        boxShadow: "0 1px 0 rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)",
+        background: "rgba(255,255,255,0.84)",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        borderBottom: "1px solid rgba(15,23,42,0.07)",
+        boxShadow: "0 1px 0 rgba(15,23,42,0.04)",
       }}
     >
       {/* Premium green accent line at top */}
-      <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, #15803d 0%, #22c55e 50%, #059669 100%)" }} />
+      <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, #0f766e 0%, #16a34a 50%, #2563eb 100%)" }} />
 
       <div className="flex items-center justify-between h-[58px] px-4 sm:px-6 lg:px-8">
 

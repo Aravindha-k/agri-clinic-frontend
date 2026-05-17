@@ -1,18 +1,17 @@
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { getIssues, getRecommendations } from "../api/issue.api";
 import {
+    resolveCropLabel,
+    resolveFarmerLabel,
+    resolveEmployeeLabel,
+    asDisplayString,
+} from "../utils/displayValue";
+import {
     ClipboardCheck, Search, X, RefreshCw, ChevronLeft, ChevronRight, AlertCircle,
     TrendingUp, Leaf, Calendar, CheckCircle2,
 } from "lucide-react";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
-const resolveList = (d) => {
-    if (Array.isArray(d)) return d;
-    if (d?.results) return d.results;
-    if (d?.data) return d.data;
-    return [];
-};
 
 const fmt = (d) => {
     if (!d) return "\u2014";
@@ -23,10 +22,18 @@ const getIssueProblem = (issue) =>
     issue?.issue_title || issue?.issue_type || issue?.problem_category || issue?.description || "\u2014";
 
 const getIssueFarmerName = (issue) =>
-    issue?.farmer?.name || issue?.farmer_name || issue?.visit?.farmer_name || "\u2014";
+    issue?.farmer_name ||
+    resolveFarmerLabel(issue?.farmer) ||
+    issue?.visit?.farmer_name ||
+    resolveFarmerLabel(issue?.visit?.farmer) ||
+    "\u2014";
 
 const getIssueCropName = (issue) =>
-    issue?.crop?.crop_name || issue?.crop?.name || issue?.crop_name || issue?.visit?.crop_name || issue?.visit?.crop?.crop_name || "";
+    issue?.crop_name ||
+    resolveCropLabel(issue?.crop) ||
+    issue?.visit?.crop_name ||
+    resolveCropLabel(issue?.visit?.crop) ||
+    "";
 
 const getIssueStatus = (issue) =>
     issue?.status || issue?.issue_status || "";
@@ -97,19 +104,19 @@ export default function Recommendations() {
         try {
             const params = { page, page_size: pageSize };
             if (search.trim()) params.search = search.trim();
-            const [rawRecommendations, rawIssues] = await Promise.all([
+            const [recPage, issuePage] = await Promise.all([
                 getRecommendations(params),
                 getIssues({ page: 1, page_size: 200 }),
             ]);
-            const list = resolveList(rawRecommendations);
-            const issues = resolveList(rawIssues);
+            const list = Array.isArray(recPage?.results) ? recPage.results : [];
+            const issues = Array.isArray(issuePage?.results) ? issuePage.results : [];
             const issueLookup = Object.fromEntries(issues.map((issue) => [String(issue.id), issue]));
             setRecommendations(list);
             setIssuesById(issueLookup);
-            const count = rawRecommendations?.count || rawRecommendations?.total || list.length;
+            const count = recPage?.count ?? list.length;
             setTotalPages(Math.max(1, Math.ceil(count / pageSize)));
-        } catch {
-            setError("Failed to load recommendations.");
+        } catch (err) {
+            setError(err?.message || "Failed to load recommendations.");
             setRecommendations([]);
             setIssuesById({});
         } finally {
@@ -119,15 +126,33 @@ export default function Recommendations() {
 
     useEffect(() => { fetchRecommendations(); }, [fetchRecommendations]);
 
+    const formatRecText = (rec) => {
+        const parts = [rec.fertilizer, rec.pesticide, rec.dosage, rec.notes]
+            .filter((p) => p && String(p).trim())
+            .map((p) => String(p).trim());
+        return parts.length > 0 ? parts.join(" · ") : "\u2014";
+    };
+
     const enrichedRecommendations = recommendations.map((rec) => {
-        const issue = issuesById[String(rec.issue)] || null;
+        const issueId = rec.issue ?? rec.issue_id;
+        const issue = issuesById[String(issueId)] || null;
         return {
             ...rec,
-            displayFarmerName: rec.farmer_name || rec.visit_farmer_name || getIssueFarmerName(issue),
-            displayCropName: rec.crop || rec.crop_name || getIssueCropName(issue),
-            displayProblem: rec.issue_name || rec.problem || rec.problem_category || getIssueProblem(issue),
+            displayFarmerName:
+                rec.farmer_name || rec.visit_farmer_name || getIssueFarmerName(issue),
+            displayCropName:
+                asDisplayString(rec.crop) !== "\u2014"
+                    ? asDisplayString(rec.crop)
+                    : rec.crop_name || getIssueCropName(issue) || "\u2014",
+            displayProblem:
+                rec.issue_name ||
+                rec.problem ||
+                rec.problem_category ||
+                getIssueProblem(issue),
             displayStatus: rec.status || rec.issue_status || getIssueStatus(issue),
-            displayRecommendation: rec.recommendation || rec.notes || issue?.resolution_notes || "\u2014",
+            displayRecommendation: formatRecText(rec),
+            displayAgent: rec.given_by_name || resolveEmployeeLabel(rec.given_by) || "\u2014",
+            displayDate: rec.created_at || issue?.created_at,
         };
     });
 

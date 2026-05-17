@@ -59,7 +59,6 @@ export default function EditVisit() {
         general_advice: "",
         follow_up_required: false,
         next_visit_date: "",
-        status: ""
     });
 
     const [loading, setLoading] = useState(true);
@@ -73,7 +72,7 @@ export default function EditVisit() {
         async function fetchData() {
             try {
                 const res = await getVisitDetail(id);
-                const d = res.data?.data || res.data;
+                const d = res?.data?.data || res?.data || res || {};
 
                 setFormData({
                     farmer_name: d.farmer_name || "",
@@ -90,7 +89,6 @@ export default function EditVisit() {
                     general_advice: d.general_advice || "",
                     follow_up_required: d.follow_up_required || false,
                     next_visit_date: d.next_visit_date || "",
-                    status: d.status || ""
                 });
             } catch (err) {
                 setError("Failed to fetch visit data");
@@ -234,10 +232,6 @@ export default function EditVisit() {
 
                             <DetailItem label="Next Visit">
                                 <input type="date" name="next_visit_date" value={formData.next_visit_date} onChange={handleChange} className={inputStyle} />
-                            </DetailItem>
-
-                            <DetailItem label="Status">
-                                <input name="status" value={formData.status} onChange={handleChange} className={inputStyle} />
                             </DetailItem>
                         </div>
                     </Section>

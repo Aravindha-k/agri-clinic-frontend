@@ -7,19 +7,28 @@ import {
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
+import {
+    resolveCropLabel,
+    resolveEmployeeLabel,
+    resolveVillageLabel,
+    resolveFarmerLabel,
+} from "../utils/displayValue";
+
 function getEmployeeName(item) {
-    if (typeof item?.employee === "string") return item.employee;
-    return item?.employee?.name || item?.employee?.first_name || item?.employee?.username || item?.employee_name || "—";
+    return item?.employee_name || resolveEmployeeLabel(item?.employee);
 }
 
 function getCropName(item) {
-    if (typeof item?.crop === "string") return item.crop;
-    return item?.crop?.name || item?.crop?.name_en || item?.crop_name || "—";
+    return item?.crop_name || resolveCropLabel(item?.crop);
 }
 
 function getLocationName(item) {
-    if (typeof item?.village === "string") return item.village;
-    return item?.village?.name || item?.village_name || item?.district?.name || item?.district_name || "—";
+    return (
+        item?.village_name ||
+        resolveVillageLabel(item?.village) ||
+        item?.district_name ||
+        "—"
+    );
 }
 
 function getVisitDate(item) {
@@ -30,7 +39,7 @@ function normalizeReportRow(item, index) {
     return {
         ...item,
         id: item?.id ?? item?.visit_id ?? item?.report_id ?? index + 1,
-        farmer_name: item?.farmer_name || item?.farmer?.name || "—",
+        farmer_name: item?.farmer_name || resolveFarmerLabel(item?.farmer),
         crop: getCropName(item),
         employee: getEmployeeName(item),
         location_name: getLocationName(item),

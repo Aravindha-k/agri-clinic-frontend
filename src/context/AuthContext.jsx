@@ -1,7 +1,21 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser, refreshToken, getCurrentUser, logout as logoutAPI } from '../api/auth.api';
+import { unwrapSuccessEnvelope } from '../utils/apiUnwrap';
 
 const AuthContext = createContext();
+
+const getApiErrorMessage = (err, fallback = 'Login failed') => {
+    const data = err?.response?.data;
+    if (typeof data === 'string') return data;
+    return (
+        data?.detail ||
+        data?.message ||
+        data?.error?.message ||
+        data?.errors?.detail ||
+        err?.message ||
+        fallback
+    );
+};
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -28,12 +42,15 @@ export const AuthProvider = ({ children }) => {
     const fetchCurrentUser = useCallback(async (accessToken) => {
         try {
             const response = await getCurrentUser();
-            setUser(response.data);
+            const body = unwrapSuccessEnvelope(response) ?? response.data;
+            setUser(body?.user ?? body?.employee ?? body);
             setError(null);
         } catch (err) {
             console.error('Failed to fetch user:', err);
-            // Don't set error in state for initial load, just continue
-            setUser(null);
+            // Keep shell usable — sidebar/menu must not depend on profile fetch succeeding
+            setUser((prev) =>
+                prev ?? { username: 'Admin', is_staff: true }
+            );
         } finally {
             setLoading(false);
         }
@@ -45,8 +62,12 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const response = await loginUser({ username, password });
-
-            const { access, refresh } = response.data;
+            const body = unwrapSuccessEnvelope(response) ?? response.data;
+            const access = body?.access ?? body?.access_token;
+            const refresh = body?.refresh ?? body?.refresh_token;
+            if (!access || !refresh) {
+              throw new Error('Login response missing access token');
+            }
 
             setToken(access);
             setRefreshTokenValue(refresh);
@@ -59,7 +80,7 @@ export const AuthProvider = ({ children }) => {
 
             return response.data;
         } catch (err) {
-            const errorMessage = err.response?.data?.detail || err.message || 'Login failed';
+            const errorMessage = getApiErrorMessage(err);
             setError(errorMessage);
             throw new Error(errorMessage);
         } finally {
@@ -107,7 +128,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [refreshTokenValue]);
 
-    const isAuthenticated = !!token && !!user;
+    const isAuthenticated = !!token;
 
     const value = {
         user,

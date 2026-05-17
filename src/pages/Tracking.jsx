@@ -3,6 +3,13 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet"
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
+import {
+    recordApiFailure,
+    recordApiSuccess,
+    backendUnavailableMessage,
+    isUnreachableError,
+} from "../utils/apiBackoff";
 import {
     getDashboardStats,
     getAdminStatus,
@@ -10,6 +17,10 @@ import {
     getEmployeeRoute,
     getEmployeeActivity,
 } from "../api/tracking.api";
+import {
+    normalizeTrackingEmployee,
+    resolveTrackingEmployeeList,
+} from "../utils/trackingNormalize";
 import {
     Users,
     Briefcase,
@@ -143,7 +154,8 @@ const formatDuration = (minutes) => {
     return `${m}m`;
 };
 
-const empName = (e) => e?.username || e?.employee_id || "Unknown";
+const empName = (e) =>
+    e?.employee_name || e?.username || e?.employee_id || "Unknown";
 
 /**
  * Tracking health: prefer API field `tracking_health`, else compute from last_seen.
@@ -674,43 +686,54 @@ export default function Tracking() {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
-    const intervalRef = useRef(null);
 
     /* ── Data Loading ── */
     const loadData = useCallback(async (isRefresh = false) => {
         try {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
-            setError(null);
 
             const [statsRes, statusRes] = await Promise.allSettled([
                 getDashboardStats(),
                 getAdminStatus(),
             ]);
 
+            const statsErr = statsRes.status === "rejected" ? statsRes.reason : null;
+            const statusErr = statusRes.status === "rejected" ? statusRes.reason : null;
+            const unreachable =
+                isUnreachableError(statsErr) || isUnreachableError(statusErr);
+
+            if (unreachable) {
+                recordApiFailure(statsErr || statusErr);
+                setError(backendUnavailableMessage());
+                return;
+            }
+
+            recordApiSuccess();
+            setError(null);
+
             if (statsRes.status === "fulfilled" && statsRes.value) {
-                const d = statsRes.value?.data ?? statsRes.value;
-                setStats(d);
+                setStats(statsRes.value);
             }
             if (statusRes.status === "fulfilled") {
-                const raw = statusRes.value;
-                const list = Array.isArray(raw) ? raw : raw?.data ?? raw?.results ?? raw?.employees ?? [];
-                setEmployees(Array.isArray(list) ? list : []);
+                const list = resolveTrackingEmployeeList(statusRes.value);
+                setEmployees(list.map(normalizeTrackingEmployee));
             }
             setLastRefresh(new Date());
         } catch (err) {
-            setError("Failed to load tracking data.");
+            if (isUnreachableError(err)) {
+                recordApiFailure(err);
+                setError(backendUnavailableMessage());
+            } else {
+                setError("Failed to load tracking data.");
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     }, []);
 
-    useEffect(() => {
-        loadData();
-        intervalRef.current = setInterval(() => loadData(), REFRESH_INTERVAL);
-        return () => clearInterval(intervalRef.current);
-    }, [loadData]);
+    useAdaptivePolling(loadData, REFRESH_INTERVAL, [loadData]);
 
     /* ── Filtered employees ── */
     const filteredEmployees = useMemo(() => {

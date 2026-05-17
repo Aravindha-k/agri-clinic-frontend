@@ -3,6 +3,7 @@ import { getCrops, createCrop } from "../api/crop.api";
 import { useNavigate } from "react-router-dom";
 import CustomDropdown from "../components/CustomDropdown";
 import api from "../api/axios";
+import { createVisit } from "../api/visit.api";
 
 /* ---------- UI COMPONENTS ---------- */
 
@@ -87,7 +88,6 @@ export default function CreateVisit() {
         next_visit_date: "",
         visit_date: "",
         visit_time: "",
-        status: "completed",
     });
 
     // District/Village state
@@ -100,7 +100,6 @@ export default function CreateVisit() {
         setDistrictLoading(true);
         api.get("masters/districts/")
             .then(res => {
-                console.log("Districts API response:", res.data);
                 setDistricts(Array.isArray(res.data?.results) ? res.data.results : []);
             })
             .catch(() => setDistricts([]))
@@ -117,7 +116,6 @@ export default function CreateVisit() {
         setVillageLoading(true);
         api.get(`masters/villages/?district_id=${formData.district}`)
             .then(res => {
-                console.log("Villages API response:", res.data);
                 setVillages(Array.isArray(res.data?.results) ? res.data.results : []);
             })
             .catch(() => setVillages([]))
@@ -161,7 +159,7 @@ export default function CreateVisit() {
             setCropLoading(true);
             // Refresh crop list
             const res = await getCrops();
-            setCrops(res.data);
+            setCrops(Array.isArray(res) ? res : []);
         } catch {
             setAddCropError("Failed to add crop");
         } finally {
@@ -218,12 +216,10 @@ export default function CreateVisit() {
             setLoading(true);
             const payload = {
                 ...formData,
-                district_id: formData.district,
-                village_id: formData.village,
                 crop: formData.crop,
             };
-            await api.post("/visits/", payload);
-            navigate("/visits");
+            await createVisit(payload);
+            navigate("/visits", { state: { refreshVisits: Date.now() } });
         } catch (err) {
             setErrors({ submit: "Failed to create visit" });
         } finally {
@@ -379,7 +375,6 @@ export default function CreateVisit() {
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Date" name="visit_date" value={formData.visit_date} onChange={handleChange} type="date" required error={errors.visit_date} />
                         <Field label="Time" name="visit_time" value={formData.visit_time} onChange={handleChange} type="time" required error={errors.visit_time} />
-                        <Field label="Status" name="status" value={formData.status} onChange={handleChange} />
                     </div>
                 </Card>
 

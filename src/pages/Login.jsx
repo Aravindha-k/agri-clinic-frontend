@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
+import { BarChart3, Leaf, LockKeyhole, MapPin, Navigation, ShieldCheck, Sprout } from "lucide-react";
 
 /* ── Icon: Eye show/hide ─────────────────────────────── */
 const IconEye = ({ open }) => open ? (
@@ -15,7 +16,7 @@ const IconEye = ({ open }) => open ? (
 );
 
 /* ── Feature pill component ──────────────────────────── */
-const FeaturePill = ({ icon, label }) => (
+const FeaturePill = ({ icon: Icon, label }) => (
     <div style={{
         display: "inline-flex", alignItems: "center", gap: 8,
         padding: "8px 14px", borderRadius: 100,
@@ -23,8 +24,15 @@ const FeaturePill = ({ icon, label }) => (
         border: "1px solid rgba(255,255,255,0.12)",
         backdropFilter: "blur(8px)",
     }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        <Icon style={{ width: 14, height: 14, color: "#86efac", flexShrink: 0 }} />
         <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}>{label}</span>
+    </div>
+);
+
+const TrustItem = ({ icon: Icon, label }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Icon style={{ width: 13, height: 13, color: "#0f766e", flexShrink: 0 }} />
+        <span style={{ fontSize: 11.5, color: "#94a3b8", fontWeight: 500 }}>{label}</span>
     </div>
 );
 
@@ -68,7 +76,7 @@ const Login = () => {
                 flexDirection: "column",
                 position: "relative",
                 overflow: "hidden",
-                background: "linear-gradient(160deg, #042014 0%, #0a1f12 22%, #0d2a18 50%, #135e32 82%, #16a34a 100%)",
+                background: "var(--grad-hero)",
             }} className="login-aside">
 
                 {/* Dot grid */}
@@ -130,10 +138,10 @@ const Login = () => {
 
                         {/* Feature pills */}
                         <div style={{ marginTop: 32, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                            <FeaturePill icon="🌱" label="Crop Diagnostics" />
-                            <FeaturePill icon="📍" label="Field Tracking" />
-                            <FeaturePill icon="📊" label="Yield Analytics" />
-                            <FeaturePill icon="🛰️" label="GPS Monitoring" />
+                            <FeaturePill icon={Sprout} label="Crop Diagnostics" />
+                            <FeaturePill icon={MapPin} label="Field Tracking" />
+                            <FeaturePill icon={BarChart3} label="Yield Analytics" />
+                            <FeaturePill icon={Navigation} label="GPS Monitoring" />
                         </div>
                     </div>
 
@@ -307,7 +315,7 @@ const Login = () => {
                                     color: "#ffffff", cursor: loading ? "not-allowed" : "pointer",
                                     display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                                     transition: "transform 0.15s, box-shadow 0.18s, background 0.18s",
-                                    background: loading ? "#9ca3af" : "linear-gradient(135deg, #15803d 0%, #16a34a 60%, #22c55e 100%)",
+                                    background: loading ? "#9ca3af" : "var(--grad-primary)",
                                     boxShadow: loading ? "none" : "0 2px 4px rgba(0,0,0,0.07), 0 8px 24px rgba(21,128,61,0.32), inset 0 1px 0 rgba(255,255,255,0.16)",
                                 }}
                                 onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.10), 0 16px 36px rgba(21,128,61,0.42), inset 0 1px 0 rgba(255,255,255,0.18)"; } }}
@@ -342,12 +350,9 @@ const Login = () => {
 
                         {/* Trust row */}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
-                            {[["🔒", "SSL Encrypted"], ["🛡️", "Enterprise Grade"], ["🌿", "Agri Certified"]].map(([icon, label]) => (
-                                <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span style={{ fontSize: 13 }}>{icon}</span>
-                                    <span style={{ fontSize: 11.5, color: "#94a3b8", fontWeight: 500 }}>{label}</span>
-                                </div>
-                            ))}
+                            <TrustItem icon={LockKeyhole} label="SSL Encrypted" />
+                            <TrustItem icon={ShieldCheck} label="Enterprise Grade" />
+                            <TrustItem icon={Leaf} label="Agri Certified" />
                         </div>
 
                         {/* Footer */}

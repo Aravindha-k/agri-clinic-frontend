@@ -19,6 +19,8 @@ import FarmersList from "./pages/FarmersList";
 import Layout from "./components/layout/Layout";
 import CreateVisit from "./pages/CreateVisit";
 import FarmerDetail from "./pages/FarmerDetail";
+import FarmerEditor from "./pages/FarmerEditor";
+import EditVisit from "./pages/EditVisit";
 
 function App() {
   return (
@@ -37,11 +39,13 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="employees" element={<Employees />} />
           <Route path="farmers" element={<FarmersList />} />
+          <Route path="farmers/new" element={<FarmerEditor />} />
           <Route path="farmers/:id" element={<FarmerDetail />} />
+          <Route path="farmers/:id/edit" element={<FarmerEditor mode="edit" />} />
           <Route path="visits" element={<Visits />} />
           <Route path="visits/create" element={<CreateVisit />} />
           <Route path="visits/:id" element={<VisitDetail />} />
-          <Route path="visits/:id/edit" element={<VisitDetail mode="edit" />} />
+          <Route path="visits/:id/edit" element={<EditVisit />} />
           <Route path="crop-issues" element={<Issues />} />
           <Route path="recommendations" element={<Recommendations />} />
           <Route path="tracking" element={<Tracking />} />

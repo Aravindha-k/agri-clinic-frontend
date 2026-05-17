@@ -26,11 +26,34 @@ export const toggleEmployee = (id) => api.post(`employees/${id}/toggle/`);
 
 // Toggle employee status — POST /employees/:id/toggle-status/
 export const toggleEmployeeStatus = async (id) => {
+    const urls = [
+        `${BASE}/admin/employees/${id}/toggle-status/`,
+        `${BASE}/${id}/toggle-status/`,
+        `${BASE}/${id}/toggle/`,
+    ];
+
+    let lastErr;
+    for (const url of urls) {
+        try {
+            const response = await api.post(url);
+            return response.data;
+        } catch (err) {
+            lastErr = err;
+            const status = err?.response?.status;
+            if (status !== 404 && status !== 405) break;
+        }
+    }
+
+    console.error(TAG, `toggleEmployeeStatus(${id}) failed:`, lastErr?.response?.status, lastErr?.message);
+    throw lastErr;
+};
+
+export const toggleEmployeeStatusByEmployeeId = async (employeeId) => {
     try {
-        const response = await api.post(`${BASE}/admin/employees/${id}/toggle-status/`);
+        const response = await api.post(`${BASE}/${employeeId}/toggle/`);
         return response.data;
     } catch (err) {
-        console.error(TAG, `toggleEmployeeStatus(${id}) failed:`, err.response?.status, err.message);
+        console.error(TAG, `toggleEmployeeStatusByEmployeeId(${employeeId}) failed:`, err.response?.status, err.message);
         throw err;
     }
 };

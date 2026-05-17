@@ -1,0 +1,15 @@
+# Render Blueprint — Agri Clinic Admin (static site)
+# https://render.com/docs/static-sites
+services:
+  - type: web
+    name: agri-clinic-admin
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://agri-clinic-backend.onrender.com/api/v1

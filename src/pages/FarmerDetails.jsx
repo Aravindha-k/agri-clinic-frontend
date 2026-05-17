@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getFarmers } from "../api/farmer.api";
-import { unwrapResponse } from "../api/axios";
 import Visits from "./Visits";
 
 const FarmerDetails = () => {
@@ -16,9 +15,8 @@ const FarmerDetails = () => {
             setLoading(true);
             setError("");
             try {
-                const res = await getFarmers();
-                const data = unwrapResponse(res);
-                const list = data?.results || data || [];
+                const page = await getFarmers({ page_size: 500 });
+                const list = page?.results ?? [];
                 const found = list.find(f => String(f.farmer_phone || f.phone || f.id) === String(id));
                 setFarmer(found || null);
             } catch (err) {
@@ -56,7 +54,7 @@ const FarmerDetails = () => {
                     <div style={{ marginBottom: 32 }}>
                         <div style={{ marginBottom: 12 }}><strong>Name:</strong> {farmer.farmer_name || farmer.name || "—"}</div>
                         <div style={{ marginBottom: 12 }}><strong>Phone:</strong> {farmer.farmer_phone || farmer.phone || "—"}</div>
-                        <div style={{ marginBottom: 12 }}><strong>Village:</strong> {farmer.village_name || farmer.village || "—"}</div>
+                        <div style={{ marginBottom: 12 }}><strong>Village:</strong> {farmer.village_name || (typeof farmer.village === "string" ? farmer.village : farmer.village?.name) || "—"}</div>
                     </div>
                 )}
             </div>

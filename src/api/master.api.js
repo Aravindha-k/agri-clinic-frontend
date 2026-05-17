@@ -40,6 +40,10 @@ export const deleteProblemCategory = (categoryId) => api.delete(`masters/problem
 /* Farmers (masters) */
 const farmerApi = crud("masters/farmers");
 export const getMasterFarmers = farmerApi.list;
+export const getFarmers = farmerApi.list;
+export const createFarmer = farmerApi.create;
+export const updateFarmer = farmerApi.update;
+export const patchFarmer = farmerApi.patch;
 
 /* Lands */
 const landApi = crud("masters/lands");
