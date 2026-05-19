@@ -1,12 +1,40 @@
 import api from "./axios";
+import { unwrapSuccessEnvelope, resolvePaginated, resolveList } from "../utils/apiUnwrap";
+import { photoUrlFromUploadResponse, profilePhotoVersion } from "../utils/profilePhoto";
 
 const TAG = "[employee.api]";
 const BASE = "employees";
 
-// List all employees — GET /employees/
-export const getEmployees = async () => {
-    const response = await api.get("employees/");
-    return response.data;
+function normalizeEmployeeRow(row) {
+    if (!row || typeof row !== "object") return row;
+    return {
+        ...row,
+        is_active: row.is_active ?? row.is_active_employee,
+        district_name: row.district_name ?? (typeof row.district === "string" ? row.district : row.district?.name),
+    };
+}
+
+// List employees — prefers admin list (includes profile_photo_url), falls back to legacy list
+export const getEmployees = async (params = {}) => {
+    try {
+        const response = await api.get(`${BASE}/admin/employees/`, {
+            params: { page_size: 500, ...params },
+        });
+        const body = unwrapSuccessEnvelope(response) ?? response.data;
+        const page = resolvePaginated({ data: body });
+        const rows = page.results?.length ? page.results : resolveList(body);
+        if (rows.length > 0) {
+            return rows.map(normalizeEmployeeRow);
+        }
+    } catch (err) {
+        if (import.meta.env?.DEV) {
+            console.warn(TAG, "admin employees list unavailable, using legacy list", err?.message);
+        }
+    }
+
+    const response = await api.get(`${BASE}/`);
+    const rows = resolveList(response.data);
+    return rows.map(normalizeEmployeeRow);
 };
 
 // Create employee — POST /employees/create/
@@ -81,4 +109,22 @@ export const adminResetPassword = async (data) => {
         console.error(TAG, "adminResetPassword failed:", err.response?.status, err.message);
         throw err;
     }
+};
+
+/** PATCH /admin/employees/{profileId}/photo/ — multipart profile_photo */
+export const uploadEmployeePhoto = async (profileId, file) => {
+    const form = new FormData();
+    form.append("profile_photo", file);
+    const response = await api.patch(`admin/employees/${profileId}/photo/`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
+    const data = unwrapSuccessEnvelope(response) ?? response.data;
+    const base = unwrapSuccessEnvelope(response) ?? data;
+    return {
+        ...base,
+        profile_photo_url:
+            base?.profile_photo_url ?? photoUrlFromUploadResponse(response)?.split("?")[0],
+        profile_photo_updated_at:
+            base?.profile_photo_updated_at ?? profilePhotoVersion(base),
+    };
 };

@@ -4,15 +4,17 @@ import { useNavigate } from "react-router-dom";
 import CustomDropdown from "../components/CustomDropdown";
 import api from "../api/axios";
 import { createVisit } from "../api/visit.api";
+import { reverseGeocodeSafe } from "../utils/reverseGeocode";
+import { locationFieldsForPayload } from "../utils/visitLocation";
 
 /* ---------- UI COMPONENTS ---------- */
 
 const Card = ({ title, children }) => (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+    <div className="section-card">
         <div className="px-5 py-3 border-b text-sm font-semibold text-gray-700">
             {title}
         </div>
-        <div className="p-5">{children}</div>
+        <div className="panel-body">{children}</div>
     </div>
 );
 
@@ -88,13 +90,47 @@ export default function CreateVisit() {
         next_visit_date: "",
         visit_date: "",
         visit_time: "",
+        location_name: "",
+        locality: "",
+        state: "",
+        formatted_address: "",
     });
+
+    const [geocodingAddress, setGeocodingAddress] = useState(false);
 
     // District/Village state
     const [districts, setDistricts] = useState([]);
     const [villages, setVillages] = useState([]);
     const [districtLoading, setDistrictLoading] = useState(false);
     const [villageLoading, setVillageLoading] = useState(false);
+    // Reverse geocode GPS when coordinates change (fills address if empty; cached)
+    useEffect(() => {
+        const lat = parseFloat(formData.latitude);
+        const lng = parseFloat(formData.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            if (formData.formatted_address?.trim() || formData.address?.trim()) return;
+            setGeocodingAddress(true);
+            const resolved = await reverseGeocodeSafe(lat, lng);
+            if (cancelled || !resolved) {
+                setGeocodingAddress(false);
+                return;
+            }
+            setFormData((f) => ({
+                ...f,
+                ...locationFieldsForPayload(resolved),
+            }));
+            setGeocodingAddress(false);
+        }, 900);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [formData.latitude, formData.longitude]);
+
     // Fetch districts on mount
     useEffect(() => {
         setDistrictLoading(true);
@@ -249,7 +285,7 @@ export default function CreateVisit() {
                 </button>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-4">
 
                 {/* FARMER */}
                 <Card title="Farmer Info">
@@ -290,6 +326,16 @@ export default function CreateVisit() {
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Latitude" name="latitude" value={formData.latitude} onChange={handleChange} />
                         <Field label="Longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
+                        <div className="col-span-2">
+                            {geocodingAddress && (
+                                <p className="text-xs text-gray-500 mb-2">Resolving place name from GPS…</p>
+                            )}
+                            {formData.formatted_address && !geocodingAddress && (
+                                <p className="text-sm font-medium text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-2">
+                                    📍 {formData.formatted_address}
+                                </p>
+                            )}
+                        </div>
                         <Field label="Address" name="address" value={formData.address} onChange={handleChange} />
                     </div>
                 </Card>

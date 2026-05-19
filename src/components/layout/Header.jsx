@@ -90,7 +90,7 @@ export default function Header({ onMenuClick }) {
       {/* Premium green accent line at top */}
       <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, #0f766e 0%, #16a34a 50%, #2563eb 100%)" }} />
 
-      <div className="flex items-center justify-between h-[58px] px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between h-[52px] px-3 sm:px-5 lg:px-6">
 
         {/* ── Left: menu + breadcrumb ── */}
         <div className="flex items-center gap-3 min-w-0">

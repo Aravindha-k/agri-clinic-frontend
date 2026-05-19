@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useState, useEffect, useCallback } from "react";
 import { Settings, Save, RefreshCw } from "lucide-react";
 import { getSystemSettings, updateSystemSettings } from "../../api/master.api";
@@ -52,16 +53,8 @@ export default function SystemSettings() {
 
     if (loading) {
         return (
-            <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse space-y-6">
-                    {FIELDS.map((f) => (
-                        <div key={f.key} className="space-y-2">
-                            <div className="h-4 w-40 bg-gray-200 rounded" />
-                            <div className="h-10 bg-gray-100 rounded-xl" />
-                        </div>
-                    ))}
-                </div>
+            <div className="page-container">
+                <PageLoader label="Loading settings…" />
             </div>
         );
     }
@@ -69,7 +62,7 @@ export default function SystemSettings() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4">
                     <Settings className="w-7 h-7 text-red-400" />
                 </div>
                 <p className="text-gray-700 font-semibold text-lg">{error}</p>
@@ -79,19 +72,19 @@ export default function SystemSettings() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="ops-page">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
-                    <p className="text-sm text-gray-500 mt-1">Configure tracking and GPS parameters</p>
+                    <h1 className="text-xl font-semibold text-gray-900">System Settings</h1>
+                    <p className="text-xs text-gray-500 mt-0.5">Configure tracking and GPS parameters</p>
                 </div>
                 <button onClick={fetchData} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition" title="Refresh">
                     <RefreshCw className="w-5 h-5" />
                 </button>
             </div>
 
-            <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-100">
-                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <form onSubmit={handleSave} className="section-card divide-y divide-gray-100">
+                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {FIELDS.map((f) => (
                         <div key={f.key}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>

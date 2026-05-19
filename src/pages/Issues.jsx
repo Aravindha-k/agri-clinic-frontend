@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { addRecommendation, getIssues } from "../api/issue.api";
@@ -90,10 +91,10 @@ const safeStr = (v) => asDisplayString(v);
 
 const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
 const TableSkeleton = () => (
-    <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW }}>
-        <div className="p-5 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
+    <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
+        <div className="px-3 py-2 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
         {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50">
+            <div key={i} className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-50">
                 <Bone className="w-8 h-8 !rounded-full" /><Bone className="w-28 h-4" /><Bone className="w-20 h-4" /><Bone className="w-16 h-4" /><Bone className="w-20 h-6 rounded-full" />
             </div>
         ))}
@@ -122,16 +123,16 @@ const useCountUp = (target, dur = 900) => {
 const KpiCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
     const animVal = useCountUp(value);
     return (
-        <div className="relative rounded-2xl p-5 overflow-hidden group card-hover cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
-            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: accent }} />
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.06]" style={{ background: accent }} />
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110" style={{ background: iconBg, color: accent }}>
-                <Icon className="w-5 h-5" />
+        <div className="mini-kpi-card group cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
+            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
+            <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
+            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
+                <Icon className="w-4 h-4" />
             </div>
-            <p className="text-[28px] font-bold text-gray-900 leading-none tabular-nums">{animVal}</p>
-            <div className="flex items-center justify-between mt-1.5">
-                <p className="text-[13px] text-gray-500 font-medium">{label}</p>
-                <TrendingUp className="w-3.5 h-3.5 text-gray-300" />
+            <p className="mini-kpi-value">{animVal}</p>
+            <div className="flex items-center justify-between mt-1">
+                <p className="mini-kpi-label">{label}</p>
+                <TrendingUp className="w-3 h-3 text-gray-300" />
             </div>
         </div>
     );
@@ -305,10 +306,10 @@ export default function Issues() {
             )}
 
             {/* ── Table ── */}
-            {loading ? <TableSkeleton /> : filteredIssues.length === 0 ? (
+            {loading ? <PageLoader label="Loading issues…" /> : filteredIssues.length === 0 ? (
                 <div className="section-card">
                     <div className="empty-state">
-                        <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                        <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center mb-4">
                             <AlertTriangle className="w-8 h-8 text-red-300" />
                         </div>
                         <p className="text-gray-600 font-semibold">No issues found</p>

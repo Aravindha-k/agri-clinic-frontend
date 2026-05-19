@@ -7,7 +7,11 @@ export const DISPLAY_FALLBACK = "—";
 
 export function asDisplayString(value, fallback = DISPLAY_FALLBACK) {
   if (value == null || value === "") return fallback;
-  if (typeof value === "string") return value || fallback;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t === "[object Object]") return fallback;
+    return t || fallback;
+  }
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (typeof value === "object") return resolveNestedName(value, fallback);
   return fallback;
@@ -27,13 +31,18 @@ export function resolveNestedName(obj, fallback = DISPLAY_FALLBACK) {
     obj.name_ta ??
     obj.land_name ??
     obj.field_name ??
+    obj.display_name ??
+    obj.title ??
     obj.label ??
     obj.username ??
     (obj.first_name
       ? `${obj.first_name}${obj.last_name ? ` ${obj.last_name}` : ""}`.trim()
       : null);
 
-  return name ? String(name) : fallback;
+  if (name != null && typeof name === "object") {
+    return resolveNestedName(name, fallback);
+  }
+  return name != null && name !== "" ? String(name) : fallback;
 }
 
 export function resolveCropLabel(crop, fallback = DISPLAY_FALLBACK) {
@@ -76,16 +85,31 @@ export function resolveDistrictLabel(district, fallback = DISPLAY_FALLBACK) {
 
 export function resolveLandLabel(land, fallback = DISPLAY_FALLBACK) {
   if (land == null || land === "") return fallback;
-  if (typeof land === "string") return land;
-  if (typeof land === "number") return String(land);
+  if (typeof land === "string") return land.trim() || fallback;
+  if (typeof land === "number" || typeof land === "boolean") {
+    return String(land);
+  }
   if (typeof land === "object") {
-    const name = land.land_name ?? land.name ?? land.field_name;
-    const area = land.land_area ?? land.land_size ?? land.area ?? land.acreage;
-    if (name && area != null && area !== "") {
-      return `${name} (${area})`;
+    const name = asDisplayString(
+      land.land_name ??
+        land.name ??
+        land.field_name ??
+        land.display_name ??
+        land.label,
+      ""
+    );
+    const areaRaw =
+      land.land_area ?? land.land_size ?? land.area ?? land.acreage ?? land.size;
+    const area =
+      areaRaw != null && areaRaw !== ""
+        ? asDisplayString(areaRaw, "")
+        : "";
+
+    if (name && name !== DISPLAY_FALLBACK && area && area !== DISPLAY_FALLBACK) {
+      return `${name} · ${area} ac`;
     }
-    if (name) return String(name);
-    if (area != null && area !== "") return `${area} ac`;
+    if (name && name !== DISPLAY_FALLBACK) return name;
+    if (area && area !== DISPLAY_FALLBACK) return `${area} ac`;
     return fallback;
   }
   return fallback;

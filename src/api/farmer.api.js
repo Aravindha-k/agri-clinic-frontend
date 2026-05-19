@@ -1,5 +1,6 @@
 import api from "./axios";
 import { unwrapSuccessEnvelope, resolvePaginated, fetchAllPaginated, getResponseBody } from "../utils/apiUnwrap";
+import { photoUrlFromUploadResponse } from "../utils/profilePhoto";
 
 const TAG = "[farmer.api]";
 const BASE = "farmers";
@@ -110,4 +111,18 @@ export const getFarmerActivity = async (id, params = {}) => {
   });
   const response = await api.get(`${BASE}/${id}/activity/`, { params: clean });
   return unwrapSuccessEnvelope(response) ?? resolvePaginated(response).results;
+};
+
+/** PATCH /admin/farmers/{id}/photo/ — multipart profile_photo */
+export const uploadFarmerPhoto = async (farmerId, file) => {
+  const form = new FormData();
+  form.append("profile_photo", file);
+  const response = await api.patch(`admin/farmers/${farmerId}/photo/`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  const data = unwrapSuccessEnvelope(response) ?? response.data;
+  return {
+    ...data,
+    profile_photo_url: photoUrlFromUploadResponse(response) ?? data?.profile_photo_url,
+  };
 };

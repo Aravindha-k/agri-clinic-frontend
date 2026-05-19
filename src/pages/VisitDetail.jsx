@@ -3,8 +3,13 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { getVisitDetail, updateVisit } from "../api/visit.api";
+import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
+import VisitLocationDisplay from "../components/visits/VisitLocationDisplay";
+import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 import { GpsIndicator } from "../components/ui/command";
-import { resolveVisitFarmer, visitLandLabel } from "../utils/visitFarmer";
+import { PageLoader } from "../components/ui/command";
+import { resolveVisitFarmer, visitLandLabel, resolveVisitEmployeePhoto } from "../utils/visitFarmer";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { asDisplayString, resolveLandLabel } from "../utils/displayValue";
 import { unwrapSuccessEnvelope } from "../utils/apiUnwrap";
 import {
@@ -17,11 +22,10 @@ import {
     FileText,
     Phone,
     Briefcase,
-    Navigation,
     CheckCircle2,
     Clock,
     AlertCircle,
-    ExternalLink,
+    Paperclip,
 } from "lucide-react";
 
 const visitMarkerIcon = L.divIcon({
@@ -56,17 +60,17 @@ const parseCoord = (value) => {
 
 const Card = ({ title, icon: Icon, children, className = "" }) => (
     <div
-        className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${className}`}
+        className={`section-card overflow-hidden ${className}`}
     >
-        <div className="px-5 py-3.5 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white flex items-center gap-2.5">
+        <div className="px-4 py-2.5 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white flex items-center gap-2">
             {Icon && (
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700">
-                    <Icon className="w-4 h-4" />
+                <div className="list-meta-icon list-meta-icon--crop">
+                    <Icon className="w-3.5 h-3.5" strokeWidth={2} />
                 </div>
             )}
-            <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+            <h2 className="text-xs font-semibold text-gray-800">{title}</h2>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="panel-body">{children}</div>
     </div>
 );
 
@@ -149,7 +153,14 @@ function getEmployeeBlock(v) {
         : emp?.role ||
           (emp?.employee_profile?.designation ? emp.employee_profile.designation : null) ||
           (employeeId ? "Field Agent" : null);
-    return { name, employeeId, role, phone: v?.employee_phone || emp?.phone };
+    return {
+        name,
+        employeeId,
+        role,
+        phone: v?.employee_phone || emp?.phone,
+        photoUrl: resolveVisitEmployeePhoto(v),
+        entity: emp,
+    };
 }
 
 function getFarmerBlock(v) {
@@ -161,6 +172,8 @@ function getFarmerBlock(v) {
         village: resolved.village,
         district: resolved.district,
         code: f?.farmer_code,
+        photoUrl: resolved.profilePhotoUrl,
+        entity: f ?? v,
     };
 }
 
@@ -212,6 +225,7 @@ export default function VisitDetail(props) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [evidenceCount, setEvidenceCount] = useState(null);
 
     useEffect(() => {
         if (!id || id === "create") return;
@@ -276,13 +290,13 @@ export default function VisitDetail(props) {
         ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
         : null;
 
+    const headerAttachmentCount =
+        evidenceCount ?? resolveVisitAttachmentCount(data);
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[320px]">
-                <div className="text-center">
-                    <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mx-auto" />
-                    <p className="mt-3 text-sm text-gray-500">Loading visit…</p>
-                </div>
+            <div className="page-container">
+                <PageLoader label="Loading visit…" />
             </div>
         );
     }
@@ -334,8 +348,15 @@ export default function VisitDetail(props) {
                                     GPS on file
                                 </span>
                             )}
+                            {headerAttachmentCount != null && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    <Paperclip className="w-3 h-3" />
+                                    {headerAttachmentCount}{" "}
+                                    {headerAttachmentCount === 1 ? "attachment" : "attachments"}
+                                </span>
+                            )}
                         </div>
-                        <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" />
                             {fmtDate(v?.visit_date ?? v?.created_at)}
                             {v?.visit_time ? ` · ${fmtTime(v.visit_time)}` : ""}
@@ -379,10 +400,17 @@ export default function VisitDetail(props) {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Main column */}
                 <div className="lg:col-span-2 space-y-6">
                     <Card title="Employee Information" icon={Briefcase}>
+                        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
+                            <ProfileAvatar entity={employee.entity} src={employee.photoUrl} name={employee.name} size="lg" />
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900">{employee.name}</p>
+                                {employee.role && <p className="text-xs text-gray-500">{employee.role}</p>}
+                            </div>
+                        </div>
                         {mode === "edit" ? (
                             <p className="text-sm text-gray-500">
                                 Assigned agent: {employee.name}
@@ -424,33 +452,12 @@ export default function VisitDetail(props) {
                         ) : (
                             <div className="space-y-4">
                                 {hasGps ? (
-                                    <>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <Navigation className="w-4 h-4 text-emerald-600" />
-                                                <span className="font-mono text-gray-800">
-                                                    {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
-                                                </span>
-                                            </div>
-                                            {mapsUrl && (
-                                                <a
-                                                    href={mapsUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
-                                                >
-                                                    Open in Maps
-                                                    <ExternalLink className="w-3 h-3" />
-                                                </a>
-                                            )}
-                                        </div>
-                                        <VisitLocationMap lat={coords.lat} lng={coords.lng} />
-                                        {hasGps && (
-                                            <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-                                                GPS coordinates were captured for this visit and serve as field proof of location.
-                                            </p>
-                                        )}
-                                    </>
+                                    <VisitLocationDisplay
+                                        visit={v}
+                                        coords={coords}
+                                        mapsUrl={mapsUrl}
+                                        mapSlot={<VisitLocationMap lat={coords.lat} lng={coords.lng} />}
+                                    />
                                 ) : (
                                     <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3 flex items-start gap-3">
                                         <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -469,6 +476,15 @@ export default function VisitDetail(props) {
                     </Card>
 
                     <Card title="Farmer" icon={User}>
+                        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
+                            <ProfileAvatar entity={farmer.entity} src={farmer.photoUrl} name={farmer.name} size="lg" variant="teal" />
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900">{farmer.name}</p>
+                                {farmer.phone && farmer.phone !== "—" && (
+                                    <p className="text-xs text-gray-500">{farmer.phone}</p>
+                                )}
+                            </div>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field
                                 label="Name"
@@ -586,10 +602,17 @@ export default function VisitDetail(props) {
                             )}
                         </div>
                     </Card>
+
+                    {id && (
+                        <VisitEvidenceSection
+                            visitId={id}
+                            onCountChange={setEvidenceCount}
+                        />
+                    )}
                 </div>
 
                 {/* Sidebar: timeline */}
-                <div className="space-y-6">
+                <div className="ops-page">
                     <Card title="Visit timeline" icon={Clock}>
                         <div className="space-y-4">
                             <ul className="space-y-3 border-l-2 border-emerald-100 pl-4 ml-1">

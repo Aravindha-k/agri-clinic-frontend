@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { User, Phone, Loader2 } from "lucide-react";
 import LocationSelector from "../components/ui/LocationSelector";
+import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
+import { uploadFarmerPhoto } from "../api/farmer.api";
 
 const inputClass = "w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
 
-export default function FarmerForm({ initial = {}, onSubmit, onCancel, loading = false }) {
+export default function FarmerForm({
+    initial = {},
+    onSubmit,
+    onCancel,
+    loading = false,
+    farmerId,
+    onPhotoUpdated,
+}) {
     const [form, setForm] = useState({
         name: initial.name || initial.farmer_name || "",
         phone: initial.phone || initial.mobile || "",
@@ -34,6 +43,18 @@ export default function FarmerForm({ initial = {}, onSubmit, onCancel, loading =
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
+            {farmerId && (
+                <div className="pb-4 border-b border-gray-100 flex justify-center">
+                    <ProfilePhotoUpload
+                        entity={initial}
+                        displayName={form.name || "Farmer"}
+                        size="xl"
+                        variant="teal"
+                        onUpload={(file) => uploadFarmerPhoto(farmerId, file)}
+                        onPhotoUpdated={onPhotoUpdated}
+                    />
+                </div>
+            )}
             {/* Name */}
             <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1">

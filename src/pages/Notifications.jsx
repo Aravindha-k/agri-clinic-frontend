@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useState, useEffect, useCallback } from "react";
 import { Bell, CheckCircle2, RefreshCw, AlertCircle, Info, AlertTriangle, CheckCircle } from "lucide-react";
 import api from "../api/axios";
@@ -65,26 +66,7 @@ export default function Notifications() {
     if (loading) {
         return (
             <div className="page-container">
-                <div className="page-header">
-                    <div>
-                        <div className="h-7 bg-gray-200 rounded w-44 animate-pulse" />
-                        <div className="h-4 bg-gray-100 rounded w-24 mt-1.5 animate-pulse" />
-                    </div>
-                </div>
-                <div className="space-y-2.5">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="bg-white rounded-2xl p-4 animate-pulse" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)" }}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 bg-gray-100 rounded-xl flex-shrink-0" />
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-3.5 bg-gray-100 rounded w-3/4" />
-                                    <div className="h-3 bg-gray-100 rounded w-1/2" />
-                                </div>
-                                <div className="h-3 bg-gray-100 rounded w-12" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <PageLoader label="Loading notifications…" />
             </div>
         );
     }
@@ -139,7 +121,7 @@ export default function Notifications() {
             {notifications.length === 0 ? (
                 <div className="section-card">
                     <div className="empty-state">
-                        <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
                             <Bell className="w-7 h-7 text-gray-300" />
                         </div>
                         <p className="text-gray-600 font-semibold">No notifications yet</p>
@@ -151,23 +133,17 @@ export default function Notifications() {
                     {notifications.map((n) => (
                         <div
                             key={n.id}
-                            className={`group bg-white rounded-2xl border transition-all ${n.is_read
-                                ? "border-gray-100"
-                                : "border-emerald-200 shadow-sm"
-                                }`}
-                            style={n.is_read ? {} : { boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(22,101,52,0.06)" }}
+                            className={`group feed-card ${n.is_read ? "" : "feed-card-unread"}`}
                         >
-                            <div className="flex items-start gap-4 p-4">
-                                {/* Icon */}
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${n.is_read ? "bg-gray-50" : "bg-emerald-50"
-                                    }`}>
+                            <div className="flex items-start gap-3">
+                                <div className={`list-meta-icon flex-shrink-0 ${n.is_read ? "list-meta-icon--neutral" : "list-meta-icon--crop"}`}>
                                     {notifIcon(n)}
                                 </div>
 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-2">
-                                        <p className={`text-sm leading-snug ${n.is_read ? "text-gray-600" : "text-gray-900 font-semibold"
+                                        <p className={`text-xs leading-snug ${n.is_read ? "text-gray-600" : "text-gray-900 font-semibold"
                                             }`}>
                                             {n.title || n.message}
                                         </p>

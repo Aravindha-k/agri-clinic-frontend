@@ -197,16 +197,151 @@ tbody tr:nth-child(8) {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
+    min-height: 360px;
+    width: 100%;
 }
 
-.page-loader .spinner {
-    width: 48px;
-    height: 48px;
+.page-loader--agri {
+    min-height: min(70vh, 520px);
+}
+
+.page-loader.page-loader--inline {
+    min-height: 200px;
+}
+
+/* ── Agriculture-themed loader ── */
+.agri-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    text-align: center;
+}
+
+.agri-loader__scene {
+    position: relative;
+    width: 5.5rem;
+    height: 5.5rem;
+}
+
+.agri-loader--sm .agri-loader__scene {
+    width: 3.25rem;
+    height: 3.25rem;
+}
+
+.agri-loader--lg .agri-loader__scene {
+    width: 6.5rem;
+    height: 6.5rem;
+}
+
+.agri-loader__ring {
+    position: absolute;
+    inset: 0;
     border-radius: 50%;
-    border: 4px solid #dcfce7;
-    border-top-color: #166534;
-    animation: spin 0.8s linear infinite;
+    background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 55%, #a7f3d0 100%);
+    border: 2px solid rgba(16, 185, 129, 0.22);
+    box-shadow:
+        0 8px 24px rgba(15, 118, 110, 0.12),
+        inset 0 2px 8px rgba(255, 255, 255, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: agri-ring-pulse 2.2s ease-in-out infinite;
+}
+
+.agri-loader__soil {
+    position: absolute;
+    bottom: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42%;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #a16207, #ca8a04, #a16207);
+    opacity: 0.55;
+}
+
+.agri-loader__sprout {
+    width: 2rem;
+    height: 2rem;
+    color: #15803d;
+    animation: agri-sprout-grow 1.6s ease-in-out infinite;
+    filter: drop-shadow(0 2px 4px rgba(21, 128, 61, 0.25));
+}
+
+.agri-loader--sm .agri-loader__sprout {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.agri-loader--lg .agri-loader__sprout {
+    width: 2.35rem;
+    height: 2.35rem;
+}
+
+.agri-loader__orbit {
+    position: absolute;
+    inset: -6px;
+    animation: agri-orbit-spin 4s linear infinite;
+}
+
+.agri-loader__orbit-leaf {
+    position: absolute;
+    width: 0.9rem;
+    height: 0.9rem;
+    color: #16a34a;
+    opacity: 0.85;
+}
+
+.agri-loader__orbit-leaf--a {
+    top: 2px;
+    left: 50%;
+    margin-left: -0.45rem;
+    transform: rotate(-18deg);
+}
+
+.agri-loader__orbit-leaf--b {
+    bottom: 4px;
+    right: 2px;
+    transform: rotate(42deg);
+    color: #0d9488;
+}
+
+.agri-loader__label {
+    @apply text-xs font-medium text-slate-500 max-w-[220px] leading-snug;
+}
+
+.agri-loader--lg .agri-loader__label {
+    @apply text-sm;
+}
+
+@keyframes agri-sprout-grow {
+    0%, 100% {
+        transform: scale(1) translateY(0);
+    }
+    50% {
+        transform: scale(1.12) translateY(-3px);
+    }
+}
+
+@keyframes agri-ring-pulse {
+    0%, 100% {
+        box-shadow:
+            0 6px 20px rgba(15, 118, 110, 0.1),
+            inset 0 2px 8px rgba(255, 255, 255, 0.6);
+    }
+    50% {
+        box-shadow:
+            0 10px 28px rgba(15, 118, 110, 0.16),
+            inset 0 2px 10px rgba(255, 255, 255, 0.75);
+    }
+}
+
+@keyframes agri-orbit-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes spin {
@@ -226,7 +361,7 @@ table tbody tr {
 }
 
 .card-hover:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: var(--card-shadow-hover);
 }
 
@@ -234,24 +369,24 @@ table tbody tr {
    DESIGN SYSTEM — Premium Component Utilities
 ═══════════════════════════════════════════ */
 
-/* ── Page layout ── */
+/* ── Page layout (compact / professional density) ── */
 .page-container {
-    @apply p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6;
+    @apply p-3 sm:p-4 lg:p-6 max-w-[1520px] mx-auto space-y-4;
 }
 
 .page-header {
-    @apply flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4;
-    padding-bottom: 0.25rem;
+    @apply flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5;
+    padding-bottom: 0;
 }
 
 /* ── Section cards — premium surface ── */
 .section-card {
     background: var(--card-bg);
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     overflow: hidden;
     box-shadow: var(--card-shadow);
     border: 1px solid var(--border-card);
-    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .section-card:hover {
@@ -259,15 +394,15 @@ table tbody tr {
 }
 
 .section-card-header {
-    @apply px-6 py-4 flex items-center justify-between;
+    @apply px-3 py-2 flex items-center justify-between gap-2;
     border-bottom: 1px solid rgba(15, 118, 110, 0.07);
     background: var(--grad-card-head);
 }
 
 /* ── Button system ── */
 .btn {
-    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm rounded-lg transition-all duration-200 focus:outline-none select-none;
-    min-height: 2.5rem;
+    @apply inline-flex items-center justify-center gap-1.5 font-semibold text-xs rounded-lg transition-all duration-200 focus:outline-none select-none;
+    min-height: 2.125rem;
 }
 
 .btn:active {
@@ -279,7 +414,7 @@ table tbody tr {
 }
 
 .btn-md {
-    @apply px-4 py-2.5;
+    @apply px-3.5 py-2 text-xs;
 }
 
 .btn-lg {
@@ -333,7 +468,7 @@ table tbody tr {
 
 /* ── Form inputs ── */
 .input {
-    @apply w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-lg transition-all focus:outline-none placeholder:text-gray-400;
+    @apply w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg transition-all focus:outline-none placeholder:text-gray-400;
     box-shadow: var(--shadow-xs);
 }
 
@@ -347,7 +482,7 @@ table tbody tr {
 }
 
 .select {
-    @apply w-full px-3.5 py-2.5 text-sm bg-white border border-gray-200 rounded-lg transition-all focus:outline-none appearance-none;
+    @apply w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg transition-all focus:outline-none appearance-none;
     box-shadow: var(--shadow-xs);
 }
 
@@ -377,7 +512,7 @@ table tbody tr {
 }
 
 .data-table thead th {
-    @apply px-5 py-3.5 text-left text-[10.5px] font-bold uppercase tracking-widest whitespace-nowrap;
+    @apply px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider whitespace-nowrap;
     color: #64748b;
 }
 
@@ -391,7 +526,7 @@ table tbody tr {
 }
 
 .data-table tbody td {
-    @apply px-5 py-3.5 text-sm text-gray-700;
+    @apply px-4 py-2.5 text-xs text-gray-700;
     vertical-align: middle;
 }
 
@@ -443,7 +578,7 @@ table tbody tr {
 
 /* ── Error alert ── */
 .alert-error {
-    @apply flex items-center gap-3 px-5 py-4 rounded-lg text-sm;
+    @apply flex items-center gap-2.5 px-4 py-3 rounded-lg text-xs;
     background: linear-gradient(135deg, #fef2f2, #fff5f5);
     border: 1px solid rgba(239, 68, 68, 0.18);
     color: #b91c1c;
@@ -451,7 +586,7 @@ table tbody tr {
 }
 
 .alert-success {
-    @apply flex items-center gap-3 px-5 py-4 rounded-lg text-sm;
+    @apply flex items-center gap-2.5 px-4 py-3 rounded-lg text-xs;
     background: linear-gradient(135deg, #ecfdf5, #f7fffb);
     border: 1px solid rgba(16, 185, 129, 0.18);
     color: #047857;
@@ -460,24 +595,48 @@ table tbody tr {
 
 /* ── Empty state ── */
 .empty-state {
-    @apply flex flex-col items-center justify-center py-20 text-center;
+    @apply flex flex-col items-center justify-center py-12 text-center;
 }
 
-/* ── KPI card ── */
+/* ── KPI card (dashboard + shared stats) ── */
+.kpi-grid {
+    @apply grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5;
+}
+
 .kpi-card {
     position: relative;
-    border-radius: 1rem;
-    padding: 1.375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 4.25rem;
+    border-radius: 0.625rem;
+    padding: 0.5rem 0.625rem;
     overflow: hidden;
     cursor: default;
     border: 1px solid var(--border-card);
-    box-shadow: var(--card-shadow);
-    transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.22s ease;
+    box-shadow: var(--shadow-xs);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .kpi-card:hover {
-    transform: translateY(-4px) scale(1.01);
+    transform: translateY(-1px);
     box-shadow: var(--card-shadow-hover);
+}
+
+.kpi-card__icon {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0;
+}
+
+.kpi-card__value {
+    @apply text-lg font-bold text-slate-900 leading-none tabular-nums tracking-tight;
+}
+
+.kpi-card__label {
+    @apply text-[11px] text-slate-500 font-medium leading-tight mt-0.5;
+}
+
+.kpi-card__sub {
+    @apply text-[10px] font-semibold leading-tight mt-0.5;
 }
 
 /* ── Search bar ── */
@@ -491,7 +650,8 @@ table tbody tr {
 }
 
 .search-input {
-    @apply w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-lg transition-all focus:outline-none placeholder:text-gray-400;
+    @apply w-full pl-9 pr-3 text-sm bg-white border border-gray-200 rounded-xl transition-all focus:outline-none placeholder:text-gray-400;
+    min-height: 2.75rem;
     box-shadow: var(--shadow-xs);
 }
 
@@ -502,23 +662,23 @@ table tbody tr {
 
 /* ── Stat pill ── */
 .stat-pill {
-    @apply flex items-center gap-2 bg-white border rounded-lg px-4 py-2;
+    @apply flex items-center gap-1.5 bg-white border rounded-lg px-3 py-1.5 text-xs;
     border-color: var(--border-card);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-xs);
 }
 
 /* ── Typography ── */
 .page-title {
-    @apply text-2xl font-bold tracking-tight;
+    @apply text-lg font-semibold tracking-tight;
     color: #0f172a;
 }
 
 .page-subtitle {
-    @apply text-sm text-slate-500 mt-1;
+    @apply text-xs text-slate-500 mt-0.5;
 }
 
 .section-title {
-    @apply text-[15px] font-semibold text-gray-900;
+    @apply text-sm font-semibold text-gray-900;
 }
 
 .section-subtitle {
@@ -554,8 +714,8 @@ table tbody tr {
 /* ── Filters bar ── */
 .filters-bar {
     background: var(--card-bg);
-    border-radius: 1rem;
-    padding: 1rem;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
     box-shadow: var(--card-shadow);
     border: 1px solid var(--border-card);
 }
@@ -644,20 +804,267 @@ table tbody tr {
     background: linear-gradient(180deg, #f8fafc 0%, #eef6f2 100%);
 }
 
-.visit-card-premium {
-    @apply bg-white rounded-2xl overflow-hidden border transition-all duration-200 cursor-pointer;
-    border-color: rgba(15, 23, 42, 0.06);
-    box-shadow: var(--card-shadow);
+/* ── Admin card system (Visits, Farmers, Employees grids) ── */
+.admin-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    background: var(--card-bg);
+    border-radius: 1rem;
+    border: 1px solid var(--border-card);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.visit-card-premium:hover {
-    transform: translateY(-3px);
+.admin-card--interactive {
+    cursor: pointer;
+}
+
+.admin-card--interactive:hover {
+    transform: translateY(-1px);
     box-shadow: var(--card-shadow-hover);
     border-color: rgba(15, 118, 110, 0.14);
 }
 
+.admin-card__accent {
+    height: 3px;
+    flex-shrink: 0;
+    background: linear-gradient(90deg, #10b981, #14b8a6, #06b6d4);
+}
+
+.visit-card .admin-card__accent {
+    background: linear-gradient(90deg, #10b981, #14b8a6, #06b6d4);
+}
+
+.admin-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 0.5rem;
+    padding: 1rem;
+    min-height: 0;
+}
+
+.admin-card__footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.admin-card__title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #0f172a;
+    @apply truncate;
+}
+
+.admin-card__meta {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.admin-card__chip {
+    @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.admin-card__meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.admin-card__meta-row {
+    @apply flex items-center gap-1.5 min-w-0;
+}
+
+.admin-card__meta-text {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: #475569;
+}
+
+/* Responsive card grids — 3–4 desktop, 2 tablet, 1 mobile */
+.admin-card-grid,
+.list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    align-items: stretch;
+}
+
+@media (min-width: 1280px) {
+    .admin-card-grid--visits,
+    .list-grid--visits {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+.list-card {
+    @apply section-card flex flex-col gap-2;
+    padding: 1rem;
+    min-height: 0;
+    height: 100%;
+}
+
+.list-card:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.list-card-surface {
+    @apply bg-white rounded-xl overflow-hidden border transition-all duration-200;
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: var(--shadow-xs);
+}
+
+.list-card-surface:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: rgba(15, 118, 110, 0.12);
+}
+
+.list-card-avatar {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-[11px] font-semibold;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.list-meta-icon {
+    @apply inline-flex items-center justify-center w-6 h-6 rounded-md flex-shrink-0;
+}
+
+.list-meta-icon--neutral {
+    @apply bg-slate-100 text-slate-600;
+}
+
+.list-meta-icon--location {
+    @apply bg-sky-50 text-sky-600;
+}
+
+.list-meta-icon--crop {
+    @apply bg-emerald-50 text-emerald-600;
+}
+
+.list-meta-icon--land {
+    @apply bg-amber-50 text-amber-700;
+}
+
+.list-card-title {
+    @apply text-[13px] font-semibold text-gray-900 truncate leading-snug;
+}
+
+.list-card-meta {
+    @apply text-xs text-gray-500 leading-snug;
+}
+
+.list-card-row {
+    @apply flex items-center gap-1.5 text-xs text-gray-600 min-w-0;
+}
+
+.list-card-footer {
+    @apply flex items-center gap-2 pt-2 mt-auto border-t border-gray-50;
+}
+
+/* ── Compact KPI tiles on list pages ── */
+.mini-kpi-card {
+    @apply relative rounded-lg p-2.5 overflow-hidden card-hover cursor-default;
+    border: 1px solid var(--border-card);
+    box-shadow: var(--shadow-xs);
+    min-height: 4.5rem;
+}
+
+.mini-kpi-icon {
+    @apply w-7 h-7 rounded-md flex items-center justify-center mb-1.5;
+}
+
+.mini-kpi-value {
+    @apply text-lg font-bold text-gray-900 leading-none tabular-nums tracking-tight;
+}
+
+.mini-kpi-label {
+    @apply text-[11px] text-gray-500 font-medium mt-0.5;
+}
+
+/* ── Compact tables (masters + legacy pages) ── */
+.compact-table {
+    @apply w-full text-xs;
+}
+
+.compact-table thead tr {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    background: #f8fafc;
+}
+
+.compact-table thead th {
+    @apply px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider whitespace-nowrap;
+    color: #64748b;
+}
+
+.compact-table tbody tr {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    transition: background 0.15s;
+}
+
+.compact-table tbody tr:hover {
+    background: #f8fcfa;
+}
+
+.compact-table tbody td {
+    @apply px-3 py-2 text-xs text-gray-700 align-middle;
+}
+
+.compact-table tbody tr:last-child {
+    border-bottom: 0;
+}
+
+/* ── Notification / feed list item ── */
+.feed-card {
+    @apply list-card-surface p-2.5 transition-all duration-200;
+}
+
+.feed-card-unread {
+    @apply border-emerald-200 bg-emerald-50/30;
+}
+
+/* ── Ops page shell (masters without page-container) ── */
+.ops-page {
+    @apply space-y-3;
+}
+
+.ops-page-header {
+    @apply flex flex-col sm:flex-row sm:items-center justify-between gap-3;
+}
+
+.ops-page-title {
+    @apply text-lg font-semibold text-gray-900 tracking-tight;
+}
+
+.ops-page-subtitle {
+    @apply text-xs text-gray-500 mt-0.5;
+}
+
+.panel-body {
+    @apply p-3;
+}
+
+.form-section-body {
+    @apply p-3 grid grid-cols-1 sm:grid-cols-2 gap-3;
+}
+
+.content-grid {
+    @apply grid gap-3;
+}
+
 .tracking-emp-card {
-    @apply rounded-2xl border bg-white p-4 transition-all duration-200;
+    @apply rounded-xl border bg-white p-3 transition-all duration-200;
     border-color: rgba(15, 23, 42, 0.07);
     box-shadow: var(--shadow-sm);
 }

@@ -1,6 +1,7 @@
-﻿import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getFarmerDetail, getFarmerFields, getFarmerVisits } from "../api/farmer.api";
+import { getFarmerDetail, getFarmerFields, getFarmerVisits, uploadFarmerPhoto } from "../api/farmer.api";
+import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import {
     ArrowLeft, User, Phone, MapPin, Sprout, LandPlot, Leaf,
     Calendar, AlertCircle, RefreshCw, ChevronRight, Download,
@@ -16,26 +17,27 @@ import {
     asDisplayString,
 } from "../utils/displayValue";
 import { GpsIndicator } from "../components/ui/command";
+import { PageLoader } from "../components/ui/command";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-/* ─── helpers ─── */
+/* --- helpers --- */
 const fmt = (d) => {
-    if (!d) return "—";
+    if (!d) return "�";
     return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 const totalAcreage = (fields) =>
     fields.reduce((s, f) => s + parseFloat(f.land_size ?? f.field_size ?? 0), 0).toFixed(1);
 
-/* ─── Sub-components ─── */
+/* --- Sub-components --- */
 const StatCard = ({ icon: Icon, label, value, color }) => (
-    <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-sm border border-gray-100">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-            <Icon className="w-5 h-5 text-white" />
+    <div className="list-card-surface p-3 flex items-center gap-2.5">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
+            <Icon className="w-3.5 h-3.5 text-white" strokeWidth={2} />
         </div>
-        <div>
-            <div className="text-xl font-bold text-gray-900 leading-none">{value}</div>
-            <div className="text-xs text-gray-400 mt-0.5">{label}</div>
+        <div className="min-w-0">
+            <div className="text-base font-bold text-gray-900 leading-none tabular-nums">{value}</div>
+            <div className="text-[11px] text-gray-500 mt-0.5">{label}</div>
         </div>
     </div>
 );
@@ -47,20 +49,20 @@ const InfoRow = ({ icon: Icon, label, value }) => (
         </div>
         <div className="flex-1 min-w-0">
             <div className="text-xs text-gray-400 font-medium">{label}</div>
-            <div className="text-sm font-semibold text-gray-800 mt-0.5">{value || "—"}</div>
+            <div className="text-sm font-semibold text-gray-800 mt-0.5">{value || "�"}</div>
         </div>
     </div>
 );
 
-/* ════════════════════════════════════════
+/* ----------------------------------------
    PDF Generator  (jsPDF v4 + jspdf-autotable v5)
-   autoTable() returns { finalY } — do NOT use doc.lastAutoTable
-════════════════════════════════════════ */
+   autoTable() returns { finalY } � do NOT use doc.lastAutoTable
+---------------------------------------- */
 function generatePDF(farmer, fields, visits) {
     const doc = new jsPDF();
     const GREEN = [22, 163, 74];
     const LG = [240, 253, 244];
-    const name = farmer.name || "—";
+    const name = farmer.name || "�";
 
     /* header banner */
     doc.setFillColor(...GREEN);
@@ -79,7 +81,7 @@ function generatePDF(farmer, fields, visits) {
     doc.setFontSize(18).setFont("helvetica", "bold");
     doc.text(name, 20, 52);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(75, 85, 99);
-    doc.text(`Phone: ${farmer.phone || "—"}   District: ${farmer.district_name || resolveDistrictLabel(farmer.district)}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
+    doc.text(`Phone: ${farmer.phone || "�"}   District: ${farmer.district_name || resolveDistrictLabel(farmer.district)}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
 
     /* stats row */
     const stats = [
@@ -105,13 +107,13 @@ function generatePDF(farmer, fields, visits) {
         startY: 112,
         head: [["Field", "Value"]],
         body: [
-            ["Full Name", farmer.name || "—"],
-            ["Phone", farmer.phone || "—"],
-            ["District", farmer.district_name || farmer.district || "—"],
-            ["Village", farmer.village_name || farmer.village || "—"],
-            ["Total Land Area", farmer.total_land_area ? `${farmer.total_land_area} acres` : "—"],
-            ["Soil Type", farmer.soil_type || "—"],
-            ["Irrigation", farmer.irrigation_type || "—"],
+            ["Full Name", farmer.name || "�"],
+            ["Phone", farmer.phone || "�"],
+            ["District", farmer.district_name || farmer.district || "�"],
+            ["Village", farmer.village_name || farmer.village || "�"],
+            ["Total Land Area", farmer.total_land_area ? `${farmer.total_land_area} acres` : "�"],
+            ["Soil Type", farmer.soil_type || "�"],
+            ["Irrigation", farmer.irrigation_type || "�"],
             ["Registered On", fmt(farmer.created_at)],
         ],
         styles: { fontSize: 9, cellPadding: 3 },
@@ -132,7 +134,7 @@ function generatePDF(farmer, fields, visits) {
             head: [["#", "Field Name", "Size (ac)", "Soil Type", "Irrigation"]],
             body: fields.map((f, i) => [
                 i + 1, f.land_name || f.field_name || `Field ${i + 1}`,
-                f.land_size ?? f.field_size ?? "—", f.soil_type || "—", f.irrigation_type || "—",
+                f.land_size ?? f.field_size ?? "�", f.soil_type || "�", f.irrigation_type || "�",
             ]),
             styles: { fontSize: 9, cellPadding: 3 },
             headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold" },
@@ -152,7 +154,7 @@ function generatePDF(farmer, fields, visits) {
             head: [["#", "Date & time", "Crop", "Employee", "Village"]],
             body: visits.map((v, i) => [
                 i + 1,
-                visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at),
+                visitWhenLabel(v) !== "�" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at),
                 v.crop_name || resolveCropLabel(v?.crop),
                 visitEmployeeLabel(v),
                 v.village_name || resolveVillageLabel(v?.village),
@@ -175,11 +177,11 @@ function generatePDF(farmer, fields, visits) {
     doc.save(`Farmer_${name.replace(/\s+/g, "_")}_Profile.pdf`);
 }
 
-/* ════════════════════════════════════════
-   Word Generator  (HTML → .doc blob — no docx package needed)
-════════════════════════════════════════ */
+/* ----------------------------------------
+   Word Generator  (HTML ? .doc blob � no docx package needed)
+---------------------------------------- */
 function generateWord(farmer, fields, visits) {
-    const esc = (s) => String(s ?? "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const esc = (s) => String(s ?? "�").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const row = (...cells) => `<tr>${cells.map((c, i) => `<td style="${i === 0 ? "font-weight:bold;background:#f0fdf4;" : ""}">${esc(c)}</td>`).join("")}</tr>`;
 
     const fieldsHtml = fields.length === 0
@@ -195,7 +197,7 @@ function generateWord(farmer, fields, visits) {
         : `<h2 style="color:#166534;border-bottom:2px solid #16a34a;padding-bottom:4px">Visit History (${visits.length})</h2>
            <table border="1" style="border-collapse:collapse;width:100%;font-size:13px">
            <tr style="background:#16a34a;color:white"><th>No.</th><th>Date & time</th><th>Crop</th><th>Employee</th><th>Village</th></tr>
-           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(v.crop_name || resolveCropLabel(v?.crop))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
+           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "�" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(v.crop_name || resolveCropLabel(v?.crop))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
            </table>`;
 
     const html = `
@@ -257,9 +259,9 @@ ${visitsHtml}
     URL.revokeObjectURL(url);
 }
 
-/* ════════════════════════════════════════
+/* ----------------------------------------
    MAIN COMPONENT
-════════════════════════════════════════ */
+---------------------------------------- */
 export default function FarmerDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -335,22 +337,18 @@ export default function FarmerDetail() {
         finally { setGenerating(null); }
     };
 
-    /* ── Loading ── */
-    if (loading) return (
-        <div className="p-6 max-w-5xl mx-auto space-y-4 animate-pulse">
-            <div className="flex items-center justify-between">
-                <div className="h-9 bg-gray-200 rounded-xl w-36" />
-                <div className="h-9 bg-gray-200 rounded-xl w-40" />
+    /* -- Loading -- */
+    if (loading) {
+        return (
+            <div className="page-container">
+                <PageLoader label="Loading farmer…" />
             </div>
-            <div className="h-44 bg-gray-200 rounded-2xl" />
-            <div className="flex gap-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-gray-200 rounded-2xl flex-1" />)}</div>
-            <div className="h-40 bg-gray-200 rounded-2xl" />
-        </div>
-    );
+        );
+    }
 
     if (error && !farmer) return (
         <div className="flex flex-col items-center justify-center py-32 px-6">
-            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4">
                 <AlertCircle className="w-7 h-7 text-red-400" />
             </div>
             <p className="text-gray-700 font-semibold mb-4">{error}</p>
@@ -364,7 +362,7 @@ export default function FarmerDetail() {
     if (!farmer) return (
         <div className="flex flex-col items-center justify-center py-32 px-6">
             <p className="text-gray-500">No farmer found.</p>
-            <button onClick={() => navigate("/farmers")} className="mt-4 text-sm text-emerald-600 hover:underline">← Back to Farmers</button>
+            <button onClick={() => navigate("/farmers")} className="mt-4 text-sm text-emerald-600 hover:underline">? Back to Farmers</button>
         </div>
     );
 
@@ -372,10 +370,10 @@ export default function FarmerDetail() {
     const acreage = totalAcreage(fields);
     const lastVisitLabel =
         visits.length > 0
-            ? visitWhenLabel(visits[0]) !== "—"
+            ? visitWhenLabel(visits[0]) !== "�"
                 ? visitWhenLabel(visits[0])
                 : fmt(visits[0]?.visit_date || visits[0]?.created_at)
-            : "—";
+            : "�";
 
     const TABS = [
         { id: "info", label: "Overview", icon: User },
@@ -387,7 +385,7 @@ export default function FarmerDetail() {
         <div className="bg-gray-50 pb-10">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-5">
 
-                {/* ── Top bar ── */}
+                {/* -- Top bar -- */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <button onClick={() => navigate("/farmers")}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium shadow-sm transition-all">
@@ -408,7 +406,7 @@ export default function FarmerDetail() {
                             {generating
                                 ? <RefreshCw className="w-4 h-4 animate-spin" />
                                 : <Download className="w-4 h-4" />}
-                            {generating ? `Generating ${generating.toUpperCase()}…` : "Download Report"}
+                            {generating ? `Generating ${generating.toUpperCase()}�` : "Download Report"}
                         </button>
                         {dlOpen && (
                             <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
@@ -430,7 +428,7 @@ export default function FarmerDetail() {
                                     </div>
                                     <div className="text-left">
                                         <div className="font-semibold">Download Word</div>
-                                        <div className="text-xs text-gray-400">.doc — opens in Word</div>
+                                        <div className="text-xs text-gray-400">.doc � opens in Word</div>
                                     </div>
                                 </button>
                             </div>
@@ -439,31 +437,34 @@ export default function FarmerDetail() {
                     </div>
                 </div>
 
-                {/* ── Hero banner ── */}
-                <div className="relative rounded-2xl overflow-hidden shadow"
+                {/* -- Hero banner -- */}
+                <div className="relative rounded-xl overflow-hidden shadow"
                     style={{ background: "linear-gradient(135deg,#052e16 0%,#14532d 50%,#166534 100%)" }}>
                     <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
                     <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
-                    <div className="relative z-10 px-6 py-7 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                        {/* Avatar */}
-                        <div className="w-18 h-18 min-w-[72px] min-h-[72px] w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-emerald-300 to-teal-400 flex items-center justify-center shadow-lg">
-                            <span className="text-3xl font-black text-white select-none">
-                                {(farmer.name || "F")[0].toUpperCase()}
-                            </span>
-                        </div>
-                        {/* Info */}
+                    <div className="relative z-10 px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <ProfilePhotoUpload
+                            entity={farmer}
+                            displayName={farmer.name || "Farmer"}
+                            size="xl"
+                            variant="teal"
+                            onUpload={(file) => uploadFarmerPhoto(farmer.id, file)}
+                            onPhotoUpdated={(url, data) =>
+                                setFarmer((f) => ({ ...f, profile_photo_url: url, ...data }))
+                            }
+                        />
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h1 className="text-2xl font-black text-white tracking-tight leading-snug">{farmer.name || "—"}</h1>
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                <h1 className="text-lg font-semibold text-white tracking-tight leading-snug">{farmer.name || "\u2014"}</h1>
                                 {farmer.farmer_id && (
                                     <span className="px-2 py-0.5 bg-white/10 text-emerald-200 text-xs rounded-full border border-white/20 font-mono">
                                         #{farmer.farmer_id}
                                     </span>
                                 )}
                             </div>
-                            <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-emerald-100 mt-1">
-                                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.phone || "—"}</span>
-                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.district_name || farmer.district || "—"}</span>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-emerald-100 mt-1">
+                                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.phone || "�"}</span>
+                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.district_name || farmer.district || "�"}</span>
                                 <span className="flex items-center gap-1.5"><Sprout className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.village_name || resolveVillageLabel(farmer.village)}</span>
                                 {farmer.created_at && (
                                     <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />Since {fmt(farmer.created_at)}</span>
@@ -473,16 +474,16 @@ export default function FarmerDetail() {
                         {/* Quick stats */}
                         <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
                             {[["Fields", fields.length], ["Visits", visits.length], ["Acres", acreage]].map(([lbl, val]) => (
-                                <div key={lbl} className="bg-white/10 rounded-xl px-4 py-3 text-center border border-white/10 min-w-[64px]">
-                                    <div className="text-2xl font-black text-white leading-none">{val}</div>
-                                    <div className="text-xs text-emerald-200 mt-1">{lbl}</div>
+                                <div key={lbl} className="bg-white/10 rounded-lg px-3 py-2 text-center border border-white/10 min-w-[56px]">
+                                    <div className="text-lg font-bold text-white leading-none tabular-nums">{val}</div>
+                                    <div className="text-[10px] text-emerald-200 mt-0.5">{lbl}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* ── Stat cards ── */}
+                {/* -- Stat cards -- */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard icon={LandPlot} label="Total Fields" value={fields.length} color="bg-emerald-500" />
                     <StatCard icon={TrendingUp} label="Total Acreage" value={`${acreage} ac`} color="bg-teal-500" />
@@ -490,7 +491,7 @@ export default function FarmerDetail() {
                     <StatCard icon={MapPin} label="With GPS" value={gpsVisits} color="bg-teal-600" />
                 </div>
 
-                {/* ── Tabs ── */}
+                {/* -- Tabs -- */}
                 <div className="flex gap-1 bg-white border border-gray-100 p-1 rounded-xl shadow-sm w-fit">
                     {TABS.map((t) => (
                         <button key={t.id} onClick={() => setTab(t.id)}
@@ -504,28 +505,28 @@ export default function FarmerDetail() {
                     ))}
                 </div>
 
-                {/* ══ Overview ══ */}
+                {/* -- Overview -- */}
                 {tab === "info" && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <div className="section-card p-3.5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Personal Details</h3>
                             <InfoRow icon={User} label="Full Name" value={farmer.name} />
                             <InfoRow icon={Phone} label="Phone Number" value={farmer.phone} />
                             <InfoRow icon={Hash} label="Farmer ID" value={farmer.farmer_id} />
                             <InfoRow icon={Calendar} label="Registered On" value={fmt(farmer.created_at)} />
                         </div>
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <div className="section-card p-3.5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Location</h3>
                             <InfoRow icon={MapPin} label="District" value={farmer.district_name || farmer.district} />
                             <InfoRow icon={MapPin} label="Village" value={farmer.village_name || resolveVillageLabel(farmer.village)} />
                         </div>
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <div className="section-card p-3.5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Farm Details</h3>
                             <InfoRow icon={LandPlot} label="Total Land Area" value={farmer.total_land_area ? `${farmer.total_land_area} acres` : null} />
                             <InfoRow icon={Layers} label="Soil Type" value={farmer.soil_type} />
                             <InfoRow icon={Droplets} label="Irrigation Type" value={farmer.irrigation_type} />
                         </div>
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <div className="section-card p-3.5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Visit Summary</h3>
                             <div className="space-y-2">
                                 {[
@@ -547,10 +548,10 @@ export default function FarmerDetail() {
                     </div>
                 )}
 
-                {/* ══ Fields ══ */}
+                {/* -- Fields -- */}
                 {tab === "fields" && (
                     fields.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center py-20">
+                        <div className="section-card flex flex-col items-center py-20">
                             <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
                                 <LandPlot className="w-7 h-7 text-emerald-300" />
                             </div>
@@ -560,7 +561,7 @@ export default function FarmerDetail() {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {fields.map((f, i) => (
-                                <div key={f.id || i} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-emerald-100 transition-all">
+                                <div key={f.id || i} className="section-card p-3.5 hover:shadow-md hover:border-emerald-100 transition-all">
                                     <div className="flex items-start justify-between mb-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -576,18 +577,18 @@ export default function FarmerDetail() {
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <div className="text-2xl font-black text-emerald-600">{f.land_size ?? f.field_size ?? "—"}</div>
+                                            <div className="text-2xl font-black text-emerald-600">{f.land_size ?? f.field_size ?? "�"}</div>
                                             <div className="text-xs text-gray-400">acres</div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-50">
                                         <div>
                                             <div className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Layers className="w-3 h-3" />Soil Type</div>
-                                            <div className="text-sm font-semibold text-gray-700">{f.soil_type || "—"}</div>
+                                            <div className="text-sm font-semibold text-gray-700">{f.soil_type || "�"}</div>
                                         </div>
                                         <div>
                                             <div className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Droplets className="w-3 h-3" />Irrigation</div>
-                                            <div className="text-sm font-semibold text-gray-700">{f.irrigation_type || "—"}</div>
+                                            <div className="text-sm font-semibold text-gray-700">{f.irrigation_type || "�"}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -596,9 +597,9 @@ export default function FarmerDetail() {
                     )
                 )}
 
-                {/* ══ Visit History ══ */}
+                {/* -- Visit History -- */}
                 {tab === "visits" && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="section-card overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
                             <ClipboardList className="w-4 h-4 text-emerald-600" />
                             <h3 className="text-sm font-bold text-gray-800">Visit History</h3>
@@ -627,7 +628,7 @@ export default function FarmerDetail() {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
                                                     <span className="text-sm font-bold text-gray-900">
-                                                        {visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at)}
+                                                        {visitWhenLabel(v) !== "�" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at)}
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-1">
@@ -643,7 +644,7 @@ export default function FarmerDetail() {
                                                             {v.village_name || resolveVillageLabel(v?.village)}
                                                         </span>
                                                     )}
-                                                    {visitEmployeeLabel(v) !== "—" && (
+                                                    {visitEmployeeLabel(v) !== "�" && (
                                                         <span className="flex items-center gap-1">
                                                             <User className="w-3 h-3 text-gray-400" />
                                                             {visitEmployeeLabel(v)}

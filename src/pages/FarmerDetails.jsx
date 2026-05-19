@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getFarmers } from "../api/farmer.api";
@@ -47,7 +48,7 @@ const FarmerDetails = () => {
                 </button>
                 {error && <div style={{ color: "#b91c1c", marginBottom: 16 }}>{error}</div>}
                 {loading ? (
-                    <div>Loading...</div>
+                    <PageLoader label="Loading farmer…" />
                 ) : !farmer ? (
                     <div style={{ color: "#64748b", textAlign: "center", marginTop: 40 }}>Farmer not found</div>
                 ) : (

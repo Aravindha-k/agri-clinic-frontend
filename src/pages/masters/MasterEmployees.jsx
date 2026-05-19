@@ -1,3 +1,4 @@
+import { PageLoader } from "../../components/ui/command";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Plus, Pencil, Users } from "lucide-react";
 import { getEmployees, createEmployee, patchEmployee, toggleEmployeeStatus } from "../../api/employee.api";
@@ -132,7 +133,7 @@ export default function MasterEmployees() {
     if (error && !loading && rows.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4">
                     <Users className="w-7 h-7 text-red-400" />
                 </div>
                 <p className="text-gray-700 font-semibold text-lg">Unable to load employees</p>
@@ -143,12 +144,12 @@ export default function MasterEmployees() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="ops-page">
             {/* header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
-                    <p className="text-sm text-gray-500 mt-1">{filtered.length} employees</p>
+                    <h1 className="text-xl font-semibold text-gray-900">Employee Management</h1>
+                    <p className="text-xs text-gray-500 mt-0.5">{filtered.length} employees</p>
                 </div>
                 <button onClick={() => setPanel({ open: true, mode: "add", item: null })} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition shadow-sm">
                     <Plus className="w-4 h-4" /> Add Employee
@@ -156,7 +157,7 @@ export default function MasterEmployees() {
             </div>
 
             {/* card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="section-card overflow-hidden">
                 <div className="p-4 border-b border-gray-100">
                     <div className="relative max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -164,34 +165,34 @@ export default function MasterEmployees() {
                     </div>
                 </div>
 
-                {loading ? <TableSkeleton rows={8} cols={7} /> : paginated.length === 0 ? (
+                {loading ? <PageLoader label="Loading employees…" /> : paginated.length === 0 ? (
                     <EmptyState icon={Users} title="No employees found" subtitle="Try a different search or add a new employee" />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="compact-table w-full">
                             <thead>
                                 <tr className="bg-gray-50/80 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    <th className="px-4 py-3">Employee ID</th>
-                                    <th className="px-4 py-3">Name</th>
-                                    <th className="px-4 py-3">Phone</th>
-                                    <th className="px-4 py-3">District</th>
-                                    <th className="px-4 py-3">Role</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
+                                    <th className="px-3 py-2">Employee ID</th>
+                                    <th className="px-3 py-2">Name</th>
+                                    <th className="px-3 py-2">Phone</th>
+                                    <th className="px-3 py-2">District</th>
+                                    <th className="px-3 py-2">Role</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {paginated.map((r) => (
                                     <tr key={r.id} className="hover:bg-gray-50/50 transition">
-                                        <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.employee_id || "—"}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-900">{r.username || r.name || "—"}</td>
-                                        <td className="px-4 py-3 text-gray-500">{r.phone || "—"}</td>
-                                        <td className="px-4 py-3 text-gray-500">{r.district_name || r.district || "—"}</td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-3 py-2 font-mono text-xs text-gray-500">{r.employee_id || "—"}</td>
+                                        <td className="px-3 py-2 font-medium text-gray-900">{r.username || r.name || "—"}</td>
+                                        <td className="px-3 py-2 text-gray-500">{r.phone || "—"}</td>
+                                        <td className="px-3 py-2 text-gray-500">{r.district_name || r.district || "—"}</td>
+                                        <td className="px-3 py-2">
                                             <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 capitalize">{(r.role || "—").replace("_", " ")}</span>
                                         </td>
-                                        <td className="px-4 py-3"><Badge active={r.is_active !== false} /></td>
-                                        <td className="px-4 py-3 text-right">
+                                        <td className="px-3 py-2"><Badge active={r.is_active !== false} /></td>
+                                        <td className="px-3 py-2 text-right">
                                             <div className="inline-flex items-center gap-2">
                                                 <button onClick={() => setPanel({ open: true, mode: "edit", item: r })} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-emerald-600 transition" title="Edit"><Pencil className="w-4 h-4" /></button>
                                                 {/* toggle switch */}

@@ -1,3 +1,4 @@
+import { PageLoader } from "../../components/ui/command";
 import { useEffect, useState, useCallback } from "react";
 import {
     getDistricts, createDistrict, updateDistrict, deleteDistrict,
@@ -162,13 +163,13 @@ export default function MasterLocationsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600">
                             <MapPin className="w-5 h-5" />
                         </div>
                         Master Locations
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage districts and villages</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Manage districts and villages</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm">
@@ -194,7 +195,7 @@ export default function MasterLocationsPage() {
             </div>
 
             {/* Search */}
-            <div className="bg-white rounded-2xl p-4" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
+            <div className="filters-bar" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -218,21 +219,14 @@ export default function MasterLocationsPage() {
 
             {/* Table */}
             {loading ? (
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW }}>
-                    <div className="p-5 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50">
-                            <Bone className="w-8 h-8 !rounded-full" /><Bone className="w-36 h-4" /><Bone className="w-24 h-4" />
-                        </div>
-                    ))}
-                </div>
+                <PageLoader label="Loading locations…" />
             ) : currentList.length === 0 ? (
-                <div className="bg-white rounded-2xl p-16 text-center" style={{ boxShadow: SHADOW }}>
-                    <div className="w-20 h-20 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-5"><MapPin className="w-9 h-9 text-violet-300" /></div>
+                <div className="bg-white rounded-xl p-10 text-center" style={{ boxShadow: SHADOW }}>
+                    <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-5"><MapPin className="w-9 h-9 text-violet-300" /></div>
                     <p className="text-base font-semibold text-gray-500">No {TAB_LABELS[activeTab].toLowerCase()} found</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
+                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>

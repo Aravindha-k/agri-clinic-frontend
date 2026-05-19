@@ -14,9 +14,9 @@ export function TableSkeleton({ rows = 5, cols = 5 }) {
     return (
         <div className="animate-pulse">
             {Array.from({ length: rows }).map((_, r) => (
-                <div key={r} className="flex gap-4 py-3 px-4 border-b border-gray-50">
+                <div key={r} className="flex gap-3 py-2 px-3 border-b border-gray-50">
                     {Array.from({ length: cols }).map((_, c) => (
-                        <div key={c} className="h-4 bg-gray-200 rounded flex-1" />
+                        <div key={c} className="h-3.5 bg-gray-200 rounded flex-1" />
                     ))}
                 </div>
             ))}
@@ -26,10 +26,10 @@ export function TableSkeleton({ rows = 5, cols = 5 }) {
 
 export function EmptyState({ icon: Icon, title, subtitle }) {
     return (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-            {Icon && <Icon className="w-12 h-12 text-gray-300 mb-3" />}
-            <p className="text-gray-500 font-medium">{title || "No data found"}</p>
-            {subtitle && <p className="text-gray-400 text-sm mt-1">{subtitle}</p>}
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+            {Icon && <Icon className="w-10 h-10 text-gray-300 mb-3" />}
+            <p className="text-sm text-gray-500 font-medium">{title || "No data found"}</p>
+            {subtitle && <p className="text-gray-400 text-xs mt-1">{subtitle}</p>}
         </div>
     );
 }

@@ -39,7 +39,7 @@ export default function MapPanel({
   subtitle,
   live = false,
   right,
-  height = 380,
+  height = 280,
   children,
   className = "",
   footer,

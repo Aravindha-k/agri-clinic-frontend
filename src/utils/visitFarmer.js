@@ -5,6 +5,7 @@
 
 import {
   DISPLAY_FALLBACK,
+  asDisplayString,
   resolveCropLabel,
   resolveVillageLabel,
   resolveDistrictLabel,
@@ -12,6 +13,7 @@ import {
   resolveFarmerLabel,
   resolveEmployeeLabel,
 } from "./displayValue";
+import { resolveProfilePhotoUrl } from "./profilePhoto";
 
 function pickString(...candidates) {
   for (const c of candidates) {
@@ -74,13 +76,41 @@ export function resolveVisitFarmer(visit) {
       f?.phone
     ) ?? DISPLAY_FALLBACK;
 
+  const profilePhotoUrl =
+    resolveProfilePhotoUrl(f) ??
+    resolveProfilePhotoUrl(visit) ??
+    visit.farmer_profile_photo_url ??
+    null;
+
   return {
     name,
     phone,
     village,
     district,
     cropName,
+    profilePhotoUrl,
   };
+}
+
+/** Employee photo from visit row (nested employee block or flat fields). */
+export function resolveVisitEmployeePhoto(visit) {
+  if (!visit || typeof visit !== "object") return null;
+  return (
+    resolveProfilePhotoUrl(visit.employee) ??
+    resolveProfilePhotoUrl(visit) ??
+    visit.employee_profile_photo_url ??
+    null
+  );
+}
+
+export function resolveVisitEmployeePhotoVersion(visit) {
+  if (!visit || typeof visit !== "object") return null;
+  const emp = visit.employee;
+  return (
+    visit.employee_profile_photo_updated_at ??
+    emp?.profile_photo_updated_at ??
+    null
+  );
 }
 
 /** Remove legacy visit workflow fields — admin UI does not use status/pending/completed. */
@@ -175,40 +205,61 @@ export function visitSubmittedLabel(v) {
 }
 
 export function visitLandLabel(v) {
-  const fromLand = resolveLandLabel(v?.land, "");
-  if (fromLand && fromLand !== DISPLAY_FALLBACK) return fromLand;
+  if (!v || typeof v !== "object") return DISPLAY_FALLBACK;
 
   const field = v?.field ?? v?.field_info;
-  const name =
-    v?.land_name ??
-    (typeof field === "object" && field
-      ? field.land_name ?? field.name ?? field.field_name
-      : null) ??
-    v?.field_display ??
-    (typeof field === "string" ? field : null);
 
-  const area =
+  const candidates = [
+    resolveLandLabel(v?.land, ""),
+    resolveLandLabel(field, ""),
+    asDisplayString(v?.land_name, ""),
+    asDisplayString(v?.field_display, ""),
+    typeof field === "string" ? field : "",
+    asDisplayString(v?.field, ""),
+  ];
+
+  for (const c of candidates) {
+    if (c && c !== DISPLAY_FALLBACK && c !== "[object Object]") {
+      return c;
+    }
+  }
+
+  const name = asDisplayString(
+    v?.land_name ??
+      (typeof field === "object" && field
+        ? field.land_name ?? field.name ?? field.field_name ?? field.display_name
+        : null) ??
+      v?.field_display,
+    ""
+  );
+
+  const rawArea =
     v?.land_area ??
     v?.acreage ??
     v?.land_size ??
-    (typeof field === "object" && field ? field.land_size ?? field.land_area : null);
+    (typeof field === "object" && field
+      ? field.land_size ?? field.land_area ?? field.area
+      : null);
 
-  const areaStr =
-    area !== null && area !== undefined && area !== "" ? `${area} ac` : null;
+  const area =
+    rawArea != null && rawArea !== "" ? asDisplayString(rawArea, "") : "";
 
-  if (name && areaStr) return `${name} · ${areaStr}`;
-  if (name) return String(name);
-  if (areaStr) return areaStr;
+  if (name && name !== DISPLAY_FALLBACK && area && area !== DISPLAY_FALLBACK) {
+    return `${name} · ${area} ac`;
+  }
+  if (name && name !== DISPLAY_FALLBACK) return name;
+  if (area && area !== DISPLAY_FALLBACK) return `${area} ac`;
   return DISPLAY_FALLBACK;
 }
 
 export function visitEmployeeLabel(v) {
-  return (
+  const label =
     resolveEmployeeLabel(v?.employee, "") ||
-    v?.employee_name ||
-    v?.agent_name ||
-    DISPLAY_FALLBACK
-  );
+    asDisplayString(v?.employee_name, "") ||
+    asDisplayString(v?.agent_name, "") ||
+    asDisplayString(v?.employee_id, "");
+  const out = label || DISPLAY_FALLBACK;
+  return out === "[object Object]" ? DISPLAY_FALLBACK : out;
 }
 
 export function visitHasGps(v) {

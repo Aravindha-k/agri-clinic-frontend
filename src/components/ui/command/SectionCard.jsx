@@ -26,7 +26,7 @@ export default function SectionCard({
           {right}
         </div>
       )}
-      <div className={noPadding ? bodyClassName : `px-5 py-5 ${bodyClassName}`}>
+      <div className={noPadding ? bodyClassName : `px-4 py-3.5 ${bodyClassName}`}>
         {children}
       </div>
     </div>

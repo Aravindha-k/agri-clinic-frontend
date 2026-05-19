@@ -5,11 +5,10 @@ import {
   normalizeVisitList,
   resolveVisitFarmer,
   visitWhenLabel,
-  visitSubmittedLabel,
-  visitLandLabel,
   visitEmployeeLabel,
+  visitLandLabel,
 } from "../utils/visitFarmer";
-import { resolveCropLabel, resolveVillageLabel } from "../utils/displayValue";
+import { asDisplayString, resolveCropLabel, resolveVillageLabel } from "../utils/displayValue";
 import {
   PageHeader,
   FilterBar,
@@ -18,11 +17,10 @@ import {
   PageLoader,
   SkeletonCard,
 } from "../components/ui/command";
+import VisitListCard from "../components/visits/VisitListCard";
 import {
   Search,
   AlertCircle,
-  Leaf,
-  MapPin,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -31,124 +29,52 @@ import {
   X,
   LayoutGrid,
   List,
-  User,
-  Phone,
-  LandPlot,
-  Hash,
+  Paperclip,
 } from "lucide-react";
+import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 
 const PAGE_SIZE = 12;
-
-function VisitCard({ v, onView }) {
-  const farmer = resolveVisitFarmer(v);
-  const whenLabel = visitWhenLabel(v);
-  const submittedAt = visitSubmittedLabel(v);
-  const cropName =
-    farmer.cropName !== "—" ? farmer.cropName : resolveCropLabel(v?.crop);
-  const villageLabel =
-    farmer.village !== "—" ? farmer.village : resolveVillageLabel(v?.village);
-  const land = visitLandLabel(v);
-  const employee = visitEmployeeLabel(v);
-  const farmerInitial = (farmer.name !== "—" ? farmer.name : "F")[0].toUpperCase();
-
-  return (
-    <article
-      className="visit-card-premium group"
-      onClick={() => onView(v.id)}
-    >
-      <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-600 font-mono">
-            <Hash className="w-3 h-3" />
-            Visit {v.id}
-          </span>
-          <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
-        </div>
-
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center font-bold text-sm text-white flex-shrink-0">
-            {farmerInitial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-gray-900 text-sm truncate">{farmer.name}</p>
-            <p className="text-xs text-gray-500 font-mono mt-0.5 flex items-center gap-1">
-              <Phone className="w-3 h-3 shrink-0" /> {farmer.phone}
-            </p>
-            {submittedAt && (
-              <p className="text-[10px] text-emerald-700 font-medium mt-1">
-                Submitted {submittedAt}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <dl className="space-y-2 text-xs text-gray-600 mb-4">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-            <dd className="truncate">
-              {farmer.village !== "—" ? farmer.village : v.village_name || v.village || "—"}
-            </dd>
-          </div>
-          <div className="flex items-center gap-2">
-            <Leaf className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-            <dd className="truncate">{cropName}</dd>
-          </div>
-          <div className="flex items-center gap-2">
-            <LandPlot className="w-3.5 h-3.5 text-teal-600 flex-shrink-0" />
-            <dd className="truncate">{land}</dd>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-            <dd>{whenLabel}</dd>
-          </div>
-          <div className="flex items-center gap-2">
-            <User className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-            <dd className="truncate">{employee}</dd>
-          </div>
-        </dl>
-
-        <div className="flex items-center justify-end pt-3 border-t border-gray-50">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(v.id);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700"
-          >
-            <Eye className="w-3 h-3" /> View details
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
 
 function VisitRow({ v, onView }) {
   const farmer = resolveVisitFarmer(v);
   const whenLabel = visitWhenLabel(v);
-  const cropName =
-    farmer.cropName !== "—" ? farmer.cropName : resolveCropLabel(v?.crop);
-  const villageLabel =
-    farmer.village !== "—" ? farmer.village : resolveVillageLabel(v?.village);
-  const land = visitLandLabel(v);
+  const cropName = asDisplayString(
+    farmer.cropName !== "—" ? farmer.cropName : resolveCropLabel(v?.crop)
+  );
+  const villageLabel = asDisplayString(
+    farmer.village !== "—" ? farmer.village : resolveVillageLabel(v?.village ?? v?.village_name)
+  );
+  const land = asDisplayString(visitLandLabel(v));
+  const attachmentCount = resolveVisitAttachmentCount(v);
 
   return (
     <tr
       className="hover:bg-emerald-50/30 transition-colors cursor-pointer group"
       onClick={() => onView(v.id)}
     >
-      <td className="font-mono text-xs text-slate-500">#{v.id}</td>
+      <td className="font-mono text-xs text-slate-500">
+        <span className="inline-flex items-center gap-1.5">
+          #{v.id}
+          {attachmentCount != null && attachmentCount > 0 && (
+            <span
+              className="inline-flex items-center gap-0.5 text-gray-500"
+              title={`${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"}`}
+            >
+              <Paperclip className="w-3 h-3" />
+              {attachmentCount}
+            </span>
+          )}
+        </span>
+      </td>
       <td>
-        <p className="text-sm font-semibold text-gray-900">{farmer.name}</p>
-        <p className="text-xs text-gray-400 font-mono">{farmer.phone}</p>
+        <p className="text-sm font-semibold text-gray-900">{asDisplayString(farmer.name)}</p>
+        <p className="text-xs text-gray-400 font-mono">{asDisplayString(farmer.phone)}</p>
       </td>
       <td className="text-sm text-gray-700">{villageLabel}</td>
       <td className="text-sm text-gray-700">{cropName}</td>
       <td className="text-sm text-gray-600">{land}</td>
-      <td className="text-sm text-gray-600">{visitEmployeeLabel(v)}</td>
-      <td className="text-sm text-gray-500 whitespace-nowrap">{whenLabel}</td>
+      <td className="text-sm text-gray-600">{asDisplayString(visitEmployeeLabel(v))}</td>
+      <td className="text-sm text-gray-500 whitespace-nowrap">{asDisplayString(whenLabel)}</td>
       <td>
         <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
       </td>
@@ -245,17 +171,15 @@ export default function Visits() {
       />
 
       {!loading && total > 0 && (
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <div className="stat-pill">
             <span className="font-bold text-gray-900">{total}</span>
             <span className="text-gray-400">Submitted visits</span>
           </div>
-          {!loading && visits.length > 0 && (
-            <div className="stat-pill">
-              <span className="font-bold text-gray-900">{visits.length}</span>
-              <span className="text-gray-400">On this page</span>
-            </div>
-          )}
+          <div className="stat-pill">
+            <span className="font-bold text-gray-900">{visits.length}</span>
+            <span className="text-gray-400">On this page</span>
+          </div>
         </div>
       )}
 
@@ -339,8 +263,8 @@ export default function Visits() {
 
       {loading ? (
         viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="list-grid list-grid--visits">
+            {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
@@ -374,15 +298,15 @@ export default function Visits() {
           />
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="list-grid list-grid--visits">
           {visits.map((v) => (
-            <VisitCard key={`visit-${v.id}`} v={v} onView={handleView} />
+            <VisitListCard key={`visit-${v.id}`} visit={v} onView={handleView} />
           ))}
         </div>
       ) : (
         <div className="section-card">
           <div className="table-container">
-            <table className="data-table">
+            <table className="data-table compact-table">
               <thead>
                 <tr>
                   <th>ID</th>

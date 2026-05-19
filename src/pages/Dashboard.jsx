@@ -19,6 +19,7 @@ import {
 } from "../utils/visitFarmer";
 import { resolveCropLabel, resolveVillageLabel } from "../utils/displayValue";
 import { PageHeader, PageLoader, OpsStatusBadge, GpsIndicator } from "../components/ui/command";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
 import ChartContainer from "../components/ui/ChartContainer";
 import { getVisits } from "../api/visit.api";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
@@ -27,7 +28,9 @@ import {
   recordApiSuccess,
   isUnreachableError,
 } from "../utils/apiBackoff";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, Marker, Popup } from "react-leaflet";
+import MapBasemapLayers from "../components/map/MapBasemapLayers";
+import EmployeeMapPopup from "../components/map/EmployeeMapPopup";
 import L from "leaflet";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import {
@@ -147,28 +150,24 @@ const StatCard = ({ icon: Icon, label, value, gradient, iconBg, iconColor, onCli
   return (
     <div
       onClick={onClick}
-      className={`relative rounded-2xl p-5 overflow-hidden group card-hover
-        hover:-translate-y-0.5 transition-all duration-300 ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      className={`mini-kpi-card group ${onClick ? "cursor-pointer" : "cursor-default"}`}
       style={{
         background: gradient,
         boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
         border: "1px solid rgba(15,118,110,0.07)",
       }}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: iconColor }} />
-      <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.07]" style={{ background: iconColor }} />
-      <div className="flex items-start justify-between relative z-10">
-        <div className="flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110"
-            style={{ background: iconBg, color: iconColor }}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <p className="text-[28px] font-bold text-gray-900 leading-none tabular-nums tracking-tight">{animVal}</p>
-          <p className="mt-1.5 text-[13px] text-gray-500 font-medium">{label}</p>
-          {subValue && (
-            <p className="mt-1 text-[11px] font-semibold" style={{ color: iconColor }}>{subValue}</p>
-          )}
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: iconColor }} />
+      <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.07]" style={{ background: iconColor }} />
+      <div className="relative z-10">
+        <div className="mini-kpi-icon" style={{ background: iconBg, color: iconColor }}>
+          <Icon className="w-4 h-4" />
         </div>
+        <p className="mini-kpi-value">{animVal}</p>
+        <p className="mini-kpi-label">{label}</p>
+        {subValue && (
+          <p className="mt-1 text-[10px] font-semibold" style={{ color: iconColor }}>{subValue}</p>
+        )}
       </div>
     </div>
   );
@@ -176,16 +175,16 @@ const StatCard = ({ icon: Icon, label, value, gradient, iconBg, iconColor, onCli
 
 /* ---- Section Header ---- */
 const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
-  <div className="px-6 py-4 border-b flex items-center justify-between" style={{ background: "linear-gradient(135deg, #f8fffe 0%, #f0fdf4 100%)", borderColor: "rgba(15,118,110,0.07)" }}>
-    <div className="flex items-center gap-3">
+  <div className="section-card-header">
+    <div className="flex items-center gap-2.5 min-w-0">
       {Icon && (
-        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 ring-1 ring-emerald-100">
-          <Icon className="w-4 h-4" />
+        <div className="icon-box">
+          <Icon className="w-3.5 h-3.5" strokeWidth={2} />
         </div>
       )}
-      <div>
-        <h3 className="text-[15px] font-semibold text-gray-900">{title}</h3>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      <div className="min-w-0">
+        <h3 className="section-title">{title}</h3>
+        {subtitle && <p className="section-subtitle">{subtitle}</p>}
       </div>
     </div>
     {right}
@@ -400,7 +399,11 @@ const Dashboard = () => {
 
   /* ---- Loading state ---- */
   if (loading) {
-    return <PageLoader label="Loading command center…" />;
+    return (
+      <div className="page-container">
+        <PageLoader label="Loading dashboard…" />
+      </div>
+    );
   }
 
   /* ---- Render ---- */
@@ -408,7 +411,7 @@ const Dashboard = () => {
     <div className="page-container">
       {/* ================== PAGE HEADER ================== */}
       <PageHeader
-        title="Command Center"
+        title="Dashboard"
         subtitle={`${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · Real-time operations`}
         badge={<span className="command-hero-badge"><Radio className="w-3 h-3" /> Live ops</span>}
         actions={
@@ -438,7 +441,7 @@ const Dashboard = () => {
       )}
 
       {/* ================== KPI CARDS ================== */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="kpi-grid">
         <StatCard
           icon={Sprout}
           label="Total Farmers"
@@ -522,10 +525,10 @@ const Dashboard = () => {
       )}
 
       {/* ================== MAP + WORKDAY ================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Live Map */}
         <div
-          className="lg:col-span-2 bg-white rounded-2xl overflow-hidden"
+          className="lg:col-span-2 section-card overflow-hidden"
           style={{
             boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
             border: "1px solid rgba(15,118,110,0.08)",
@@ -557,7 +560,7 @@ const Dashboard = () => {
               </div>
             }
           />
-          <div className="relative" style={{ height: 380 }}>
+          <div className="relative" style={{ height: 280 }}>
             {/* Top gradient overlay */}
             <div
               className="absolute top-0 left-0 right-0 h-8 z-[400] pointer-events-none"
@@ -572,10 +575,7 @@ const Dashboard = () => {
               style={{ height: "100%", width: "100%" }}
               scrollWheelZoom={true}
             >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              <MapBasemapLayers />
               <MapEmployeeViewport locations={validLocations} />
               {validLocations.map((loc) => (
                 <Marker
@@ -584,20 +584,15 @@ const Dashboard = () => {
                   icon={createMarkerIcon(loc.isOnline)}
                 >
                   <Popup>
-                    <div style={{ minWidth: 180, fontSize: 13, lineHeight: 1.6 }}>
-                      <p style={{ fontWeight: 600, color: "#111827", marginBottom: 4 }}>
-                        {loc.employeeName}
-                      </p>
-                      <p style={{ color: "#6B7280" }}>
-                        Status: {loc.isOnline ? "Online" : "Offline"}
-                      </p>
-                      <p style={{ color: "#6B7280" }}>
-                        Last updated: {formatRelative(loc.lastSeen)}
-                      </p>
-                      <p style={{ color: "#6B7280", fontFamily: "monospace", fontSize: 12 }}>
-                        {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}
-                      </p>
-                    </div>
+                    <EmployeeMapPopup
+                      name={loc.employeeName}
+                      lat={loc.lat}
+                      lng={loc.lng}
+                      entity={loc.properties ?? loc}
+                      statusLabel={loc.isOnline ? "Online" : "Offline"}
+                      statusOnline={loc.isOnline}
+                      lastUpdated={formatRelative(loc.lastSeen) || "\u2014"}
+                    />
                   </Popup>
                 </Marker>
               ))}
@@ -619,7 +614,7 @@ const Dashboard = () => {
 
         {/* Workday Activity */}
         <div
-          className="bg-white rounded-2xl overflow-hidden flex flex-col"
+          className="section-card overflow-hidden flex flex-col"
           style={{
             boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
             border: "1px solid rgba(15,118,110,0.08)",
@@ -632,11 +627,11 @@ const Dashboard = () => {
           />
           <div
             className="flex-1 overflow-y-auto px-4 py-3"
-            style={{ maxHeight: 340, scrollbarWidth: "thin" }}
+            style={{ maxHeight: 280, scrollbarWidth: "thin" }}
           >
             {workdays.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12 text-gray-400">
-                <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+                <div className="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
                   <Clock className="w-7 h-7 text-gray-300" />
                 </div>
                 <p className="text-sm font-semibold text-gray-500">
@@ -667,11 +662,7 @@ const Dashboard = () => {
                       <div className="rounded-xl p-3 hover:bg-gray-50/80 transition-all duration-200 group cursor-default">
                         <div className="flex items-center gap-2.5 mb-1.5">
                           {/* Profile circle */}
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center flex-shrink-0">
-                            <span className="text-[10px] font-bold text-white">
-                              {(wd.employee?.first_name?.[0] || wd.employee?.username?.[0] || "E").toUpperCase()}
-                            </span>
-                          </div>
+                          <ProfileAvatar entity={wd.employee} size="xs" />
                           <p className="text-sm font-medium text-gray-900 truncate flex-1">
                             {wd.employee?.first_name ||
                               wd.employee?.username ||
@@ -710,10 +701,10 @@ const Dashboard = () => {
       </div>
 
       {/* Visit trends — GET dashboard/visit-trends/ */}
-      <div className="bg-white rounded-2xl overflow-hidden"
+      <div className="section-card overflow-hidden"
         style={{ boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(15,118,110,0.08)" }}>
         <SectionHeader icon={TrendingUp} title="Visit Activity" subtitle="Daily visits (last 30 days)" />
-        <div className="px-4 py-4">
+        <div className="px-3 py-3">
           {visitTrends.length === 0 ? (
             <div className="flex flex-col items-center justify-center w-full min-w-0 h-[300px] text-gray-400">
               <Calendar className="w-10 h-10 text-gray-300 mb-3" />
@@ -742,7 +733,7 @@ const Dashboard = () => {
 
 
       {/* ================== RECENT VISITS ================== */}
-      <div className="bg-white rounded-2xl overflow-hidden"
+      <div className="section-card overflow-hidden"
         style={{ boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(15,118,110,0.08)" }}>
         <SectionHeader
           icon={Eye}
@@ -759,7 +750,7 @@ const Dashboard = () => {
         />
         {recentVisits.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 text-gray-400">
-            <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
               <Calendar className="w-6 h-6 text-gray-300" />
             </div>
             <p className="text-sm font-semibold text-gray-500">No visits yet</p>
@@ -790,11 +781,13 @@ const Dashboard = () => {
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[10px] font-bold text-white">
-                            {(rowFarmer.name !== "—" ? rowFarmer.name : "F")[0].toUpperCase()}
-                          </span>
-                        </div>
+                        <ProfileAvatar
+                          entity={v?.farmer ?? v}
+                          src={rowFarmer.profilePhotoUrl}
+                          name={rowFarmer.name !== "—" ? rowFarmer.name : "Farmer"}
+                          size="xs"
+                          variant="teal"
+                        />
                         <span className="font-medium text-gray-800 truncate max-w-[130px]">
                           {rowFarmer.name}
                         </span>

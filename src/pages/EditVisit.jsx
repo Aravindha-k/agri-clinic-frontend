@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getVisitDetail, updateVisit } from "../api/visit.api";
@@ -9,7 +10,7 @@ const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
 const Section = ({ icon: Icon, title, accent = "emerald", children }) => (
     <div
-        className="bg-white rounded-2xl overflow-hidden mb-6"
+        className="section-card overflow-hidden mb-6"
         style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}
     >
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -18,7 +19,7 @@ const Section = ({ icon: Icon, title, accent = "emerald", children }) => (
             </div>
             <h2 className="text-base font-semibold text-gray-900">{title}</h2>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="panel-body">{children}</div>
     </div>
 );
 
@@ -131,8 +132,13 @@ export default function EditVisit() {
 
     /* ---------- STATES ---------- */
 
-    if (loading)
-        return <div className="p-10 text-center text-lg">Loading...</div>;
+    if (loading) {
+        return (
+            <div className="page-container">
+                <PageLoader label="Loading visit…" />
+            </div>
+        );
+    }
 
     if (error)
         return <div className="p-10 text-center text-red-600">{error}</div>;
@@ -144,7 +150,7 @@ export default function EditVisit() {
             {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold">Edit Visit</h1>
+                    <h1 className="text-xl font-semibold">Edit Visit</h1>
                     <p className="text-sm text-gray-500">Update visit details</p>
                 </div>
 
@@ -163,7 +169,7 @@ export default function EditVisit() {
             )}
 
             <form onSubmit={handleSubmit}>
-                <div className="grid lg:grid-cols-2 gap-6">
+                <div className="grid lg:grid-cols-2 gap-4">
 
                     {/* VISIT INFO */}
                     <Section icon={ClipboardCheck} title="Visit Info">

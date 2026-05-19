@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
@@ -17,6 +18,10 @@ export default function FarmerEditor({ mode = "create" }) {
     const navigate = useNavigate();
     const isEdit = mode === "edit";
     const [initial, setInitial] = useState(null);
+
+    const handlePhotoUpdated = (url, data) => {
+        setInitial((prev) => (prev ? { ...prev, profile_photo_url: url, ...data } : prev));
+    };
     const [loading, setLoading] = useState(isEdit);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
@@ -55,7 +60,7 @@ export default function FarmerEditor({ mode = "create" }) {
     };
 
     if (loading) {
-        return <div className="page-container text-center text-gray-500">Loading farmer...</div>;
+        return (<div className="page-container"><PageLoader label="Loading farmer…" /></div>);
     }
 
     if (isEdit && !initial && error) {
@@ -86,9 +91,11 @@ export default function FarmerEditor({ mode = "create" }) {
                 </div>
             )}
 
-            <div className="section-card p-6">
+            <div className="section-card p-4">
                 <FarmerForm
                     initial={initial || {}}
+                    farmerId={isEdit ? id : undefined}
+                    onPhotoUpdated={handlePhotoUpdated}
                     onSubmit={handleSubmit}
                     onCancel={() => navigate(-1)}
                     loading={saving}

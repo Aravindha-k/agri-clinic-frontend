@@ -1,3 +1,4 @@
+import AgriLoader from "./ui/command/AgriLoader";
 import { useEffect, useState } from "react";
 
 export default function WeatherWidget() {
@@ -31,7 +32,7 @@ export default function WeatherWidget() {
             <div>
                 <div className="font-bold text-lg">Today's Temperature</div>
                 {loading ? (
-                    <div className="text-sm text-slate-400">Loading...</div>
+                    <AgriLoader label="Fetching weather…" size="sm" />
                 ) : (
                     <>
                         <div className="text-xl font-semibold">{weather.temperature}°C <span className="text-sm">({weather.weathercode})</span></div>

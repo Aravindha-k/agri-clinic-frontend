@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useEffect, useMemo, useState } from "react";
 import { getAuditLogs } from "../api/audit.api";
 import { ShieldCheck, RefreshCw, AlertCircle, Clock, Filter, Search } from "lucide-react";
@@ -84,13 +85,7 @@ export default function Audit() {
     if (loading) {
         return (
             <div className="page-container">
-                <div className="animate-pulse space-y-6">
-                    <div className="h-8 bg-gray-200 rounded w-48" />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-gray-200 rounded-xl" />)}
-                    </div>
-                    <div className="h-96 bg-gray-200 rounded-xl" />
-                </div>
+                <PageLoader label="Loading audit log…" />
             </div>
         );
     }
@@ -136,13 +131,13 @@ export default function Audit() {
                             { label: "Showing", value: filteredLogs.length, accent: "#2563eb", iconBg: "#dbeafe", icon: Filter },
                             { label: "Action Types", value: uniqueActions.length, accent: "#7c3aed", iconBg: "#ede9fe", icon: Clock },
                         ].map(({ label, value, accent, iconBg, icon: Icon }) => (
-                            <div key={label} className="relative rounded-xl p-5 overflow-hidden bg-white cursor-default" style={{ boxShadow: SHADOW, border: "1px solid var(--border-card)" }}>
+                            <div key={label} className="mini-kpi-card bg-white cursor-default" style={{ boxShadow: SHADOW, border: "1px solid var(--border-card)" }}>
                                 <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: iconBg, color: accent }}>
+                                <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
                                     <Icon className="w-4 h-4" />
                                 </div>
-                                <p className="text-[26px] font-bold text-gray-900 tabular-nums leading-none">{value}</p>
-                                <p className="text-sm text-gray-500 font-medium mt-1.5">{label}</p>
+                                <p className="mini-kpi-value">{value}</p>
+                                <p className="mini-kpi-label">{label}</p>
                             </div>
                         ))}
                     </div>

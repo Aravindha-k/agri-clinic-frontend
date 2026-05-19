@@ -1,3 +1,4 @@
+import { PageLoader } from "../../components/ui/command";
 import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, Pencil, Trash2, MapPin } from "lucide-react";
 import { getDistricts, createDistrict, updateDistrict, deleteDistrict } from "../../api/master.api";
@@ -83,12 +84,12 @@ export default function MasterDistricts() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="ops-page">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Districts</h1>
-                    <p className="text-sm text-gray-500 mt-1">{filtered.length} records</p>
+                    <h1 className="text-xl font-semibold text-gray-900">Districts</h1>
+                    <p className="text-xs text-gray-500 mt-0.5">{filtered.length} records</p>
                 </div>
                 <button
                     onClick={() => setPanel({ open: true, mode: "add", item: null })}
@@ -99,7 +100,7 @@ export default function MasterDistricts() {
             </div>
 
             {/* Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="section-card overflow-hidden">
                 {/* Search bar */}
                 <div className="p-4 border-b border-gray-100">
                     <div className="relative max-w-sm">
@@ -115,27 +116,27 @@ export default function MasterDistricts() {
 
                 {/* Table */}
                 {loading ? (
-                    <TableSkeleton rows={8} cols={4} />
+                    <PageLoader label="Loading districts…" />
                 ) : paginated.length === 0 ? (
                     <EmptyState icon={MapPin} title="No districts found" subtitle="Add your first district above" />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="compact-table w-full">
                             <thead>
                                 <tr className="bg-gray-50/80 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    <th className="px-4 py-3">Name</th>
-                                    <th className="px-4 py-3">Code</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
+                                    <th className="px-3 py-2">Name</th>
+                                    <th className="px-3 py-2">Code</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {paginated.map((r) => (
                                     <tr key={r.id} className="hover:bg-gray-50/50 transition">
-                                        <td className="px-4 py-3 font-medium text-gray-900">{r.name}</td>
-                                        <td className="px-4 py-3 text-gray-500">{r.code || "—"}</td>
-                                        <td className="px-4 py-3"><Badge active={r.is_active !== false} /></td>
-                                        <td className="px-4 py-3 text-right">
+                                        <td className="px-3 py-2 font-medium text-gray-900">{r.name}</td>
+                                        <td className="px-3 py-2 text-gray-500">{r.code || "—"}</td>
+                                        <td className="px-3 py-2"><Badge active={r.is_active !== false} /></td>
+                                        <td className="px-3 py-2 text-right">
                                             <div className="inline-flex gap-1">
                                                 <button
                                                     onClick={() => setPanel({ open: true, mode: "edit", item: r })}

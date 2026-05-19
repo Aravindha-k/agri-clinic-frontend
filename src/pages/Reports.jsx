@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useEffect, useState, useMemo } from "react";
 import { getVisits } from "../api/visit.api";
 import {
@@ -123,13 +124,7 @@ export default function Reports() {
     if (loading) {
         return (
             <div className="page-container">
-                <div className="animate-pulse space-y-6">
-                    <div className="h-8 bg-gray-200 rounded w-48" />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-gray-200 rounded-2xl" />)}
-                    </div>
-                    <div className="h-96 bg-gray-200 rounded-2xl" />
-                </div>
+                <PageLoader label="Loading reports…" />
             </div>
         );
     }
@@ -166,16 +161,16 @@ export default function Reports() {
             {/* ── KPI Cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map(({ icon: Icon, label, value, accent, gradient, iconBg }) => (
-                    <div key={label} className="relative rounded-2xl p-5 overflow-hidden group card-hover cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
-                        <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: accent }} />
-                        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.06]" style={{ background: accent }} />
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110" style={{ background: iconBg, color: accent }}>
-                            <Icon className="w-5 h-5" />
+                    <div key={label} className="mini-kpi-card group cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
+                        <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
+                        <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
+                        <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
+                            <Icon className="w-4 h-4" />
                         </div>
-                        <p className="text-[28px] font-bold text-gray-900 leading-none tabular-nums">{value}</p>
-                        <div className="flex items-center justify-between mt-1.5">
-                            <p className="text-[13px] text-gray-500 font-medium">{label}</p>
-                            <TrendingUp className="w-3.5 h-3.5 text-gray-300" />
+                        <p className="mini-kpi-value">{value}</p>
+                        <div className="flex items-center justify-between mt-1">
+                            <p className="mini-kpi-label">{label}</p>
+                            <TrendingUp className="w-3 h-3 text-gray-300" />
                         </div>
                     </div>
                 ))}

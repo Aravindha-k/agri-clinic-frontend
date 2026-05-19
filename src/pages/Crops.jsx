@@ -1,3 +1,4 @@
+import { PageLoader } from "../components/ui/command";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { getCrops } from "../api/master.api";
 import { unwrapResponse } from "../api/axios";
@@ -17,10 +18,10 @@ const resolveList = (d) => {
 
 const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
 const TableSkeleton = () => (
-    <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW }}>
-        <div className="p-5 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
+    <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
+        <div className="px-3 py-2 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
         {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50">
+            <div key={i} className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-50">
                 <Bone className="w-8 h-8 !rounded-full" /><Bone className="w-28 h-4" /><Bone className="w-20 h-4" /><Bone className="w-16 h-4" />
             </div>
         ))}
@@ -49,16 +50,16 @@ const useCountUp = (target, dur = 900) => {
 const KpiCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
     const animVal = useCountUp(value);
     return (
-        <div className="relative rounded-2xl p-5 overflow-hidden group card-hover cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
-            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: accent }} />
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.06]" style={{ background: accent }} />
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110" style={{ background: iconBg, color: accent }}>
-                <Icon className="w-5 h-5" />
+        <div className="mini-kpi-card group cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
+            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
+            <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
+            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
+                <Icon className="w-4 h-4" />
             </div>
-            <p className="text-[28px] font-bold text-gray-900 leading-none tabular-nums">{animVal}</p>
-            <div className="flex items-center justify-between mt-1.5">
-                <p className="text-[13px] text-gray-500 font-medium">{label}</p>
-                <TrendingUp className="w-3.5 h-3.5 text-gray-300" />
+            <p className="mini-kpi-value">{animVal}</p>
+            <div className="flex items-center justify-between mt-1">
+                <p className="mini-kpi-label">{label}</p>
+                <TrendingUp className="w-3 h-3 text-gray-300" />
             </div>
         </div>
     );
@@ -102,13 +103,13 @@ export default function Crops() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-lime-100 flex items-center justify-center text-lime-600">
                             <Wheat className="w-5 h-5" />
                         </div>
                         Crops
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage crop database</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Manage crop database</p>
                 </div>
                 <button onClick={fetchCrops} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm">
                     <RefreshCw className="w-4 h-4" /> Refresh
@@ -122,7 +123,7 @@ export default function Crops() {
             </div>
 
             {/* Search */}
-            <div className="bg-white rounded-2xl p-4" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
+            <div className="filters-bar" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -145,26 +146,26 @@ export default function Crops() {
             )}
 
             {/* Grid */}
-            {loading ? <TableSkeleton /> : filtered.length === 0 ? (
-                <div className="bg-white rounded-2xl p-16 text-center" style={{ boxShadow: SHADOW }}>
-                    <div className="w-20 h-20 rounded-2xl bg-lime-50 flex items-center justify-center mx-auto mb-5"><Wheat className="w-9 h-9 text-lime-300" /></div>
-                    <p className="text-base font-semibold text-gray-500">No crops found</p>
+            {loading ? <PageLoader label="Loading crops…" /> : filtered.length === 0 ? (
+                <div className="list-card-surface p-10 text-center">
+                    <div className="w-12 h-12 rounded-xl bg-lime-50 flex items-center justify-center mx-auto mb-3"><Wheat className="w-6 h-6 text-lime-300" /></div>
+                    <p className="text-sm font-semibold text-gray-500">No crops found</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="list-grid">
                     {filtered.map((c, i) => (
-                        <div key={c.id || i} className="bg-white rounded-2xl p-5 group card-hover" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-xl bg-lime-100 flex items-center justify-center text-lime-600 group-hover:scale-110 transition-transform">
-                                    <Leaf className="w-5 h-5" />
+                        <div key={c.id || i} className="list-card-surface p-3.5 group card-hover">
+                            <div className="flex items-center gap-2.5 mb-2">
+                                <div className="w-9 h-9 rounded-lg bg-lime-100 flex items-center justify-center text-lime-600">
+                                    <Leaf className="w-4 h-4" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">{c.name}</p>
-                                    {c.variety && <p className="text-xs text-gray-400 truncate">{c.variety}</p>}
+                                    <p className="list-card-title">{c.name}</p>
+                                    {c.variety && <p className="list-card-meta truncate">{c.variety}</p>}
                                 </div>
                             </div>
-                            {c.description && <p className="text-xs text-gray-500 line-clamp-2">{c.description}</p>}
-                            <div className="mt-3 flex items-center gap-2">
+                            {c.description && <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{c.description}</p>}
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
                                 {c.is_active !== false && (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active

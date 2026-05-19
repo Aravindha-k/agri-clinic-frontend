@@ -50,20 +50,20 @@ export default function Masters() {
             </div>
 
             {/* Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="list-grid lg:grid-cols-3">
                 {MASTER_SECTIONS.map((section) => (
                     <button
                         key={section.path}
                         onClick={() => navigate(section.path)}
-                        className="text-left rounded-2xl p-6 group transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                        className="text-left rounded-xl p-4 group transition-all hover:-translate-y-0.5 hover:shadow-md"
                         style={{ background: section.bg, boxShadow: SHADOW }}
                     >
-                        <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start justify-between mb-3">
                             <div
-                                className="w-11 h-11 rounded-xl flex items-center justify-center"
+                                className="w-9 h-9 rounded-lg flex items-center justify-center"
                                 style={{ background: section.iconBg }}
                             >
-                                <section.icon className="w-5 h-5" style={{ color: section.color }} />
+                                <section.icon className="w-4 h-4" style={{ color: section.color }} />
                             </div>
                             <ChevronRight
                                 className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all"

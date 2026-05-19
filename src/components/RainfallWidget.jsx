@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AgriLoader from "./ui/command/AgriLoader";
 
 export default function RainfallWidget() {
     const [rainfall, setRainfall] = useState(null);
@@ -32,7 +33,7 @@ export default function RainfallWidget() {
             <div>
                 <div className="font-bold text-lg">Rainfall Prediction</div>
                 {loading ? (
-                    <div className="text-sm text-blue-200">Loading...</div>
+                    <AgriLoader label="Fetching rainfall…" size="sm" />
                 ) : (
                     <>
                         <div className="text-xl font-semibold">{rainfall} mm <span className="text-sm">(current)</span></div>

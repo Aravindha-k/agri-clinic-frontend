@@ -1,3 +1,4 @@
+import { PageLoader } from "../../components/ui/command";
 import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, Pencil, Sprout, Phone } from "lucide-react";
 import { getDistricts, getVillages, getFarmers, createFarmer, updateFarmer, patchFarmer } from "../../api/master.api";
@@ -122,18 +123,18 @@ export default function MasterFarmers() {
     const cls = "px-3 py-2 text-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none";
 
     return (
-        <div className="space-y-6">
+        <div className="ops-page">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Farmer Management</h1>
-                    <p className="text-sm text-gray-500 mt-1">{filtered.length} farmers</p>
+                    <h1 className="text-xl font-semibold text-gray-900">Farmer Management</h1>
+                    <p className="text-xs text-gray-500 mt-0.5">{filtered.length} farmers</p>
                 </div>
                 <button onClick={() => openPanel("add", null)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition shadow-sm">
                     <Plus className="w-4 h-4" /> Add Farmer
                 </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="section-card overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3">
                     <div className="relative flex-1 min-w-[200px] max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -150,36 +151,36 @@ export default function MasterFarmers() {
                 </div>
 
                 {loading ? (
-                    <TableSkeleton rows={8} cols={6} />
+                    <PageLoader label="Loading farmers…" />
                 ) : paginated.length === 0 ? (
                     <EmptyState icon={Sprout} title="No farmers found" subtitle="Add your first farmer above" />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="compact-table w-full">
                             <thead>
                                 <tr className="bg-gray-50/80 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    <th className="px-4 py-3">Name</th>
-                                    <th className="px-4 py-3">Phone</th>
-                                    <th className="px-4 py-3">Village</th>
-                                    <th className="px-4 py-3">District</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Actions</th>
+                                    <th className="px-3 py-2">Name</th>
+                                    <th className="px-3 py-2">Phone</th>
+                                    <th className="px-3 py-2">Village</th>
+                                    <th className="px-3 py-2">District</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {paginated.map((r) => (
                                     <tr key={r.id} className="hover:bg-gray-50/50 transition">
-                                        <td className="px-4 py-3">
+                                        <td className="px-3 py-2">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">{(r.name || "?")[0].toUpperCase()}</div>
                                                 <span className="font-medium text-gray-900">{r.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-500"><span className="inline-flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{r.phone || EMPTY}</span></td>
-                                        <td className="px-4 py-3 text-gray-500">{vilName(r)}</td>
-                                        <td className="px-4 py-3 text-gray-500">{distName(r)}</td>
-                                        <td className="px-4 py-3"><Badge active={r.is_active !== false} /></td>
-                                        <td className="px-4 py-3 text-right">
+                                        <td className="px-3 py-2 text-gray-500"><span className="inline-flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{r.phone || EMPTY}</span></td>
+                                        <td className="px-3 py-2 text-gray-500">{vilName(r)}</td>
+                                        <td className="px-3 py-2 text-gray-500">{distName(r)}</td>
+                                        <td className="px-3 py-2"><Badge active={r.is_active !== false} /></td>
+                                        <td className="px-3 py-2 text-right">
                                             <div className="inline-flex items-center gap-2">
                                                 <button onClick={() => openPanel("edit", r)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-emerald-600 transition"><Pencil className="w-4 h-4" /></button>
                                                 <button onClick={() => toggleActive(r)} className={`relative w-9 h-5 rounded-full transition-colors ${r.is_active !== false ? "bg-emerald-500" : "bg-gray-300"}`} title={r.is_active !== false ? "Disable" : "Enable"}>

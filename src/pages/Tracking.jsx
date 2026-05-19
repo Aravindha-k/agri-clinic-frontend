@@ -1,5 +1,11 @@
+import { PageLoader } from "../components/ui/command";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import MapBasemapLayers from "../components/map/MapBasemapLayers";
+import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
+import EmployeeMapPopup from "../components/map/EmployeeMapPopup";
+import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate } from "../utils/mapCoordinates";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -187,10 +193,10 @@ const Bone = ({ className = "" }) => (
 const StatsSkeleton = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-2xl p-5 bg-white" style={{ boxShadow: SHADOW }}>
-                <Bone className="w-10 h-10 rounded-xl mb-3" />
-                <Bone className="w-16 h-8 mb-2" />
-                <Bone className="w-24 h-4" />
+            <div key={i} className="mini-kpi-card bg-white" style={{ boxShadow: SHADOW }}>
+                <Bone className="w-8 h-8 rounded-lg mb-2" />
+                <Bone className="w-14 h-6 mb-2" />
+                <Bone className="w-20 h-3.5" />
             </div>
         ))}
     </div>
@@ -203,20 +209,17 @@ const StatCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) =
     const animVal = useCountUp(value);
     return (
         <div
-            className="relative rounded-2xl p-5 overflow-hidden group card-hover cursor-default"
+            className="mini-kpi-card group cursor-default"
             style={{ background: gradient, boxShadow: SHADOW }}
         >
-            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: accent }} />
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.06]" style={{ background: accent }} />
-            <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110"
-                style={{ background: iconBg, color: accent }}
-            >
-                <Icon className="w-5 h-5" />
+            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
+            <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
+            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
+                <Icon className="w-4 h-4" />
             </div>
-            <p className="text-[28px] font-bold text-gray-900 leading-none tabular-nums">{animVal}</p>
-            <div className="flex items-center justify-between mt-1.5">
-                <p className="text-[13px] text-gray-500 font-medium">{label}</p>
+            <p className="mini-kpi-value">{animVal}</p>
+            <div className="flex items-center justify-between mt-1">
+                <p className="mini-kpi-label">{label}</p>
                 <TrendingUp className="w-3.5 h-3.5 text-gray-300" />
             </div>
         </div>
@@ -448,7 +451,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                         <div className={`bg-gradient-to-r ${accentMap[color].grad} p-6`}>
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-xl ring-2 ring-white/30">
+                                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-xl ring-2 ring-white/30">
                                         {empName(employee)[0]?.toUpperCase()}
                                     </div>
                                     <div>
@@ -493,9 +496,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                         {/* ── Tab Content ── */}
                         <div className="flex-1 overflow-y-auto p-5 bg-gray-50">
                             {loading ? (
-                                <div className="flex items-center justify-center h-40">
-                                    <div className="w-8 h-8 border-[3px] border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
-                                </div>
+                                <PageLoader label="Loading employee data…" />
                             ) : (
                                 <>
                                     {/* SUMMARY */}
@@ -557,7 +558,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                                         <p className="text-xs text-gray-400 mb-1 flex items-center gap-2 font-medium">
                                                             <Navigation className="w-3.5 h-3.5 text-emerald-600" /> Today Distance
                                                         </p>
-                                                        <p className="text-2xl font-bold text-gray-900">
+                                                        <p className="text-xl font-semibold text-gray-900">
                                                             {(() => {
                                                                 const dist = employee?.today_distance_km ?? employee?.distance_km ?? summary?.today_distance_km ?? summary?.distance_km ?? 0;
                                                                 return typeof dist === "number" ? dist.toFixed(1) : dist;
@@ -592,7 +593,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                                         zoom={13}
                                                         style={{ width: "100%", height: "100%" }}
                                                     >
-                                                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                        <MapBasemapLayers />
                                                         <Polyline
                                                             positions={(routeData.points || routeData.route || []).map((p) => [
                                                                 p.latitude || p.lat,
@@ -755,22 +756,27 @@ export default function Tracking() {
         });
     }, [employees, searchTerm, filterStatus]);
 
-    /* ── Map helpers ── */
-    const mapEmployees = filteredEmployees.filter(
-        (emp) =>
-            emp.latitude != null &&
-            emp.longitude != null &&
-            !isNaN(emp.latitude) &&
-            !isNaN(emp.longitude)
+    /* ── Map helpers (Tamil Nadu bounds only) ── */
+    const mapEmployees = useMemo(
+        () =>
+            filteredEmployees.filter((emp) =>
+                isValidTamilNaduCoordinate(
+                    emp.latitude ?? emp.last_latitude,
+                    emp.longitude ?? emp.last_longitude
+                )
+            ),
+        [filteredEmployees]
     );
 
-    const mapCenter =
-        mapEmployees.length > 0
-            ? [
-                mapEmployees.reduce((s, e) => s + Number(e.latitude), 0) / mapEmployees.length,
-                mapEmployees.reduce((s, e) => s + Number(e.longitude), 0) / mapEmployees.length,
-            ]
-            : [11.1271, 78.6569];
+    const validMapLocations = useMemo(
+        () => getValidEmployeeLocations(mapEmployees),
+        [mapEmployees]
+    );
+
+    const { center: mapCenter, zoom: mapZoom } = useMemo(
+        () => getMapCenter(validMapLocations),
+        [validMapLocations]
+    );
 
     /* ── Drawer ── */
     const openDrawer = (emp) => {
@@ -842,13 +848,13 @@ export default function Tracking() {
                     <Bone className="w-32 h-9 rounded-xl" />
                 </div>
                 <StatsSkeleton />
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW }}>
+                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
                     <Bone className="w-full h-[420px]" />
                 </div>
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW }}>
-                    <div className="p-5 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
+                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
+                    <div className="px-3 py-2 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50">
+                        <div key={i} className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-50">
                             <Bone className="w-9 h-9 !rounded-xl" />
                             <Bone className="w-28 h-4" />
                             <Bone className="w-20 h-4" />
@@ -885,7 +891,7 @@ export default function Tracking() {
                                 <Layers className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Live Tracking</h1>
+                                <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Live Tracking</h1>
                                 <p className="text-gray-500 text-sm">Real-time GPS monitoring &amp; field employee status</p>
                             </div>
                         </div>
@@ -924,8 +930,8 @@ export default function Tracking() {
                 </div>
 
                 {/* ====== LIVE MAP ====== */}
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: SHADOW_LG }}>
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW_LG }}>
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-emerald-50">
                                 <MapPin className="w-5 h-5 text-emerald-600" />
@@ -944,14 +950,12 @@ export default function Tracking() {
                     <div className="relative h-[420px] lg:h-[500px]">
                         <MapContainer
                             center={mapCenter}
-                            zoom={mapEmployees.length > 0 ? 8 : 7}
+                            zoom={mapZoom}
                             style={{ width: "100%", height: "100%" }}
                             className="z-0"
                         >
-                            <TileLayer
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                            />
+                            <MapBasemapLayers />
+                            <MapEmployeeViewport locations={validMapLocations} />
                             <MarkerClusterGroup
                                 chunkedLoading
                                 maxClusterRadius={50}
@@ -966,43 +970,44 @@ export default function Tracking() {
                                         eventHandlers={{ click: () => openDrawer(emp) }}
                                     >
                                         <Popup>
-                                            <div className="min-w-[200px] p-1">
-                                                <div className="flex items-center justify-between mb-0.5">
-                                                    <p className="font-bold text-sm text-gray-900">{empName(emp)}</p>
-                                                    {emp.is_suspicious && <ShieldAlert className="w-3.5 h-3.5 text-red-500" />}
-                                                </div>
-                                                <p className="text-xs text-gray-500 mb-2">{emp.district || "\u2014"}</p>
-                                                <div className="space-y-1 text-xs">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-400">Status</span>
-                                                        <span className={`font-semibold ${emp.work_status?.toLowerCase() === "working" ? "text-emerald-600" : "text-gray-500"}`}>
-                                                            {emp.work_status || "\u2014"}
+                                            <EmployeeMapPopup
+                                                name={empName(emp)}
+                                                lat={emp.latitude ?? emp.last_latitude}
+                                                lng={emp.longitude ?? emp.last_longitude}
+                                                entity={emp}
+                                                statusLabel={
+                                                    String(
+                                                        emp.connection_status ??
+                                                            emp.connection ??
+                                                            ""
+                                                    ).toUpperCase() === "ONLINE"
+                                                        ? "Online"
+                                                        : "Offline"
+                                                }
+                                                statusOnline={
+                                                    String(
+                                                        emp.connection_status ??
+                                                            emp.connection ??
+                                                            ""
+                                                    ).toUpperCase() === "ONLINE"
+                                                }
+                                                lastUpdated={timeAgo(emp.last_seen) || "\u2014"}
+                                            >
+                                                {emp.is_suspicious ? (
+                                                    <p className="flex items-center gap-1 text-[10px] text-red-600 font-medium">
+                                                        <ShieldAlert className="w-3 h-3" />
+                                                        Suspicious activity
+                                                    </p>
+                                                ) : null}
+                                                {emp.work_status ? (
+                                                    <p className="text-[10px] text-gray-500">
+                                                        Work:{" "}
+                                                        <span className="font-medium text-gray-700">
+                                                            {emp.work_status}
                                                         </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-400">Tracking</span>
-                                                        <span className={`font-semibold ${HEALTH_CFG[getTrackingHealth(emp)].text}`}>
-                                                            {HEALTH_CFG[getTrackingHealth(emp)].label}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-400">Last Seen</span>
-                                                        <span className="font-medium text-gray-700">{timeAgo(emp.last_seen)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-400">Duration</span>
-                                                        <span className="font-medium text-gray-700">{formatDuration(emp.duration_minutes ?? emp.work_duration)}</span>
-                                                    </div>
-                                                    {emp.battery_percent != null && (
-                                                        <div className="flex justify-between">
-                                                            <span className="text-gray-400">Battery</span>
-                                                            <span className={`font-semibold ${emp.battery_percent > 50 ? "text-emerald-600" : emp.battery_percent > 20 ? "text-yellow-600" : "text-red-600"}`}>
-                                                                {emp.battery_percent}%
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                    </p>
+                                                ) : null}
+                                            </EmployeeMapPopup>
                                         </Popup>
                                     </Marker>
                                 ))}
@@ -1013,9 +1018,9 @@ export default function Tracking() {
                 </div>
 
                 {/* ====== EMPLOYEE TABLE ====== */}
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: SHADOW_LG }}>
+                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW_LG }}>
                     {/* Table Header Bar */}
-                    <div className="px-5 py-4 border-b border-gray-100">
+                    <div className="px-4 py-2.5 border-b border-gray-100">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-lg bg-indigo-50">
@@ -1087,9 +1092,7 @@ export default function Tracking() {
                                                 <td className="px-5 py-3.5">
                                                     <div className="flex items-center gap-3">
                                                         <div className="relative flex-shrink-0">
-                                                            <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 ring-1 ring-gray-200 group-hover:ring-emerald-200 transition-all">
-                                                                {empName(emp)[0]?.toUpperCase()}
-                                                            </div>
+                                                            <ProfileAvatar entity={emp} name={empName(emp)} size="md" variant="neutral" />
                                                             <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${dotMap[c]}`} />
                                                             <span className={`absolute -top-0.5 -left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${HEALTH_CFG[getTrackingHealth(emp)].dot}`} title={`Tracking: ${HEALTH_CFG[getTrackingHealth(emp)].label}`} />
                                                         </div>

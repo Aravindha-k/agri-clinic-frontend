@@ -1,4 +1,5 @@
-﻿// Robust helper to extract array from any API response
+import { PageLoader } from "../components/ui/command";
+// Robust helper to extract array from any API response
 function resolveList(res) {
   const raw = res?.data?.data ?? res?.data ?? res;
   if (Array.isArray(raw)) return raw;
@@ -10,7 +11,17 @@ function resolveList(res) {
 }
 import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 import { createPortal } from "react-dom";
-import { getEmployees, createEmployee, updateEmployee, patchEmployee, changePassword, adminResetPassword } from "../api/employee.api";
+import {
+  getEmployees,
+  createEmployee,
+  updateEmployee,
+  patchEmployee,
+  changePassword,
+  adminResetPassword,
+  uploadEmployeePhoto,
+} from "../api/employee.api";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
+import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import { getDistricts } from "../api/master.api";
 import { getEmployeeStats, getEmployeeSummary, getEmployeeActivity } from "../api/tracking.api";
 import {
@@ -94,7 +105,7 @@ const Bone = ({ className = "" }) => (
 const KpiSkeleton = () => (
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
     {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="rounded-2xl p-4 sm:p-5 bg-white" style={{ boxShadow: SHADOW }}>
+      <div key={i} className="rounded-xl p-3.5 bg-white" style={{ boxShadow: SHADOW }}>
         <Bone className="w-10 h-10 rounded-xl mb-3" />
         <Bone className="w-16 h-7 mb-2" />
         <Bone className="w-24 h-4" />
@@ -104,11 +115,11 @@ const KpiSkeleton = () => (
 );
 
 const CardSkeleton = () => (
-  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-    <Bone className="h-1 rounded-none" />
-    <div className="p-5">
-      <div className="flex items-start gap-3 mb-4">
-        <Bone className="!rounded-full w-11 h-11 flex-shrink-0" />
+  <div className="list-card-surface">
+    <Bone className="h-0.5 rounded-none" />
+    <div className="p-3.5">
+      <div className="flex items-start gap-2.5 mb-3">
+        <Bone className="!rounded-full w-9 h-9 flex-shrink-0" />
         <div className="flex-1 space-y-2">
           <Bone className="w-28 h-4" />
           <Bone className="w-20 h-3" />
@@ -125,7 +136,7 @@ const CardSkeleton = () => (
 );
 
 const GridSkeleton = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  <div className="list-grid">
     {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
   </div>
 );
@@ -156,15 +167,15 @@ const KpiCard = memo(({ icon: Icon, label, value, gradient, iconBg, iconColor })
   const animVal = useCountUp(value);
   return (
     <div
-      className="relative rounded-2xl p-4 sm:p-5 overflow-hidden group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 cursor-default"
+      className="mini-kpi-card group cursor-default"
       style={{ background: gradient, boxShadow: SHADOW }}
     >
-      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-[0.07]" style={{ background: iconColor }} />
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110" style={{ background: iconBg, color: iconColor }}>
-        <Icon className="w-5 h-5" />
+      <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.07]" style={{ background: iconColor }} />
+      <div className="mini-kpi-icon" style={{ background: iconBg, color: iconColor }}>
+        <Icon className="w-4 h-4" />
       </div>
-      <p className="text-[26px] font-bold text-gray-900 leading-none tabular-nums">{animVal}</p>
-      <p className="mt-1.5 text-[13px] text-gray-500 font-medium">{label}</p>
+      <p className="mini-kpi-value">{animVal}</p>
+      <p className="mini-kpi-label">{label}</p>
     </div>
   );
 });
@@ -244,7 +255,7 @@ const SectionHead = ({ icon: Icon, title, subtitle, right }) => (
 
 /* --- Employee Filters --- */
 const EmployeeFilters = memo(({ searchTerm, setSearchTerm, statusFilter, setStatusFilter, roleFilter, setRoleFilter, viewMode, setViewMode, total, shown }) => (
-  <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+  <div className="list-card-surface p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
     style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.04)" }}>
     <div className="relative flex-1 min-w-0">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -284,18 +295,19 @@ EmployeeFilters.displayName = "EmployeeFilters";
 
 /* --- Employee Card (Grid) --- */
 const EmployeeCard = memo(({ emp, onOpen }) => (
-  <div className="bg-white rounded-2xl overflow-hidden group card-hover cursor-pointer"
-    style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }} onClick={() => onOpen(emp)}>
-    <div className="h-1" style={{ background: emp.is_online ? "linear-gradient(90deg, #10b981, #14b8a6)" : "linear-gradient(90deg, #d1d5db, #e5e7eb)" }} />
-    <div className="p-5">
-      {/* Header row */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className={`relative w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${emp.is_online ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-gradient-to-br from-gray-300 to-gray-400"}`}>
-          <span className="text-sm font-bold text-white">{empInitial(emp)}</span>
-          {emp.is_online && <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />}
-        </div>
+  <div className="list-card-surface group card-hover cursor-pointer" onClick={() => onOpen(emp)}>
+    <div className="h-0.5" style={{ background: emp.is_online ? "linear-gradient(90deg, #10b981, #14b8a6)" : "linear-gradient(90deg, #d1d5db, #e5e7eb)" }} />
+    <div className="p-3.5">
+      <div className="flex items-start gap-2.5 mb-2">
+        <ProfileAvatar
+          entity={emp}
+          name={empName(emp)}
+          size="md"
+          variant={emp.is_online ? "emerald" : "neutral"}
+          online={emp.is_online}
+        />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate">{empName(emp)}</p>
+          <p className="list-card-title">{empName(emp)}</p>
           {emp.phone && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5"><Phone className="w-3 h-3" />{emp.phone}</p>}
           {emp.employee_id && (
             <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
@@ -306,7 +318,7 @@ const EmployeeCard = memo(({ emp, onOpen }) => (
         <Badge online={emp.is_online} />
       </div>
       {/* Role + District row */}
-      <div className="flex items-center gap-2 flex-wrap mb-3">
+      <div className="flex items-center gap-2 flex-wrap mb-2">
         <RoleBadge role={emp.role} />
         {emp.district_name && (
           <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
@@ -315,13 +327,13 @@ const EmployeeCard = memo(({ emp, onOpen }) => (
         )}
       </div>
       {/* Last seen */}
-      <p className="text-[11px] text-gray-400 mb-3 flex items-center gap-1.5">
+      <p className="text-[11px] text-gray-400 mb-2 flex items-center gap-1.5">
         <Clock className="w-3 h-3" />
         {emp.last_seen || emp.last_heartbeat
           ? <>Last seen <span className="font-medium text-gray-600">{fmtRel(emp.last_seen ?? emp.last_heartbeat)}</span></>
-          : "Last seen: —"}
+          : "Last seen: �"}
       </p>
-      <button className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all duration-200 active:scale-[0.97]">
+      <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all duration-200 active:scale-[0.97]">
         <Eye className="w-3.5 h-3.5" /> View Details <ChevronRight className="w-3.5 h-3.5 ml-auto" />
       </button>
     </div>
@@ -331,10 +343,10 @@ EmployeeCard.displayName = "EmployeeCard";
 
 /* --- Employee Grid --- */
 const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOpen }) => {
-  if (isLoading) return <GridSkeleton />;
+  if (isLoading) return <PageLoader label="Loading employees…" />;
   if (emps.length === 0) return (
-    <div className="bg-white rounded-2xl p-12 text-center" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-      <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4"><Users className="w-7 h-7 text-gray-300" /></div>
+    <div className="list-card-surface p-10 text-center">
+      <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3"><Users className="w-6 h-6 text-gray-300" /></div>
       <p className="text-sm font-semibold text-gray-500">No employees found</p>
       <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters.</p>
     </div>
@@ -342,14 +354,14 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
 
   if (viewMode === "grid") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="list-grid">
         {emps.map((emp) => <EmployeeCard key={emp.id} emp={emp} onOpen={onOpen} />)}
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.04)" }}>
+    <div className="section-card overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.04)" }}>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -367,9 +379,12 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
               <tr key={emp.id} className={`transition-colors duration-150 hover:bg-emerald-50/30 cursor-pointer ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`} onClick={() => onOpen(emp)}>
                 <td className="px-6 py-3.5 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${emp.is_online ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-gradient-to-br from-gray-300 to-gray-400"}`}>
-                      <span className="text-xs font-bold text-white">{empInitial(emp)}</span>
-                    </div>
+                    <ProfileAvatar
+                      entity={emp}
+                      name={empName(emp)}
+                      size="sm"
+                      variant={emp.is_online ? "emerald" : "neutral"}
+                    />
                     <span className="text-sm font-medium text-gray-900">{empName(emp)}</span>
                   </div>
                 </td>
@@ -450,15 +465,28 @@ const EmployeeActivityTimeline = memo(({ activities, loading: isLoading }) => {
 EmployeeActivityTimeline.displayName = "EmployeeActivityTimeline";
 
 /* --- Employee Profile (Drawer) --- */
-const EmployeeProfile = memo(({ profile, loading: isLoading }) => {
+const EmployeeProfile = memo(({ profile, loading: isLoading, onPhotoUpdated }) => {
   if (isLoading || !profile) return null;
   return (
-    <div className="flex items-center gap-4">
-      <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center ${profile.is_active !== false ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-gradient-to-br from-gray-300 to-gray-400"
-        }`}>
-        <span className="text-xl font-bold text-white">{empInitial(profile)}</span>
-      </div>
-      <div className="flex-1 min-w-0">
+    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+      <ProfilePhotoUpload
+        entity={profile}
+        displayName={empName(profile)}
+        size="2xl"
+        variant={profile.is_active !== false ? "emerald" : "neutral"}
+        online={profile.is_online}
+        onUpload={(file) => uploadEmployeePhoto(profile.id, file)}
+        onPhotoUpdated={(url, data) =>
+          onPhotoUpdated?.({
+            ...profile,
+            ...data,
+            profile_photo_url: data?.profile_photo_url ?? url,
+            profile_photo_updated_at:
+              data?.profile_photo_updated_at ?? profile.profile_photo_updated_at,
+          })
+        }
+      />
+      <div className="flex-1 min-w-0 text-center sm:text-left">
         <p className="text-lg font-bold text-gray-900">{empName(profile)}</p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           {profile.role && (
@@ -557,7 +585,7 @@ const AdminResetSection = memo(({ empId }) => {
         <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-semibold text-blue-800">Admin Password Override</p>
-          <p className="text-xs text-blue-600 mt-0.5">Set a new password directly — no existing password required.</p>
+          <p className="text-xs text-blue-600 mt-0.5">Set a new password directly � no existing password required.</p>
         </div>
       </div>
 
@@ -713,7 +741,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
 
   const setEF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
 
-  // Active / inactive toggle — instant PATCH
+  // Active / inactive toggle � instant PATCH
   const handleToggle = async () => {
     if (toggling) return;
     const newVal = !editForm.is_active;
@@ -730,7 +758,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
     }
   };
 
-  // Save profile changes — PUT
+  // Save profile changes � PUT
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -753,7 +781,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
     }
   };
 
-  // Change password — POST /employees/change-password/
+  // Change password � POST /employees/change-password/
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (pwForm.new_password.length < 8) { setPwError("Password must be at least 8 characters."); return; }
@@ -793,13 +821,16 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
       <div className="fixed inset-0 bg-black/40 z-[9998] transition-opacity" onClick={onClose} />
       <div className="fixed top-0 right-0 h-full w-full sm:w-[500px] bg-white z-[9999] shadow-2xl flex flex-col animate-slide-in">
 
-        {/* ── Drawer Header ── */}
+        {/* -- Drawer Header -- */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between"
           style={{ background: "linear-gradient(135deg, #f8faf9, #ffffff)" }}>
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${profile?.is_online ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-gradient-to-br from-gray-300 to-gray-400"}`}>
-              <span className="text-sm font-bold text-white">{empInitial(profile)}</span>
-            </div>
+            <ProfileAvatar
+              entity={profile}
+              name={empName(profile)}
+              size="lg"
+              variant={profile?.is_online ? "emerald" : "neutral"}
+            />
             <div>
               <p className="text-sm font-bold text-gray-900">{empName(profile)}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -817,7 +848,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
           </button>
         </div>
 
-        {/* ── Tabs ── */}
+        {/* -- Tabs -- */}
         <div className="flex-shrink-0 flex border-b border-gray-100 bg-gray-50/50">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
@@ -827,13 +858,13 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
           ))}
         </div>
 
-        {/* ── Scrollable content ── */}
+        {/* -- Scrollable content -- */}
         <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
 
           {/* DETAILS TAB */}
           {tab === "details" && (
             <div className="p-6 space-y-6">
-              <EmployeeProfile profile={profile} loading={false} />
+              <EmployeeProfile profile={profile} loading={false} onPhotoUpdated={onUpdated} />
               <div>
                 <SectionHead icon={Signal} title="Tracking Summary" subtitle="Real-time status" />
                 <div className="mt-3">
@@ -864,7 +895,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                 </div>
               )}
 
-              {/* Username — read-only identifier */}
+              {/* Username � read-only identifier */}
               <div>
                 <label className={labelCls}>Username</label>
                 <input readOnly className={inputCls + " bg-gray-100 text-gray-500 cursor-default"}
@@ -912,7 +943,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Account Status</p>
                   <p className={`text-xs mt-0.5 font-medium ${editForm.is_active ? "text-emerald-600" : "text-red-500"}`}>
-                    {editForm.is_active ? "Active — employee can log in" : "Inactive — login disabled"}
+                    {editForm.is_active ? "Active � employee can log in" : "Inactive � login disabled"}
                   </p>
                 </div>
                 <button type="button" onClick={handleToggle} disabled={toggling}
@@ -1065,7 +1096,7 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
               <button type="submit" disabled={saving}
                 className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all disabled:opacity-60 active:scale-[0.97]">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                {saving ? "Creating…" : "Create Employee"}
+                {saving ? "Creating�" : "Create Employee"}
               </button>
             </div>
           </form>
@@ -1197,8 +1228,8 @@ export default function Employees() {
       {/* Page Header */}
       <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Employees</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage and monitor your field team &middot; {employees.length} total</p>
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Employees</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Manage and monitor your field team &middot; {employees.length} total</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleRefresh} disabled={refreshing}

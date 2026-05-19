@@ -1,9 +1,21 @@
 import api from "./axios";
-import { unwrapSuccessEnvelope, resolvePaginated } from "../utils/apiUnwrap";
+import { unwrapSuccessEnvelope, resolvePaginated, resolveList } from "../utils/apiUnwrap";
+import { normalizeVisitAttachmentList } from "../utils/visitAttachments";
 import { normalizeVisitRecord, normalizeVisitList, logVisitFarmerBlock } from "../utils/visitFarmer";
 import { isUnreachableError, backendUnavailableMessage } from "../utils/apiBackoff";
+import { reverseGeocodeSafe } from "../utils/reverseGeocode";
+import { locationFieldsForPayload } from "../utils/visitLocation";
 
 const TAG = "[visit.api]";
+
+const LOCATION_FIELDS = [
+  "location_name",
+  "locality",
+  "district",
+  "state",
+  "formatted_address",
+  "address",
+];
 
 const cleanVisitPayload = (data = {}) => {
   const payload = { ...data };
@@ -13,10 +25,30 @@ const cleanVisitPayload = (data = {}) => {
   ["next_visit_date", "visit_date", "visit_time"].forEach((field) => {
     if (payload[field] === "") delete payload[field];
   });
+  LOCATION_FIELDS.forEach((field) => {
+    if (payload[field] === "") delete payload[field];
+  });
+  if (payload.formatted_address && !payload.address) {
+    payload.address = payload.formatted_address;
+  }
   delete payload.employee_id;
   delete payload.employee;
   return payload;
 };
+
+/** Attach resolved address fields before create/update (non-blocking on failure). */
+export async function enrichVisitPayloadWithLocation(payload = {}) {
+  const cleaned = cleanVisitPayload(payload);
+  const hasCoords = cleaned.latitude != null && cleaned.longitude != null;
+  const hasAddress = Boolean(cleaned.formatted_address || cleaned.address);
+  if (!hasCoords || hasAddress) return cleaned;
+
+  const resolved = await reverseGeocodeSafe(cleaned.latitude, cleaned.longitude);
+  return cleanVisitPayload({
+    ...cleaned,
+    ...locationFieldsForPayload(resolved),
+  });
+}
 
 function formatVisitError(err, label) {
   if (isUnreachableError(err)) {
@@ -56,6 +88,18 @@ export const getVisits = async (params = {}) => {
   }
 };
 
+// List visit evidence — GET /admin/visits/{id}/attachments/
+export const getVisitAttachments = async (visitId) => {
+  try {
+    const response = await api.get(`admin/visits/${visitId}/attachments/`);
+    const list = resolveList(response);
+    return normalizeVisitAttachmentList(list);
+  } catch (err) {
+    console.error(TAG, `getVisitAttachments(${visitId}) failed:`, err.response?.status, err.message);
+    throw formatVisitError(err, "Failed to load visit evidence");
+  }
+};
+
 // Get visit detail - GET /admin/visits/{id}/
 export const getVisitDetail = async (id) => {
   try {
@@ -70,14 +114,14 @@ export const getVisitDetail = async (id) => {
 
 // Create visit - POST /visits/
 export const createVisit = async (data) => {
-  const response = await api.post("visits/", cleanVisitPayload(data));
+  const response = await api.post("visits/", await enrichVisitPayloadWithLocation(data));
   const raw = unwrapSuccessEnvelope(response) ?? {};
   return normalizeVisitRecord(raw && typeof raw === "object" ? raw : {});
 };
 
 // Update visit - PATCH /visits/{id}/
 export const updateVisit = async (id, data) => {
-  const response = await api.patch(`visits/${id}/`, cleanVisitPayload(data));
+  const response = await api.patch(`visits/${id}/`, await enrichVisitPayloadWithLocation(data));
   const raw = unwrapSuccessEnvelope(response) ?? {};
   return normalizeVisitRecord(raw && typeof raw === "object" ? raw : {});
 };

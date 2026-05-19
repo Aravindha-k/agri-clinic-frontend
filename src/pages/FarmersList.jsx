@@ -8,20 +8,39 @@ import {
     ChevronDown,
     Users,
     Phone,
-    Sprout,
+    MapPin,
+    Leaf,
+    LandPlot,
     RefreshCw,
     UserPlus,
     Download,
     Eye,
     Pencil,
-    Wheat,
+    Sprout,
+    CalendarDays,
+    ClipboardList,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { PageHeader, FilterBar, FilterField, EmptyState, PageLoader, SkeletonTable } from "../components/ui/command";
+import { PageHeader, FilterBar, EmptyState, PageLoader } from "../components/ui/command";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
+import { asDisplayString, resolveVillageLabel, resolveDistrictLabel } from "../utils/displayValue";
 
-const villageLabel = (f) => f.village || f.village_name || "";
-const phoneLabel = (f) => f.mobile || f.phone || "";
+function FarmerMetaRow({ icon: Icon, tone = "neutral", children }) {
+    return (
+        <div className="list-card-row">
+            <span className={`list-meta-icon list-meta-icon--${tone}`}>
+                <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+            </span>
+            <dd className="truncate min-w-0 leading-snug">{children}</dd>
+        </div>
+    );
+}
+
+const villageLabel = (f) =>
+  asDisplayString(f.village_name ?? resolveVillageLabel(f.village), "");
+const districtPart = (f) => asDisplayString(f.district_name ?? resolveDistrictLabel(f.district), "");
+const phoneLabel = (f) => asDisplayString(f.mobile ?? f.phone, "");
 const visitCountOf = (f) => f.total_visits ?? f.visit_count ?? f.visits ?? 0;
 const landLabel = (f) => {
     const v = f.total_land_area ?? f.land_size ?? f.total_area;
@@ -247,50 +266,57 @@ const FarmersList = () => {
 
     return (
         <div className="page-container">
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Farmers</h1>
-                    <p className="page-subtitle">
-                        {loading
-                            ? "Loading…"
-                            : hasActiveFilters
-                                ? `${filteredFarmers.length} of ${totalCount} farmers match filters`
-                                : `${totalCount} farmers`}
-                    </p>
-                </div>
-                <div className="flex items-center gap-3 flex-wrap justify-end">
-                    {!loading && totalCount > 0 && (
-                        <div className="stat-pill">
-                            <span className="font-bold text-gray-900">{totalCount}</span>
-                            <span className="text-gray-400">Total farmers</span>
-                        </div>
-                    )}
-                    <div className="relative" ref={exportMenuRef}>
-                        <button
-                            type="button"
-                            onClick={() => setExportMenuOpen((v) => !v)}
-                            disabled={filteredFarmers.length === 0}
-                            className="btn btn-secondary btn-md disabled:opacity-50"
-                        >
-                            <Download className="w-4 h-4" /> Export
-                            <ChevronDown className={`w-4 h-4 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
-                        </button>
-                        {exportMenuOpen && filteredFarmers.length > 0 && (
-                            <div className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
-                                <button type="button" onClick={handleExportFarmers} className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-emerald-50">
-                                    Download CSV
-                                </button>
-                                <button type="button" onClick={handleExportFarmersPdf} className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-emerald-50 border-t border-gray-100">
-                                    Download PDF
-                                </button>
+            <PageHeader
+                title={
+                    <span className="inline-flex items-center gap-2.5">
+                        <span className="icon-box w-9 h-9 rounded-lg">
+                            <Sprout className="w-4 h-4" strokeWidth={2} />
+                        </span>
+                        Farmers
+                    </span>
+                }
+                subtitle={
+                    loading
+                        ? "Loading…"
+                        : hasActiveFilters
+                            ? `${filteredFarmers.length} of ${totalCount} farmers match filters`
+                            : `${totalCount} farmers`
+                }
+                actions={
+                    <>
+                        {!loading && totalCount > 0 && (
+                            <div className="stat-pill">
+                                <span className="font-bold text-gray-900">{totalCount}</span>
+                                <span className="text-gray-400">Total farmers</span>
                             </div>
                         )}
-                    </div>
-                    <button type="button" onClick={() => navigate("/farmers/new")} className="btn btn-primary btn-md">
-                        <UserPlus className="w-4 h-4" /> Add Farmer
-                    </button>
-                </div>
-            </div>
+                        <div className="relative" ref={exportMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setExportMenuOpen((v) => !v)}
+                                disabled={filteredFarmers.length === 0}
+                                className="btn btn-secondary btn-md disabled:opacity-50"
+                            >
+                                <Download className="w-4 h-4" /> Export
+                                <ChevronDown className={`w-4 h-4 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+                            </button>
+                            {exportMenuOpen && filteredFarmers.length > 0 && (
+                                <div className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
+                                    <button type="button" onClick={handleExportFarmers} className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-emerald-50">
+                                        Download CSV
+                                    </button>
+                                    <button type="button" onClick={handleExportFarmersPdf} className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-emerald-50 border-t border-gray-100">
+                                        Download PDF
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <button type="button" onClick={() => navigate("/farmers/new")} className="btn btn-primary btn-md">
+                            <UserPlus className="w-4 h-4" /> Add Farmer
+                        </button>
+                    </>
+                }
+            />
 
             <FilterBar>
                 <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
@@ -341,73 +367,73 @@ const FarmersList = () => {
             )}
 
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="section-card p-5 animate-pulse h-48" />
-                    ))}
-                </div>
+                <PageLoader label="Loading farmers…" />
             ) : filteredFarmers.length === 0 ? (
                 <div className="section-card">
-                    <div className="empty-state">
-                        <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-600 font-semibold">No farmers found</p>
-                        {hasActiveFilters && (
-                            <button type="button" onClick={handleClearFilters} className="mt-3 text-sm text-emerald-600 hover:underline">
-                                Clear filters
-                            </button>
-                        )}
-                    </div>
+                    <EmptyState
+                        icon={Users}
+                        title="No farmers found"
+                        action={
+                            hasActiveFilters ? (
+                                <button type="button" onClick={handleClearFilters} className="btn btn-ghost btn-sm text-emerald-600">
+                                    Clear filters
+                                </button>
+                            ) : null
+                        }
+                    />
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div className="list-grid">
                         {paginatedFarmers.map((f) => {
                             const visits = visitCountOf(f);
-                            const location = [villageLabel(f), f.district_name].filter(Boolean).join(", ");
+                            const location = [villageLabel(f), districtPart(f)].filter(Boolean).join(", ");
                             return (
-                                <article key={f.id} className="section-card p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-white text-sm font-black">{(f.name || "F")[0].toUpperCase()}</span>
-                                        </div>
+                                <article key={f.id} className="list-card">
+                                    <div className="flex items-start gap-2.5">
+                                        <ProfileAvatar entity={f} name={f.name || "Farmer"} size="md" variant="teal" />
                                         <div className="min-w-0 flex-1">
-                                            <h2 className="font-semibold text-gray-900 truncate">{f.name || "—"}</h2>
-                                            <p className="text-xs text-gray-500 font-mono mt-0.5 flex items-center gap-1">
-                                                <Phone className="w-3 h-3" /> {phoneLabel(f) || "—"}
+                                            <h2 className="list-card-title">{f.name || "—"}</h2>
+                                            <p className="list-card-meta mt-0.5 flex items-center gap-1.5">
+                                                <span className="list-meta-icon list-meta-icon--neutral">
+                                                    <Phone className="w-3.5 h-3.5" strokeWidth={2} />
+                                                </span>
+                                                <span className="font-mono tabular-nums">{phoneLabel(f) || "—"}</span>
                                             </p>
                                         </div>
                                     </div>
 
-                                    <dl className="space-y-2 text-sm">
+                                    <dl className="space-y-1.5 text-xs text-gray-600">
                                         {location && (
-                                            <div className="flex gap-2 text-gray-600">
-                                                <Sprout className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
-                                                <dd>{location}</dd>
-                                            </div>
+                                            <FarmerMetaRow icon={MapPin} tone="location">
+                                                {location}
+                                            </FarmerMetaRow>
                                         )}
                                         {f.crop_name && (
-                                            <div className="flex gap-2 text-gray-600">
-                                                <Wheat className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
-                                                <dd>{f.crop_name}</dd>
-                                            </div>
+                                            <FarmerMetaRow icon={Leaf} tone="crop">
+                                                {asDisplayString(f.crop_name ?? f.crop)}
+                                            </FarmerMetaRow>
                                         )}
                                         {landLabel(f) && (
-                                            <div className="flex gap-2 text-gray-600">
-                                                <span className="text-gray-400 text-xs font-medium w-4">ac</span>
-                                                <dd>{landLabel(f)}</dd>
-                                            </div>
+                                            <FarmerMetaRow icon={LandPlot} tone="land">
+                                                {landLabel(f)}
+                                            </FarmerMetaRow>
                                         )}
-                                        <div className="flex justify-between gap-4 pt-1 border-t border-gray-50 text-xs text-gray-500">
-                                            <span>Visits: <strong className="text-gray-700">{visits}</strong></span>
-                                            <span>Last: {formatDate(f.latest_visit_date)}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-4 text-xs text-gray-400">
-                                            <span>Added {formatDate(f.created_at)}</span>
-                                            {f.updated_at && <span>Updated {formatDate(f.updated_at)}</span>}
+                                        <div className="flex justify-between gap-3 pt-1.5 border-t border-gray-100 text-xs text-gray-500">
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <ClipboardList className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2} />
+                                                <span>
+                                                    Visits: <strong className="text-gray-700">{visits}</strong>
+                                                </span>
+                                            </span>
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <CalendarDays className="w-3.5 h-3.5 text-slate-400" strokeWidth={2} />
+                                                {formatDate(f.latest_visit_date)}
+                                            </span>
                                         </div>
                                     </dl>
 
-                                    <div className="flex gap-2 mt-auto pt-2">
+                                    <div className="list-card-footer">
                                         <button
                                             type="button"
                                             onClick={() => f.id && navigate(`/farmers/${f.id}`)}
@@ -428,7 +454,7 @@ const FarmersList = () => {
                         })}
                     </div>
 
-                    <div className="section-card px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+                    <div className="section-card px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
                         <p className="pagination-info text-sm text-gray-600">
                             Showing <span className="font-semibold">{startIdx}–{endIdx}</span> of{" "}
                             <span className="font-semibold">{filteredFarmers.length}</span> farmers

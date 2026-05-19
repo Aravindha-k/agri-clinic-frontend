@@ -45,28 +45,19 @@ export default function StatCard({
       style={{ background: gradient }}
     >
       <div
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+        className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-md"
         style={{ background: iconColor }}
       />
-      <div
-        className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.08] pointer-events-none"
-        style={{ background: iconColor }}
-      />
-      <div className="relative z-10">
-        {Icon && (
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-105"
-            style={{ background: iconBg, color: iconColor }}
-          >
-            <Icon className="w-5 h-5" />
-          </div>
-        )}
-        <p className="text-[28px] font-bold text-slate-900 leading-none tabular-nums tracking-tight">
-          {animVal}
-        </p>
-        <p className="mt-1.5 text-[13px] text-slate-500 font-medium">{label}</p>
+      {Icon && (
+        <div className="kpi-card__icon" style={{ background: iconBg, color: iconColor }}>
+          <Icon className="w-3.5 h-3.5" strokeWidth={2.25} />
+        </div>
+      )}
+      <div className="relative z-10 min-w-0 flex-1">
+        <p className="kpi-card__value">{animVal}</p>
+        <p className="kpi-card__label truncate">{label}</p>
         {subValue && (
-          <p className="mt-1 text-[11px] font-semibold" style={{ color: iconColor }}>
+          <p className="kpi-card__sub truncate" style={{ color: iconColor }}>
             {subValue}
           </p>
         )}
