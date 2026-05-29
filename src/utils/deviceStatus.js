@@ -3,8 +3,9 @@
  */
 
 import { formatRouteTimestamp } from "./employeeRoute";
+import { unwrapSuccessEnvelope, getResponseBody } from "./apiUnwrap";
 
-const SAFE_DEVICE_KEYS = new Set([
+const SAFE_DEVICE_KEYS = [
   "device_name",
   "device_model",
   "platform",
@@ -12,52 +13,97 @@ const SAFE_DEVICE_KEYS = new Set([
   "last_login_at",
   "last_seen_at",
   "is_active",
-]);
+];
+
+const EMPTY_DEVICE = {
+  device_name: null,
+  device_model: null,
+  platform: null,
+  app_version: null,
+  last_login_at: null,
+  last_seen_at: null,
+  is_active: false,
+};
+
+function hasText(value) {
+  return value != null && String(value).trim() !== "";
+}
 
 /** Strip sensitive or unknown fields from device_status blobs. */
 export function sanitizeDeviceStatus(raw) {
   if (!raw || typeof raw !== "object") {
-    return {
-      device_name: null,
-      device_model: null,
-      platform: null,
-      app_version: null,
-      last_login_at: null,
-      last_seen_at: null,
-      is_active: false,
-    };
+    return { ...EMPTY_DEVICE };
   }
 
-  const out = {
-    device_name: null,
-    device_model: null,
-    platform: null,
-    app_version: null,
-    last_login_at: null,
-    last_seen_at: null,
-    is_active: false,
-  };
-
+  const out = { ...EMPTY_DEVICE };
   for (const key of SAFE_DEVICE_KEYS) {
-    if (key in raw && raw[key] !== undefined) {
-      out[key] = raw[key];
+    if (key in raw && raw[key] !== undefined && raw[key] !== "") {
+      out[key] = key === "is_active" ? Boolean(raw[key]) : raw[key];
     }
   }
-
-  out.is_active = Boolean(out.is_active);
   return out;
 }
 
+/** Flat legacy fields sometimes present on tracking rows. */
+function legacyDeviceFields(row) {
+  if (!row || typeof row !== "object") return null;
+  const hasAny =
+    hasText(row.device_name) ||
+    hasText(row.device_model) ||
+    hasText(row.platform) ||
+    hasText(row.app_version);
+  if (!hasAny) return null;
+  return {
+    device_name: row.device_name ?? null,
+    device_model: row.device_model ?? null,
+    platform: row.platform ?? null,
+    app_version: row.app_version ?? null,
+    last_login_at: row.last_login_at ?? null,
+    last_seen_at: row.last_seen_at ?? null,
+    is_active: Boolean(row.is_active),
+  };
+}
+
+/** Merge multiple partial device_status sources (richest wins). */
+export function mergeDeviceStatus(...sources) {
+  const merged = { ...EMPTY_DEVICE };
+  let anyActive = false;
+
+  for (const src of sources) {
+    if (!src) continue;
+    const s = sanitizeDeviceStatus(src);
+    if (s.is_active) anyActive = true;
+    for (const key of SAFE_DEVICE_KEYS) {
+      if (key === "is_active") continue;
+      if (hasText(s[key]) || s[key] != null) {
+        if (!hasText(merged[key])) merged[key] = s[key];
+      }
+    }
+  }
+
+  merged.is_active = anyActive;
+  return merged;
+}
+
 export function resolveDeviceStatus(employee, summary) {
-  const fromEmployee = employee?.device_status;
-  const fromSummary = summary?.device_status;
-  const raw =
-    fromEmployee && typeof fromEmployee === "object"
-      ? fromEmployee
-      : fromSummary && typeof fromSummary === "object"
-        ? fromSummary
-        : {};
-  return sanitizeDeviceStatus(raw);
+  return mergeDeviceStatus(
+    employee?.device_status,
+    summary?.device_status,
+    legacyDeviceFields(employee),
+    legacyDeviceFields(summary)
+  );
+}
+
+/** Unwrap summary API body (plain row or { success, data }). */
+export function normalizeEmployeeSummaryResponse(payload) {
+  const body = unwrapSuccessEnvelope(payload) ?? getResponseBody(payload) ?? payload;
+  if (body && typeof body === "object" && body.device_status) {
+    return body;
+  }
+  if (body?.data && typeof body.data === "object") {
+    return body.data;
+  }
+  return body;
 }
 
 export function deviceStatusLabel(isActive) {
@@ -87,4 +133,17 @@ export function formatDeviceTimestamp(value) {
 export function displayValue(value) {
   if (value == null || value === "") return "—";
   return String(value);
+}
+
+export function hasAnyDeviceFields(device) {
+  if (!device) return false;
+  return (
+    device.is_active ||
+    hasText(device.device_name) ||
+    hasText(device.device_model) ||
+    hasText(device.platform) ||
+    hasText(device.app_version) ||
+    hasText(device.last_login_at) ||
+    hasText(device.last_seen_at)
+  );
 }

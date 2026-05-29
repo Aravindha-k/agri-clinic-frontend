@@ -5,6 +5,7 @@ import {
   resolveGpsLastUpdate,
   formatDeviceTimestamp,
   displayValue,
+  hasAnyDeviceFields,
 } from "../../utils/deviceStatus";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
@@ -67,6 +68,13 @@ export default function EmployeeDeviceInfoSection({ employee, summary }) {
           <InfoRow key={row.label} label={row.label} value={row.value} />
         ))}
       </div>
+
+      {!hasAnyDeviceFields(device) ? (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
+          Device name and app details appear after the employee signs in on the mobile app with
+          the latest version. GPS updates can still show without a device session.
+        </p>
+      ) : null}
     </div>
   );
 }

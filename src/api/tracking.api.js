@@ -1,5 +1,6 @@
 import api from "./axios";
 import { unwrapSuccessEnvelope, getResponseBody, resolvePaginated } from "../utils/apiUnwrap";
+import { normalizeEmployeeSummaryResponse } from "../utils/deviceStatus";
 import { resolveGeoFeatures, normalizeTrackingStats } from "../utils/trackingNormalize";
 import {
   normalizeEmployeeRoute,
@@ -96,7 +97,7 @@ export const getEmployeeSummary = async (userId) => {
         const url = `tracking/admin/employee/${userId}/summary/`;
         console.debug(TAG, "getEmployeeSummary →", url);
         const response = await api.get(url);
-        return response.data;
+        return normalizeEmployeeSummaryResponse(response);
     } catch (err) {
         console.error(TAG, `getEmployeeSummary(${userId}) failed:`, err.response?.status, err.message);
         throw err;
