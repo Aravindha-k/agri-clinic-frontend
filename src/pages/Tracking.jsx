@@ -6,6 +6,7 @@ import MapBasemapLayers from "../components/map/MapBasemapLayers";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import EmployeeMapPopup from "../components/map/EmployeeMapPopup";
 import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
+import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate } from "../utils/mapCoordinates";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -49,11 +50,7 @@ import {
     Route,
     Layers,
     TrendingUp,
-    Battery,
-    Globe,
-    Cpu,
     ShieldAlert,
-    Package,
     HeartPulse,
 } from "lucide-react";
 
@@ -298,58 +295,6 @@ const SuspiciousAlert = ({ employee }) => {
 };
 
 /* ================================================================
-   DEVICE INFO CARD (Drawer)
-   ================================================================ */
-const DeviceInfoCard = ({ employee, summary }) => {
-    const batt = employee?.battery_level ?? employee?.battery_percent ?? summary?.battery_level ?? summary?.battery_percent;
-    const network = employee?.network_type ?? summary?.network_type ?? null;
-    const model = employee?.device_model ?? summary?.device_model ?? null;
-    const appVer = employee?.app_version ?? summary?.app_version ?? null;
-
-    const battColor = batt != null
-        ? batt > 50 ? "text-emerald-600" : batt > 20 ? "text-yellow-600" : "text-red-600"
-        : "text-gray-400";
-
-    return (
-        <div className="bg-white rounded-xl p-4 border border-gray-100 space-y-3" style={{ boxShadow: SHADOW }}>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                <Smartphone className="w-3.5 h-3.5 text-indigo-500" /> Device Info
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                    <Battery className={`w-4 h-4 ${battColor}`} />
-                    <div>
-                        <p className="text-[10px] text-gray-400">Battery</p>
-                        <p className={`text-sm font-semibold ${battColor}`}>{batt != null ? `${batt}%` : "N/A"}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-blue-500" />
-                    <div>
-                        <p className="text-[10px] text-gray-400">Network</p>
-                        <p className="text-sm font-semibold text-gray-700">{network || "N/A"}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-purple-500" />
-                    <div>
-                        <p className="text-[10px] text-gray-400">Device</p>
-                        <p className="text-sm font-semibold text-gray-700">{model || "N/A"}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-teal-500" />
-                    <div>
-                        <p className="text-[10px] text-gray-400">App Version</p>
-                        <p className="text-sm font-semibold text-gray-700">{appVer || "N/A"}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-/* ================================================================
    MAP LEGEND
    ================================================================ */
 const MapLegend = () => (
@@ -550,7 +495,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                                     )}
 
                                                     {/* Device Info */}
-                                                    <DeviceInfoCard employee={employee} summary={summary} />
+                                                    <EmployeeDeviceInfoSection employee={employee} summary={summary} />
 
                                                     {/* Distance Today */}
                                                     <div className="bg-white rounded-xl p-4 border border-gray-100" style={{ boxShadow: SHADOW }}>

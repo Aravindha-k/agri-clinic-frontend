@@ -118,9 +118,15 @@ export function normalizeTrackingEmployee(emp) {
   const lng = coords?.lng ?? null;
   const conn = String(emp.connection_status ?? emp.connection ?? "").toUpperCase();
   const work = String(emp.work_status ?? "").toLowerCase();
+  const device_status =
+    emp.device_status && typeof emp.device_status === "object"
+      ? emp.device_status
+      : undefined;
+
   return {
     ...emp,
     user_id: emp.user_id ?? emp.id,
+    device_status,
     connection_status: emp.connection_status ?? emp.connection,
     connection: emp.connection ?? emp.connection_status,
     latitude: lat,
