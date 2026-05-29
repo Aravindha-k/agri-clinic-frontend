@@ -1,10 +1,11 @@
 import { PageLoader } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import { MapContainer, Marker, Popup } from "react-leaflet";
 import MapBasemapLayers from "../components/map/MapBasemapLayers";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import EmployeeMapPopup from "../components/map/EmployeeMapPopup";
+import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
 import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate } from "../utils/mapCoordinates";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -20,7 +21,6 @@ import {
     getDashboardStats,
     getAdminStatus,
     getEmployeeSummary,
-    getEmployeeRoute,
     getEmployeeActivity,
 } from "../api/tracking.api";
 import {
@@ -377,18 +377,16 @@ const MapLegend = () => (
 const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState("summary");
     const [summary, setSummary] = useState(null);
-    const [routeData, setRouteData] = useState(null);
     const [activityData, setActivityData] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const userId = employee?.user_id || employee?.id;
+    const userId = employee?.user_id ?? employee?.id;
 
     /* Reset on open / employee change */
     useEffect(() => {
         if (!isOpen || !userId) return;
         setActiveTab("summary");
         setSummary(null);
-        setRouteData(null);
         setActivityData(null);
         loadSummary();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -398,7 +396,6 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
     useEffect(() => {
         if (!isOpen || !userId) return;
         if (activeTab === "summary" && !summary) loadSummary();
-        if (activeTab === "route" && !routeData) loadRoute();
         if (activeTab === "activity" && !activityData) loadActivity();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
@@ -406,11 +403,6 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
     const loadSummary = async () => {
         setLoading(true);
         try { setSummary(await getEmployeeSummary(userId)); } catch { setSummary(null); }
-        setLoading(false);
-    };
-    const loadRoute = async () => {
-        setLoading(true);
-        try { setRouteData(await getEmployeeRoute(userId)); } catch { setRouteData(null); }
         setLoading(false);
     };
     const loadActivity = async () => {
@@ -495,7 +487,14 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
 
                         {/* ── Tab Content ── */}
                         <div className="flex-1 overflow-y-auto p-5 bg-gray-50">
-                            {loading ? (
+                            {activeTab === "route" ? (
+                                <EmployeeRoutePanel
+                                    userId={userId}
+                                    employee={employee}
+                                    isActive={activeTab === "route"}
+                                    drawerOpen={isOpen}
+                                />
+                            ) : loading ? (
                                 <PageLoader label="Loading employee data…" />
                             ) : (
                                 <>
@@ -571,62 +570,6 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                                 <div className="text-center text-gray-400 py-12">
                                                     <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
                                                     <p>No summary data available</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* ROUTE MAP */}
-                                    {activeTab === "route" && (
-                                        <div className="space-y-4">
-                                            {(routeData?.points?.length > 0 || routeData?.route?.length > 0) ? (
-                                                <div className="h-[400px] rounded-xl overflow-hidden border border-gray-200" style={{ boxShadow: SHADOW }}>
-                                                    <MapContainer
-                                                        center={(() => {
-                                                            const pts = routeData.points || routeData.route || [];
-                                                            if (pts.length > 0) {
-                                                                const p = pts[0];
-                                                                return [p.latitude || p.lat || 11.1, p.longitude || p.lng || 78.6];
-                                                            }
-                                                            return [11.1271, 78.6569];
-                                                        })()}
-                                                        zoom={13}
-                                                        style={{ width: "100%", height: "100%" }}
-                                                    >
-                                                        <MapBasemapLayers />
-                                                        <Polyline
-                                                            positions={(routeData.points || routeData.route || []).map((p) => [
-                                                                p.latitude || p.lat,
-                                                                p.longitude || p.lng,
-                                                            ])}
-                                                            color="#059669"
-                                                            weight={4}
-                                                            opacity={0.8}
-                                                        />
-                                                        {(routeData.points || routeData.route || []).map((p, i, arr) => {
-                                                            if (i === 0 || i === arr.length - 1) {
-                                                                return (
-                                                                    <Marker
-                                                                        key={i}
-                                                                        position={[p.latitude || p.lat, p.longitude || p.lng]}
-                                                                        icon={createColoredIcon(i === 0 ? "#3b82f6" : "#ef4444")}
-                                                                    >
-                                                                        <Popup>
-                                                                            <span className="text-xs font-semibold">
-                                                                                {i === 0 ? "Start" : "Latest"} \u2014 {p.timestamp || p.time || ""}
-                                                                            </span>
-                                                                        </Popup>
-                                                                    </Marker>
-                                                                );
-                                                            }
-                                                            return null;
-                                                        })}
-                                                    </MapContainer>
-                                                </div>
-                                            ) : (
-                                                <div className="text-center text-gray-400 py-12">
-                                                    <Route className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                                                    <p>No route data for today</p>
                                                 </div>
                                             )}
                                         </div>

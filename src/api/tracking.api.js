@@ -1,6 +1,10 @@
 import api from "./axios";
-import { unwrapSuccessEnvelope, getResponseBody } from "../utils/apiUnwrap";
+import { unwrapSuccessEnvelope, getResponseBody, resolvePaginated } from "../utils/apiUnwrap";
 import { resolveGeoFeatures, normalizeTrackingStats } from "../utils/trackingNormalize";
+import {
+  normalizeEmployeeRoute,
+  normalizeRoutePointList,
+} from "../utils/employeeRoute";
 import { isUnreachableError } from "../utils/apiBackoff";
 
 const TAG = "[tracking.api]";
@@ -35,18 +39,45 @@ export const getAdminStatus = async () => {
     }
 };
 
-// Employee route — GET /tracking/admin/employee/<user_id>/route/
-export const getEmployeeRoute = async (userId) => {
+// Employee route — GET /tracking/admin/employee/<user_id>/route/?date=YYYY-MM-DD
+export const getEmployeeRoute = async (userId, { date } = {}) => {
     try {
         const url = `tracking/admin/employee/${userId}/route/`;
-        console.debug(TAG, "getEmployeeRoute →", url);
-        const response = await api.get(url);
-        return response.data;
+        const params = date ? { date } : undefined;
+        console.debug(TAG, "getEmployeeRoute →", url, params ?? "");
+        const response = await api.get(url, { params });
+        return normalizeEmployeeRoute(response);
     } catch (err) {
         console.error(TAG, `getEmployeeRoute(${userId}) failed:`, err.response?.status, err.message);
         throw err;
     }
 };
+
+// Workday GPS trail — GET /tracking/workday/<workday_id>/locations/
+export const getWorkdayLocations = async (workdayId, params = {}) => {
+    try {
+        const response = await api.get(`tracking/workday/${workdayId}/locations/`, {
+            params: { page_size: 500, ...params },
+        });
+        const page = resolvePaginated(response);
+        const points = normalizeRoutePointList(page.results ?? []);
+        return { ...page, points };
+    } catch (err) {
+        console.error(TAG, `getWorkdayLocations(${workdayId}) failed:`, err.response?.status, err.message);
+        throw err;
+    }
+};
+
+/** Paginated fetch of all workday location points (admin fallback for today). */
+export async function fetchAllWorkdayLocations(workdayId) {
+    const combined = [];
+    for (let page = 1; page <= 25; page += 1) {
+        const batch = await getWorkdayLocations(workdayId, { page });
+        combined.push(...(batch.points ?? []));
+        if (!batch.next || !(batch.points?.length)) break;
+    }
+    return combined;
+}
 
 // Employee stats (KPI) — GET /tracking/employee-stats/
 export const getEmployeeStats = async () => {
