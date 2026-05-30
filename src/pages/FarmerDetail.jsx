@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getFarmerDetail, getFarmerFields, getFarmerVisits, uploadFarmerPhoto } from "../api/farmer.api";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
@@ -9,6 +9,9 @@ import {
     TrendingUp,
 } from "lucide-react";
 import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitFarmer";
+import RouteFallback from "../components/RouteFallback";
+
+const FarmerVisitTrendChart = lazy(() => import("../components/farmers/FarmerVisitTrendChart"));
 import {
     resolveCropLabel,
     resolveVillageLabel,
@@ -23,7 +26,7 @@ import autoTable from "jspdf-autotable";
 
 /* --- helpers --- */
 const fmt = (d) => {
-    if (!d) return "�";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 const totalAcreage = (fields) =>
@@ -49,20 +52,20 @@ const InfoRow = ({ icon: Icon, label, value }) => (
         </div>
         <div className="flex-1 min-w-0">
             <div className="text-xs text-gray-400 font-medium">{label}</div>
-            <div className="text-sm font-semibold text-gray-800 mt-0.5">{value || "�"}</div>
+            <div className="text-sm font-semibold text-gray-800 mt-0.5">{value || "—"}</div>
         </div>
     </div>
 );
 
 /* ----------------------------------------
    PDF Generator  (jsPDF v4 + jspdf-autotable v5)
-   autoTable() returns { finalY } � do NOT use doc.lastAutoTable
+   autoTable() returns { finalY } — do NOT use doc.lastAutoTable
 ---------------------------------------- */
 function generatePDF(farmer, fields, visits) {
     const doc = new jsPDF();
     const GREEN = [22, 163, 74];
     const LG = [240, 253, 244];
-    const name = farmer.name || "�";
+    const name = farmer.name || "—";
 
     /* header banner */
     doc.setFillColor(...GREEN);
@@ -81,7 +84,7 @@ function generatePDF(farmer, fields, visits) {
     doc.setFontSize(18).setFont("helvetica", "bold");
     doc.text(name, 20, 52);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(75, 85, 99);
-    doc.text(`Phone: ${farmer.phone || "�"}   District: ${farmer.district_name || resolveDistrictLabel(farmer.district)}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
+    doc.text(`Phone: ${farmer.phone || "—"}   District: ${farmer.district_name || resolveDistrictLabel(farmer.district)}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
 
     /* stats row */
     const stats = [
@@ -107,13 +110,13 @@ function generatePDF(farmer, fields, visits) {
         startY: 112,
         head: [["Field", "Value"]],
         body: [
-            ["Full Name", farmer.name || "�"],
-            ["Phone", farmer.phone || "�"],
-            ["District", farmer.district_name || farmer.district || "�"],
-            ["Village", farmer.village_name || farmer.village || "�"],
-            ["Total Land Area", farmer.total_land_area ? `${farmer.total_land_area} acres` : "�"],
-            ["Soil Type", farmer.soil_type || "�"],
-            ["Irrigation", farmer.irrigation_type || "�"],
+            ["Full Name", farmer.name || "—"],
+            ["Phone", farmer.phone || "—"],
+            ["District", farmer.district_name || farmer.district || "—"],
+            ["Village", farmer.village_name || farmer.village || "—"],
+            ["Total Land Area", farmer.total_land_area ? `${farmer.total_land_area} acres` : "—"],
+            ["Soil Type", farmer.soil_type || "—"],
+            ["Irrigation", farmer.irrigation_type || "—"],
             ["Registered On", fmt(farmer.created_at)],
         ],
         styles: { fontSize: 9, cellPadding: 3 },
@@ -134,7 +137,7 @@ function generatePDF(farmer, fields, visits) {
             head: [["#", "Field Name", "Size (ac)", "Soil Type", "Irrigation"]],
             body: fields.map((f, i) => [
                 i + 1, f.land_name || f.field_name || `Field ${i + 1}`,
-                f.land_size ?? f.field_size ?? "�", f.soil_type || "�", f.irrigation_type || "�",
+                f.land_size ?? f.field_size ?? "—", f.soil_type || "—", f.irrigation_type || "—",
             ]),
             styles: { fontSize: 9, cellPadding: 3 },
             headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold" },
@@ -154,7 +157,7 @@ function generatePDF(farmer, fields, visits) {
             head: [["#", "Date & time", "Crop", "Employee", "Village"]],
             body: visits.map((v, i) => [
                 i + 1,
-                visitWhenLabel(v) !== "�" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at),
+                visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at),
                 v.crop_name || resolveCropLabel(v?.crop),
                 visitEmployeeLabel(v),
                 v.village_name || resolveVillageLabel(v?.village),
@@ -178,10 +181,10 @@ function generatePDF(farmer, fields, visits) {
 }
 
 /* ----------------------------------------
-   Word Generator  (HTML ? .doc blob � no docx package needed)
+   Word Generator  (HTML ? .doc blob — no docx package needed)
 ---------------------------------------- */
 function generateWord(farmer, fields, visits) {
-    const esc = (s) => String(s ?? "�").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const esc = (s) => String(s ?? "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const row = (...cells) => `<tr>${cells.map((c, i) => `<td style="${i === 0 ? "font-weight:bold;background:#f0fdf4;" : ""}">${esc(c)}</td>`).join("")}</tr>`;
 
     const fieldsHtml = fields.length === 0
@@ -197,7 +200,7 @@ function generateWord(farmer, fields, visits) {
         : `<h2 style="color:#166534;border-bottom:2px solid #16a34a;padding-bottom:4px">Visit History (${visits.length})</h2>
            <table border="1" style="border-collapse:collapse;width:100%;font-size:13px">
            <tr style="background:#16a34a;color:white"><th>No.</th><th>Date & time</th><th>Crop</th><th>Employee</th><th>Village</th></tr>
-           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "�" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(v.crop_name || resolveCropLabel(v?.crop))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
+           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(v.crop_name || resolveCropLabel(v?.crop))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
            </table>`;
 
     const html = `
@@ -362,7 +365,7 @@ export default function FarmerDetail() {
     if (!farmer) return (
         <div className="flex flex-col items-center justify-center py-32 px-6">
             <p className="text-gray-500">No farmer found.</p>
-            <button onClick={() => navigate("/farmers")} className="mt-4 text-sm text-emerald-600 hover:underline">? Back to Farmers</button>
+            <button onClick={() => navigate("/farmers")} className="mt-4 text-sm text-emerald-600 hover:underline">Back to Farmers</button>
         </div>
     );
 
@@ -370,10 +373,40 @@ export default function FarmerDetail() {
     const acreage = totalAcreage(fields);
     const lastVisitLabel =
         visits.length > 0
-            ? visitWhenLabel(visits[0]) !== "�"
+            ? visitWhenLabel(visits[0]) !== "\u2014"
                 ? visitWhenLabel(visits[0])
                 : fmt(visits[0]?.visit_date || visits[0]?.created_at)
-            : "�";
+            : "\u2014";
+
+    const lastRecommendation = (() => {
+        for (const v of visits) {
+            const text =
+                v.general_advice ||
+                v.fertilizer_advice ||
+                v.pesticide_advice ||
+                v.irrigation_advice ||
+                v.notes;
+            if (text) return text;
+        }
+        return null;
+    })();
+
+    const assignedEmployee =
+        visits.length > 0 ? visitEmployeeLabel(visits[0]) : farmer.assigned_employee_name || "\u2014";
+
+    const visitTrendData = (() => {
+        const byMonth = {};
+        visits.forEach((v) => {
+            const raw = v.visit_date || v.created_at;
+            if (!raw) return;
+            const d = new Date(raw);
+            const key = d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+            byMonth[key] = (byMonth[key] || 0) + 1;
+        });
+        return Object.entries(byMonth)
+            .slice(-6)
+            .map(([label, count]) => ({ label, count }));
+    })();
 
     const TABS = [
         { id: "info", label: "Overview", icon: User },
@@ -406,7 +439,7 @@ export default function FarmerDetail() {
                             {generating
                                 ? <RefreshCw className="w-4 h-4 animate-spin" />
                                 : <Download className="w-4 h-4" />}
-                            {generating ? `Generating ${generating.toUpperCase()}�` : "Download Report"}
+                            {generating ? `Generating ${generating.toUpperCase()}—` : "Download Report"}
                         </button>
                         {dlOpen && (
                             <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
@@ -428,7 +461,7 @@ export default function FarmerDetail() {
                                     </div>
                                     <div className="text-left">
                                         <div className="font-semibold">Download Word</div>
-                                        <div className="text-xs text-gray-400">.doc � opens in Word</div>
+                                        <div className="text-xs text-gray-400">.doc — opens in Word</div>
                                     </div>
                                 </button>
                             </div>
@@ -463,8 +496,8 @@ export default function FarmerDetail() {
                                 )}
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-emerald-100 mt-1">
-                                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.phone || "�"}</span>
-                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.district_name || farmer.district || "�"}</span>
+                                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.phone || "—"}</span>
+                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.district_name || farmer.district || "—"}</span>
                                 <span className="flex items-center gap-1.5"><Sprout className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.village_name || resolveVillageLabel(farmer.village)}</span>
                                 {farmer.created_at && (
                                     <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />Since {fmt(farmer.created_at)}</span>
@@ -527,6 +560,19 @@ export default function FarmerDetail() {
                             <InfoRow icon={Droplets} label="Irrigation Type" value={farmer.irrigation_type} />
                         </div>
                         <div className="section-card p-3.5">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Farmer Intelligence</h3>
+                            <InfoRow icon={ClipboardList} label="Visit count" value={String(visits.length)} />
+                            <InfoRow icon={Calendar} label="Last visit date" value={lastVisitLabel} />
+                            <InfoRow icon={User} label="Last assigned employee" value={assignedEmployee} />
+                            <InfoRow icon={Leaf} label="Last recommendation" value={lastRecommendation} />
+                            <div className="mt-4">
+                                <p className="text-xs font-semibold text-gray-500 mb-2">Visit trend</p>
+                                <Suspense fallback={<RouteFallback label="Loading chart\u2026" />}>
+                                    <FarmerVisitTrendChart data={visitTrendData} />
+                                </Suspense>
+                            </div>
+                        </div>
+                        <div className="section-card p-3.5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Visit Summary</h3>
                             <div className="space-y-2">
                                 {[
@@ -577,18 +623,18 @@ export default function FarmerDetail() {
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <div className="text-2xl font-black text-emerald-600">{f.land_size ?? f.field_size ?? "�"}</div>
+                                            <div className="text-2xl font-black text-emerald-600">{f.land_size ?? f.field_size ?? "—"}</div>
                                             <div className="text-xs text-gray-400">acres</div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-50">
                                         <div>
                                             <div className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Layers className="w-3 h-3" />Soil Type</div>
-                                            <div className="text-sm font-semibold text-gray-700">{f.soil_type || "�"}</div>
+                                            <div className="text-sm font-semibold text-gray-700">{f.soil_type || "—"}</div>
                                         </div>
                                         <div>
                                             <div className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Droplets className="w-3 h-3" />Irrigation</div>
-                                            <div className="text-sm font-semibold text-gray-700">{f.irrigation_type || "�"}</div>
+                                            <div className="text-sm font-semibold text-gray-700">{f.irrigation_type || "—"}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -628,7 +674,7 @@ export default function FarmerDetail() {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
                                                     <span className="text-sm font-bold text-gray-900">
-                                                        {visitWhenLabel(v) !== "�" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at)}
+                                                        {visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at)}
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-1">
@@ -644,7 +690,7 @@ export default function FarmerDetail() {
                                                             {v.village_name || resolveVillageLabel(v?.village)}
                                                         </span>
                                                     )}
-                                                    {visitEmployeeLabel(v) !== "�" && (
+                                                    {visitEmployeeLabel(v) !== "—" && (
                                                         <span className="flex items-center gap-1">
                                                             <User className="w-3 h-3 text-gray-400" />
                                                             {visitEmployeeLabel(v)}

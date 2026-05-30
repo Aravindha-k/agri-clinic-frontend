@@ -1,316 +1,690 @@
-import { PageLoader } from "../components/ui/command";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, lazy, Suspense } from "react";
+import { Link } from "react-router-dom";
 import { getVisits } from "../api/visit.api";
+import { getEmployeeGeo, getAdminStatus } from "../api/tracking.api";
 import {
-    BarChart3, Users, Leaf, UserCheck, RefreshCw, AlertCircle, TrendingUp,
-    Download, Calendar, MapPin,
+  PageHeader,
+  PageLoader,
+  EmptyState,
+  FilterBar,
+  SkeletonTable,
+  ErrorRetry,
+} from "../components/ui/command";
+import { friendlyErrorMessage } from "../utils/friendlyError";
+import RouteFallback from "../components/RouteFallback";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
+import {
+  buildVisitReportAnalytics,
+  buildGpsComplianceAnalytics,
+  buildRouteAnalytics,
+  filterVisitsByDateRange,
+  topEntries,
+  exportVisitsCsv,
+  exportVisitsExcel,
+} from "../utils/reportsAnalytics";
+import {
+  resolveTrackingEmployeeList,
+  normalizeTrackingEmployee,
+} from "../utils/trackingNormalize";
+import {
+  resolveCropLabel,
+  resolveEmployeeLabel,
+  resolveVillageLabel,
+  resolveFarmerLabel,
+} from "../utils/displayValue";
+import {
+  BarChart3,
+  Users,
+  Leaf,
+  UserCheck,
+  RefreshCw,
+  AlertCircle,
+  TrendingUp,
+  Download,
+  Calendar,
+  MapPin,
+  Route,
+  Paperclip,
+  Navigation,
+  ShieldCheck,
 } from "lucide-react";
+
+const ReportsRouteChart = lazy(() => import("../components/reports/ReportsRouteChart"));
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
-import {
-    resolveCropLabel,
-    resolveEmployeeLabel,
-    resolveVillageLabel,
-    resolveFarmerLabel,
-} from "../utils/displayValue";
+function defaultDateRange() {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - 30);
+  return {
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+  };
+}
 
 function getEmployeeName(item) {
-    return item?.employee_name || resolveEmployeeLabel(item?.employee);
+  return item?.employee_name || resolveEmployeeLabel(item?.employee);
 }
 
 function getCropName(item) {
-    return item?.crop_name || resolveCropLabel(item?.crop);
+  return item?.crop_name || resolveCropLabel(item?.crop);
 }
 
 function getLocationName(item) {
-    return (
-        item?.village_name ||
-        resolveVillageLabel(item?.village) ||
-        item?.district_name ||
-        "—"
-    );
+  return (
+    item?.village_name ||
+    resolveVillageLabel(item?.village) ||
+    item?.district_name ||
+    "\u2014"
+  );
 }
 
 function getVisitDate(item) {
-    return item?.visit_date || item?.created_at || item?.timestamp || item?.start_time || null;
+  return item?.visit_date || item?.created_at || item?.timestamp || item?.start_time || null;
 }
 
 function normalizeReportRow(item, index) {
-    return {
-        ...item,
-        id: item?.id ?? item?.visit_id ?? item?.report_id ?? index + 1,
-        farmer_name: item?.farmer_name || resolveFarmerLabel(item?.farmer),
-        crop: getCropName(item),
-        employee: getEmployeeName(item),
-        location_name: getLocationName(item),
-        visit_date: getVisitDate(item),
-        status: item?.status || item?.visit_status || "pending",
-    };
+  return {
+    ...item,
+    id: item?.id ?? item?.visit_id ?? item?.report_id ?? index + 1,
+    farmer_name: item?.farmer_name || resolveFarmerLabel(item?.farmer),
+    crop: getCropName(item),
+    employee: getEmployeeName(item),
+    location_name: getLocationName(item),
+    visit_date: getVisitDate(item),
+    status: item?.status || item?.visit_status || "pending",
+  };
 }
 
 function StatusBadge({ status }) {
-    const s = (status || "completed").toLowerCase();
-    const cfg = {
-        verified: { cls: "badge badge-success", dot: "bg-emerald-500", label: "Verified" },
-        completed: { cls: "badge badge-success", dot: "bg-emerald-500", label: "Completed" },
-        pending: { cls: "badge badge-warning", dot: "bg-amber-500", label: "Pending" },
-        in_progress: { cls: "badge badge-info", dot: "bg-sky-500", label: "In Progress" },
-    };
-    const c = cfg[s] || cfg.completed;
-    return (
-        <span className={c.cls}>
-            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-            {c.label}
+  const s = (status || "completed").toLowerCase();
+  const cfg = {
+    verified: { cls: "badge badge-success", dot: "bg-emerald-500", label: "Verified" },
+    completed: { cls: "badge badge-success", dot: "bg-emerald-500", label: "Completed" },
+    pending: { cls: "badge badge-warning", dot: "bg-amber-500", label: "Pending" },
+    in_progress: { cls: "badge badge-info", dot: "bg-sky-500", label: "In Progress" },
+  };
+  const c = cfg[s] || cfg.completed;
+  return (
+    <span className={c.cls}>
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+      {c.label}
+    </span>
+  );
+}
+
+function ReportSection({ icon: Icon, title, subtitle, children, action }) {
+  return (
+    <div className="section-card">
+      <div className="section-card-header">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="icon-box">
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="section-title">{title}</h3>
+            {subtitle && <p className="section-subtitle">{subtitle}</p>}
+          </div>
+        </div>
+        {action}
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+function BarRow({ label, count, total, accent = "#166534" }) {
+  const pct = total ? Math.round((count / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm mb-1.5 gap-2">
+        <span className="font-medium text-gray-700 truncate">{label}</span>
+        <span className="text-gray-400 tabular-nums flex-shrink-0">
+          {count} · {pct}%
         </span>
-    );
+      </div>
+      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${accent}, ${accent}99)`,
+          }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default function Reports() {
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [search, setSearch] = useState("");
+  const [data, setData] = useState([]);
+  const [routeDistances, setRouteDistances] = useState([]);
+  const [trackingEmployees, setTrackingEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => defaultDateRange().from);
+  const [dateTo, setDateTo] = useState(() => defaultDateRange().to);
 
-    const load = async () => {
-        setError(null);
-        setLoading(true);
-        try {
-            const visits = await getVisits({ page_size: 200 });
-            const records = Array.isArray(visits) ? visits : [];
-            setData(records.map(normalizeReportRow));
-        } catch (err) {
-            setError(err.message || "Failed to load reports");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const load = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const [visitsR, geoR, adminR] = await Promise.allSettled([
+        getVisits({ page_size: 500 }),
+        getEmployeeGeo(),
+        getAdminStatus(),
+      ]);
 
-    useEffect(() => { load(); }, []);
+      if (visitsR.status === "fulfilled") {
+        const body = visitsR.value ?? {};
+        const records = Array.isArray(body.results) ? body.results : [];
+        setData(records.map(normalizeReportRow));
+      } else {
+        throw visitsR.reason;
+      }
 
-    const analytics = useMemo(() => {
-        if (!Array.isArray(data) || data.length === 0) return {
-            totalVisits: 0, totalFarmers: 0, cropTypes: {}, visitsByEmployee: {}
-        };
-        const cropTypes = {}, visitsByEmployee = {};
-        const farmerSet = new Set();
-        data.forEach((item) => {
-            if (item.crop) cropTypes[item.crop] = (cropTypes[item.crop] || 0) + 1;
-            if (item.employee) visitsByEmployee[item.employee] = (visitsByEmployee[item.employee] || 0) + 1;
-            if (item.farmer_name) farmerSet.add(item.farmer_name);
-        });
-        return { totalVisits: data.length, totalFarmers: farmerSet.size, cropTypes, visitsByEmployee };
-    }, [data]);
+      if (geoR.status === "fulfilled") {
+        const features = geoR.value?.features ?? [];
+        const rows = features
+          .map((f) => {
+            const p = f.properties ?? f;
+            const name =
+              p.employee_name ||
+              [p.first_name, p.last_name].filter(Boolean).join(" ") ||
+              p.username ||
+              "Employee";
+            const km =
+              p.today_distance_km ??
+              p.distance_km ??
+              p.total_distance_km ??
+              null;
+            return { name, km: km != null ? Number(km) : null };
+          })
+          .filter((r) => r.km != null && r.km > 0);
+        setRouteDistances(rows);
+      } else {
+        setRouteDistances([]);
+      }
 
-    const filtered = useMemo(() => {
-        if (!search.trim()) return data;
-        const q = search.toLowerCase();
-        return data.filter((r) =>
-            (r.farmer_name || "").toLowerCase().includes(q) ||
-            (r.crop || "").toLowerCase().includes(q) ||
-            (r.employee || "").toLowerCase().includes(q) ||
-            (r.location_name || "").toLowerCase().includes(q) ||
-            String(r.id || "").includes(q)
+      if (adminR.status === "fulfilled") {
+        setTrackingEmployees(
+          resolveTrackingEmployeeList(adminR.value).map(normalizeTrackingEmployee)
         );
-    }, [data, search]);
-
-    const kpis = [
-        { icon: BarChart3, label: "Total Visits", value: analytics.totalVisits, accent: "#166534", gradient: "linear-gradient(135deg,#fff 0%,#f0fdf4 100%)", iconBg: "#dcfce7" },
-        { icon: Users, label: "Farmers Served", value: analytics.totalFarmers, accent: "#2563eb", gradient: "linear-gradient(135deg,#fff 0%,#eff6ff 100%)", iconBg: "#dbeafe" },
-        { icon: Leaf, label: "Crop Types", value: Object.keys(analytics.cropTypes).length, accent: "#ca8a04", gradient: "linear-gradient(135deg,#fff 0%,#fefce8 100%)", iconBg: "#fef9c3" },
-        { icon: UserCheck, label: "Field Agents", value: Object.keys(analytics.visitsByEmployee).length, accent: "#7c3aed", gradient: "linear-gradient(135deg,#fff 0%,#f5f3ff 100%)", iconBg: "#ede9fe" },
-    ];
-
-    if (loading) {
-        return (
-            <div className="page-container">
-                <PageLoader label="Loading reports…" />
-            </div>
-        );
+      } else {
+        setTrackingEmployees([]);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to load reports");
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
+    load();
+  }, []);
+
+  const dateFiltered = useMemo(
+    () => filterVisitsByDateRange(data, dateFrom, dateTo),
+    [data, dateFrom, dateTo]
+  );
+
+  const analytics = useMemo(
+    () => buildGpsComplianceAnalytics(dateFiltered, trackingEmployees),
+    [dateFiltered, trackingEmployees]
+  );
+
+  const routeAnalytics = useMemo(
+    () => buildRouteAnalytics(routeDistances),
+    [routeDistances]
+  );
+
+  const routeChartData = useMemo(
+    () =>
+      routeAnalytics.mostActive.map((r) => ({
+        label: r.name.split(" ")[0] || r.name,
+        km: Number(r.km.toFixed(1)),
+      })),
+    [routeAnalytics]
+  );
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return dateFiltered;
+    const q = search.toLowerCase();
+    return dateFiltered.filter(
+      (r) =>
+        (r.farmer_name || "").toLowerCase().includes(q) ||
+        (r.crop || "").toLowerCase().includes(q) ||
+        (r.employee || "").toLowerCase().includes(q) ||
+        (r.location_name || "").toLowerCase().includes(q) ||
+        String(r.id || "").includes(q)
+    );
+  }, [dateFiltered, search]);
+
+  const totalRouteKm = routeAnalytics.totalKm;
+
+  const kpis = [
+    {
+      icon: BarChart3,
+      label: "Total Visits",
+      value: analytics.totalVisits,
+      accent: "#166534",
+      gradient: "linear-gradient(135deg,#fff 0%,#f0fdf4 100%)",
+      iconBg: "#dcfce7",
+    },
+    {
+      icon: Users,
+      label: "Farmers Served",
+      value: analytics.totalFarmers,
+      accent: "#2563eb",
+      gradient: "linear-gradient(135deg,#fff 0%,#eff6ff 100%)",
+      iconBg: "#dbeafe",
+    },
+    {
+      icon: ShieldCheck,
+      label: "GPS Compliance",
+      value: `${analytics.gpsCompliancePct}%`,
+      accent: "#0e7490",
+      gradient: "linear-gradient(135deg,#fff 0%,#ecfeff 100%)",
+      iconBg: "#cffafe",
+    },
+    {
+      icon: Paperclip,
+      label: "With Evidence",
+      value: analytics.visitsWithEvidence,
+      accent: "#7c3aed",
+      gradient: "linear-gradient(135deg,#fff 0%,#f5f3ff 100%)",
+      iconBg: "#ede9fe",
+    },
+  ];
+
+  if (loading) {
     return (
-        <div className="page-container">
-            {/* ── Header ── */}
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Analytics & Reports</h1>
-                    <p className="page-subtitle">Overview of field visits, farmer coverage, crop activity, and recent visit records</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button className="btn btn-secondary btn-md">
-                        <Download className="w-4 h-4" /> Export
-                    </button>
-                    <button onClick={() => load()} className="btn btn-primary btn-md">
-                        <RefreshCw className="w-4 h-4" /> Refresh
-                    </button>
-                </div>
+      <div className="page-container space-y-4">
+        <PageHeader title="Analytics & Reports" subtitle="Loading report data\u2026" />
+        <SkeletonTable rows={8} cols={4} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-container">
+      <PageHeader
+        title="Analytics & Reports"
+        subtitle="Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity"
+        badge={
+          <span className="command-hero-badge">
+            <BarChart3 className="w-3 h-3" /> Operations
+          </span>
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => exportVisitsExcel(filtered)}
+              disabled={!filtered.length}
+              className="btn btn-secondary btn-md disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" /> Export Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => exportVisitsCsv(filtered)}
+              disabled={!filtered.length}
+              className="btn btn-secondary btn-md disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" /> Export CSV
+            </button>
+            <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
+              <RefreshCw className="w-4 h-4" /> Refresh
+            </button>
+          </>
+        }
+      />
+
+      {error && (
+        <ErrorRetry
+          compact
+          message={friendlyErrorMessage(error, "Couldn't load reports. Please try again.")}
+          onRetry={load}
+        />
+      )}
+
+      <FilterBar>
+        <div className="flex flex-col lg:flex-row gap-3 items-end">
+          <div>
+            <label htmlFor="report-from" className="block text-xs font-semibold text-gray-500 mb-1">
+              From
+            </label>
+            <input
+              id="report-from"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="search-input w-full sm:w-auto"
+            />
+          </div>
+          <div>
+            <label htmlFor="report-to" className="block text-xs font-semibold text-gray-500 mb-1">
+              To
+            </label>
+            <input
+              id="report-to"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="search-input w-full sm:w-auto"
+            />
+          </div>
+          <p className="text-xs text-gray-500 lg:ml-auto pb-2">
+            {dateFiltered.length} visits in selected range
+          </p>
+        </div>
+      </FilterBar>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map(({ icon: Icon, label, value, accent, gradient, iconBg }) => (
+          <div
+            key={label}
+            className="mini-kpi-card group cursor-default"
+            style={{ background: gradient, boxShadow: SHADOW }}
+          >
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+              style={{ background: accent }}
+            />
+            <div
+              className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]"
+              style={{ background: accent }}
+            />
+            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
+              <Icon className="w-4 h-4" />
             </div>
-
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
-                This page is for admin reporting on visit activity. It summarizes real visit records created by field agents and shows recent records for review.
+            <p className="mini-kpi-value">{value}</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="mini-kpi-label">{label}</p>
+              <TrendingUp className="w-3 h-3 text-gray-300" />
             </div>
+          </div>
+        ))}
+      </div>
 
-            {error && (
-                <div className="alert-error">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-                    <button onClick={() => load()} className="ml-auto font-semibold hover:underline">Retry</button>
-                </div>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ReportSection
+          icon={UserCheck}
+          title="Visits by Employee"
+          subtitle={`${Object.keys(analytics.visitsByEmployee).length} field agents`}
+        >
+          {topEntries(analytics.visitsByEmployee).length === 0 ? (
+            <EmptyState icon={Users} title="No visit data" subtitle="Visits will appear once field agents submit records." />
+          ) : (
+            <div className="space-y-3">
+              {topEntries(analytics.visitsByEmployee).map(([name, count]) => (
+                <BarRow key={name} label={name} count={count} total={analytics.totalVisits} accent="#7c3aed" />
+              ))}
+            </div>
+          )}
+        </ReportSection>
 
-            {/* ── KPI Cards ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {kpis.map(({ icon: Icon, label, value, accent, gradient, iconBg }) => (
-                    <div key={label} className="mini-kpi-card group cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
-                        <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-                        <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
-                        <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
-                            <Icon className="w-4 h-4" />
-                        </div>
-                        <p className="mini-kpi-value">{value}</p>
-                        <div className="flex items-center justify-between mt-1">
-                            <p className="mini-kpi-label">{label}</p>
-                            <TrendingUp className="w-3 h-3 text-gray-300" />
-                        </div>
-                    </div>
+        <ReportSection
+          icon={MapPin}
+          title="Farmer Coverage"
+          subtitle={`${analytics.villagesCovered} villages · ${analytics.totalFarmers} farmers`}
+        >
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+              <p className="text-2xl font-bold text-emerald-800 tabular-nums">{analytics.totalFarmers}</p>
+              <p className="text-xs text-emerald-600 mt-1">Unique farmers</p>
+            </div>
+            <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center">
+              <p className="text-2xl font-bold text-sky-800 tabular-nums">{analytics.villagesCovered}</p>
+              <p className="text-xs text-sky-600 mt-1">Villages covered</p>
+            </div>
+          </div>
+          {Object.keys(analytics.cropTypes).length > 0 ? (
+            <div className="space-y-3">
+              {topEntries(analytics.cropTypes, 5).map(([crop, count]) => (
+                <BarRow key={crop} label={crop} count={count} total={analytics.totalVisits} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={Leaf} title="No crop data" subtitle="Crop distribution appears when visits include crop info." />
+          )}
+        </ReportSection>
+
+        <ReportSection
+          icon={ShieldCheck}
+          title="GPS Compliance Report"
+          subtitle={`${analytics.gpsCompliant} of ${analytics.totalVisits} visits tagged · ${analytics.trackingUptimePct}% uptime`}
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div
+              className="relative w-20 h-20 rounded-full flex items-center justify-center"
+              style={{
+                background: `conic-gradient(#059669 ${analytics.gpsCompliancePct * 3.6}deg, #e5e7eb 0)`,
+              }}
+            >
+              <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center">
+                <span className="text-lg font-bold text-emerald-700">{analytics.gpsCompliancePct}%</span>
+              </div>
+            </div>
+            <div className="text-sm text-gray-600 space-y-1">
+              <p>
+                <span className="font-semibold text-gray-900">{analytics.gpsDisabledIncidents}</span> GPS incidents
+              </p>
+              <p>
+                Tracking uptime:{" "}
+                <span className="font-semibold text-emerald-700">{analytics.trackingUptimePct}%</span>
+              </p>
+            </div>
+          </div>
+        </ReportSection>
+
+        <ReportSection
+          icon={Paperclip}
+          title="Attachment Upload Report"
+          subtitle={`${analytics.attachmentTotal} files across ${analytics.visitsWithEvidence} visits`}
+        >
+          <div className="grid grid-cols-3 gap-3 mb-2">
+            <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center">
+              <p className="text-xl font-bold text-violet-800 tabular-nums">{analytics.visitsWithEvidence}</p>
+              <p className="text-[10px] text-violet-600 mt-1">Visits w/ files</p>
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-center">
+              <p className="text-xl font-bold text-amber-800 tabular-nums">{analytics.attachmentTotal}</p>
+              <p className="text-[10px] text-amber-600 mt-1">Total files</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+              <p className="text-xl font-bold text-gray-800 tabular-nums">{analytics.evidenceRatePct}%</p>
+              <p className="text-[10px] text-gray-500 mt-1">Evidence rate</p>
+            </div>
+          </div>
+        </ReportSection>
+      </div>
+
+      <ReportSection
+        icon={Route}
+        title="Route Distance Report"
+        subtitle="Today's tracked field distance by employee"
+        action={
+          <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
+            <Navigation className="w-3.5 h-3.5" /> Route History
+          </Link>
+        }
+      >
+        {routeDistances.length === 0 ? (
+          <EmptyState
+            icon={Route}
+            title="No route distance data"
+            subtitle="Distances appear when employees share GPS during active workdays."
+            action={
+              <Link to="/tracking" className="btn btn-primary btn-sm">
+                Open Live Tracking
+              </Link>
+            }
+          />
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-center">
+                <p className="text-xl font-bold text-indigo-800 tabular-nums">{totalRouteKm.toFixed(1)} km</p>
+                <p className="text-[10px] text-indigo-600 mt-1">Total today</p>
+              </div>
+              <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center">
+                <p className="text-xl font-bold text-sky-800 tabular-nums">{routeAnalytics.avgKm.toFixed(1)} km</p>
+                <p className="text-[10px] text-sky-600 mt-1">Avg per employee</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center col-span-2 sm:col-span-2">
+                <p className="text-sm font-bold text-emerald-800 truncate">
+                  {routeAnalytics.topDistance?.name || "\u2014"}
+                </p>
+                <p className="text-[10px] text-emerald-600 mt-1">
+                  Top distance
+                  {routeAnalytics.topDistance ? ` · ${routeAnalytics.topDistance.km.toFixed(1)} km` : ""}
+                </p>
+              </div>
+            </div>
+            <Suspense fallback={<RouteFallback label="Loading route chart\u2026" />}>
+              <ReportsRouteChart data={routeChartData} />
+            </Suspense>
+            <div className="space-y-3 mt-4">
+              {routeDistances
+                .sort((a, b) => b.km - a.km)
+                .slice(0, 8)
+                .map((r) => (
+                  <div key={r.name} className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700 truncate">{r.name}</span>
+                    <span className="font-semibold text-indigo-700 tabular-nums">{r.km.toFixed(1)} km</span>
+                  </div>
                 ))}
             </div>
+          </>
+        )}
+      </ReportSection>
 
-            {/* ── Top crops bar ── */}
-            {Object.keys(analytics.cropTypes).length > 0 && (
-                <div className="section-card">
-                    <div className="section-card-header">
-                        <div className="flex items-center gap-3">
-                            <div className="icon-box"><Leaf className="w-4 h-4" /></div>
-                            <div>
-                                <h3 className="section-title">Crop Distribution</h3>
-                                <p className="section-subtitle">{Object.keys(analytics.cropTypes).length} crop types tracked</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="p-6 space-y-3">
-                        {Object.entries(analytics.cropTypes)
-                            .sort(([, a], [, b]) => b - a)
-                            .slice(0, 6)
-                            .map(([crop, count]) => {
-                                const pct = Math.round((count / analytics.totalVisits) * 100);
-                                return (
-                                    <div key={crop}>
-                                        <div className="flex items-center justify-between text-sm mb-1.5">
-                                            <span className="font-medium text-gray-700">{crop}</span>
-                                            <span className="text-gray-400 tabular-nums">{count} visits · {pct}%</span>
-                                        </div>
-                                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-700"
-                                                style={{ width: `${pct}%`, background: "linear-gradient(90deg, #166534, #22c55e)" }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        }
-                    </div>
-                </div>
-            )}
-
-            {/* ── Data Table ── */}
-            <div className="section-card">
-                <div className="section-card-header">
-                    <div className="flex items-center gap-3">
-                        <div className="icon-box"><BarChart3 className="w-4 h-4" /></div>
-                        <div>
-                            <h3 className="section-title">Visit Records</h3>
-                            <p className="section-subtitle">{filtered.length} records</p>
-                        </div>
-                    </div>
-                    {/* Inline search */}
-                    <div className="relative w-56">
-                        <input
-                            type="text"
-                            placeholder="Search records…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="search-input"
-                            style={{ paddingLeft: "2.25rem" }}
-                        />
-                        <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                    </div>
-                </div>
-                <div className="table-container">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Farmer</th>
-                                <th>Crop</th>
-                                <th>Location</th>
-                                <th>Agent</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.length > 0 ? (
-                                filtered.slice(0, 50).map((item, idx) => (
-                                    <tr key={idx}>
-                                        <td>
-                                            <span className="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">
-                                                #{item.id}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                                    {(item.farmer_name || "F")[0].toUpperCase()}
-                                                </div>
-                                                <span className="font-medium text-gray-900">{item.farmer_name || "—"}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                                <Leaf className="w-3 h-3" />{item.crop || "—"}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <MapPin className="w-3 h-3 text-gray-300 flex-shrink-0" />
-                                                {item.location_name || "—"}
-                                            </span>
-                                        </td>
-                                        <td className="text-gray-600">{item.employee || "—"}</td>
-                                        <td>
-                                            <span className="flex items-center gap-1.5 text-gray-500 text-xs">
-                                                <Calendar className="w-3 h-3 text-gray-300" />
-                                                {item.visit_date
-                                                    ? new Date(item.visit_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
-                                                    : "—"}
-                                            </span>
-                                        </td>
-                                        <td><StatusBadge status={item.status} /></td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="7" className="py-16 text-center">
-                                        <div className="empty-state py-0">
-                                            <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-3">
-                                                <BarChart3 className="w-6 h-6 text-gray-300" />
-                                            </div>
-                                            <p className="text-gray-500 font-medium">No records found</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                {filtered.length > 50 && (
-                    <div className="px-6 py-3 border-t border-gray-50 text-xs text-gray-400 text-center">
-                        Showing first 50 of {filtered.length} records
-                    </div>
-                )}
+      <div className="section-card">
+        <div className="section-card-header">
+          <div className="flex items-center gap-3">
+            <div className="icon-box">
+              <BarChart3 className="w-4 h-4" />
             </div>
+            <div>
+              <h3 className="section-title">Visit Records</h3>
+              <p className="section-subtitle">{filtered.length} records</p>
+            </div>
+          </div>
+          <div className="relative w-56">
+            <input
+              type="text"
+              placeholder="Search records\u2026"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="search-input"
+              style={{ paddingLeft: "2.25rem" }}
+            />
+            <svg
+              className="search-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </div>
         </div>
-    );
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Farmer</th>
+                <th>Crop</th>
+                <th>Location</th>
+                <th>Agent</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length > 0 ? (
+                filtered.slice(0, 50).map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <span className="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">
+                        #{item.id}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2.5">
+                        <ProfileAvatar entity={item.farmer ?? item} name={item.farmer_name} size="xs" />
+                        <span className="font-medium text-gray-900">{item.farmer_name || "\u2014"}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        <Leaf className="w-3 h-3" />
+                        {item.crop || "\u2014"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="flex items-center gap-1.5 text-gray-500 text-xs">
+                        <MapPin className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                        {item.location_name || "\u2014"}
+                      </span>
+                    </td>
+                    <td className="text-gray-600">{item.employee || "\u2014"}</td>
+                    <td>
+                      <span className="flex items-center gap-1.5 text-gray-500 text-xs">
+                        <Calendar className="w-3 h-3 text-gray-300" />
+                        {item.visit_date
+                          ? new Date(item.visit_date).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                            })
+                          : "\u2014"}
+                      </span>
+                    </td>
+                    <td>
+                      <StatusBadge status={item.status} />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7">
+                    <EmptyState
+                      icon={BarChart3}
+                      title="No records found"
+                      subtitle={search ? "Try a different search term or date range." : "Visit records will appear here once field agents submit visits."}
+                      action={
+                        search || dateFrom || dateTo ? (
+                          <button type="button" onClick={() => { setSearch(""); load(); }} className="btn btn-secondary btn-md">
+                            Reset filters
+                          </button>
+                        ) : (
+                          <Link to="/visits" className="btn btn-primary btn-md">
+                            View visits
+                          </Link>
+                        )
+                      }
+                    />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length > 50 && (
+          <div className="px-6 py-3 border-t border-gray-50 text-xs text-gray-400 text-center">
+            Showing first 50 of {filtered.length} records
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

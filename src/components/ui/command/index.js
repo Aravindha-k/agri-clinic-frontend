@@ -11,3 +11,4 @@ export { default as GpsIndicator } from "./GpsIndicator";
 export { default as Timeline } from "./Timeline";
 export { default as MapPanel, MapPanelHeader } from "./MapPanel";
 export { default as DataTable } from "./DataTable";
+export { default as ErrorRetry } from "../ErrorRetry";

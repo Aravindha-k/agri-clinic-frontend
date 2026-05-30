@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { getVisits } from "../api/visit.api";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -14,9 +14,11 @@ import {
   FilterBar,
   EmptyState,
   GpsIndicator,
-  PageLoader,
   SkeletonCard,
+  SkeletonTable,
 } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 import VisitListCard from "../components/visits/VisitListCard";
 import {
   Search,
@@ -34,6 +36,41 @@ import {
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 
 const PAGE_SIZE = 12;
+
+const DATE_CHIPS = [
+  { id: "all", label: "All time" },
+  { id: "today", label: "Today" },
+  { id: "week", label: "This week" },
+  { id: "month", label: "This month" },
+];
+
+function visitDateValue(v) {
+  const raw = v?.visit_date ?? v?.created_at ?? v?.timestamp;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function matchesDateChip(v, chip) {
+  if (chip === "all") return true;
+  const d = visitDateValue(v);
+  if (!d) return false;
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  if (chip === "today") {
+    return d >= start;
+  }
+  if (chip === "week") {
+    start.setDate(start.getDate() - 7);
+    return d >= start;
+  }
+  if (chip === "month") {
+    start.setMonth(start.getMonth() - 1);
+    return d >= start;
+  }
+  return true;
+}
 
 function VisitRow({ v, onView }) {
   const farmer = resolveVisitFarmer(v);
@@ -105,6 +142,7 @@ export default function Visits() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
+  const [dateChip, setDateChip] = useState("all");
 
   const loadVisits = useCallback(
     async (pageNum = 1) => {
@@ -138,6 +176,11 @@ export default function Visits() {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state?.refreshVisits, loadVisits, page, navigate, location.pathname]);
+
+  const filteredVisits = useMemo(
+    () => visits.filter((v) => matchesDateChip(v, dateChip)),
+    [visits, dateChip]
+  );
 
   const handleView = (id) => navigate(`/visits/${id}`);
 
@@ -177,13 +220,31 @@ export default function Visits() {
             <span className="text-gray-400">Submitted visits</span>
           </div>
           <div className="stat-pill">
-            <span className="font-bold text-gray-900">{visits.length}</span>
-            <span className="text-gray-400">On this page</span>
+            <span className="font-bold text-gray-900">{filteredVisits.length}</span>
+            <span className="text-gray-400">
+              {dateChip === "all" ? "On this page" : "Matching filter"}
+            </span>
           </div>
         </div>
       )}
 
       <FilterBar>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {DATE_CHIPS.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => setDateChip(chip.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                dateChip === chip.id
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:text-emerald-700"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="search-wrapper flex-1">
             <Search className="search-icon" />
@@ -249,16 +310,11 @@ export default function Visits() {
       </FilterBar>
 
       {error && (
-        <div className="alert-error">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-          <button
-            type="button"
-            onClick={() => loadVisits(page)}
-            className="ml-auto font-semibold hover:underline"
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorRetry
+          compact
+          message={friendlyErrorMessage(error, "Couldn't load visits. Please try again.")}
+          onRetry={() => loadVisits(page)}
+        />
       )}
 
       {loading ? (
@@ -269,37 +325,46 @@ export default function Visits() {
             ))}
           </div>
         ) : (
-          <PageLoader label="Loading field visits…" />
+          <SkeletonTable rows={8} cols={8} />
         )
-      ) : visits.length === 0 ? (
+      ) : filteredVisits.length === 0 ? (
         <div className="section-card">
           <EmptyState
             icon={Calendar}
-            title="No submitted visits"
+            title={search || dateChip !== "all" ? "No visits match your filters" : "No field visits yet"}
             subtitle={
-              search
-                ? "Try a different search term"
-                : "When employees submit visits from the mobile app, each visit appears here as its own record"
+              search || dateChip !== "all"
+                ? "Try a different search term or date range."
+                : "Visits appear here when field agents submit them from the mobile app."
             }
             action={
-              search ? (
+              search || dateChip !== "all" ? (
                 <button
                   type="button"
                   onClick={() => {
                     setSearch("");
+                    setDateChip("all");
                     setPage(1);
                   }}
                   className="btn btn-secondary btn-md"
                 >
-                  <X className="w-4 h-4" /> Clear search
+                  <X className="w-4 h-4" /> Clear filters
                 </button>
-              ) : null
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate("/tracking")}
+                  className="btn btn-primary btn-md"
+                >
+                  Open live tracking
+                </button>
+              )
             }
           />
         </div>
       ) : viewMode === "grid" ? (
         <div className="list-grid list-grid--visits">
-          {visits.map((v) => (
+          {filteredVisits.map((v) => (
             <VisitListCard key={`visit-${v.id}`} visit={v} onView={handleView} />
           ))}
         </div>
@@ -321,7 +386,7 @@ export default function Visits() {
                 </tr>
               </thead>
               <tbody>
-                {visits.map((v) => (
+                {filteredVisits.map((v) => (
                   <VisitRow key={`visit-${v.id}`} v={v} onView={handleView} />
                 ))}
               </tbody>
@@ -330,7 +395,7 @@ export default function Visits() {
         </div>
       )}
 
-      {!loading && visits.length > 0 && (
+      {!loading && filteredVisits.length > 0 && (
         <div className="pagination">
           <span className="pagination-info">
             Showing <span className="font-semibold text-gray-700">{showingFrom}–{showingTo}</span> of{" "}

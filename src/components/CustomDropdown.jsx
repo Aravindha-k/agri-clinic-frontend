@@ -21,11 +21,6 @@ export default function CustomDropdown({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Debug: log options
-    useEffect(() => {
-        console.log("CustomDropdown options:", options);
-    }, [options]);
-
     const selected = options.find((opt) => opt.id === value);
 
     return (

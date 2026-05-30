@@ -1,5 +1,6 @@
 import React from "react";
 import AgriLoader from "./command/AgriLoader";
+import CanonicalEmptyState from "./command/EmptyState";
 
 export function PageSpinner({ message = "Loading…" }) {
   return (
@@ -36,19 +37,8 @@ export function ErrorMessage({ error, onRetry }) {
   );
 }
 
-export function EmptyState({ icon: Icon, title = "No data found", subtitle, action }) {
-  return (
-    <div className="bg-white rounded-2xl p-16 text-center" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)" }}>
-      {Icon && (
-        <div className="w-20 h-20 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-5">
-          <Icon className="w-9 h-9 text-gray-300" />
-        </div>
-      )}
-      <p className="text-base font-semibold text-gray-500">{title}</p>
-      {subtitle && <p className="text-sm text-gray-400 mt-1">{subtitle}</p>}
-      {action}
-    </div>
-  );
+export function EmptyState(props) {
+  return <CanonicalEmptyState {...props} />;
 }
 
 export function TableSkeleton({ cols = 5, rows = 8 }) {

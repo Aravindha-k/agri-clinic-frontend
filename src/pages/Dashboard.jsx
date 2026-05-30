@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { unwrapSuccessEnvelope, resolveList } from "../utils/apiUnwrap";
 import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getDashboardChartStats, getVisitTrends } from "../api/dashboard.api";
@@ -6,11 +6,20 @@ import {
   getEmployeeGeo,
   getWorkdayHistory,
   getDashboardStats as getTrackingDashboardStats,
+  getAdminStatus,
 } from "../api/tracking.api";
+import { getFarmers } from "../api/farmer.api";
 import {
   resolveGeoFeatures,
   normalizeTrackingStats,
+  resolveTrackingEmployeeList,
+  normalizeTrackingEmployee,
 } from "../utils/trackingNormalize";
+import {
+  buildLiveOpsStats,
+  buildOpsAlerts,
+  buildUnifiedActivityFeed,
+} from "../utils/dashboardOps";
 import {
   resolveVisitFarmer,
   normalizeVisitList,
@@ -18,9 +27,9 @@ import {
   visitEmployeeLabel,
 } from "../utils/visitFarmer";
 import { resolveCropLabel, resolveVillageLabel } from "../utils/displayValue";
-import { PageHeader, PageLoader, OpsStatusBadge, GpsIndicator } from "../components/ui/command";
+import { PageHeader, PageLoader, OpsStatusBadge, GpsIndicator, EmptyState } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
-import ChartContainer from "../components/ui/ChartContainer";
+import RouteFallback from "../components/RouteFallback";
 import { getVisits } from "../api/visit.api";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
 import {
@@ -28,22 +37,18 @@ import {
   recordApiSuccess,
   isUnreachableError,
 } from "../utils/apiBackoff";
-import { MapContainer, Marker, Popup } from "react-leaflet";
-import MapBasemapLayers from "../components/map/MapBasemapLayers";
-import EmployeeMapPopup from "../components/map/EmployeeMapPopup";
-import L from "leaflet";
-import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import {
   getValidEmployeeLocations,
   getMapCenter,
 } from "../utils/mapCoordinates";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
+import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
+import LiveOperationsPanel from "../components/dashboard/LiveOperationsPanel";
+import AlertsPanel from "../components/dashboard/AlertsPanel";
+import UnifiedActivityFeed from "../components/dashboard/UnifiedActivityFeed";
+import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
+
+const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
+const DashboardVisitChart = lazy(() => import("../components/dashboard/DashboardVisitChart"));
 import {
   Leaf,
   Calendar,
@@ -60,27 +65,11 @@ import {
   CalendarCheck,
   ChevronRight,
   Eye,
+  Route,
+  Paperclip,
+  Navigation,
 } from "lucide-react";
 
-/* ================================================================
-   LEAFLET CUSTOM MARKER
-   ================================================================ */
-const createMarkerIcon = (isOnline) =>
-  L.divIcon({
-    className: "",
-    html: `<div style="
-      width:14px;height:14px;border-radius:50%;
-      background:${isOnline ? "#22c55e" : "#9ca3af"};
-      border:2.5px solid #fff;
-      box-shadow:0 2px 8px rgba(0,0,0,0.25);
-    "></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-
-/* ================================================================
-   HELPERS
-   ================================================================ */
 const formatDate = (d) => {
   if (!d) return "\u2014";
   return new Date(d).toLocaleDateString("en-IN", {
@@ -191,23 +180,9 @@ const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
   </div>
 );
 
-/* ---- Tooltip for charts ---- */
-const ChartTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg text-xs">
-      <p className="font-semibold text-gray-700 mb-0.5">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }} className="font-medium">
-          {p.name}: {p.value}
-        </p>
-      ))}
-    </div>
-  );
-};
 
 /* ================================================================
-   DASHBOARD COMPONENT
+   HELPERS
    ================================================================ */
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -228,6 +203,14 @@ const Dashboard = () => {
   const [geoData, setGeoData] = useState([]);
   const [workdays, setWorkdays] = useState([]);
   const [recentVisits, setRecentVisits] = useState([]);
+  const [feedVisits, setFeedVisits] = useState([]);
+  const [evidenceStats, setEvidenceStats] = useState({
+    withEvidence: 0,
+    totalAttachments: 0,
+    rate: 0,
+  });
+  const [trackingEmployees, setTrackingEmployees] = useState([]);
+  const [recentFarmers, setRecentFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -243,14 +226,16 @@ const Dashboard = () => {
   const loadDashboard = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
 
-    const [summaryR, chartR, trendsR, geoR, wdR, visitsR, trackingR] = await Promise.allSettled([
+    const [summaryR, chartR, trendsR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await Promise.allSettled([
       getDashboardStats(),
       getDashboardChartStats(),
       getVisitTrends(),
       getEmployeeGeo(),
       getWorkdayHistory(),
-      getVisits({ ordering: "-created_at", limit: 8 }),
+      getVisits({ ordering: "-created_at", page_size: 100 }),
       getTrackingDashboardStats(),
+      getAdminStatus(),
+      getFarmers({ ordering: "-created_at", page_size: 10 }),
     ]);
 
     const summaryErr = summaryR.status === "rejected" ? summaryR.reason : null;
@@ -346,7 +331,6 @@ const Dashboard = () => {
     if (geoR.status === "fulfilled") {
       const features = resolveGeoFeatures(geoR.value);
       setGeoData(features);
-      console.log("[admin] map valid coordinates count", getValidEmployeeLocations(features).length);
     } else {
       logApiFailure("GET tracking/admin/geo/employees/", geoR);
       setGeoData([]);
@@ -364,10 +348,43 @@ const Dashboard = () => {
     if (visitsR.status === "fulfilled") {
       const body = visitsR.value ?? {};
       const arr = body.results ?? resolveList(body);
-      setRecentVisits(normalizeVisitList(arr).slice(0, 8));
+      const normalized = normalizeVisitList(arr);
+      setRecentVisits(normalized.slice(0, 8));
+      setFeedVisits(normalized);
+      let withEvidence = 0;
+      let totalAttachments = 0;
+      normalized.forEach((v) => {
+        const c = resolveVisitAttachmentCount(v);
+        if (c != null && c > 0) {
+          withEvidence += 1;
+          totalAttachments += c;
+        }
+      });
+      setEvidenceStats({
+        withEvidence,
+        totalAttachments,
+        rate: normalized.length ? Math.round((withEvidence / normalized.length) * 100) : 0,
+      });
     } else {
       logApiFailure("GET visits/", visitsR);
       setRecentVisits([]);
+      setFeedVisits([]);
+      setEvidenceStats({ withEvidence: 0, totalAttachments: 0, rate: 0 });
+    }
+
+    if (adminR.status === "fulfilled") {
+      const list = resolveTrackingEmployeeList(adminR.value).map(normalizeTrackingEmployee);
+      setTrackingEmployees(list);
+    } else {
+      logApiFailure("GET tracking/admin/status/", adminR);
+      setTrackingEmployees([]);
+    }
+
+    if (farmersR.status === "fulfilled") {
+      const body = farmersR.value ?? {};
+      setRecentFarmers(body.results ?? resolveList(body));
+    } else {
+      setRecentFarmers([]);
     }
 
     setLoading(false);
@@ -397,13 +414,27 @@ const Dashboard = () => {
         ? "No valid employee GPS location available yet."
         : null;
 
+  const liveOps = useMemo(
+    () => buildLiveOpsStats(stats, trackingEmployees, workdays),
+    [stats, trackingEmployees, workdays]
+  );
+  const opsAlerts = useMemo(
+    () => buildOpsAlerts(trackingEmployees, workdays),
+    [trackingEmployees, workdays]
+  );
+  const activityFeed = useMemo(
+    () =>
+      buildUnifiedActivityFeed({
+        workdays,
+        visits: feedVisits,
+        farmers: recentFarmers,
+      }),
+    [workdays, feedVisits, recentFarmers]
+  );
+
   /* ---- Loading state ---- */
   if (loading) {
-    return (
-      <div className="page-container">
-        <PageLoader label="Loading dashboard…" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   /* ---- Render ---- */
@@ -503,6 +534,68 @@ const Dashboard = () => {
                 : undefined
           }
         />
+        <StatCard
+          icon={Radio}
+          label="GPS Online"
+          value={stats.onlineNow}
+          gradient="linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
+          iconBg="#dcfce7"
+          iconColor="#16a34a"
+          onClick={() => navigate("/tracking")}
+          subValue={mappedGeoCount > 0 ? `${mappedGeoCount} on map` : undefined}
+        />
+      </div>
+
+      <QuickActions />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => navigate("/tracking/routes")}
+          className="section-card p-4 text-left hover:border-emerald-200 transition-all group"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              <Route className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Route Tracking Summary</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {stats.workingNow} working · {stats.onlineNow} GPS online · {mappedGeoCount} mapped
+              </p>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 mt-2">
+                View route history <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/visits")}
+          className="section-card p-4 text-left hover:border-emerald-200 transition-all group"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+              <Paperclip className="w-5 h-5 text-violet-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Evidence Upload Summary</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {evidenceStats.withEvidence} visits with files · {evidenceStats.totalAttachments} attachments · {evidenceStats.rate}% rate
+              </p>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 mt-2">
+                Browse visits <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <LiveOperationsPanel ops={liveOps} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <AlertsPanel alerts={opsAlerts} />
+        <UnifiedActivityFeed events={activityFeed} />
       </div>
 
       {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
@@ -526,91 +619,18 @@ const Dashboard = () => {
 
       {/* ================== MAP + WORKDAY ================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Live Map */}
-        <div
-          className="lg:col-span-2 section-card overflow-hidden"
-          style={{
-            boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
-            border: "1px solid rgba(15,118,110,0.08)",
-          }}
-        >
-          <SectionHeader
-            icon={MapPin}
-            title="Live Field Map"
-            subtitle={
-              mapStatusText ??
-              `${mappedGeoCount} employee${mappedGeoCount !== 1 ? "s" : ""} on map · ${stats.workingNow} working`
-            }
-            right={
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Online
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-gray-300" />
-                    Offline
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100">
-                  <Radio className="w-3 h-3 text-emerald-600 animate-pulse" />
-                  <span className="text-[11px] font-semibold text-emerald-700">LIVE</span>
-                </div>
-              </div>
-            }
+        <Suspense fallback={<RouteFallback label="Loading map\u2026" />}>
+          <DashboardLiveMap
+            mapCenter={mapCenter}
+            mapZoom={mapZoom}
+            validLocations={validLocations}
+            mappedGeoCount={mappedGeoCount}
+            mapStatusText={mapStatusText}
+            workingNow={stats.workingNow}
+            hasTrackedEmployees={hasTrackedEmployees}
+            formatRelative={formatRelative}
           />
-          <div className="relative" style={{ height: 280 }}>
-            {/* Top gradient overlay */}
-            <div
-              className="absolute top-0 left-0 right-0 h-8 z-[400] pointer-events-none"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.6), transparent)",
-              }}
-            />
-            <MapContainer
-              center={mapCenter}
-              zoom={mapZoom}
-              style={{ height: "100%", width: "100%" }}
-              scrollWheelZoom={true}
-            >
-              <MapBasemapLayers />
-              <MapEmployeeViewport locations={validLocations} />
-              {validLocations.map((loc) => (
-                <Marker
-                  key={`${loc.userId ?? loc.employeeName}-${loc.lat}-${loc.lng}`}
-                  position={[loc.lat, loc.lng]}
-                  icon={createMarkerIcon(loc.isOnline)}
-                >
-                  <Popup>
-                    <EmployeeMapPopup
-                      name={loc.employeeName}
-                      lat={loc.lat}
-                      lng={loc.lng}
-                      entity={loc.properties ?? loc}
-                      statusLabel={loc.isOnline ? "Online" : "Offline"}
-                      statusOnline={loc.isOnline}
-                      lastUpdated={formatRelative(loc.lastSeen) || "\u2014"}
-                    />
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-            {mappedGeoCount === 0 && (
-              <div
-                className="absolute inset-0 z-[500] flex items-center justify-center pointer-events-none"
-                style={{ background: "rgba(255,255,255,0.75)" }}
-              >
-                <p className="text-sm font-medium text-gray-500 px-6 text-center">
-                  {hasTrackedEmployees
-                    ? "No valid employee GPS location available yet."
-                    : "No employees with valid GPS coordinates right now. Locations appear after field agents start their workday and share location."}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        </Suspense>
 
         {/* Workday Activity */}
         <div
@@ -622,8 +642,8 @@ const Dashboard = () => {
         >
           <SectionHeader
             icon={Clock}
-            title="Workday Activity"
-            subtitle="Recent sessions"
+            title="Recent Activity Feed"
+            subtitle="Workday sessions & field activity"
           />
           <div
             className="flex-1 overflow-y-auto px-4 py-3"
@@ -700,36 +720,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Visit trends — GET dashboard/visit-trends/ */}
-      <div className="section-card overflow-hidden"
-        style={{ boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(15,118,110,0.08)" }}>
-        <SectionHeader icon={TrendingUp} title="Visit Activity" subtitle="Daily visits (last 30 days)" />
-        <div className="px-3 py-3">
-          {visitTrends.length === 0 ? (
-            <div className="flex flex-col items-center justify-center w-full min-w-0 h-[300px] text-gray-400">
-              <Calendar className="w-10 h-10 text-gray-300 mb-3" />
-              <p className="text-sm font-medium text-gray-500">No visit trend data yet</p>
-            </div>
-          ) : (
-            <ChartContainer>
-              <AreaChart data={visitTrends} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="visitTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#15803d" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#15803d" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#9CA3AF" }} allowDecimals={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="count" name="Visits" stroke="#15803d" strokeWidth={2.5} fill="url(#visitTrendGrad)"
-                  dot={{ r: 3, fill: "#15803d", stroke: "#fff", strokeWidth: 2 }}
-                  activeDot={{ r: 5, fill: "#15803d", stroke: "#fff", strokeWidth: 2 }} />
-              </AreaChart>
-            </ChartContainer>
-          )}
-        </div>
-      </div>
+      {/* Visit trends — lazy-loaded chart */}
+      <Suspense fallback={<RouteFallback label="Loading analytics\u2026" />}>
+        <DashboardVisitChart visitTrends={visitTrends} />
+      </Suspense>
 
 
       {/* ================== RECENT VISITS ================== */}
@@ -749,13 +743,12 @@ const Dashboard = () => {
           }
         />
         {recentVisits.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 text-gray-400">
-            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
-              <Calendar className="w-6 h-6 text-gray-300" />
-            </div>
-            <p className="text-sm font-semibold text-gray-500">No visits yet</p>
-            <p className="text-xs text-gray-400 mt-1">Field visits will appear here once recorded.</p>
-          </div>
+          <EmptyState
+            icon={Calendar}
+            title="No visits yet"
+            subtitle="Field visits will appear here once recorded."
+            className="py-14"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">

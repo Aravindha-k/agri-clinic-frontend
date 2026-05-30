@@ -5,12 +5,14 @@ import { RefreshCw, Route } from "lucide-react";
 import MapBasemapLayers from "../map/MapBasemapLayers";
 import MapRouteViewport from "../map/MapRouteViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
-import { PageLoader } from "../ui/command";
+import { PageLoader, EmptyState } from "../ui/command";
+import ErrorRetry from "../ui/ErrorRetry";
 import {
   todayIsoDate,
   formatRouteTimestamp,
   formatRouteDuration,
   computeRouteSummary,
+  decimateRoutePoints,
   ROUTE_EMPTY_MESSAGE,
 } from "../../utils/employeeRoute";
 
@@ -56,10 +58,10 @@ export default function EmployeeRouteMapView({
     [routeData, employee]
   );
 
-  const polylinePositions = useMemo(
-    () => points.map((p) => [p.latitude, p.longitude]),
-    [points]
-  );
+  const polylinePositions = useMemo(() => {
+    const decimated = decimateRoutePoints(points);
+    return decimated.map((p) => [p.latitude, p.longitude]);
+  }, [points]);
 
   const showCurrentMarker =
     summary.currentLat != null &&
@@ -104,22 +106,11 @@ export default function EmployeeRouteMapView({
       {routeLoading ? <PageLoader label="Loading route…" /> : null}
 
       {!routeLoading && routeError ? (
-        <div
-          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 space-y-3"
-          role="alert"
-        >
-          <p>{routeError}</p>
-          {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-medium text-xs"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Retry
-            </button>
-          ) : null}
-        </div>
+        <ErrorRetry
+          compact
+          message="Couldn't load route data. Please try again."
+          onRetry={onRetry}
+        />
       ) : null}
 
       {!routeLoading && !routeError && points.length > 0 ? (
@@ -216,9 +207,19 @@ export default function EmployeeRouteMapView({
       ) : null}
 
       {!routeLoading && !routeError && (!routeData || points.length === 0) ? (
-        <div className="text-center text-gray-500 py-12 px-4">
-          <Route className="w-10 h-10 mx-auto mb-3 opacity-40 text-gray-400" />
-          <p className="text-sm leading-relaxed max-w-sm mx-auto">{ROUTE_EMPTY_MESSAGE}</p>
+        <div className="section-card">
+          <EmptyState
+            icon={Route}
+            title="No route recorded for this date"
+            subtitle={ROUTE_EMPTY_MESSAGE}
+            action={
+              onRetry ? (
+                <button type="button" onClick={onRetry} className="btn btn-secondary btn-md">
+                  <RefreshCw className="w-4 h-4" /> Refresh route
+                </button>
+              ) : null
+            }
+          />
         </div>
       ) : null}
     </div>

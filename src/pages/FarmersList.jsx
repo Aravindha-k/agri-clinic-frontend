@@ -22,7 +22,9 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { PageHeader, FilterBar, EmptyState, PageLoader } from "../components/ui/command";
+import { PageHeader, FilterBar, EmptyState } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { asDisplayString, resolveVillageLabel, resolveDistrictLabel } from "../utils/displayValue";
 
@@ -358,27 +360,44 @@ const FarmersList = () => {
             </FilterBar>
 
             {error && (
-                <div className="alert-error flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4" /> {error}
-                    </span>
-                    <button type="button" onClick={loadFarmers} className="btn btn-ghost btn-sm">Retry</button>
-                </div>
+                <ErrorRetry
+                    compact
+                    message={friendlyErrorMessage(error, "Couldn't load farmers. Please try again.")}
+                    onRetry={loadFarmers}
+                />
             )}
 
             {loading ? (
-                <PageLoader label="Loading farmers…" />
+                <div className="list-grid">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="list-card animate-pulse-soft">
+                            <div className="skeleton w-12 h-12 rounded-full mb-3" />
+                            <div className="skeleton h-4 w-32 mb-2" />
+                            <div className="skeleton h-3 w-full mb-1" />
+                            <div className="skeleton h-3 w-2/3" />
+                        </div>
+                    ))}
+                </div>
             ) : filteredFarmers.length === 0 ? (
                 <div className="section-card">
                     <EmptyState
                         icon={Users}
-                        title="No farmers found"
+                        title={hasActiveFilters ? "No farmers match your filters" : "No farmers registered yet"}
+                        subtitle={
+                            hasActiveFilters
+                                ? "Try clearing filters or adjusting your search."
+                                : "Add your first farmer to start tracking visits and field activity."
+                        }
                         action={
                             hasActiveFilters ? (
-                                <button type="button" onClick={handleClearFilters} className="btn btn-ghost btn-sm text-emerald-600">
+                                <button type="button" onClick={handleClearFilters} className="btn btn-secondary btn-md">
                                     Clear filters
                                 </button>
-                            ) : null
+                            ) : (
+                                <button type="button" onClick={() => navigate("/farmers/new")} className="btn btn-primary btn-md">
+                                    Add farmer
+                                </button>
+                            )
                         }
                     />
                 </div>

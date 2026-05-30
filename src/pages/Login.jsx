@@ -1,6 +1,7 @@
 ﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 import logo from "../assets/logo.png";
 import { BarChart3, Leaf, LockKeyhole, MapPin, Navigation, ShieldCheck, Sprout } from "lucide-react";
 
@@ -56,7 +57,7 @@ const Login = () => {
             await login(username, password);
             navigate("/dashboard");
         } catch (err) {
-            setError(err?.message || "Invalid username or password");
+            setError(friendlyErrorMessage(err, "Invalid username or password. Please check and try again."));
         } finally {
             setLoading(false);
         }
@@ -121,9 +122,9 @@ const Login = () => {
                         </div>
 
                         <h1 style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.06, color: "#ffffff", margin: 0 }}>
-                            Smarter<br />
-                            <span style={{ color: "#4ade80" }}>Agriculture</span><br />
-                            Management
+                            Admin<br />
+                            <span style={{ color: "#4ade80" }}>Control</span><br />
+                            Center
                         </h1>
 
                         <div style={{ marginTop: 18, display: "flex", gap: 6 }}>
@@ -132,8 +133,8 @@ const Login = () => {
                         </div>
 
                         <p style={{ marginTop: 20, fontSize: 15, lineHeight: 1.75, color: "rgba(255,255,255,0.52)", maxWidth: 380 }}>
-                            Enterprise-grade platform for crop diagnostics, field operations
-                            tracking, and data-driven agricultural decision-making.
+                            Premium operations hub for field visits, farmer records,
+                            employee tracking, and live GPS monitoring.
                         </p>
 
                         {/* Feature pills */}
@@ -205,10 +206,10 @@ const Login = () => {
                             </div>
 
                             <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1.1, color: "#0f172a", margin: 0 }}>
-                                Welcome back
+                                Admin Control Center
                             </h2>
                             <p style={{ marginTop: 10, fontSize: 14.5, color: "#64748b", lineHeight: 1.65 }}>
-                                Sign in to access your agricultural management dashboard.
+                                Manage visits, farmers, employees and live tracking
                             </p>
                         </div>
 
@@ -216,13 +217,13 @@ const Login = () => {
                         {error && (
                             <div style={{
                                 marginBottom: 22, padding: "13px 16px", borderRadius: 12,
-                                background: "#fef2f2", border: "1px solid #fecaca",
+                                background: "#fffbeb", border: "1px solid #fde68a",
                                 display: "flex", alignItems: "flex-start", gap: 10,
-                            }}>
-                                <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16, flexShrink: 0, color: "#ef4444", marginTop: 1 }}>
+                            }} role="alert">
+                                <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16, flexShrink: 0, color: "#d97706", marginTop: 1 }}>
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                 </svg>
-                                <span style={{ fontSize: 13, color: "#b91c1c", fontWeight: 500 }}>{error}</span>
+                                <span style={{ fontSize: 13, color: "#92400e", fontWeight: 500 }}>{error}</span>
                             </div>
                         )}
 

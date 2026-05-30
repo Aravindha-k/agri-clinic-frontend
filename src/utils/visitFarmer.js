@@ -279,5 +279,7 @@ export function logVisitFarmerBlock(visit, label = "[admin] visit list first ite
       farmer_village: visit.farmer_village,
       crop_name: visit.crop_name,
     };
-  console.log(label, block);
+  if (import.meta.env.DEV) {
+    console.log(label, block);
+  }
 }

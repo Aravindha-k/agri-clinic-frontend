@@ -1,4 +1,6 @@
-import { PageLoader } from "../components/ui/command";
+import { PageLoader, EmptyState } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { MapContainer, Marker, Popup } from "react-leaflet";
@@ -748,21 +750,11 @@ export default function Tracking() {
 
                 {/* ====== ERROR ====== */}
                 {error && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ boxShadow: SHADOW }}>
-                        <div className="flex items-center gap-3">
-                            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                            {error}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => loadData(true)}
-                            disabled={refreshing}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-medium text-xs disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                            Retry
-                        </button>
-                    </div>
+                    <ErrorRetry
+                        compact
+                        message={friendlyErrorMessage(error, "Couldn't load tracking data. Please try again.")}
+                        onRetry={() => loadData(true)}
+                    />
                 )}
 
                 {/* ====== STAT CARDS ====== */}
@@ -851,6 +843,23 @@ export default function Tracking() {
                             </MarkerClusterGroup>
                         </MapContainer>
                         <MapLegend />
+                        {validMapLocations.length === 0 && (
+                            <div className="absolute inset-0 z-[500] flex items-center justify-center pointer-events-none bg-white/80 backdrop-blur-[1px]">
+                                <div className="pointer-events-auto max-w-sm px-6">
+                                    <EmptyState
+                                        icon={MapPin}
+                                        title="No GPS locations yet"
+                                        subtitle="Employee pins appear when field agents start a workday and share location from the mobile app."
+                                        action={
+                                            <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
+                                                View route history
+                                            </Link>
+                                        }
+                                        className="py-8"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -965,10 +974,13 @@ export default function Tracking() {
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan="9" className="px-5 py-16 text-center">
-                                            <Search className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                                            <p className="text-gray-400 font-medium">No employees match your filters</p>
-                                            <p className="text-gray-300 text-sm mt-1">Try adjusting your search or filter criteria</p>
+                                        <td colSpan="9">
+                                            <EmptyState
+                                                icon={Search}
+                                                title="No employees match your filters"
+                                                subtitle="Try adjusting search or filter criteria."
+                                                className="py-12"
+                                            />
                                         </td>
                                     </tr>
                                 )}

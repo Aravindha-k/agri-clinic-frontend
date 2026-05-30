@@ -189,7 +189,18 @@ tbody tr:nth-child(8) {
 
 /* ── Page transition wrapper ── */
 .page-enter {
-    animation: fadeUp 0.4s ease-out both;
+    animation: pageFadeSlide 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pageFadeSlide {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ── Global page loader ── */
@@ -596,6 +607,122 @@ table tbody tr {
 /* ── Empty state ── */
 .empty-state {
     @apply flex flex-col items-center justify-center py-12 text-center;
+}
+
+.empty-state--premium {
+    @apply py-14 px-6;
+}
+
+.empty-state__icon-wrap {
+    @apply w-14 h-14 rounded-2xl flex items-center justify-center mb-4;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.08);
+}
+
+.empty-state__icon {
+    @apply w-6 h-6 text-emerald-600;
+}
+
+.empty-state__title {
+    @apply text-sm font-semibold text-gray-800;
+}
+
+.empty-state__subtitle {
+    @apply text-xs text-gray-500 mt-1.5 max-w-sm leading-relaxed;
+}
+
+.empty-state__action {
+    @apply mt-5;
+}
+
+/* ── Branded route lazy-load fallback ── */
+.route-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: min(70vh, 520px);
+    width: 100%;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(180deg, #f8faf9 0%, #f1f5f3 100%);
+}
+
+.route-fallback__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 320px;
+    width: 100%;
+}
+
+.route-fallback__logo-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid rgba(16, 185, 129, 0.12);
+    box-shadow: 0 8px 24px rgba(15, 118, 110, 0.1);
+    margin-bottom: 1rem;
+}
+
+.route-fallback__logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+.route-fallback__title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #065f46;
+    letter-spacing: -0.01em;
+}
+
+.route-fallback__label {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+.route-fallback__progress {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin-top: 1.25rem;
+}
+
+.route-fallback__progress-bar {
+    height: 100%;
+    width: 40%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #059669, #34d399, #059669);
+    background-size: 200% 100%;
+    animation: routeProgressShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes routeProgressShimmer {
+    0% {
+        transform: translateX(-120%);
+        background-position: 0% 50%;
+    }
+    100% {
+        transform: translateX(320%);
+        background-position: 100% 50%;
+    }
+}
+
+.animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+}
+
+@keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.92; }
 }
 
 /* ── KPI card (dashboard + shared stats) ── */

@@ -1,5 +1,6 @@
-import { PageLoader } from "../components/ui/command";
-// Robust helper to extract array from any API response
+import { PageLoader, EmptyState, SkeletonTable } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 function resolveList(res) {
   const raw = res?.data?.data ?? res?.data ?? res;
   if (Array.isArray(raw)) return raw;
@@ -11,6 +12,7 @@ function resolveList(res) {
 }
 import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import {
   getEmployees,
   createEmployee,
@@ -24,12 +26,13 @@ import ProfileAvatar from "../components/ui/ProfileAvatar";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import { getDistricts } from "../api/master.api";
 import { getEmployeeStats, getEmployeeSummary, getEmployeeActivity } from "../api/tracking.api";
+import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import {
   Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
   RefreshCw, Eye, EyeOff, ChevronRight, Filter, AlertCircle, UserCheck, Signal, Timer,
   Calendar, Shield, Building2, Briefcase, PlayCircle, StopCircle, Radio, Heart,
   Navigation, ToggleLeft, ToggleRight, Loader2, Plus, UserPlus, Hash,
-  Edit2, Key, Info, CheckCircle, Save, Copy,
+  Edit2, Key, Info, CheckCircle, Save, Copy, Route,
 } from "lucide-react";
 
 /* ================================================================
@@ -342,13 +345,36 @@ const EmployeeCard = memo(({ emp, onOpen }) => (
 EmployeeCard.displayName = "EmployeeCard";
 
 /* --- Employee Grid --- */
-const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOpen }) => {
-  if (isLoading) return <PageLoader label="Loading employees…" />;
+const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOpen, onAddEmployee }) => {
+  if (isLoading) {
+    return viewMode === "grid" ? (
+      <div className="list-grid">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="list-card animate-pulse-soft">
+            <div className="skeleton w-12 h-12 rounded-full mb-3" />
+            <div className="skeleton h-4 w-28 mb-2" />
+            <div className="skeleton h-3 w-full" />
+          </div>
+        ))}
+      </div>
+    ) : (
+      <SkeletonTable rows={6} cols={6} />
+    );
+  }
   if (emps.length === 0) return (
-    <div className="list-card-surface p-10 text-center">
-      <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3"><Users className="w-6 h-6 text-gray-300" /></div>
-      <p className="text-sm font-semibold text-gray-500">No employees found</p>
-      <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters.</p>
+    <div className="section-card">
+      <EmptyState
+        icon={Users}
+        title="No employees found"
+        subtitle="Add field staff to enable visit tracking, routes, and live GPS monitoring."
+        action={
+          onAddEmployee ? (
+            <button type="button" onClick={onAddEmployee} className="btn btn-primary btn-md">
+              <UserPlus className="w-4 h-4" /> Add employee
+            </button>
+          ) : null
+        }
+      />
     </div>
   );
 
@@ -540,6 +566,33 @@ const EmployeeSummary = memo(({ summary, profile, loading: isLoading }) => {
   );
 });
 EmployeeSummary.displayName = "EmployeeSummary";
+
+const EmployeePerformanceSummary = memo(({ summary, profile }) => {
+  const s = summary || {};
+  const p = profile || {};
+  const items = [
+    { label: "Visits completed", value: s.visits_today ?? s.total_visits ?? "\u2014" },
+    { label: "Distance travelled", value: s.distance_km != null ? `${s.distance_km} km` : "\u2014" },
+    { label: "Farmers visited", value: s.farmers_visited ?? s.farmers_today ?? "\u2014" },
+    { label: "Evidence uploaded", value: s.attachments_today ?? s.evidence_count ?? "\u2014" },
+    { label: "Last login", value: s.device_status?.last_login_at ? fmtRel(s.device_status.last_login_at) : "\u2014" },
+    { label: "Last seen", value: fmtRel(s.last_seen || p.last_seen) },
+  ];
+  return (
+    <div>
+      <SectionHead icon={Briefcase} title="Activity Summary" subtitle="Today\u2019s field performance" />
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {items.map((item) => (
+          <div key={item.label} className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[11px] text-gray-400 font-medium">{item.label}</p>
+            <p className="text-sm font-semibold text-gray-900 mt-0.5">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+EmployeePerformanceSummary.displayName = "EmployeePerformanceSummary";
 
 /* --- Admin Reset Section (inside Password tab) --- */
 const AdminResetSection = memo(({ empId }) => {
@@ -870,7 +923,21 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                 <div className="mt-3">
                   <EmployeeSummary summary={summary} profile={profile} loading={loadingSummary} />
                 </div>
+                {(profile?.user_id ?? profile?.user ?? profile?.id) && (
+                  <Link
+                    to={`/tracking/routes?userId=${profile?.user_id ?? profile?.user ?? profile?.id}`}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-100 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                  >
+                    <Route className="w-4 h-4" />
+                    View Route History
+                    <ChevronRight className="w-4 h-4 ml-auto" />
+                  </Link>
+                )}
               </div>
+              <div>
+                <EmployeeDeviceInfoSection employee={profile} summary={summary} />
+              </div>
+              <EmployeePerformanceSummary summary={summary} profile={profile} />
               <div>
                 <SectionHead icon={Activity} title="Activity Timeline" subtitle="Today's events" />
                 <div className="mt-3">
@@ -1258,15 +1325,21 @@ export default function Employees() {
 
       {/* List error */}
       {listError && (
-        <div className="flex items-center gap-3 px-5 py-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span className="font-medium">{listError}</span>
-          <button onClick={() => loadList()} className="ml-auto font-semibold text-red-600 hover:underline">Retry</button>
-        </div>
+        <ErrorRetry
+          compact
+          message={friendlyErrorMessage(listError, "Couldn't load employees. Please try again.")}
+          onRetry={() => loadList()}
+        />
       )}
 
       {/* Employee Grid / Table */}
-      <EmployeeGrid employees={filtered} loading={loadingList} viewMode={viewMode} onOpen={openDrawer} />
+      <EmployeeGrid
+        employees={filtered}
+        loading={loadingList}
+        viewMode={viewMode}
+        onOpen={openDrawer}
+        onAddEmployee={() => setAddOpen(true)}
+      />
 
       {/* Detail Drawer */}
       <EmployeeDrawer emp={drawerEmp} open={drawerOpen} onClose={closeDrawer} onUpdated={handleUpdated} districts={districts} />

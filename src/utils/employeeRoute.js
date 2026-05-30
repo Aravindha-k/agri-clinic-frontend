@@ -230,3 +230,12 @@ export function formatRouteDuration(minutes) {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
+
+/** Reduce polyline point count for smoother map rendering. */
+export function decimateRoutePoints(points, maxPoints = 400) {
+  if (!Array.isArray(points) || points.length <= maxPoints) return points || [];
+  const step = Math.ceil(points.length / maxPoints);
+  return points.filter(
+    (_, i) => i === 0 || i === points.length - 1 || i % step === 0
+  );
+}

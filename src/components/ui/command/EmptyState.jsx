@@ -6,15 +6,15 @@ export default function EmptyState({
   className = "",
 }) {
   return (
-    <div className={`empty-state ${className}`}>
+    <div className={`empty-state empty-state--premium ${className}`}>
       {Icon && (
-        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
-          <Icon className="w-5 h-5 text-slate-300" />
+        <div className="empty-state__icon-wrap">
+          <Icon className="empty-state__icon" aria-hidden="true" />
         </div>
       )}
-      <p className="text-sm text-slate-700 font-semibold">{title}</p>
-      {subtitle && <p className="text-xs text-slate-400 mt-1 max-w-sm">{subtitle}</p>}
-      {action && <div className="mt-4">{action}</div>}
+      <p className="empty-state__title">{title}</p>
+      {subtitle && <p className="empty-state__subtitle">{subtitle}</p>}
+      {action && <div className="empty-state__action">{action}</div>}
     </div>
   );
 }

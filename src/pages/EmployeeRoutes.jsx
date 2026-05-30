@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Route, Users } from "lucide-react";
-import { PageLoader } from "../components/ui/command";
+import RouteFallback from "../components/RouteFallback";
+import ErrorRetry from "../components/ui/ErrorRetry";
+import { EmptyState } from "../components/ui/command";
 import EmployeeRouteMapView from "../components/tracking/EmployeeRouteMapView";
 import { getAdminStatus, getEmployeeRoute, fetchAllWorkdayLocations } from "../api/tracking.api";
 import {
@@ -17,10 +19,12 @@ import { empName } from "../utils/trackingDisplay";
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
 export default function EmployeeRoutes() {
+  const [searchParams] = useSearchParams();
+  const initialUserId = searchParams.get("userId") || "";
   const [employees, setEmployees] = useState([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(initialUserId);
   const [routeDate, setRouteDate] = useState(() => todayIsoDate());
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
@@ -34,8 +38,9 @@ export default function EmployeeRoutes() {
       const list = resolveTrackingEmployeeList(res).map(normalizeTrackingEmployee);
       setEmployees(list);
       setSelectedUserId((prev) => {
-        if (prev && list.some((e) => String(e.user_id ?? e.id) === String(prev))) {
-          return prev;
+        const preferred = prev || initialUserId;
+        if (preferred && list.some((e) => String(e.user_id ?? e.id) === String(preferred))) {
+          return String(preferred);
         }
         return list.length ? String(list[0].user_id ?? list[0].id ?? "") : "";
       });
@@ -45,7 +50,7 @@ export default function EmployeeRoutes() {
     } finally {
       setListLoading(false);
     }
-  }, []);
+  }, [initialUserId]);
 
   useEffect(() => {
     loadEmployees();
@@ -98,11 +103,7 @@ export default function EmployeeRoutes() {
   }, [selectedUserId, routeDate, loadRoute]);
 
   if (listLoading && employees.length === 0) {
-    return (
-      <div className="page-container min-h-[50vh] flex items-center justify-center">
-        <PageLoader label="Loading employees…" />
-      </div>
-    );
+    return <RouteFallback label="Loading route history\u2026" />;
   }
 
   return (
@@ -127,8 +128,21 @@ export default function EmployeeRoutes() {
       </div>
 
       {listError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {listError}
+        <ErrorRetry message={listError} onRetry={loadEmployees} />
+      ) : null}
+
+      {!listLoading && employees.length === 0 && !listError ? (
+        <div className="section-card">
+          <EmptyState
+            icon={Users}
+            title="No employees available"
+            subtitle="Route history appears once field employees are registered and sharing GPS."
+            action={
+              <Link to="/employees" className="btn btn-primary btn-md">
+                Manage employees
+              </Link>
+            }
+          />
         </div>
       ) : null}
 

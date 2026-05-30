@@ -45,7 +45,9 @@ export const getEmployeeRoute = async (userId, { date } = {}) => {
     try {
         const url = `tracking/admin/employee/${userId}/route/`;
         const params = date ? { date } : undefined;
-        console.debug(TAG, "getEmployeeRoute →", url, params ?? "");
+        if (import.meta.env.DEV) {
+          console.debug(TAG, "getEmployeeRoute →", url, params ?? "");
+        }
         const response = await api.get(url, { params });
         return normalizeEmployeeRoute(response);
     } catch (err) {
@@ -95,7 +97,9 @@ export const getEmployeeStats = async () => {
 export const getEmployeeSummary = async (userId) => {
     try {
         const url = `tracking/admin/employee/${userId}/summary/`;
-        console.debug(TAG, "getEmployeeSummary →", url);
+        if (import.meta.env.DEV) {
+          console.debug(TAG, "getEmployeeSummary →", url);
+        }
         const response = await api.get(url);
         return normalizeEmployeeSummaryResponse(response);
     } catch (err) {
@@ -108,7 +112,9 @@ export const getEmployeeSummary = async (userId) => {
 export const getEmployeeActivity = async (userId) => {
     try {
         const url = `tracking/admin/employee/${userId}/activity/`;
-        console.debug(TAG, "getEmployeeActivity →", url);
+        if (import.meta.env.DEV) {
+          console.debug(TAG, "getEmployeeActivity →", url);
+        }
         const response = await api.get(url);
         return response.data;
     } catch (err) {
