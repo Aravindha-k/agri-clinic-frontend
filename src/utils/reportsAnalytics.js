@@ -82,6 +82,7 @@ export function buildVisitReportAnalytics(visits) {
   const farmerSet = new Set();
   const villageSet = new Set();
   const cropTypes = {};
+  const farmersByVillage = {};
   let gpsCompliant = 0;
   let withAttachments = 0;
   let attachmentTotal = 0;
@@ -91,7 +92,15 @@ export function buildVisitReportAnalytics(visits) {
     visitsByEmployee[emp] = (visitsByEmployee[emp] || 0) + 1;
 
     if (item.farmer_name) farmerSet.add(item.farmer_name);
-    if (item.location_name) villageSet.add(item.location_name);
+    if (item.location_name) {
+      villageSet.add(item.location_name);
+      if (item.farmer_name) {
+        if (!farmersByVillage[item.location_name]) {
+          farmersByVillage[item.location_name] = new Set();
+        }
+        farmersByVillage[item.location_name].add(item.farmer_name);
+      }
+    }
     if (item.crop) cropTypes[item.crop] = (cropTypes[item.crop] || 0) + 1;
 
     const lat = item.latitude ?? item.lat;
@@ -114,11 +123,15 @@ export function buildVisitReportAnalytics(visits) {
   });
 
   const total = rows.length;
+  const farmerCoverageByVillage = Object.fromEntries(
+    Object.entries(farmersByVillage).map(([village, set]) => [village, set.size])
+  );
   return {
     totalVisits: total,
     totalFarmers: farmerSet.size,
     villagesCovered: villageSet.size,
     cropTypes,
+    farmerCoverageByVillage,
     visitsByEmployee,
     gpsCompliancePct: total ? Math.round((gpsCompliant / total) * 100) : 0,
     gpsCompliant,

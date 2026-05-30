@@ -13,8 +13,14 @@ import {
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import RouteFallback from "../components/RouteFallback";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
+import AnalyticsBarRow from "../components/reports/AnalyticsBarRow";
+import ReportKpiCard from "../components/reports/ReportKpiCard";
 import {
-  buildVisitReportAnalytics,
+  formatGpsComplianceLabel,
+  formatDistanceKm,
+  ANALYTICS_TOOLTIPS,
+} from "../utils/analyticsLabels";
+import {
   buildGpsComplianceAnalytics,
   buildRouteAnalytics,
   filterVisitsByDateRange,
@@ -39,7 +45,6 @@ import {
   UserCheck,
   RefreshCw,
   AlertCircle,
-  TrendingUp,
   Download,
   Calendar,
   MapPin,
@@ -50,8 +55,6 @@ import {
 } from "lucide-react";
 
 const ReportsRouteChart = lazy(() => import("../components/reports/ReportsRouteChart"));
-
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
 function defaultDateRange() {
   const to = new Date();
@@ -130,29 +133,6 @@ function ReportSection({ icon: Icon, title, subtitle, children, action }) {
         {action}
       </div>
       <div className="p-6">{children}</div>
-    </div>
-  );
-}
-
-function BarRow({ label, count, total, accent = "#166534" }) {
-  const pct = total ? Math.round((count / total) * 100) : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between text-sm mb-1.5 gap-2">
-        <span className="font-medium text-gray-700 truncate">{label}</span>
-        <span className="text-gray-400 tabular-nums flex-shrink-0">
-          {count} · {pct}%
-        </span>
-      </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{
-            width: `${pct}%`,
-            background: `linear-gradient(90deg, ${accent}, ${accent}99)`,
-          }}
-        />
-      </div>
     </div>
   );
 }
@@ -270,6 +250,7 @@ export default function Reports() {
       icon: BarChart3,
       label: "Total Visits",
       value: analytics.totalVisits,
+      description: "Field visits submitted in the selected date range",
       accent: "#166534",
       gradient: "linear-gradient(135deg,#fff 0%,#f0fdf4 100%)",
       iconBg: "#dcfce7",
@@ -278,22 +259,26 @@ export default function Reports() {
       icon: Users,
       label: "Farmers Served",
       value: analytics.totalFarmers,
+      description: "Unique farmers visited at least once",
       accent: "#2563eb",
       gradient: "linear-gradient(135deg,#fff 0%,#eff6ff 100%)",
       iconBg: "#dbeafe",
     },
     {
       icon: ShieldCheck,
-      label: "GPS Compliance",
-      value: `${analytics.gpsCompliancePct}%`,
+      label: "GPS Tracking Compliance",
+      value: formatGpsComplianceLabel(analytics.gpsCompliancePct),
+      description: `${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS coordinates`,
+      tooltip: ANALYTICS_TOOLTIPS.gpsCompliance,
       accent: "#0e7490",
       gradient: "linear-gradient(135deg,#fff 0%,#ecfeff 100%)",
       iconBg: "#cffafe",
     },
     {
       icon: Paperclip,
-      label: "With Evidence",
+      label: "Visits With Evidence",
       value: analytics.visitsWithEvidence,
+      description: `${analytics.evidenceRatePct}% of visits include uploaded photos or files`,
       accent: "#7c3aed",
       gradient: "linear-gradient(135deg,#fff 0%,#f5f3ff 100%)",
       iconBg: "#ede9fe",
@@ -385,29 +370,8 @@ export default function Reports() {
       </FilterBar>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map(({ icon: Icon, label, value, accent, gradient, iconBg }) => (
-          <div
-            key={label}
-            className="mini-kpi-card group cursor-default"
-            style={{ background: gradient, boxShadow: SHADOW }}
-          >
-            <div
-              className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-              style={{ background: accent }}
-            />
-            <div
-              className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]"
-              style={{ background: accent }}
-            />
-            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
-              <Icon className="w-4 h-4" />
-            </div>
-            <p className="mini-kpi-value">{value}</p>
-            <div className="flex items-center justify-between mt-1">
-              <p className="mini-kpi-label">{label}</p>
-              <TrendingUp className="w-3 h-3 text-gray-300" />
-            </div>
-          </div>
+        {kpis.map((kpi) => (
+          <ReportKpiCard key={kpi.label} {...kpi} />
         ))}
       </div>
 
@@ -415,14 +379,21 @@ export default function Reports() {
         <ReportSection
           icon={UserCheck}
           title="Visits by Employee"
-          subtitle={`${Object.keys(analytics.visitsByEmployee).length} field agents`}
+          subtitle="How field visits are distributed across your team"
         >
           {topEntries(analytics.visitsByEmployee).length === 0 ? (
             <EmptyState icon={Users} title="No visit data" subtitle="Visits will appear once field agents submit records." />
           ) : (
             <div className="space-y-3">
               {topEntries(analytics.visitsByEmployee).map(([name, count]) => (
-                <BarRow key={name} label={name} count={count} total={analytics.totalVisits} accent="#7c3aed" />
+                <AnalyticsBarRow
+                  key={name}
+                  label={name}
+                  count={count}
+                  total={analytics.totalVisits}
+                  accent="#7c3aed"
+                  variant="employee"
+                />
               ))}
             </div>
           )}
@@ -431,51 +402,87 @@ export default function Reports() {
         <ReportSection
           icon={MapPin}
           title="Farmer Coverage"
-          subtitle={`${analytics.villagesCovered} villages · ${analytics.totalFarmers} farmers`}
+          subtitle={`${analytics.totalFarmers} farmers reached across ${analytics.villagesCovered} villages`}
         >
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
               <p className="text-2xl font-bold text-emerald-800 tabular-nums">{analytics.totalFarmers}</p>
-              <p className="text-xs text-emerald-600 mt-1">Unique farmers</p>
+              <p className="text-xs text-emerald-700 mt-1 font-medium">Farmers Served</p>
+              <p className="text-[10px] text-emerald-600 mt-0.5">Unique farmers visited</p>
             </div>
             <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center">
               <p className="text-2xl font-bold text-sky-800 tabular-nums">{analytics.villagesCovered}</p>
-              <p className="text-xs text-sky-600 mt-1">Villages covered</p>
+              <p className="text-xs text-sky-700 mt-1 font-medium">Villages Covered</p>
+              <p className="text-[10px] text-sky-600 mt-0.5">Villages with at least one visit</p>
             </div>
           </div>
-          {Object.keys(analytics.cropTypes).length > 0 ? (
+          {topEntries(analytics.farmerCoverageByVillage, 5).length > 0 ? (
             <div className="space-y-3">
-              {topEntries(analytics.cropTypes, 5).map(([crop, count]) => (
-                <BarRow key={crop} label={crop} count={count} total={analytics.totalVisits} />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Top villages by farmers served
+              </p>
+              {topEntries(analytics.farmerCoverageByVillage, 5).map(([village, count]) => (
+                <AnalyticsBarRow
+                  key={village}
+                  label={village}
+                  count={count}
+                  total={analytics.totalFarmers}
+                  variant="coverage"
+                />
               ))}
             </div>
           ) : (
-            <EmptyState icon={Leaf} title="No crop data" subtitle="Crop distribution appears when visits include crop info." />
+            <EmptyState icon={MapPin} title="No village coverage yet" subtitle="Farmer coverage by village appears once visits include location data." />
+          )}
+          {Object.keys(analytics.cropTypes).length > 0 && (
+            <div className="space-y-3 mt-5 pt-5 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Visits by crop type
+              </p>
+              {topEntries(analytics.cropTypes, 5).map(([crop, count]) => (
+                <AnalyticsBarRow
+                  key={crop}
+                  label={crop}
+                  count={count}
+                  total={analytics.totalVisits}
+                  variant="crop"
+                />
+              ))}
+            </div>
           )}
         </ReportSection>
 
         <ReportSection
           icon={ShieldCheck}
           title="GPS Compliance Report"
-          subtitle={`${analytics.gpsCompliant} of ${analytics.totalVisits} visits tagged · ${analytics.trackingUptimePct}% uptime`}
+          subtitle={`${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS location proof`}
         >
           <div className="flex items-center gap-4 mb-4">
             <div
-              className="relative w-20 h-20 rounded-full flex items-center justify-center"
+              className="relative w-20 h-20 rounded-full flex items-center justify-center flex-shrink-0"
               style={{
                 background: `conic-gradient(#059669 ${analytics.gpsCompliancePct * 3.6}deg, #e5e7eb 0)`,
               }}
+              title={ANALYTICS_TOOLTIPS.gpsCompliance}
             >
-              <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center">
-                <span className="text-lg font-bold text-emerald-700">{analytics.gpsCompliancePct}%</span>
+              <div className="w-14 h-14 rounded-full bg-white flex flex-col items-center justify-center px-1">
+                <span className="text-sm font-bold text-emerald-700 leading-none">
+                  {analytics.gpsCompliancePct}%
+                </span>
               </div>
             </div>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>
-                <span className="font-semibold text-gray-900">{analytics.gpsDisabledIncidents}</span> GPS incidents
+            <div className="text-sm text-gray-600 space-y-1.5">
+              <p className="font-semibold text-emerald-800">
+                {formatGpsComplianceLabel(analytics.gpsCompliancePct)}
               </p>
               <p>
-                Tracking uptime:{" "}
+                <span className="font-semibold text-gray-900">{analytics.gpsCompliant}</span> visits with GPS coordinates recorded
+              </p>
+              <p>
+                <span className="font-semibold text-gray-900">{analytics.gpsDisabledIncidents}</span> active GPS incidents right now
+              </p>
+              <p>
+                Live tracking uptime:{" "}
                 <span className="font-semibold text-emerald-700">{analytics.trackingUptimePct}%</span>
               </p>
             </div>
@@ -485,20 +492,20 @@ export default function Reports() {
         <ReportSection
           icon={Paperclip}
           title="Attachment Upload Report"
-          subtitle={`${analytics.attachmentTotal} files across ${analytics.visitsWithEvidence} visits`}
+          subtitle={`${analytics.attachmentTotal} files uploaded across ${analytics.visitsWithEvidence} visits`}
         >
           <div className="grid grid-cols-3 gap-3 mb-2">
             <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center">
               <p className="text-xl font-bold text-violet-800 tabular-nums">{analytics.visitsWithEvidence}</p>
-              <p className="text-[10px] text-violet-600 mt-1">Visits w/ files</p>
+              <p className="text-[10px] text-violet-700 mt-1 font-medium">Visits With Files</p>
             </div>
             <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-center">
               <p className="text-xl font-bold text-amber-800 tabular-nums">{analytics.attachmentTotal}</p>
-              <p className="text-[10px] text-amber-600 mt-1">Total files</p>
+              <p className="text-[10px] text-amber-700 mt-1 font-medium">Total Files Uploaded</p>
             </div>
             <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
               <p className="text-xl font-bold text-gray-800 tabular-nums">{analytics.evidenceRatePct}%</p>
-              <p className="text-[10px] text-gray-500 mt-1">Evidence rate</p>
+              <p className="text-[10px] text-gray-600 mt-1 font-medium">Evidence Upload Rate</p>
             </div>
           </div>
         </ReportSection>
@@ -506,8 +513,8 @@ export default function Reports() {
 
       <ReportSection
         icon={Route}
-        title="Route Distance Report"
-        subtitle="Today's tracked field distance by employee"
+        title="Route Analytics"
+        subtitle="Today's tracked field travel based on employee GPS routes"
         action={
           <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
             <Navigation className="w-3.5 h-3.5" /> Route History
@@ -518,7 +525,7 @@ export default function Reports() {
           <EmptyState
             icon={Route}
             title="No route distance data"
-            subtitle="Distances appear when employees share GPS during active workdays."
+            subtitle="Distance travelled appears when employees share GPS during active workdays."
             action={
               <Link to="/tracking" className="btn btn-primary btn-sm">
                 Open Live Tracking
@@ -528,21 +535,45 @@ export default function Reports() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-center">
-                <p className="text-xl font-bold text-indigo-800 tabular-nums">{totalRouteKm.toFixed(1)} km</p>
-                <p className="text-[10px] text-indigo-600 mt-1">Total today</p>
+              <div
+                className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-center"
+                title={ANALYTICS_TOOLTIPS.routeDistance}
+              >
+                <p className="text-xl font-bold text-indigo-800 tabular-nums">
+                  {formatDistanceKm(totalRouteKm)}
+                </p>
+                <p className="text-[10px] text-indigo-700 mt-1 font-medium">Distance Travelled</p>
+                <p className="text-[10px] text-indigo-600 mt-0.5">Combined today</p>
               </div>
-              <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center">
-                <p className="text-xl font-bold text-sky-800 tabular-nums">{routeAnalytics.avgKm.toFixed(1)} km</p>
-                <p className="text-[10px] text-sky-600 mt-1">Avg per employee</p>
+              <div
+                className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center"
+                title={ANALYTICS_TOOLTIPS.routeAverage}
+              >
+                <p className="text-xl font-bold text-sky-800 tabular-nums">
+                  {formatDistanceKm(routeAnalytics.avgKm)}
+                </p>
+                <p className="text-[10px] text-sky-700 mt-1 font-medium">Average Distance</p>
+                <p className="text-[10px] text-sky-600 mt-0.5">Per employee today</p>
               </div>
-              <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center col-span-2 sm:col-span-2">
-                <p className="text-sm font-bold text-emerald-800 truncate">
+              <div
+                className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center"
+                title={ANALYTICS_TOOLTIPS.routeTotal}
+              >
+                <p className="text-xl font-bold text-emerald-800 tabular-nums">
+                  {routeAnalytics.employeeCount}
+                </p>
+                <p className="text-[10px] text-emerald-700 mt-1 font-medium">Total Routes</p>
+                <p className="text-[10px] text-emerald-600 mt-0.5">Employees tracked today</p>
+              </div>
+              <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center col-span-2 sm:col-span-1">
+                <p className="text-sm font-bold text-violet-800 truncate">
                   {routeAnalytics.topDistance?.name || "\u2014"}
                 </p>
-                <p className="text-[10px] text-emerald-600 mt-1">
-                  Top distance
-                  {routeAnalytics.topDistance ? ` · ${routeAnalytics.topDistance.km.toFixed(1)} km` : ""}
+                <p className="text-[10px] text-violet-700 mt-1 font-medium">Longest Route Today</p>
+                <p className="text-[10px] text-violet-600 mt-0.5">
+                  {routeAnalytics.topDistance
+                    ? formatDistanceKm(routeAnalytics.topDistance.km)
+                    : "No route data"}
                 </p>
               </div>
             </div>
@@ -550,13 +581,21 @@ export default function Reports() {
               <ReportsRouteChart data={routeChartData} />
             </Suspense>
             <div className="space-y-3 mt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Distance by employee
+              </p>
               {routeDistances
                 .sort((a, b) => b.km - a.km)
                 .slice(0, 8)
                 .map((r) => (
-                  <div key={r.name} className="flex items-center justify-between text-sm">
+                  <div key={r.name} className="flex items-center justify-between text-sm gap-3">
                     <span className="font-medium text-gray-700 truncate">{r.name}</span>
-                    <span className="font-semibold text-indigo-700 tabular-nums">{r.km.toFixed(1)} km</span>
+                    <span className="text-right flex-shrink-0">
+                      <span className="font-semibold text-indigo-700 tabular-nums block">
+                        {formatDistanceKm(r.km)}
+                      </span>
+                      <span className="text-[10px] text-gray-500">Distance Travelled</span>
+                    </span>
                   </div>
                 ))}
             </div>

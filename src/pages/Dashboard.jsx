@@ -52,6 +52,7 @@ import {
   DashboardShellErrorBoundary,
 } from "../components/dashboard/WidgetErrorBoundary";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
+import { formatEvidenceRateLabel } from "../utils/analyticsLabels";
 
 const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
 const DashboardVisitChart = lazy(() => import("../components/dashboard/DashboardVisitChart"));
@@ -598,13 +599,19 @@ const Dashboard = () => {
         />
         <StatCard
           icon={Radio}
-          label="GPS Online"
+          label="GPS Tracking Compliance"
           value={stats.onlineNow}
           gradient="linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
           iconBg="#dcfce7"
           iconColor="#16a34a"
           onClick={() => navigate("/tracking")}
-          subValue={mappedGeoCount > 0 ? `${mappedGeoCount} on map` : undefined}
+          subValue={
+            stats.workingNow > 0
+              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% of working staff online`
+              : mappedGeoCount > 0
+                ? `${mappedGeoCount} employee${mappedGeoCount !== 1 ? "s" : ""} on live map`
+                : "Live GPS tracking status"
+          }
         />
       </div>
 
@@ -624,8 +631,12 @@ const Dashboard = () => {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Route Tracking Summary</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {stats.workingNow} working · {stats.onlineNow} GPS online · {mappedGeoCount} mapped
+              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                {stats.workingNow} employee{stats.workingNow !== 1 ? "s" : ""} working today
+                <br />
+                {stats.onlineNow} with live GPS tracking
+                <br />
+                {mappedGeoCount} shown on route map
               </p>
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 mt-2">
                 View route history <ChevronRight className="w-3.5 h-3.5" />
@@ -644,8 +655,12 @@ const Dashboard = () => {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Evidence Upload Summary</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {evidenceStats.withEvidence} visits with files · {evidenceStats.totalAttachments} attachments · {evidenceStats.rate}% rate
+              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                {evidenceStats.withEvidence} visits include uploaded evidence
+                <br />
+                {evidenceStats.totalAttachments} file{evidenceStats.totalAttachments !== 1 ? "s" : ""} uploaded
+                <br />
+                {formatEvidenceRateLabel(evidenceStats.rate)}
               </p>
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 mt-2">
                 Browse visits <ChevronRight className="w-3.5 h-3.5" />
@@ -676,7 +691,7 @@ const Dashboard = () => {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-medium text-emerald-800 hover:bg-emerald-100 transition-colors"
           >
             <Radio className="w-4 h-4" />
-            {stats.workingNow} working · {stats.onlineNow} online
+            {stats.workingNow} working now · {stats.onlineNow} GPS online
           </button>
           {stats.gpsIssues > 0 && (
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-100 text-sm font-medium text-red-700">

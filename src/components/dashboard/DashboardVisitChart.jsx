@@ -4,14 +4,14 @@ import { Calendar } from "lucide-react";
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
+  const visits = payload[0]?.value ?? 0;
   return (
     <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-gray-700 mb-0.5">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }} className="font-medium">
-          {p.name}: {p.value}
-        </p>
-      ))}
+      <p className="font-medium text-emerald-700">
+        {visits} Visit{visits === 1 ? "" : "s"} Completed
+      </p>
+      <p className="text-gray-500 mt-0.5">Daily field visit count</p>
     </div>
   );
 }
@@ -45,7 +45,11 @@ export default function DashboardVisitChart({ visitTrends = [] }) {
         border: "1px solid rgba(15,118,110,0.08)",
       }}
     >
-      <SectionHeader icon={Calendar} title="Visit Activity" subtitle="Daily visits (last 30 days)" />
+      <SectionHeader
+        icon={Calendar}
+        title="Visit Activity"
+        subtitle="Number of field visits completed each day (last 30 days)"
+      />
       <div className="px-3 py-3">
         {trends.length === 0 ? (
           <div className="flex flex-col items-center justify-center w-full min-w-0 h-[300px] text-gray-400">
@@ -77,7 +81,7 @@ export default function DashboardVisitChart({ visitTrends = [] }) {
               <Area
                 type="monotone"
                 dataKey="count"
-                name="Visits"
+                name="Visits Completed"
                 stroke="#15803d"
                 strokeWidth={2.5}
                 fill="url(#visitTrendGrad)"
