@@ -96,7 +96,7 @@ export default function DashboardLiveMap({
           </div>
         }
       />
-      <div className="relative" style={{ height: 280 }}>
+      <div className="relative" style={{ height: 280, zIndex: 0, isolation: "isolate" }}>
         <div
           className="absolute top-0 left-0 right-0 h-8 z-[400] pointer-events-none"
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.6), transparent)" }}
@@ -105,7 +105,7 @@ export default function DashboardLiveMap({
           center={safeCenter}
           zoom={safeZoom}
           style={{ height: "100%", width: "100%" }}
-          scrollWheelZoom
+          scrollWheelZoom={false}
         >
           <MapBasemapLayers />
           <MapEmployeeViewport locations={safeLocations} />

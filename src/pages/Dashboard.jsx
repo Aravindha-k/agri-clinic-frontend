@@ -30,7 +30,7 @@ import { resolveVillageLabel } from "../utils/displayValue";
 import { resolveVisitCropDisplay } from "../utils/visitDisplay";
 import { PageHeader, PageLoader, OpsStatusBadge, GpsIndicator, EmptyState } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
-import RouteFallback from "../components/RouteFallback";
+import WidgetSuspenseFallback from "../components/dashboard/WidgetSuspenseFallback";
 import { getVisits } from "../api/visit.api";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
 import {
@@ -111,6 +111,8 @@ const formatRelative = (d) => {
   if (hrs < 24) return `${hrs}h ago`;
   return formatDate(d);
 };
+
+const STABLE_FORMAT_RELATIVE = formatRelative;
 
 /* ================================================================
    ANIMATED COUNT-UP HOOK
@@ -220,6 +222,23 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const loadInFlightRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.debug(
+      `[Dashboard] render #${renderCountRef.current} loading=${loading} refreshing=${refreshing}`
+    );
+  });
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.debug(`[Dashboard] loading transition -> ${loading}`);
+  }, [loading]);
+
   const logApiFailure = (endpoint, result) => {
     if (!import.meta.env.DEV) return;
     const err = result.reason;
@@ -231,8 +250,21 @@ const Dashboard = () => {
   };
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
+    if (loadInFlightRef.current) {
+      if (import.meta.env.DEV) {
+        console.debug("[Dashboard] loadDashboard skipped — already in flight");
+      }
+      return;
+    }
+    loadInFlightRef.current = true;
 
+    if (isRefresh) {
+      setRefreshing(true);
+    } else if (!hasLoadedRef.current) {
+      setLoading(true);
+    }
+
+    try {
     const [summaryR, chartR, trendsR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await Promise.allSettled([
       getDashboardStats(),
       getDashboardChartStats(),
@@ -398,11 +430,15 @@ const Dashboard = () => {
       setRecentFarmers([]);
     }
 
-    setLoading(false);
-    setRefreshing(false);
+    hasLoadedRef.current = true;
+    } finally {
+      loadInFlightRef.current = false;
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  useAdaptivePolling(loadDashboard, 30000, [loadDashboard]);
+  useAdaptivePolling(loadDashboard, 30000);
 
   const validLocations = useMemo(
     () => getValidEmployeeLocations(geoData),
@@ -658,7 +694,7 @@ const Dashboard = () => {
           title="Live Field Map unavailable"
           className="lg:col-span-2 min-h-[360px]"
         >
-          <Suspense fallback={<RouteFallback label="Loading map\u2026" />}>
+          <Suspense fallback={<WidgetSuspenseFallback label="Loading map\u2026" />}>
             <DashboardLiveMap
               mapCenter={mapCenter}
               mapZoom={mapZoom}
@@ -667,7 +703,7 @@ const Dashboard = () => {
               mapStatusText={mapStatusText}
               workingNow={stats.workingNow ?? 0}
               hasTrackedEmployees={hasTrackedEmployees}
-              formatRelative={formatRelative}
+              formatRelative={STABLE_FORMAT_RELATIVE}
             />
           </Suspense>
         </WidgetErrorBoundary>
@@ -762,7 +798,7 @@ const Dashboard = () => {
 
       {/* Visit trends — lazy-loaded chart */}
       <WidgetErrorBoundary name="VisitChart" title="Visit chart unavailable">
-        <Suspense fallback={<RouteFallback label="Loading analytics\u2026" />}>
+        <Suspense fallback={<WidgetSuspenseFallback label="Loading analytics\u2026" />}>
           <DashboardVisitChart visitTrends={visitTrends ?? []} />
         </Suspense>
       </WidgetErrorBoundary>
