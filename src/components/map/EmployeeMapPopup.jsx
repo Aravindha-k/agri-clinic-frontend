@@ -12,6 +12,8 @@ export default function EmployeeMapPopup({
   entity = null,
   statusLabel,
   statusOnline,
+  workStatus,
+  movementStatus,
   lastUpdated,
   children = null,
 }) {
@@ -28,7 +30,7 @@ export default function EmployeeMapPopup({
 
       {statusLabel != null && (
         <p className="text-xs">
-          <span className="text-gray-400">Status: </span>
+          <span className="text-gray-400">GPS: </span>
           <span
             className={
               statusOnline ? "font-semibold text-emerald-600" : "font-medium text-gray-600"
@@ -38,6 +40,20 @@ export default function EmployeeMapPopup({
           </span>
         </p>
       )}
+
+      {workStatus ? (
+        <p className="text-xs text-gray-600">
+          <span className="text-gray-400">Work: </span>
+          <span className="font-medium">{workStatus}</span>
+        </p>
+      ) : null}
+
+      {movementStatus ? (
+        <p className="text-xs text-gray-600">
+          <span className="text-gray-400">Movement: </span>
+          <span className="font-medium">{movementStatus}</span>
+        </p>
+      ) : null}
 
       {lastUpdated ? (
         <p className="text-xs text-gray-500">

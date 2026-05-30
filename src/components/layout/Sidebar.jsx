@@ -1,6 +1,6 @@
 ﻿import { NavLink, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Users, Sprout, Leaf, AlertTriangle, MapPin,
+  LayoutDashboard, Users, Sprout, Leaf, AlertTriangle, MapPin, Route,
   LogOut, X, ClipboardCheck, BarChart3, Bell, Database, ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -24,6 +24,7 @@ export const NAV_SECTIONS = [
       { label: "Crop Issues", icon: AlertTriangle, path: "/crop-issues" },
       { label: "Recommendations", icon: ClipboardCheck, path: "/recommendations" },
       { label: "Live Tracking", icon: MapPin, path: "/tracking" },
+      { label: "Route History", icon: Route, path: "/tracking/routes" },
     ],
   },
   {

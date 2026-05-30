@@ -24,6 +24,14 @@ import {
     getEmployeeSummary,
     getEmployeeActivity,
 } from "../api/tracking.api";
+import { Link } from "react-router-dom";
+import {
+    WorkStatusBadge,
+    GpsOnlineBadge,
+    MovementBadge,
+} from "../components/tracking/TrackingStatusBadges";
+import { getTrackingStatusColor, workStatusLabel, gpsOnlineLabel, movementLabel } from "../utils/trackingStatus";
+import { empName, timeAgo, formatDuration } from "../utils/trackingDisplay";
 import {
     normalizeTrackingEmployee,
     resolveTrackingEmployeeList,
@@ -44,8 +52,6 @@ import {
     Navigation,
     FileText,
     Radio,
-    Signal,
-    SignalZero,
     Smartphone,
     Route,
     Layers,
@@ -59,7 +65,7 @@ import {
    ================================================================ */
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 const SHADOW_LG = "0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.1)";
-const REFRESH_INTERVAL = 30000;
+const REFRESH_INTERVAL = 45000;
 
 /* ================================================================
    ANIMATED COUNT-UP HOOK
@@ -115,50 +121,16 @@ const createColoredIcon = (color, pulse = false) =>
     });
 
 const getMarkerIcon = (emp) => {
-    const work = emp.work_status?.toLowerCase?.() || "";
-    const conn = emp.connection_status?.toLowerCase?.() || "";
-    const gps = emp.gps_status?.toLowerCase?.() || "";
-
-    if (gps === "gps_off" || gps === "off") return createColoredIcon(markerColors.red);
-    if (work === "working" && conn === "online") return createColoredIcon(markerColors.green, true);
-    if (work === "working" && conn === "offline") return createColoredIcon(markerColors.yellow);
-    return createColoredIcon(markerColors.gray);
+    const color = getTrackingStatusColor(emp);
+    const pulse = color === "green";
+    return createColoredIcon(markerColors[color] ?? markerColors.gray, pulse);
 };
 
-const getStatusColor = (emp) => {
-    const work = emp.work_status?.toLowerCase?.() || "";
-    const conn = emp.connection_status?.toLowerCase?.() || "";
-    const gps = emp.gps_status?.toLowerCase?.() || "";
-    if (gps === "gps_off" || gps === "off") return "red";
-    if (work === "working" && conn === "online") return "green";
-    if (work === "working" && conn === "offline") return "yellow";
-    return "gray";
-};
+const getStatusColor = getTrackingStatusColor;
 
 /* ================================================================
-   HELPERS
+   HELPERS — empName, timeAgo in utils/trackingDisplay.js
    ================================================================ */
-const timeAgo = (dateStr) => {
-    if (!dateStr) return "N/A";
-    const now = new Date();
-    const then = new Date(dateStr);
-    const diff = Math.floor((now - then) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-};
-
-const formatDuration = (minutes) => {
-    if (!minutes && minutes !== 0) return "\u2014";
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-};
-
-const empName = (e) =>
-    e?.employee_name || e?.username || e?.employee_id || "Unknown";
 
 /**
  * Tracking health: prefer API field `tracking_health`, else compute from last_seen.
@@ -225,44 +197,8 @@ const StatCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) =
 StatCard.displayName = "StatCard";
 
 /* ================================================================
-   BADGE COMPONENTS
+   BADGE COMPONENTS — see TrackingStatusBadges.jsx
    ================================================================ */
-const WorkStatusBadge = ({ status }) => {
-    const s = status?.toLowerCase?.() || "";
-    const cfg = {
-        working: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", label: "Working" },
-        not_working: { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200", dot: "bg-gray-400", label: "Not Working" },
-    };
-    const c = cfg[s] || cfg.not_working;
-    return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text} border ${c.border}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${c.dot} ${s === "working" ? "animate-pulse" : ""}`} />
-            {c.label}
-        </span>
-    );
-};
-
-const ConnectionBadge = ({ status }) => {
-    const s = status?.toLowerCase?.() || "";
-    const isOnline = s === "online";
-    return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${isOnline ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-orange-50 text-orange-700 border-orange-200"}`}>
-            {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-            {isOnline ? "Online" : "Offline"}
-        </span>
-    );
-};
-
-const GpsBadge = ({ status }) => {
-    const s = status?.toLowerCase?.() || "";
-    const isOff = s === "gps_off" || s === "off";
-    return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${isOff ? "bg-red-50 text-red-700 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-            {isOff ? <SignalZero className="w-3 h-3" /> : <Signal className="w-3 h-3" />}
-            {isOff ? "GPS Off" : "Active"}
-        </span>
-    );
-};
 
 /* ================================================================
    TRACKING HEALTH BADGE
@@ -454,8 +390,9 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                                     {/* Tracking Health + Status Row */}
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <TrackingHealthBadge employee={employee} />
-                                                        <WorkStatusBadge status={employee.work_status} />
-                                                        <ConnectionBadge status={employee.connection_status} />
+                                                        <WorkStatusBadge employee={employee} />
+                                                        <GpsOnlineBadge employee={employee} />
+                                                        <MovementBadge employee={employee} />
                                                     </div>
 
                                                     <div className="grid grid-cols-2 gap-3">
@@ -799,14 +736,32 @@ export default function Tracking() {
                         >
                             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
                         </button>
+                        <Link
+                            to="/tracking/routes"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition-colors"
+                        >
+                            <Route className="w-4 h-4" />
+                            Route History
+                        </Link>
                     </div>
                 </div>
 
                 {/* ====== ERROR ====== */}
                 {error && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-3" style={{ boxShadow: SHADOW }}>
-                        <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                        {error}
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ boxShadow: SHADOW }}>
+                        <div className="flex items-center gap-3">
+                            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                            {error}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => loadData(true)}
+                            disabled={refreshing}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-medium text-xs disabled:opacity-50"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                            Retry
+                        </button>
                     </div>
                 )}
 
@@ -831,7 +786,7 @@ export default function Tracking() {
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-400">
                             <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                            Auto-refresh 30s
+                            Auto-refresh 45s
                         </div>
                     </div>
 
@@ -863,15 +818,7 @@ export default function Tracking() {
                                                 lat={emp.latitude ?? emp.last_latitude}
                                                 lng={emp.longitude ?? emp.last_longitude}
                                                 entity={emp}
-                                                statusLabel={
-                                                    String(
-                                                        emp.connection_status ??
-                                                            emp.connection ??
-                                                            ""
-                                                    ).toUpperCase() === "ONLINE"
-                                                        ? "Online"
-                                                        : "Offline"
-                                                }
+                                                statusLabel={gpsOnlineLabel(emp)}
                                                 statusOnline={
                                                     String(
                                                         emp.connection_status ??
@@ -879,6 +826,8 @@ export default function Tracking() {
                                                             ""
                                                     ).toUpperCase() === "ONLINE"
                                                 }
+                                                workStatus={workStatusLabel(emp)}
+                                                movementStatus={movementLabel(emp)}
                                                 lastUpdated={timeAgo(emp.last_seen) || "\u2014"}
                                             >
                                                 {emp.is_suspicious ? (
@@ -957,7 +906,7 @@ export default function Tracking() {
                         <table className="w-full">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-50 border-b border-gray-100">
-                                    {["Employee", "District", "Work Status", "Connection", "GPS", "Health", "Last Seen", "Today Duration", ""].map(
+                                    {["Employee", "District", "Work Status", "GPS Status", "Movement", "Health", "Last Seen", "Today Duration", ""].map(
                                         (h) => (
                                             <th key={h} className="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 whitespace-nowrap">
                                                 {h}
@@ -991,17 +940,17 @@ export default function Tracking() {
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-3.5 text-sm text-gray-600">{emp.district || "\u2014"}</td>
-                                                <td className="px-5 py-3.5"><WorkStatusBadge status={emp.work_status} /></td>
+                                                <td className="px-5 py-3.5"><WorkStatusBadge employee={emp} /></td>
                                                 <td className="px-5 py-3.5">
                                                     <div className="flex items-center gap-1.5">
-                                                        <ConnectionBadge status={emp.connection_status} />
+                                                        <GpsOnlineBadge employee={emp} />
                                                         {emp.is_suspicious && <ShieldAlert className="w-3.5 h-3.5 text-red-500" title="Suspicious activity" />}
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-3.5"><GpsBadge status={emp.gps_status} /></td>
+                                                <td className="px-5 py-3.5"><MovementBadge employee={emp} /></td>
                                                 <td className="px-5 py-3.5"><TrackingHealthBadge employee={emp} /></td>
                                                 <td className="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{timeAgo(emp.last_seen)}</td>
-                                                <td className="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{formatDuration(emp.duration_minutes ?? emp.work_duration)}</td>
+                                                <td className="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{emp.today_duration ?? formatDuration(emp.duration_minutes ?? emp.work_duration) ?? "\u2014"}</td>
                                                 <td className="px-5 py-3.5">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); openDrawer(emp); }}

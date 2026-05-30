@@ -11,6 +11,7 @@ const PAGE_META = {
   "/visits": { name: "Visits", parent: null },
   "/visits/create": { name: "Create Visit", parent: "Visits" },
   "/tracking": { name: "Live Tracking", parent: null },
+  "/tracking/routes": { name: "Route History", parent: "Live Tracking" },
   "/masters": { name: "Master Data", parent: null },
   "/masters/locations": { name: "Locations", parent: "Masters" },
   "/masters/crops": { name: "Crops", parent: "Masters" },

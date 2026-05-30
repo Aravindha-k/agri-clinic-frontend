@@ -188,3 +188,45 @@ export function resolveRouteFetchError(err) {
 
   return detail || `Could not load route (HTTP ${status}).`;
 }
+
+/** Route summary stats for admin route view. */
+export function computeRouteSummary(routeData, employee = null) {
+  const points = routeData?.points ?? [];
+  const first = points[0];
+  const last = points[points.length - 1];
+  const startTime = first?.captured_at ?? first?.created_at ?? null;
+  const endTime = last?.captured_at ?? last?.created_at ?? null;
+
+  let durationMinutes = null;
+  if (startTime && endTime) {
+    const ms = new Date(endTime).getTime() - new Date(startTime).getTime();
+    if (Number.isFinite(ms) && ms > 0) {
+      durationMinutes = Math.round(ms / 60000);
+    }
+  }
+
+  const currentLat =
+    parseCoord(employee?.latitude ?? employee?.last_latitude) ??
+    (last ? last.latitude : null);
+  const currentLng =
+    parseCoord(employee?.longitude ?? employee?.last_longitude) ??
+    (last ? last.longitude : null);
+
+  return {
+    distanceKm: routeData?.totalDistanceKm ?? null,
+    durationMinutes,
+    startTime,
+    endTime,
+    totalPoints: routeData?.totalPoints ?? points.length,
+    currentLat,
+    currentLng,
+  };
+}
+
+export function formatRouteDuration(minutes) {
+  if (minutes == null || !Number.isFinite(minutes)) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}

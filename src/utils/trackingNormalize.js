@@ -116,27 +116,27 @@ export function normalizeTrackingEmployee(emp) {
   const coords = rowLatLng(emp);
   const lat = coords?.lat ?? null;
   const lng = coords?.lng ?? null;
-  const conn = String(emp.connection_status ?? emp.connection ?? "").toUpperCase();
-  const work = String(emp.work_status ?? "").toLowerCase();
-  const device_status =
-    emp.device_status && typeof emp.device_status === "object"
-      ? emp.device_status
-      : undefined;
+  const connRaw = emp.connection_status ?? emp.connection;
+  const conn = String(connRaw ?? "").toUpperCase();
 
   return {
     ...emp,
     user_id: emp.user_id ?? emp.id,
-    device_status,
-    connection_status: emp.connection_status ?? emp.connection,
-    connection: emp.connection ?? emp.connection_status,
+    device_status:
+      emp.device_status && typeof emp.device_status === "object"
+        ? emp.device_status
+        : undefined,
+    connection_status: connRaw,
+    connection: emp.connection ?? emp.connection_status ?? connRaw,
+    movement_status: emp.movement_status ?? "stopped",
+    work_status_detail: emp.work_status_detail ?? emp.work_status,
     latitude: lat,
     longitude: lng,
     last_latitude: emp.last_latitude ?? lat,
     last_longitude: emp.last_longitude ?? lng,
     last_seen: emp.last_seen ?? emp.last_heartbeat ?? emp.last_location_at,
-    work_status: work,
     is_online: conn === "ONLINE" || emp.is_online === true,
-    is_working: work === "working" || emp.is_working === true,
+    is_working: String(emp.work_status ?? "").toUpperCase() === "WORKING" || emp.is_working === true,
   };
 }
 

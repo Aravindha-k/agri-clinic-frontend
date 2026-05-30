@@ -7,6 +7,7 @@ import VisitDetail from "./pages/VisitDetail";
 import Issues from "./pages/Issues";
 import Recommendations from "./pages/Recommendations";
 import Tracking from "./pages/Tracking";
+import EmployeeRoutes from "./pages/EmployeeRoutes";
 import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import Audit from "./pages/Audit";
@@ -49,6 +50,7 @@ function App() {
           <Route path="crop-issues" element={<Issues />} />
           <Route path="recommendations" element={<Recommendations />} />
           <Route path="tracking" element={<Tracking />} />
+          <Route path="tracking/routes" element={<EmployeeRoutes />} />
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="audit" element={<Audit />} />
