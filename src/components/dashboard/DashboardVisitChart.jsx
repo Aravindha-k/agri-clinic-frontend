@@ -34,7 +34,8 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
   );
 }
 
-export default function DashboardVisitChart({ visitTrends }) {
+export default function DashboardVisitChart({ visitTrends = [] }) {
+  const trends = Array.isArray(visitTrends) ? visitTrends : [];
   return (
     <div
       className="section-card overflow-hidden"
@@ -46,14 +47,14 @@ export default function DashboardVisitChart({ visitTrends }) {
     >
       <SectionHeader icon={Calendar} title="Visit Activity" subtitle="Daily visits (last 30 days)" />
       <div className="px-3 py-3">
-        {visitTrends.length === 0 ? (
+        {trends.length === 0 ? (
           <div className="flex flex-col items-center justify-center w-full min-w-0 h-[300px] text-gray-400">
             <Calendar className="w-10 h-10 text-gray-300 mb-3" />
             <p className="text-sm font-medium text-gray-500">No visit trend data yet</p>
           </div>
         ) : (
           <ChartContainer>
-            <AreaChart data={visitTrends} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+            <AreaChart data={trends} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
               <defs>
                 <linearGradient id="visitTrendGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#15803d" stopOpacity={0.25} />

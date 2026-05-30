@@ -3,6 +3,7 @@ import L from "leaflet";
 import MapBasemapLayers from "../map/MapBasemapLayers";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
 import MapEmployeeViewport from "../map/MapEmployeeViewport";
+import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
 import { Radio, MapPin } from "lucide-react";
 
 const createMarkerIcon = (isOnline) =>
@@ -35,13 +36,31 @@ function SectionHeader({ icon: Icon, title, subtitle, right }) {
 export default function DashboardLiveMap({
   mapCenter,
   mapZoom,
-  validLocations,
-  mappedGeoCount,
+  validLocations = [],
+  mappedGeoCount = 0,
   mapStatusText,
-  workingNow,
-  hasTrackedEmployees,
+  workingNow = 0,
+  hasTrackedEmployees = false,
   formatRelative,
 }) {
+  const safeLocations = (Array.isArray(validLocations) ? validLocations : []).filter(
+    (loc) =>
+      loc &&
+      Number.isFinite(Number(loc.lat)) &&
+      Number.isFinite(Number(loc.lng))
+  );
+  const safeCenter =
+    Array.isArray(mapCenter) &&
+    mapCenter.length === 2 &&
+    Number.isFinite(Number(mapCenter[0])) &&
+    Number.isFinite(Number(mapCenter[1]))
+      ? [Number(mapCenter[0]), Number(mapCenter[1])]
+      : [...TAMIL_NADU_CENTER];
+  const safeZoom = Number.isFinite(Number(mapZoom)) ? Number(mapZoom) : TAMIL_NADU_ZOOM;
+  const safeFormatRelative =
+    typeof formatRelative === "function" ? formatRelative : () => "\u2014";
+  const mappedCount = mappedGeoCount ?? safeLocations.length;
+
   return (
     <div
       className="lg:col-span-2 section-card overflow-hidden"
@@ -56,7 +75,7 @@ export default function DashboardLiveMap({
         title="Live Field Map"
         subtitle={
           mapStatusText ??
-          `${mappedGeoCount} employee${mappedGeoCount !== 1 ? "s" : ""} on map · ${workingNow} working`
+          `${mappedCount} employee${mappedCount !== 1 ? "s" : ""} on map · ${workingNow ?? 0} working`
         }
         right={
           <div className="flex items-center gap-4">
@@ -83,14 +102,14 @@ export default function DashboardLiveMap({
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.6), transparent)" }}
         />
         <MapContainer
-          center={mapCenter}
-          zoom={mapZoom}
+          center={safeCenter}
+          zoom={safeZoom}
           style={{ height: "100%", width: "100%" }}
           scrollWheelZoom
         >
           <MapBasemapLayers />
-          <MapEmployeeViewport locations={validLocations} />
-          {validLocations.map((loc) => (
+          <MapEmployeeViewport locations={safeLocations} />
+          {safeLocations.map((loc) => (
             <Marker
               key={`${loc.userId ?? loc.employeeName}-${loc.lat}-${loc.lng}`}
               position={[loc.lat, loc.lng]}
@@ -104,13 +123,13 @@ export default function DashboardLiveMap({
                   entity={loc.properties ?? loc}
                   statusLabel={loc.isOnline ? "Online" : "Offline"}
                   statusOnline={loc.isOnline}
-                  lastUpdated={formatRelative(loc.lastSeen) || "\u2014"}
+                  lastUpdated={safeFormatRelative(loc.lastSeen) || "\u2014"}
                 />
               </Popup>
             </Marker>
           ))}
         </MapContainer>
-        {mappedGeoCount === 0 && (
+        {mappedCount === 0 && (
           <div
             className="absolute inset-0 z-[500] flex items-center justify-center pointer-events-none"
             style={{ background: "rgba(255,255,255,0.75)" }}

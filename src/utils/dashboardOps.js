@@ -142,10 +142,11 @@ export function buildUnifiedActivityFeed({ workdays = [], visits = [], farmers =
   const events = [];
 
   (visits || []).slice(0, 20).forEach((v) => {
+    if (!v) return;
     const when = v.visit_date ?? v.created_at;
     const attachments = resolveVisitAttachmentCount(v);
     events.push({
-      id: `visit-${v.id}`,
+      id: `visit-${v.id ?? when ?? Math.random()}`,
       type: "visit",
       title: "New field visit",
       detail: `${v.farmer_name || "Farmer"} · ${visitEmployeeLabel(v)}`,
@@ -163,6 +164,7 @@ export function buildUnifiedActivityFeed({ workdays = [], visits = [], farmers =
   });
 
   (workdays || []).slice(0, 15).forEach((wd) => {
+    if (!wd) return;
     const name = employeeName(wd.employee ?? wd);
     if (wd.start_time) {
       events.push({
@@ -185,7 +187,7 @@ export function buildUnifiedActivityFeed({ workdays = [], visits = [], farmers =
   });
 
   (farmers || []).slice(0, 5).forEach((f) => {
-    if (!f.created_at) return;
+    if (!f?.created_at) return;
     events.push({
       id: `farmer-${f.id}`,
       type: "farmer",

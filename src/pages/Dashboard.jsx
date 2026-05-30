@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { unwrapSuccessEnvelope, resolveList } from "../utils/apiUnwrap";
+import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getDashboardChartStats, getVisitTrends } from "../api/dashboard.api";
 import {
@@ -42,9 +42,14 @@ import {
   getMapCenter,
 } from "../utils/mapCoordinates";
 import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
+import QuickActions from "../components/dashboard/QuickActions";
 import LiveOperationsPanel from "../components/dashboard/LiveOperationsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
 import UnifiedActivityFeed from "../components/dashboard/UnifiedActivityFeed";
+import {
+  WidgetErrorBoundary,
+  DashboardShellErrorBoundary,
+} from "../components/dashboard/WidgetErrorBoundary";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 
 const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
@@ -215,6 +220,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const logApiFailure = (endpoint, result) => {
+    if (!import.meta.env.DEV) return;
     const err = result.reason;
     console.error(
       `[Dashboard] ${endpoint} failed:`,
@@ -246,7 +252,7 @@ const Dashboard = () => {
     // -- Main summary (required) — GET dashboard/summary/ --
     if (summaryR.status === "fulfilled") {
       recordApiSuccess();
-      const d = unwrapSuccessEnvelope(summaryR.value) ?? {};
+      const d = extractDashboardObject(summaryR.value) ?? {};
       setStats((prev) => ({
         ...prev,
         totalVisits: d.total_visits ?? prev.totalVisits,
@@ -272,7 +278,7 @@ const Dashboard = () => {
 
     // -- Chart stats (optional) — GET dashboard/stats/ --
     if (chartR.status === "fulfilled") {
-      const d = unwrapSuccessEnvelope(chartR.value) ?? {};
+      const d = extractDashboardObject(chartR.value) ?? {};
       setStats((prev) => ({
         ...prev,
         farmers: d.total_farmers ?? d.farmers ?? d.farmers_count ?? prev.farmers,
@@ -300,10 +306,16 @@ const Dashboard = () => {
 
     // -- Visit trends (optional) — GET dashboard/visit-trends/ --
     if (trendsR.status === "fulfilled") {
-      const raw = unwrapSuccessEnvelope(trendsR.value) ?? {};
+      const raw = extractDashboardObject(trendsR.value) ?? {};
       const daily = Array.isArray(raw)
         ? raw
-        : (raw.daily ?? raw.monthly ?? raw.visits_per_month ?? raw.monthly_visits ?? raw.data ?? []);
+        : (raw.daily ??
+          raw.monthly ??
+          raw.visits_per_month ??
+          raw.monthly_visits ??
+          raw.results ??
+          raw.data ??
+          []);
       if (Array.isArray(daily) && daily.length > 0) {
         setVisitTrends(
           daily.map((x) => {
@@ -338,7 +350,7 @@ const Dashboard = () => {
 
     // -- Workday history (optional) — GET tracking/workdays/history/ --
     if (wdR.status === "fulfilled") {
-      setWorkdays(resolveList(wdR.value));
+      setWorkdays(extractDashboardList(wdR.value));
     } else {
       logApiFailure("GET tracking/workdays/history/", wdR);
       setWorkdays([]);
@@ -346,9 +358,8 @@ const Dashboard = () => {
 
     // -- Recent visits (optional) — GET visits/ --
     if (visitsR.status === "fulfilled") {
-      const body = visitsR.value ?? {};
-      const arr = body.results ?? resolveList(body);
-      const normalized = normalizeVisitList(arr);
+      const arr = extractDashboardList(visitsR.value);
+      const normalized = normalizeVisitList(Array.isArray(arr) ? arr : []);
       setRecentVisits(normalized.slice(0, 8));
       setFeedVisits(normalized);
       let withEvidence = 0;
@@ -381,8 +392,7 @@ const Dashboard = () => {
     }
 
     if (farmersR.status === "fulfilled") {
-      const body = farmersR.value ?? {};
-      setRecentFarmers(body.results ?? resolveList(body));
+      setRecentFarmers(extractDashboardList(farmersR.value));
     } else {
       setRecentFarmers([]);
     }
@@ -414,33 +424,41 @@ const Dashboard = () => {
         ? "No valid employee GPS location available yet."
         : null;
 
-  const liveOps = useMemo(
-    () => buildLiveOpsStats(stats, trackingEmployees, workdays),
-    [stats, trackingEmployees, workdays]
-  );
-  const opsAlerts = useMemo(
-    () => buildOpsAlerts(trackingEmployees, workdays),
-    [trackingEmployees, workdays]
-  );
-  const activityFeed = useMemo(
-    () =>
-      buildUnifiedActivityFeed({
-        workdays,
-        visits: feedVisits,
-        farmers: recentFarmers,
-      }),
-    [workdays, feedVisits, recentFarmers]
-  );
+  const liveOps = useMemo(() => {
+    try {
+      return buildLiveOpsStats(stats ?? {}, trackingEmployees ?? [], workdays ?? []);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("[Dashboard] liveOps build failed:", err);
+      return {};
+    }
+  }, [stats, trackingEmployees, workdays]);
+  const opsAlerts = useMemo(() => {
+    try {
+      return buildOpsAlerts(trackingEmployees ?? [], workdays ?? []);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("[Dashboard] opsAlerts build failed:", err);
+      return [];
+    }
+  }, [trackingEmployees, workdays]);
+  const activityFeed = useMemo(() => {
+    try {
+      return buildUnifiedActivityFeed({
+        workdays: workdays ?? [],
+        visits: feedVisits ?? [],
+        farmers: recentFarmers ?? [],
+      });
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("[Dashboard] activityFeed build failed:", err);
+      return [];
+    }
+  }, [workdays, feedVisits, recentFarmers]);
 
   /* ---- Loading state ---- */
   if (loading) {
     return <DashboardSkeleton />;
   }
 
-  /* ---- Render ---- */
-  return (
-    <div className="page-container">
-      {/* ================== PAGE HEADER ================== */}
+  const pageHeader = (
       <PageHeader
         title="Dashboard"
         subtitle={`${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · Real-time operations`}
@@ -456,6 +474,13 @@ const Dashboard = () => {
           </button>
         }
       />
+  );
+
+  /* ---- Render ---- */
+  return (
+    <DashboardShellErrorBoundary header={pageHeader}>
+    <div className="page-container">
+      {pageHeader}
 
       {/* Error banner */}
       {error && (
@@ -546,7 +571,9 @@ const Dashboard = () => {
         />
       </div>
 
-      <QuickActions />
+      <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
+        <QuickActions />
+      </WidgetErrorBoundary>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
@@ -591,11 +618,17 @@ const Dashboard = () => {
         </button>
       </div>
 
-      <LiveOperationsPanel ops={liveOps} />
+      <WidgetErrorBoundary name="LiveOperations" title="Live Operations unavailable">
+        <LiveOperationsPanel ops={liveOps ?? {}} />
+      </WidgetErrorBoundary>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <AlertsPanel alerts={opsAlerts} />
-        <UnifiedActivityFeed events={activityFeed} />
+        <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
+          <AlertsPanel alerts={opsAlerts ?? []} />
+        </WidgetErrorBoundary>
+        <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
+          <UnifiedActivityFeed events={activityFeed ?? []} />
+        </WidgetErrorBoundary>
       </div>
 
       {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
@@ -619,18 +652,24 @@ const Dashboard = () => {
 
       {/* ================== MAP + WORKDAY ================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Suspense fallback={<RouteFallback label="Loading map\u2026" />}>
-          <DashboardLiveMap
-            mapCenter={mapCenter}
-            mapZoom={mapZoom}
-            validLocations={validLocations}
-            mappedGeoCount={mappedGeoCount}
-            mapStatusText={mapStatusText}
-            workingNow={stats.workingNow}
-            hasTrackedEmployees={hasTrackedEmployees}
-            formatRelative={formatRelative}
-          />
-        </Suspense>
+        <WidgetErrorBoundary
+          name="LiveMap"
+          title="Live Field Map unavailable"
+          className="lg:col-span-2 min-h-[360px]"
+        >
+          <Suspense fallback={<RouteFallback label="Loading map\u2026" />}>
+            <DashboardLiveMap
+              mapCenter={mapCenter}
+              mapZoom={mapZoom}
+              validLocations={validLocations ?? []}
+              mappedGeoCount={mappedGeoCount}
+              mapStatusText={mapStatusText}
+              workingNow={stats.workingNow ?? 0}
+              hasTrackedEmployees={hasTrackedEmployees}
+              formatRelative={formatRelative}
+            />
+          </Suspense>
+        </WidgetErrorBoundary>
 
         {/* Workday Activity */}
         <div
@@ -721,9 +760,11 @@ const Dashboard = () => {
       </div>
 
       {/* Visit trends — lazy-loaded chart */}
-      <Suspense fallback={<RouteFallback label="Loading analytics\u2026" />}>
-        <DashboardVisitChart visitTrends={visitTrends} />
-      </Suspense>
+      <WidgetErrorBoundary name="VisitChart" title="Visit chart unavailable">
+        <Suspense fallback={<RouteFallback label="Loading analytics\u2026" />}>
+          <DashboardVisitChart visitTrends={visitTrends ?? []} />
+        </Suspense>
+      </WidgetErrorBoundary>
 
 
       {/* ================== RECENT VISITS ================== */}
@@ -818,10 +859,9 @@ const Dashboard = () => {
         )}
       </div>
     </div>
+    </DashboardShellErrorBoundary>
   );
 };
 
 export default Dashboard;
-
-
 
