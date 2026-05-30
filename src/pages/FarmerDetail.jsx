@@ -12,8 +12,8 @@ import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitF
 import RouteFallback from "../components/RouteFallback";
 
 const FarmerVisitTrendChart = lazy(() => import("../components/farmers/FarmerVisitTrendChart"));
+import { resolveVisitCropDisplay, resolveVisitFieldNotes } from "../utils/visitDisplay";
 import {
-    resolveCropLabel,
     resolveVillageLabel,
     resolveDistrictLabel,
     resolveFarmerLabel,
@@ -158,7 +158,7 @@ function generatePDF(farmer, fields, visits) {
             body: visits.map((v, i) => [
                 i + 1,
                 visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at),
-                v.crop_name || resolveCropLabel(v?.crop),
+                v.crop_name || resolveVisitCropDisplay(v),
                 visitEmployeeLabel(v),
                 v.village_name || resolveVillageLabel(v?.village),
             ]),
@@ -200,7 +200,7 @@ function generateWord(farmer, fields, visits) {
         : `<h2 style="color:#166534;border-bottom:2px solid #16a34a;padding-bottom:4px">Visit History (${visits.length})</h2>
            <table border="1" style="border-collapse:collapse;width:100%;font-size:13px">
            <tr style="background:#16a34a;color:white"><th>No.</th><th>Date & time</th><th>Crop</th><th>Employee</th><th>Village</th></tr>
-           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(v.crop_name || resolveCropLabel(v?.crop))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
+           ${visits.map((v, i) => `<tr${i % 2 === 1 ? ' style="background:#f0fdf4"' : ""}><td>${i + 1}</td><td>${esc(visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at))}</td><td>${esc(resolveVisitCropDisplay(v))}</td><td>${esc(visitEmployeeLabel(v))}</td><td>${esc(v.village_name || resolveVillageLabel(v?.village))}</td></tr>`).join("")}
            </table>`;
 
     const html = `
@@ -378,15 +378,10 @@ export default function FarmerDetail() {
                 : fmt(visits[0]?.visit_date || visits[0]?.created_at)
             : "\u2014";
 
-    const lastRecommendation = (() => {
+    const lastFieldNotes = (() => {
         for (const v of visits) {
-            const text =
-                v.general_advice ||
-                v.fertilizer_advice ||
-                v.pesticide_advice ||
-                v.irrigation_advice ||
-                v.notes;
-            if (text) return text;
+            const text = resolveVisitFieldNotes(v);
+            if (text && text !== "Not added by employee") return text;
         }
         return null;
     })();
@@ -564,7 +559,7 @@ export default function FarmerDetail() {
                             <InfoRow icon={ClipboardList} label="Visit count" value={String(visits.length)} />
                             <InfoRow icon={Calendar} label="Last visit date" value={lastVisitLabel} />
                             <InfoRow icon={User} label="Last assigned employee" value={assignedEmployee} />
-                            <InfoRow icon={Leaf} label="Last recommendation" value={lastRecommendation} />
+                            <InfoRow icon={Leaf} label="Last observation / field notes" value={lastFieldNotes} />
                             <div className="mt-4">
                                 <p className="text-xs font-semibold text-gray-500 mb-2">Visit trend</p>
                                 <Suspense fallback={<RouteFallback label="Loading chart\u2026" />}>
@@ -678,12 +673,10 @@ export default function FarmerDetail() {
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-1">
-                                                    {(v.crop_name || resolveCropLabel(v?.crop, "")) && (
-                                                        <span className="flex items-center gap-1">
-                                                            <Leaf className="w-3 h-3 text-emerald-400" />
-                                                            {v.crop_name || resolveCropLabel(v?.crop)}
-                                                        </span>
-                                                    )}
+                                                    <span className="flex items-center gap-1">
+                                                        <Leaf className="w-3 h-3 text-emerald-400" />
+                                                        {resolveVisitCropDisplay(v)}
+                                                    </span>
                                                     {(v.village_name || resolveVillageLabel(v?.village, "")) && (
                                                         <span className="flex items-center gap-1">
                                                             <MapPin className="w-3 h-3 text-gray-400" />
@@ -698,7 +691,9 @@ export default function FarmerDetail() {
                                                     )}
                                                     <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
                                                 </div>
-                                                {v.notes && <p className="mt-1.5 text-xs text-gray-400 italic line-clamp-2">{v.notes}</p>}
+                                                <p className="mt-1.5 text-xs text-gray-500 line-clamp-2">
+                                                    {resolveVisitFieldNotes(v)}
+                                                </p>
                                             </div>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-500 transition-colors flex-shrink-0 mt-1" />

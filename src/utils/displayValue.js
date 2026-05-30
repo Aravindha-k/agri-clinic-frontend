@@ -51,8 +51,9 @@ export function resolveCropLabel(crop, fallback = DISPLAY_FALLBACK) {
   if (typeof crop === "number") return String(crop);
   if (typeof crop === "object") {
     const label =
-      crop.name_en ??
       crop.name ??
+      crop.local_name ??
+      crop.name_en ??
       crop.name_ta ??
       crop.crop_name ??
       crop.label;

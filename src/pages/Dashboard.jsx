@@ -26,7 +26,8 @@ import {
   visitWhenLabel,
   visitEmployeeLabel,
 } from "../utils/visitFarmer";
-import { resolveCropLabel, resolveVillageLabel } from "../utils/displayValue";
+import { resolveVillageLabel } from "../utils/displayValue";
+import { resolveVisitCropDisplay } from "../utils/visitDisplay";
 import { PageHeader, PageLoader, OpsStatusBadge, GpsIndicator, EmptyState } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import RouteFallback from "../components/RouteFallback";
@@ -833,7 +834,7 @@ const Dashboard = () => {
                     <td className="px-5 py-3.5 hidden md:table-cell">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-medium border border-green-100">
                         <Leaf className="w-3 h-3" />
-                        {rowFarmer.cropName !== "\u2014" ? rowFarmer.cropName : resolveCropLabel(v?.crop)}
+                        {rowFarmer.cropName !== "\u2014" ? rowFarmer.cropName : resolveVisitCropDisplay(v)}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 hidden lg:table-cell text-gray-500 text-xs">

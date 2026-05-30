@@ -11,6 +11,15 @@ import { PageLoader } from "../components/ui/command";
 import { resolveVisitFarmer, visitLandLabel, resolveVisitEmployeePhoto } from "../utils/visitFarmer";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { asDisplayString, resolveLandLabel } from "../utils/displayValue";
+import {
+    resolveVisitCropDisplay,
+    resolveVisitFieldNotes,
+    resolveVisitProblemSeen,
+    resolveVisitActionTaken,
+    resolveVisitFollowUpDate,
+    VISIT_FIELD_NOTES_LABEL,
+    VISIT_NOT_ADDED,
+} from "../utils/visitDisplay";
 import { unwrapSuccessEnvelope } from "../utils/apiUnwrap";
 import {
     ArrowLeft,
@@ -74,10 +83,16 @@ const Card = ({ title, icon: Icon, children, className = "" }) => (
     </div>
 );
 
-const InfoItem = ({ label, value }) => (
+const InfoItem = ({ label, value, muted }) => (
     <div>
         <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">{label}</p>
-        <p className="mt-1 text-sm font-medium text-gray-900 break-words">{asDisplayString(value)}</p>
+        <p
+            className={`mt-1 text-sm font-medium break-words whitespace-pre-wrap ${
+                muted ? "text-gray-400 italic" : "text-gray-900"
+            }`}
+        >
+            {asDisplayString(value, VISIT_NOT_ADDED)}
+        </p>
     </div>
 );
 
@@ -199,16 +214,19 @@ function getFieldBlock(v) {
 }
 
 function getCropBlock(v) {
-    const resolved = resolveVisitFarmer(v);
-    const crop = v?.crop_info ?? v?.crop;
-    const name =
-        resolved.cropName !== "—"
-            ? resolved.cropName
-            : crop?.name_en ?? crop?.name ?? (typeof crop === "string" ? crop : null) ?? "—";
     return {
-        name,
-        stage: v?.crop_stage ?? "—",
+        name: resolveVisitCropDisplay(v),
+        stage: v?.crop_stage,
         health: v?.crop_health,
+    };
+}
+
+function getVisitNotesBlock(v) {
+    return {
+        fieldNotes: resolveVisitFieldNotes(v),
+        problemSeen: resolveVisitProblemSeen(v),
+        actionTaken: resolveVisitActionTaken(v),
+        followUpDate: resolveVisitFollowUpDate(v),
     };
 }
 
@@ -285,6 +303,7 @@ export default function VisitDetail(props) {
     const farmer = getFarmerBlock(v);
     const field = getFieldBlock(v);
     const crop = getCropBlock(v);
+    const visitNotes = getVisitNotesBlock(v);
 
     const mapsUrl = hasGps
         ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
@@ -544,17 +563,25 @@ export default function VisitDetail(props) {
 
                     <Card title="Crop" icon={Leaf}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field
-                                label="Crop"
-                                name="crop_name"
-                                value={crop.name}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
+                            {mode === "edit" ? (
+                                <Field
+                                    label="Crop"
+                                    name="crop_name"
+                                    value={v?.crop_name ?? ""}
+                                    editable
+                                    onChange={handleChange}
+                                />
+                            ) : (
+                                <InfoItem
+                                    label="Crop"
+                                    value={crop.name}
+                                    muted={crop.name === VISIT_NOT_ADDED}
+                                />
+                            )}
                             <Field
                                 label="Stage"
                                 name="crop_stage"
-                                value={crop.stage}
+                                value={crop.stage ?? ""}
                                 editable={mode === "edit"}
                                 onChange={handleChange}
                             />
@@ -564,41 +591,66 @@ export default function VisitDetail(props) {
                         </div>
                     </Card>
 
-                    <Card title="Notes & Recommendations" icon={FileText}>
-                        <div className="space-y-4">
-                            <Field
-                                label="Visit notes"
-                                name="notes"
-                                value={v?.notes}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                                type="textarea"
-                            />
-                            <Field
-                                label="Fertilizer advice"
-                                name="fertilizer_advice"
-                                value={v?.fertilizer_advice}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                                type="textarea"
-                            />
-                            <Field
-                                label="Pesticide advice"
-                                name="pesticide_advice"
-                                value={v?.pesticide_advice}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                                type="textarea"
-                            />
-                            {(v?.irrigation_advice || v?.general_advice) && mode === "view" && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-50">
-                                    {v?.irrigation_advice && (
-                                        <InfoItem label="Irrigation" value={v.irrigation_advice} />
-                                    )}
-                                    {v?.general_advice && (
-                                        <InfoItem label="General advice" value={v.general_advice} />
-                                    )}
-                                </div>
+                    <Card title={VISIT_FIELD_NOTES_LABEL} icon={FileText}>
+                        <div className="grid grid-cols-1 gap-4">
+                            {mode === "edit" ? (
+                                <>
+                                    <Field
+                                        label={VISIT_FIELD_NOTES_LABEL}
+                                        name="field_notes"
+                                        value={v?.field_notes ?? v?.observation ?? ""}
+                                        editable
+                                        onChange={handleChange}
+                                        type="textarea"
+                                    />
+                                    <Field
+                                        label="Problem Seen"
+                                        name="problem_seen"
+                                        value={v?.problem_seen ?? ""}
+                                        editable
+                                        onChange={handleChange}
+                                        type="textarea"
+                                    />
+                                    <Field
+                                        label="Action Taken"
+                                        name="action_taken"
+                                        value={v?.action_taken ?? ""}
+                                        editable
+                                        onChange={handleChange}
+                                        type="textarea"
+                                    />
+                                    <Field
+                                        label="Follow-up Date"
+                                        name="next_visit_date"
+                                        value={v?.next_visit_date ?? v?.follow_up_date ?? ""}
+                                        editable
+                                        onChange={handleChange}
+                                        type="date"
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <InfoItem
+                                        label={VISIT_FIELD_NOTES_LABEL}
+                                        value={visitNotes.fieldNotes}
+                                        muted={visitNotes.fieldNotes === VISIT_NOT_ADDED}
+                                    />
+                                    <InfoItem
+                                        label="Problem Seen"
+                                        value={visitNotes.problemSeen}
+                                        muted={visitNotes.problemSeen === VISIT_NOT_ADDED}
+                                    />
+                                    <InfoItem
+                                        label="Action Taken"
+                                        value={visitNotes.actionTaken}
+                                        muted={visitNotes.actionTaken === VISIT_NOT_ADDED}
+                                    />
+                                    <InfoItem
+                                        label="Follow-up Date"
+                                        value={visitNotes.followUpDate}
+                                        muted={visitNotes.followUpDate === VISIT_NOT_ADDED}
+                                    />
+                                </>
                             )}
                         </div>
                     </Card>
@@ -633,12 +685,12 @@ export default function VisitDetail(props) {
                                         </p>
                                     </li>
                                 )}
-                                {v?.next_visit_date && (
+                                {visitNotes.followUpDate !== VISIT_NOT_ADDED && (
                                     <li className="relative">
                                         <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-violet-400 ring-2 ring-white" />
-                                        <p className="text-xs text-gray-400">Follow-up</p>
+                                        <p className="text-xs text-gray-400">Follow-up Date</p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            {fmtDate(v.next_visit_date)}
+                                            {visitNotes.followUpDate}
                                         </p>
                                     </li>
                                 )}

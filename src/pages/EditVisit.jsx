@@ -2,6 +2,7 @@ import { PageLoader } from "../components/ui/command";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getVisitDetail, updateVisit } from "../api/visit.api";
+import { resolveVisitCropDisplay, VISIT_NOT_ADDED } from "../utils/visitDisplay";
 import { ClipboardCheck, FileText, Calendar } from "lucide-react";
 
 /* ---------- UI COMPONENTS ---------- */
@@ -54,6 +55,9 @@ export default function EditVisit() {
         land_name: "",
         land_area: "",
         notes: "",
+        field_notes: "",
+        problem_seen: "",
+        action_taken: "",
         fertilizer_advice: "",
         pesticide_advice: "",
         irrigation_advice: "",
@@ -79,11 +83,18 @@ export default function EditVisit() {
                     farmer_name: d.farmer_name || "",
                     farmer_phone: d.farmer_phone || "",
                     village_name: d.village_name || "",
-                    crop_name: d.crop_name || "",
+                    crop_name:
+                        d.crop_name ||
+                        (resolveVisitCropDisplay(d) !== VISIT_NOT_ADDED
+                            ? resolveVisitCropDisplay(d)
+                            : ""),
                     crop_stage: d.crop_stage || "",
                     land_name: d.land_name || "",
                     land_area: d.land_area || "",
                     notes: d.notes || "",
+                    field_notes: d.field_notes || d.observation || "",
+                    problem_seen: d.problem_seen || "",
+                    action_taken: d.action_taken || "",
                     fertilizer_advice: d.fertilizer_advice || "",
                     pesticide_advice: d.pesticide_advice || "",
                     irrigation_advice: d.irrigation_advice || "",
@@ -208,9 +219,21 @@ export default function EditVisit() {
                         </div>
                     </Section>
 
-                    {/* RECOMMENDATION */}
-                    <Section icon={FileText} title="Recommendation" accent="violet">
+                    {/* OBSERVATION / FIELD NOTES */}
+                    <Section icon={FileText} title="Observation / Field Notes" accent="violet">
                         <div className="grid grid-cols-2 gap-4">
+                            <DetailItem label="Observation / Field Notes" span2>
+                                <textarea name="field_notes" value={formData.field_notes} onChange={handleChange} className={inputStyle} rows={3} />
+                            </DetailItem>
+
+                            <DetailItem label="Problem Seen" span2>
+                                <textarea name="problem_seen" value={formData.problem_seen} onChange={handleChange} className={inputStyle} rows={2} />
+                            </DetailItem>
+
+                            <DetailItem label="Action Taken" span2>
+                                <textarea name="action_taken" value={formData.action_taken} onChange={handleChange} className={inputStyle} rows={2} />
+                            </DetailItem>
+
                             <DetailItem label="Fertilizer">
                                 <input name="fertilizer_advice" value={formData.fertilizer_advice} onChange={handleChange} className={inputStyle} />
                             </DetailItem>

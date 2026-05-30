@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   Calendar,
   Eye,
   Hash,
@@ -8,6 +9,8 @@ import {
   Paperclip,
   Phone,
   User,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { GpsIndicator } from "../ui/command";
 import {
@@ -19,9 +22,18 @@ import {
 } from "../ui/AdminCard";
 import {
   asDisplayString,
-  resolveCropLabel,
   resolveVillageLabel,
 } from "../../utils/displayValue";
+import {
+  resolveVisitCropDisplay,
+  resolveVisitFieldNotes,
+  resolveVisitProblemSeen,
+  resolveVisitActionTaken,
+  resolveVisitFollowUpDate,
+  truncateVisitText,
+  VISIT_FIELD_NOTES_LABEL,
+  visitFieldIsMissing,
+} from "../../utils/visitDisplay";
 import {
   resolveVisitFarmer,
   visitWhenLabel,
@@ -36,9 +48,11 @@ export default function VisitListCard({ visit: v, onView }) {
   const farmer = resolveVisitFarmer(v);
   const whenLabel = visitWhenLabel(v);
   const submittedAt = visitSubmittedLabel(v);
-  const cropName = asDisplayString(
-    farmer.cropName !== "—" ? farmer.cropName : resolveCropLabel(v?.crop)
-  );
+  const cropName = resolveVisitCropDisplay(v);
+  const fieldNotes = truncateVisitText(resolveVisitFieldNotes(v), 96);
+  const problemSeen = truncateVisitText(resolveVisitProblemSeen(v), 72);
+  const actionTaken = truncateVisitText(resolveVisitActionTaken(v), 72);
+  const followUpDate = resolveVisitFollowUpDate(v);
   const villageLabel = asDisplayString(
     farmer.village !== "—" ? farmer.village : resolveVillageLabel(v?.village ?? v?.village_name)
   );
@@ -95,6 +109,24 @@ export default function VisitListCard({ visit: v, onView }) {
           </AdminCardMetaRow>
           <AdminCardMetaRow icon={Leaf} tone="crop">
             {cropName}
+          </AdminCardMetaRow>
+          <AdminCardMetaRow icon={ClipboardList} tone="neutral">
+            <span className={visitFieldIsMissing(fieldNotes) ? "text-gray-400 italic" : ""}>
+              {VISIT_FIELD_NOTES_LABEL}: {fieldNotes}
+            </span>
+          </AdminCardMetaRow>
+          <AdminCardMetaRow icon={AlertTriangle} tone="neutral">
+            <span className={visitFieldIsMissing(problemSeen) ? "text-gray-400 italic" : ""}>
+              Problem: {problemSeen}
+            </span>
+          </AdminCardMetaRow>
+          <AdminCardMetaRow icon={CheckCircle2} tone="neutral">
+            <span className={visitFieldIsMissing(actionTaken) ? "text-gray-400 italic" : ""}>
+              Action: {actionTaken}
+            </span>
+          </AdminCardMetaRow>
+          <AdminCardMetaRow icon={Calendar} tone="neutral">
+            Follow-up: {followUpDate}
           </AdminCardMetaRow>
           <AdminCardMetaRow icon={LandPlot} tone="land">
             {land}

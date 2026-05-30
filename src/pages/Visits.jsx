@@ -8,7 +8,16 @@ import {
   visitEmployeeLabel,
   visitLandLabel,
 } from "../utils/visitFarmer";
-import { asDisplayString, resolveCropLabel, resolveVillageLabel } from "../utils/displayValue";
+import { asDisplayString, resolveVillageLabel } from "../utils/displayValue";
+import {
+  resolveVisitCropDisplay,
+  resolveVisitFieldNotes,
+  resolveVisitProblemSeen,
+  resolveVisitActionTaken,
+  resolveVisitFollowUpDate,
+  truncateVisitText,
+  VISIT_FIELD_NOTES_LABEL,
+} from "../utils/visitDisplay";
 import {
   PageHeader,
   FilterBar,
@@ -75,9 +84,11 @@ function matchesDateChip(v, chip) {
 function VisitRow({ v, onView }) {
   const farmer = resolveVisitFarmer(v);
   const whenLabel = visitWhenLabel(v);
-  const cropName = asDisplayString(
-    farmer.cropName !== "—" ? farmer.cropName : resolveCropLabel(v?.crop)
-  );
+  const cropName = resolveVisitCropDisplay(v);
+  const fieldNotes = truncateVisitText(resolveVisitFieldNotes(v));
+  const problemSeen = truncateVisitText(resolveVisitProblemSeen(v));
+  const actionTaken = truncateVisitText(resolveVisitActionTaken(v));
+  const followUpDate = resolveVisitFollowUpDate(v);
   const villageLabel = asDisplayString(
     farmer.village !== "—" ? farmer.village : resolveVillageLabel(v?.village ?? v?.village_name)
   );
@@ -108,7 +119,17 @@ function VisitRow({ v, onView }) {
         <p className="text-xs text-gray-400 font-mono">{asDisplayString(farmer.phone)}</p>
       </td>
       <td className="text-sm text-gray-700">{villageLabel}</td>
-      <td className="text-sm text-gray-700">{cropName}</td>
+      <td className="text-sm text-gray-700 max-w-[120px]">{cropName}</td>
+      <td className="text-sm text-gray-600 max-w-[160px]">
+        <span className="line-clamp-2" title={resolveVisitFieldNotes(v)}>{fieldNotes}</span>
+      </td>
+      <td className="text-sm text-gray-600 max-w-[140px]">
+        <span className="line-clamp-2" title={resolveVisitProblemSeen(v)}>{problemSeen}</span>
+      </td>
+      <td className="text-sm text-gray-600 max-w-[140px]">
+        <span className="line-clamp-2" title={resolveVisitActionTaken(v)}>{actionTaken}</span>
+      </td>
+      <td className="text-sm text-gray-500 whitespace-nowrap">{followUpDate}</td>
       <td className="text-sm text-gray-600">{land}</td>
       <td className="text-sm text-gray-600">{asDisplayString(visitEmployeeLabel(v))}</td>
       <td className="text-sm text-gray-500 whitespace-nowrap">{asDisplayString(whenLabel)}</td>
@@ -325,7 +346,7 @@ export default function Visits() {
             ))}
           </div>
         ) : (
-          <SkeletonTable rows={8} cols={8} />
+          <SkeletonTable rows={8} cols={12} />
         )
       ) : filteredVisits.length === 0 ? (
         <div className="section-card">
@@ -378,6 +399,10 @@ export default function Visits() {
                   <th>Farmer / Mobile</th>
                   <th>Village</th>
                   <th>Crop</th>
+                  <th>{VISIT_FIELD_NOTES_LABEL}</th>
+                  <th>Problem Seen</th>
+                  <th>Action Taken</th>
+                  <th>Follow-up Date</th>
                   <th>Land</th>
                   <th>Employee</th>
                   <th>Date & time</th>
