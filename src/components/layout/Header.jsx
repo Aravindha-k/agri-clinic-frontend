@@ -89,7 +89,7 @@ export default function Header({ onMenuClick }) {
       }}
     >
       {/* Premium green accent line at top */}
-      <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, #0f766e 0%, #16a34a 50%, #2563eb 100%)" }} />
+      <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, var(--brand-primary-dark) 0%, var(--brand-primary) 50%, var(--brand-accent) 100%)" }} />
 
       <div className="flex items-center justify-between h-[52px] px-3 sm:px-5 lg:px-6">
 

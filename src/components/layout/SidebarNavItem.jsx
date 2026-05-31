@@ -95,7 +95,7 @@ export default function SidebarNavItem({ item, onClose }) {
             {isActive && (
               <span
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full"
-                style={{ background: "linear-gradient(180deg, #4ade80, #22c55e)" }}
+                style={{ background: "var(--grad-primary)" }}
               />
             )}
             <SafeIcon

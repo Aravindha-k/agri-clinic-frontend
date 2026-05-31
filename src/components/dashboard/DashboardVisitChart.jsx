@@ -1,3 +1,4 @@
+import { CHART_COLORS } from "../../theme/brand";
 import ChartContainer from "../ui/ChartContainer";
 import { AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import { Calendar } from "lucide-react";
@@ -61,8 +62,8 @@ export default function DashboardVisitChart({ visitTrends = [] }) {
             <AreaChart data={trends} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
               <defs>
                 <linearGradient id="visitTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#15803d" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#15803d" stopOpacity={0} />
+                  <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.25} />
+                  <stop offset="100%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
@@ -82,11 +83,11 @@ export default function DashboardVisitChart({ visitTrends = [] }) {
                 type="monotone"
                 dataKey="count"
                 name="Visits Completed"
-                stroke="#15803d"
+                stroke={CHART_COLORS.primary}
                 strokeWidth={2.5}
                 fill="url(#visitTrendGrad)"
-                dot={{ r: 3, fill: "#15803d", stroke: "#fff", strokeWidth: 2 }}
-                activeDot={{ r: 5, fill: "#15803d", stroke: "#fff", strokeWidth: 2 }}
+                dot={{ r: 3, fill: CHART_COLORS.primary, stroke: "#fff", strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: CHART_COLORS.primary, stroke: "#fff", strokeWidth: 2 }}
               />
             </AreaChart>
           </ChartContainer>

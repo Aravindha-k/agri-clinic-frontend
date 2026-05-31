@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { friendlyErrorMessage } from "../utils/friendlyError";
-import logo from "../assets/logo.png";
+import Logo from "../components/Logo";
 import { BarChart3, Leaf, LockKeyhole, MapPin, Navigation, ShieldCheck, Sprout } from "lucide-react";
 
 /* ── Icon: Eye show/hide ─────────────────────────────── */
@@ -25,7 +25,7 @@ const FeaturePill = ({ icon: Icon, label }) => (
         border: "1px solid rgba(255,255,255,0.12)",
         backdropFilter: "blur(8px)",
     }}>
-        <Icon style={{ width: 14, height: 14, color: "#86efac", flexShrink: 0 }} />
+        <Icon style={{ width: 14, height: 14, color: "var(--brand-primary-light)", flexShrink: 0 }} />
         <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}>{label}</span>
     </div>
 );
@@ -99,15 +99,7 @@ const Login = () => {
 
                     {/* Top: logo + wordmark */}
                     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                        <div style={{
-                            width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-                            background: "linear-gradient(145deg, #ffffff 0%, #f1fdf5 100%)",
-                            padding: 6,
-                            boxShadow: "0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.9)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                            <img src={logo} alt="" style={{ width: "100%", height: "auto", objectFit: "contain", borderRadius: 7 }} />
-                        </div>
+                        <Logo size="md" variant="login" />
                         <div>
                             <p style={{ fontSize: 15, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Kavya Agri Clinic</p>
                             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>Agricultural Management</p>
@@ -117,18 +109,18 @@ const Login = () => {
                     {/* Middle: headline + description */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: "6%" }}>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 20 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px rgba(74,222,128,0.75)", flexShrink: 0 }} />
-                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(74,222,128,0.90)", textTransform: "uppercase" }}>Enterprise Admin Portal</span>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-primary-light)", boxShadow: "0 0 8px rgba(72,187,120,0.75)", flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(72,187,120,0.90)", textTransform: "uppercase" }}>Enterprise Admin Portal</span>
                         </div>
 
                         <h1 style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.06, color: "#ffffff", margin: 0 }}>
                             Admin<br />
-                            <span style={{ color: "#4ade80" }}>Control</span><br />
+                            <span style={{ color: "var(--brand-primary-light)" }}>Control</span><br />
                             Center
                         </h1>
 
                         <div style={{ marginTop: 18, display: "flex", gap: 6 }}>
-                            <div style={{ width: 28, height: 3, borderRadius: 100, background: "#4ade80" }} />
+                            <div style={{ width: 28, height: 3, borderRadius: 100, background: "var(--brand-primary-light)" }} />
                             <div style={{ width: 8, height: 3, borderRadius: 100, background: "rgba(74,222,128,0.35)" }} />
                         </div>
 
@@ -175,9 +167,7 @@ const Login = () => {
                     padding: "20px 24px 4px",
                     borderBottom: "1px solid #e9eef3",
                 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "#fff", border: "1px solid #e2e8f0", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                        <img src={logo} alt="" style={{ width: "100%", height: "auto", objectFit: "contain", borderRadius: 6 }} />
-                    </div>
+                    <Logo size="sm" variant="login" />
                     <div>
                         <p style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>Kavya Agri Clinic</p>
                         <p style={{ fontSize: 11, color: "#94a3b8" }}>Agricultural Management System</p>
@@ -193,16 +183,16 @@ const Login = () => {
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                                 <div style={{
                                     width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                                    background: "linear-gradient(135deg, #15803d 0%, #22c55e 100%)",
+                                    background: "var(--grad-primary)",
                                     display: "flex", alignItems: "center", justifyContent: "center",
-                                    boxShadow: "0 4px 12px rgba(21,128,61,0.35)",
+                                    boxShadow: "0 4px 12px rgba(30,132,73,0.35)",
                                 }}>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}>
                                         <path d="M11 20A7 7 0 0 1 9.8 6.9C15.5 4.9 17 3.5 19 2c1 2 2 4.5 1 8-1 3.5-3.1 5.3-5 6.5" />
                                         <path d="M5 21c.5-4.5 2.5-8 7-10" />
                                     </svg>
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "#15803d", letterSpacing: "0.02em" }}>Secure Admin Access</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-primary)", letterSpacing: "0.02em" }}>Secure Admin Access</span>
                             </div>
 
                             <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1.1, color: "#0f172a", margin: 0 }}>
@@ -259,7 +249,7 @@ const Login = () => {
                                             boxSizing: "border-box",
                                             boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                                         }}
-                                        onFocus={(e) => { e.target.style.borderColor = "#15803d"; e.target.style.boxShadow = "0 0 0 3px rgba(21,128,61,0.10), 0 1px 3px rgba(0,0,0,0.04)"; }}
+                                        onFocus={(e) => { e.target.style.borderColor = "var(--brand-primary)"; e.target.style.boxShadow = "0 0 0 3px rgba(30,132,73,0.10), 0 1px 3px rgba(0,0,0,0.04)"; }}
                                         onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
                                     />
                                 </div>
@@ -293,7 +283,7 @@ const Login = () => {
                                             boxSizing: "border-box",
                                             boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                                         }}
-                                        onFocus={(e) => { e.target.style.borderColor = "#15803d"; e.target.style.boxShadow = "0 0 0 3px rgba(21,128,61,0.10), 0 1px 3px rgba(0,0,0,0.04)"; }}
+                                        onFocus={(e) => { e.target.style.borderColor = "var(--brand-primary)"; e.target.style.boxShadow = "0 0 0 3px rgba(30,132,73,0.10), 0 1px 3px rgba(0,0,0,0.04)"; }}
                                         onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
                                     />
                                     <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 4, display: "flex", alignItems: "center", borderRadius: 6 }}
@@ -317,7 +307,7 @@ const Login = () => {
                                     display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                                     transition: "transform 0.15s, box-shadow 0.18s, background 0.18s",
                                     background: loading ? "#9ca3af" : "var(--grad-primary)",
-                                    boxShadow: loading ? "none" : "0 2px 4px rgba(0,0,0,0.07), 0 8px 24px rgba(21,128,61,0.32), inset 0 1px 0 rgba(255,255,255,0.16)",
+                                    boxShadow: loading ? "none" : "0 2px 4px rgba(0,0,0,0.07), 0 8px 24px rgba(30,132,73,0.32), inset 0 1px 0 rgba(255,255,255,0.16)",
                                 }}
                                 onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.10), 0 16px 36px rgba(21,128,61,0.42), inset 0 1px 0 rgba(255,255,255,0.18)"; } }}
                                 onMouseLeave={(e) => { if (!loading) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.07), 0 8px 24px rgba(21,128,61,0.32), inset 0 1px 0 rgba(255,255,255,0.16)"; } }}

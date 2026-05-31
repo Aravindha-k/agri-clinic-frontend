@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 
 const ITEMS = [
-  { key: "employeesWorking", label: "Employees Working", icon: Users, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100" },
+  { key: "employeesWorking", label: "Employees Working", icon: Users, color: "text-[var(--brand-primary-dark)]", bg: "bg-emerald-50 border-emerald-100" },
   { key: "employeesOffline", label: "Employees Offline", icon: WifiOff, color: "text-gray-700", bg: "bg-gray-50 border-gray-100" },
-  { key: "gpsIssues", label: "GPS Issues", icon: AlertTriangle, color: "text-red-700", bg: "bg-red-50 border-red-100" },
-  { key: "pendingSyncs", label: "Pending Syncs", icon: RefreshCw, color: "text-amber-700", bg: "bg-amber-50 border-amber-100" },
-  { key: "workdaysExpiringSoon", label: "Workdays Expiring Soon", icon: Clock, color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-100" },
+  { key: "gpsIssues", label: "GPS Issues", icon: AlertTriangle, color: "text-[var(--brand-danger)]", bg: "bg-red-50 border-red-100" },
+  { key: "pendingSyncs", label: "Pending Syncs", icon: RefreshCw, color: "text-[var(--brand-accent)]", bg: "bg-orange-50 border-orange-100" },
+  { key: "workdaysExpiringSoon", label: "Workdays Expiring Soon", icon: Clock, color: "text-[var(--brand-info)]", bg: "bg-sky-50 border-sky-100" },
 ];
 
 export default function LiveOperationsPanel({ ops = {} }) {
@@ -26,7 +26,7 @@ export default function LiveOperationsPanel({ ops = {} }) {
         </div>
         <Link
           to="/tracking"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-lg px-2 py-1"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--brand-primary-dark)] hover:text-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-light)] rounded-lg px-2 py-1"
         >
           <Radio className="w-3.5 h-3.5" aria-hidden="true" />
           Open tracking

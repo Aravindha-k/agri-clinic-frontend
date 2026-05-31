@@ -1,5 +1,6 @@
+import { BRAND } from "../../theme/brand";
 
-export default function Card({ title, value, icon: Icon, accent = "#166534" }) {
+export default function Card({ title, value, icon: Icon, accent = BRAND.primary }) {
   return (
     <div className="relative bg-white rounded-2xl overflow-hidden card-hover"
       style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)" }}>

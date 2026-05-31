@@ -1,3 +1,4 @@
+import { CHART_COLORS } from "../../theme/brand";
 import ChartContainer from "../ui/ChartContainer";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Label } from "recharts";
 
@@ -51,7 +52,7 @@ export default function ReportsRouteChart({ data = [] }) {
               />
             </YAxis>
             <Tooltip content={<RouteChartTooltip />} />
-            <Bar dataKey="km" name="Distance Travelled" fill="#2563eb" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="km" name="Distance Travelled" fill={CHART_COLORS.routeBar} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartContainer>

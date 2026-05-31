@@ -4,14 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#15803d",
-        "primary-dark": "#14532d",
-        "primary-light": "#22c55e",
-        secondary: "#059669",
-        accent: "#10b981",
+        primary: "#1E8449",
+        "primary-dark": "#145A32",
+        "primary-light": "#48BB78",
+        secondary: "#48BB78",
+        accent: "#ED8936",
         "agri-light": "#ecfdf5",
         "agri-dim": "#f0fdf8",
-        "agri-brown": "#8b6f47",
+        "brand-black": "#071713",
         surface: "#ffffff",
         "surface-dim": "#f0f4f8",
         "surface-mid": "#e8f0ed",
@@ -30,9 +30,9 @@ export default {
         glass: "0 4px 24px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
       },
       backgroundImage: {
-        "gradient-primary": "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-        "gradient-hero": "linear-gradient(155deg, #042014 0%, #0f2d1c 35%, #15803d 75%, #16a34a 100%)",
-        "gradient-sidebar": "linear-gradient(180deg, #0a1f14 0%, #0f2d1c 40%, #134d2b 100%)",
+        "gradient-primary": "linear-gradient(135deg, #1E8449 0%, #145A32 100%)",
+        "gradient-hero": "linear-gradient(155deg, #071713 0%, #0d2b24 38%, #1E8449 100%)",
+        "gradient-sidebar": "linear-gradient(180deg, #071713 0%, #0d2b24 50%, #123f2b 100%)",
         "gradient-card": "linear-gradient(135deg, #f0fdf8 0%, #f8fffc 100%)",
         "grid-pattern": "linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px)",
       },

@@ -23,13 +23,15 @@ function useCountUp(target, duration = 1100) {
   return val;
 }
 
+import { BRAND } from "../../../theme/brand";
+
 export default function StatCard({
   icon: Icon,
   label,
   value,
   gradient = "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
   iconBg = "#dcfce7",
-  iconColor = "#15803d",
+  iconColor = BRAND.primary,
   onClick,
   subValue,
   className = "",

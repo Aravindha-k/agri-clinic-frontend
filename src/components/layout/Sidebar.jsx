@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
-import logo from "../../assets/logo.png";
+import Logo from "../Logo";
 
 /** Static nav — never depends on user/role so sidebar stays populated while auth loads. */
 export const NAV_SECTIONS = [
@@ -165,17 +165,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="relative z-10 px-5 pt-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div
-              className="w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
-              style={{
-                background:
-                  "linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 100%)",
-                border: "1px solid rgba(255,255,255,0.14)",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-              }}
-            >
-              <img src={logo} alt="Kavya Agri" className="w-8 h-8 object-contain" />
-            </div>
+            <Logo size="sm" variant="sidebar" showShadow={false} />
             <div className="min-w-0">
               <h1 className="text-[14.5px] font-bold text-white leading-tight tracking-tight truncate">
                 Kavya Agri Clinic

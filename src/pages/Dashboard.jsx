@@ -46,6 +46,8 @@ import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
 import QuickActions from "../components/dashboard/QuickActions";
 import LiveOperationsPanel from "../components/dashboard/LiveOperationsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
+import OwnerControlPanel from "../components/dashboard/OwnerControlPanel";
+import { KPI_THEMES } from "../theme/brand";
 import UnifiedActivityFeed from "../components/dashboard/UnifiedActivityFeed";
 import {
   WidgetErrorBoundary,
@@ -491,6 +493,24 @@ const Dashboard = () => {
     }
   }, [workdays, feedVisits, recentFarmers]);
 
+  const recentUploads = useMemo(() => {
+    return (feedVisits ?? [])
+      .map((v) => {
+        const count = resolveVisitAttachmentCount(v);
+        if (!count || count <= 0) return null;
+        const farmer = resolveVisitFarmer(v);
+        return {
+          id: `upload-${v.id}`,
+          title: `${count} file${count === 1 ? "" : "s"} uploaded`,
+          detail: `${farmer.name !== "—" ? farmer.name : "Farmer"} · Visit #${v.id}`,
+          at: v.visit_date ?? v.created_at,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.at) - new Date(a.at))
+      .slice(0, 6);
+  }, [feedVisits]);
+
   /* ---- Loading state ---- */
   if (loading) {
     return <DashboardSkeleton />;
@@ -540,26 +560,26 @@ const Dashboard = () => {
           icon={Sprout}
           label="Total Farmers"
           value={stats.farmers}
-          gradient="linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
-          iconBg="#dcfce7"
-          iconColor="#15803d"
+          gradient={KPI_THEMES.farmers.gradient}
+          iconBg={KPI_THEMES.farmers.iconBg}
+          iconColor={KPI_THEMES.farmers.iconColor}
           onClick={() => navigate("/farmers")}
         />
         <StatCard
           icon={LandPlot}
           label="Total Fields"
           value={stats.fields}
-          gradient="linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)"
-          iconBg="#dbeafe"
-          iconColor="#2563eb"
+          gradient={KPI_THEMES.fields.gradient}
+          iconBg={KPI_THEMES.fields.iconBg}
+          iconColor={KPI_THEMES.fields.iconColor}
         />
         <StatCard
           icon={Calendar}
           label="Total Visits"
           value={stats.totalVisits}
-          gradient="linear-gradient(135deg, #ffffff 0%, #fefce8 100%)"
-          iconBg="#fef9c3"
-          iconColor="#ca8a04"
+          gradient={KPI_THEMES.visits.gradient}
+          iconBg={KPI_THEMES.visits.iconBg}
+          iconColor={KPI_THEMES.visits.iconColor}
           onClick={() => navigate("/visits")}
           subValue={stats.todayVisits > 0 ? `${stats.todayVisits} today` : undefined}
         />
@@ -567,27 +587,27 @@ const Dashboard = () => {
           icon={AlertTriangle}
           label="Open Issues"
           value={stats.issues_open}
-          gradient="linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)"
-          iconBg="#fee2e2"
-          iconColor="#dc2626"
+          gradient={KPI_THEMES.issues.gradient}
+          iconBg={KPI_THEMES.issues.iconBg}
+          iconColor={KPI_THEMES.issues.iconColor}
           onClick={() => navigate("/crop-issues")}
         />
         <StatCard
           icon={CalendarCheck}
           label="Today's Visits"
           value={stats.todayVisits}
-          gradient="linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)"
-          iconBg="#ede9fe"
-          iconColor="#7c3aed"
+          gradient={KPI_THEMES.today.gradient}
+          iconBg={KPI_THEMES.today.iconBg}
+          iconColor={KPI_THEMES.today.iconColor}
           onClick={() => navigate("/visits")}
         />
         <StatCard
           icon={Users}
           label="Working Now"
           value={stats.workingNow}
-          gradient="linear-gradient(135deg, #ffffff 0%, #ecfeff 100%)"
-          iconBg="#cffafe"
-          iconColor="#0e7490"
+          gradient={KPI_THEMES.working.gradient}
+          iconBg={KPI_THEMES.working.iconBg}
+          iconColor={KPI_THEMES.working.iconColor}
           onClick={() => navigate("/tracking")}
           subValue={
             stats.activeEmployees > 0
@@ -601,9 +621,9 @@ const Dashboard = () => {
           icon={Radio}
           label="GPS Tracking Compliance"
           value={stats.onlineNow}
-          gradient="linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
-          iconBg="#dcfce7"
-          iconColor="#16a34a"
+          gradient={KPI_THEMES.gps.gradient}
+          iconBg={KPI_THEMES.gps.iconBg}
+          iconColor={KPI_THEMES.gps.iconColor}
           onClick={() => navigate("/tracking")}
           subValue={
             stats.workingNow > 0
@@ -617,6 +637,16 @@ const Dashboard = () => {
 
       <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
         <QuickActions />
+      </WidgetErrorBoundary>
+
+      <WidgetErrorBoundary name="OwnerControl" title="Owner Control unavailable">
+        <OwnerControlPanel
+          activeEmployees={stats.activeEmployees ?? stats.workingNow ?? 0}
+          gpsIssues={stats.gpsIssues ?? 0}
+          pendingSyncs={liveOps?.pendingSyncs ?? 0}
+          employees={trackingEmployees ?? []}
+          recentUploads={recentUploads}
+        />
       </WidgetErrorBoundary>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -20,6 +20,7 @@ import {
   formatDistanceKm,
   ANALYTICS_TOOLTIPS,
 } from "../utils/analyticsLabels";
+import { BRAND } from "../theme/brand";
 import {
   buildGpsComplianceAnalytics,
   buildRouteAnalytics,
@@ -251,7 +252,7 @@ export default function Reports() {
       label: "Total Visits",
       value: analytics.totalVisits,
       description: "Field visits submitted in the selected date range",
-      accent: "#166534",
+      accent: BRAND.primary,
       gradient: "linear-gradient(135deg,#fff 0%,#f0fdf4 100%)",
       iconBg: "#dcfce7",
     },
@@ -260,9 +261,9 @@ export default function Reports() {
       label: "Farmers Served",
       value: analytics.totalFarmers,
       description: "Unique farmers visited at least once",
-      accent: "#2563eb",
-      gradient: "linear-gradient(135deg,#fff 0%,#eff6ff 100%)",
-      iconBg: "#dbeafe",
+      accent: BRAND.primaryDark,
+      gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
+      iconBg: "#d1fae5",
     },
     {
       icon: ShieldCheck,
@@ -270,7 +271,7 @@ export default function Reports() {
       value: formatGpsComplianceLabel(analytics.gpsCompliancePct),
       description: `${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS coordinates`,
       tooltip: ANALYTICS_TOOLTIPS.gpsCompliance,
-      accent: "#0e7490",
+      accent: BRAND.info,
       gradient: "linear-gradient(135deg,#fff 0%,#ecfeff 100%)",
       iconBg: "#cffafe",
     },
@@ -279,7 +280,7 @@ export default function Reports() {
       label: "Visits With Evidence",
       value: analytics.visitsWithEvidence,
       description: `${analytics.evidenceRatePct}% of visits include uploaded photos or files`,
-      accent: "#7c3aed",
+      accent: BRAND.accent,
       gradient: "linear-gradient(135deg,#fff 0%,#f5f3ff 100%)",
       iconBg: "#ede9fe",
     },
@@ -391,7 +392,7 @@ export default function Reports() {
                   label={name}
                   count={count}
                   total={analytics.totalVisits}
-                  accent="#7c3aed"
+                  accent={CHART_COLORS.secondary}
                   variant="employee"
                 />
               ))}

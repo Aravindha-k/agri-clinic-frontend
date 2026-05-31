@@ -7,6 +7,8 @@ import {
   ANALYTICS_TOOLTIPS,
 } from "../../utils/analyticsLabels";
 
+import { CHART_COLORS } from "../../theme/brand";
+
 const VARIANTS = {
   employee: {
     count: formatVisitCountLabel,
@@ -33,7 +35,7 @@ export default function AnalyticsBarRow({
   label,
   count,
   total,
-  accent = "#166534",
+  accent = CHART_COLORS.primary,
   variant = "employee",
   tooltip,
 }) {
