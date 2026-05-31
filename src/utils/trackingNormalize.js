@@ -149,6 +149,8 @@ export function normalizeGeoFeature(feature) {
   if (Array.isArray(coords) && coords.length >= 2) {
     lng = Number(coords[0]);
     lat = Number(coords[1]);
+    if (!Number.isFinite(lat)) lat = null;
+    if (!Number.isFinite(lng)) lng = null;
   }
   return {
     ...normalizeTrackingEmployee({

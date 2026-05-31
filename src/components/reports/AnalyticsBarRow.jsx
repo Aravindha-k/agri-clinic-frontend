@@ -40,7 +40,9 @@ export default function AnalyticsBarRow({
   tooltip,
 }) {
   const cfg = VARIANTS[variant] ?? VARIANTS.employee;
-  const pct = pctOf(count, total);
+  const safeCount = Number(count) || 0;
+  const safeTotal = Number(total) || 0;
+  const pct = pctOf(safeCount, safeTotal);
   const hint = tooltip ?? cfg.tooltip;
 
   return (
@@ -55,7 +57,7 @@ export default function AnalyticsBarRow({
           )}
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-sm font-semibold text-gray-900 tabular-nums">{cfg.count(count)}</p>
+          <p className="text-sm font-semibold text-gray-900 tabular-nums">{cfg.count(safeCount)}</p>
           <p className="text-xs text-gray-500 tabular-nums">{cfg.share(pct)}</p>
         </div>
       </div>

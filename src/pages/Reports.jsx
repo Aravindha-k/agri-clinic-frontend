@@ -20,7 +20,8 @@ import {
   formatDistanceKm,
   ANALYTICS_TOOLTIPS,
 } from "../utils/analyticsLabels";
-import { BRAND } from "../theme/brand";
+import { BRAND, CHART_COLORS } from "../theme/brand";
+import { WidgetErrorBoundary, DashboardShellErrorBoundary } from "../components/dashboard/WidgetErrorBoundary";
 import {
   buildGpsComplianceAnalytics,
   buildRouteAnalytics,
@@ -28,6 +29,9 @@ import {
   topEntries,
   exportVisitsCsv,
   exportVisitsExcel,
+  normalizeVisitsResponse,
+  normalizeGeoRouteDistances,
+  mergeRouteDistances,
 } from "../utils/reportsAnalytics";
 import {
   resolveTrackingEmployeeList,
@@ -118,8 +122,8 @@ function StatusBadge({ status }) {
   );
 }
 
-function ReportSection({ icon: Icon, title, subtitle, children, action }) {
-  return (
+function ReportSection({ icon: Icon, title, subtitle, children, action, boundaryName }) {
+  const inner = (
     <div className="section-card">
       <div className="section-card-header">
         <div className="flex items-center gap-3 min-w-0">
@@ -135,6 +139,14 @@ function ReportSection({ icon: Icon, title, subtitle, children, action }) {
       </div>
       <div className="p-6">{children}</div>
     </div>
+  );
+
+  if (!boundaryName) return inner;
+
+  return (
+    <WidgetErrorBoundary name={boundaryName} title={`${title} unavailable`}>
+      {inner}
+    </WidgetErrorBoundary>
   );
 }
 
@@ -159,42 +171,26 @@ export default function Reports() {
       ]);
 
       if (visitsR.status === "fulfilled") {
-        const body = visitsR.value ?? {};
-        const records = Array.isArray(body.results) ? body.results : [];
-        setData(records.map(normalizeReportRow));
+        const records = normalizeVisitsResponse(visitsR.value).map(normalizeReportRow);
+        setData(records);
       } else {
         throw visitsR.reason;
       }
 
-      if (geoR.status === "fulfilled") {
-        const features = geoR.value?.features ?? [];
-        const rows = features
-          .map((f) => {
-            const p = f.properties ?? f;
-            const name =
-              p.employee_name ||
-              [p.first_name, p.last_name].filter(Boolean).join(" ") ||
-              p.username ||
-              "Employee";
-            const km =
-              p.today_distance_km ??
-              p.distance_km ??
-              p.total_distance_km ??
-              null;
-            return { name, km: km != null ? Number(km) : null };
-          })
-          .filter((r) => r.km != null && r.km > 0);
-        setRouteDistances(rows);
-      } else {
-        setRouteDistances([]);
-      }
-
+      let employees = [];
       if (adminR.status === "fulfilled") {
-        setTrackingEmployees(
-          resolveTrackingEmployeeList(adminR.value).map(normalizeTrackingEmployee)
-        );
+        employees = resolveTrackingEmployeeList(adminR.value).map(normalizeTrackingEmployee);
+        setTrackingEmployees(employees);
       } else {
         setTrackingEmployees([]);
+      }
+
+      if (geoR.status === "fulfilled") {
+        const fromGeo = normalizeGeoRouteDistances(geoR.value, employees);
+        const fromEmployees = normalizeGeoRouteDistances(null, employees);
+        setRouteDistances(mergeRouteDistances(fromGeo, fromEmployees));
+      } else {
+        setRouteDistances(normalizeGeoRouteDistances(null, employees));
       }
     } catch (err) {
       setError(err.message || "Failed to load reports");
@@ -224,9 +220,9 @@ export default function Reports() {
 
   const routeChartData = useMemo(
     () =>
-      routeAnalytics.mostActive.map((r) => ({
-        label: r.name.split(" ")[0] || r.name,
-        km: Number(r.km.toFixed(1)),
+      (routeAnalytics.mostActive ?? []).map((r) => ({
+        label: (r.name || "—").split(" ")[0] || r.name || "—",
+        km: Number(Number(r.km ?? 0).toFixed(1)),
       })),
     [routeAnalytics]
   );
@@ -295,40 +291,45 @@ export default function Reports() {
     );
   }
 
+  const pageHeader = (
+    <PageHeader
+      title="Analytics & Reports"
+      subtitle="Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity"
+      badge={
+        <span className="command-hero-badge">
+          <BarChart3 className="w-3 h-3" /> Operations
+        </span>
+      }
+      actions={
+        <>
+          <button
+            type="button"
+            onClick={() => exportVisitsExcel(filtered)}
+            disabled={!filtered.length}
+            className="btn btn-secondary btn-md disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" /> Export Excel
+          </button>
+          <button
+            type="button"
+            onClick={() => exportVisitsCsv(filtered)}
+            disabled={!filtered.length}
+            className="btn btn-secondary btn-md disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+          <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </>
+      }
+    />
+  );
+
   return (
+    <DashboardShellErrorBoundary header={pageHeader}>
     <div className="page-container">
-      <PageHeader
-        title="Analytics & Reports"
-        subtitle="Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity"
-        badge={
-          <span className="command-hero-badge">
-            <BarChart3 className="w-3 h-3" /> Operations
-          </span>
-        }
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => exportVisitsExcel(filtered)}
-              disabled={!filtered.length}
-              className="btn btn-secondary btn-md disabled:opacity-50"
-            >
-              <Download className="w-4 h-4" /> Export Excel
-            </button>
-            <button
-              type="button"
-              onClick={() => exportVisitsCsv(filtered)}
-              disabled={!filtered.length}
-              className="btn btn-secondary btn-md disabled:opacity-50"
-            >
-              <Download className="w-4 h-4" /> Export CSV
-            </button>
-            <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
-              <RefreshCw className="w-4 h-4" /> Refresh
-            </button>
-          </>
-        }
-      />
+      {pageHeader}
 
       {error && (
         <ErrorRetry
@@ -372,7 +373,9 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi) => (
-          <ReportKpiCard key={kpi.label} {...kpi} />
+          <WidgetErrorBoundary key={kpi.label} name={`KPI:${kpi.label}`} title={`${kpi.label} unavailable`} className="min-h-[120px]">
+            <ReportKpiCard {...kpi} />
+          </WidgetErrorBoundary>
         ))}
       </div>
 
@@ -381,6 +384,7 @@ export default function Reports() {
           icon={UserCheck}
           title="Visits by Employee"
           subtitle="How field visits are distributed across your team"
+          boundaryName="VisitsByEmployee"
         >
           {topEntries(analytics.visitsByEmployee).length === 0 ? (
             <EmptyState icon={Users} title="No visit data" subtitle="Visits will appear once field agents submit records." />
@@ -404,6 +408,7 @@ export default function Reports() {
           icon={MapPin}
           title="Farmer Coverage"
           subtitle={`${analytics.totalFarmers} farmers reached across ${analytics.villagesCovered} villages`}
+          boundaryName="FarmerCoverage"
         >
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
@@ -457,6 +462,7 @@ export default function Reports() {
           icon={ShieldCheck}
           title="GPS Compliance Report"
           subtitle={`${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS location proof`}
+          boundaryName="GpsCompliance"
         >
           <div className="flex items-center gap-4 mb-4">
             <div
@@ -494,6 +500,7 @@ export default function Reports() {
           icon={Paperclip}
           title="Attachment Upload Report"
           subtitle={`${analytics.attachmentTotal} files uploaded across ${analytics.visitsWithEvidence} visits`}
+          boundaryName="Attachments"
         >
           <div className="grid grid-cols-3 gap-3 mb-2">
             <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center">
@@ -516,6 +523,7 @@ export default function Reports() {
         icon={Route}
         title="Route Analytics"
         subtitle="Today's tracked field travel based on employee GPS routes"
+        boundaryName="RouteAnalytics"
         action={
           <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
             <Navigation className="w-3.5 h-3.5" /> Route History
@@ -579,14 +587,17 @@ export default function Reports() {
               </div>
             </div>
             <Suspense fallback={<RouteFallback label="Loading route chart\u2026" />}>
-              <ReportsRouteChart data={routeChartData} />
+              <WidgetErrorBoundary name="RouteChart" title="Route chart unavailable">
+                <ReportsRouteChart data={routeChartData} />
+              </WidgetErrorBoundary>
             </Suspense>
             <div className="space-y-3 mt-4">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Distance by employee
               </p>
               {routeDistances
-                .sort((a, b) => b.km - a.km)
+                .slice()
+                .sort((a, b) => Number(b.km ?? 0) - Number(a.km ?? 0))
                 .slice(0, 8)
                 .map((r) => (
                   <div key={r.name} className="flex items-center justify-between text-sm gap-3">
@@ -604,6 +615,7 @@ export default function Reports() {
         )}
       </ReportSection>
 
+      <WidgetErrorBoundary name="VisitRecords" title="Visit records unavailable">
       <div className="section-card">
         <div className="section-card-header">
           <div className="flex items-center gap-3">
@@ -725,6 +737,8 @@ export default function Reports() {
           </div>
         )}
       </div>
+      </WidgetErrorBoundary>
     </div>
+    </DashboardShellErrorBoundary>
   );
 }

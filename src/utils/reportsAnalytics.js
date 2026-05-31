@@ -1,6 +1,95 @@
 import { resolveVisitAttachmentCount } from "./visitAttachments";
+import { unwrapSuccessEnvelope, getResponseBody, resolveList } from "./apiUnwrap";
 
 const THIRTY_MIN_MS = 30 * 60 * 1000;
+
+function safeNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function employeeDisplayName(props = {}) {
+  return (
+    props.employee_name ||
+    [props.first_name, props.last_name].filter(Boolean).join(" ") ||
+    props.username ||
+    "—"
+  );
+}
+
+/** Visits list from paginated API, envelope, or flat array. */
+export function normalizeVisitsResponse(payload) {
+  if (Array.isArray(payload)) return payload;
+  const raw = unwrapSuccessEnvelope(payload) ?? getResponseBody(payload) ?? payload ?? {};
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.results)) return raw.results;
+  if (Array.isArray(raw?.data?.results)) return raw.data.results;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw?.items)) return raw.items;
+  return [];
+}
+
+function routeKmFromProps(props = {}) {
+  const raw =
+    props.today_distance_km ??
+    props.distance_km ??
+    props.total_distance_km ??
+    props.route_distance_km ??
+    null;
+  if (raw == null || raw === "") return null;
+  const km = Number(raw);
+  return Number.isFinite(km) && km > 0 ? km : null;
+}
+
+/** Route distances from GeoJSON / employee rows — ignores null geometry safely. */
+export function normalizeGeoRouteDistances(geoPayload, employees = []) {
+  const raw = unwrapSuccessEnvelope(geoPayload) ?? getResponseBody(geoPayload) ?? geoPayload ?? {};
+  const candidates = [];
+
+  if (Array.isArray(raw?.features)) candidates.push(...raw.features);
+  if (Array.isArray(raw)) candidates.push(...raw);
+  candidates.push(...resolveList(raw?.employees ?? employees));
+
+  const rows = [];
+  const seen = new Set();
+
+  const pushRow = (name, km) => {
+    if (!name || km == null || km <= 0) return;
+    const key = String(name).toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ name: String(name), km: safeNumber(km, 0) });
+  };
+
+  for (const item of candidates) {
+    if (!item || typeof item !== "object") continue;
+    const props = item.type === "Feature" ? item.properties ?? {} : item;
+    const km = routeKmFromProps(props);
+    if (km != null) pushRow(employeeDisplayName(props), km);
+  }
+
+  for (const emp of resolveList(employees)) {
+    if (!emp || typeof emp !== "object") continue;
+    const km = routeKmFromProps(emp);
+    if (km != null) pushRow(employeeDisplayName(emp), km);
+  }
+
+  return rows;
+}
+
+/** Merge route distance rows by employee name (keeps highest km). */
+export function mergeRouteDistances(primary = [], secondary = []) {
+  const byName = new Map();
+  for (const row of [...primary, ...secondary]) {
+    if (!row?.name) continue;
+    const km = safeNumber(row.km, 0);
+    if (km <= 0) continue;
+    const key = String(row.name).toLowerCase();
+    const prev = byName.get(key);
+    if (!prev || km > prev.km) byName.set(key, { name: row.name, km });
+  }
+  return [...byName.values()];
+}
 
 function parseVisitDate(item) {
   const raw = item?.visit_date ?? item?.created_at ?? item?.timestamp ?? item?.start_time;
@@ -61,7 +150,12 @@ export function buildGpsComplianceAnalytics(visits, employees = []) {
 
 /** Route analytics from geo employee features. */
 export function buildRouteAnalytics(routeDistances = []) {
-  const rows = Array.isArray(routeDistances) ? routeDistances.filter((r) => r.km > 0) : [];
+  const rows = (Array.isArray(routeDistances) ? routeDistances : [])
+    .map((r) => ({
+      name: r?.name ?? "—",
+      km: safeNumber(r?.km, 0),
+    }))
+    .filter((r) => r.km > 0);
   const totalKm = rows.reduce((s, r) => s + r.km, 0);
   const sorted = [...rows].sort((a, b) => b.km - a.km);
   const topDistance = sorted[0] ?? null;
@@ -143,8 +237,9 @@ export function buildVisitReportAnalytics(visits) {
 
 /** Top N entries from count map sorted desc. */
 export function topEntries(countMap, limit = 8) {
-  return Object.entries(countMap || {})
-    .sort(([, a], [, b]) => b - a)
+  if (!countMap || typeof countMap !== "object") return [];
+  return Object.entries(countMap)
+    .sort(([, a], [, b]) => safeNumber(b, 0) - safeNumber(a, 0))
     .slice(0, limit);
 }
 
