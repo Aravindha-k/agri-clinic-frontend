@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser, refreshToken, getCurrentUser, logout as logoutAPI } from '../api/auth.api';
 import { unwrapSuccessEnvelope } from '../utils/apiUnwrap';
+import { loginAuthErrorMessage } from '../utils/authErrors';
 
 const AuthContext = createContext();
 
@@ -80,7 +81,7 @@ export const AuthProvider = ({ children }) => {
 
             return response.data;
         } catch (err) {
-            const errorMessage = getApiErrorMessage(err);
+            const errorMessage = loginAuthErrorMessage(err, getApiErrorMessage(err));
             setError(errorMessage);
             throw new Error(errorMessage);
         } finally {

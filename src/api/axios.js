@@ -1,4 +1,11 @@
 import axios from "axios";
+import {
+  ADMIN_SESSION_EXPIRED_MESSAGE,
+  isAdminSessionExpiredError,
+} from "../utils/authErrors";
+
+const SESSION_EXPIRED_STORAGE_KEY = "auth_redirect_message";
+const SESSION_EXPIRED_REASON = "admin_session_expired";
 
 const baseURL =
   import.meta.env.VITE_API_BASE_URL?.trim() || "/api/v1/";
@@ -52,13 +59,19 @@ instance.interceptors.response.use(
         url,
         error.message
       );
-    } else if (status === 401) {
+    } else if (status === 401 || status === 403) {
       const isLoginRequest = String(url).includes("/auth/login");
-      if (!isLoginRequest) {
-        console.warn("[api] Session expired — redirecting to login.");
+      if (!isLoginRequest && (status === 401 || isAdminSessionExpiredError(error))) {
+        const expired = isAdminSessionExpiredError(error);
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/login";
+        if (expired) {
+          sessionStorage.setItem(SESSION_EXPIRED_STORAGE_KEY, ADMIN_SESSION_EXPIRED_MESSAGE);
+          window.location.href = `/login?reason=${SESSION_EXPIRED_REASON}`;
+        } else {
+          console.warn("[api] Session expired — redirecting to login.");
+          window.location.href = "/login";
+        }
       }
     } else if (status !== 403) {
       console.error("[api] HTTP", status, url, error?.response?.data ?? error.message);

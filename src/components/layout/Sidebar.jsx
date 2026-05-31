@@ -1,7 +1,7 @@
 ﻿import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, Sprout, Leaf, AlertTriangle, MapPin, Route,
-  LogOut, X, ClipboardCheck, BarChart3, Bell, Database, ShieldCheck,
+  LogOut, X, ClipboardCheck, BarChart3, Bell, Database, ShieldCheck, LockKeyhole,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
@@ -34,6 +34,7 @@ export const NAV_SECTIONS = [
       { label: "Reports", icon: BarChart3, path: "/reports" },
       { label: "Notifications", icon: Bell, path: "/notifications" },
       { label: "Audit Log", icon: ShieldCheck, path: "/audit" },
+      { label: "Security & Sessions", icon: LockKeyhole, path: "/settings/security" },
     ],
   },
 ];

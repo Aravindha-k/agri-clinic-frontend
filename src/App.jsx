@@ -25,6 +25,7 @@ const EmployeeRoutes = lazy(() => import("./pages/EmployeeRoutes"));
 const VisitDetail = lazy(() => import("./pages/VisitDetail"));
 const FarmerDetail = lazy(() => import("./pages/FarmerDetail"));
 const Audit = lazy(() => import("./pages/Audit"));
+const SecuritySessions = lazy(() => import("./pages/SecuritySessions"));
 
 function LazyPage({ children, label }) {
   return <Suspense fallback={<RouteFallback label={label} />}>{children}</Suspense>;
@@ -103,6 +104,15 @@ function App() {
               </LazyPage>
             }
           />
+          <Route
+            path="settings/security"
+            element={
+              <LazyPage label="Loading security monitoring\u2026">
+                <SecuritySessions />
+              </LazyPage>
+            }
+          />
+          <Route path="admin/security" element={<Navigate to="/settings/security" replace />} />
           <Route path="masters" element={<Masters />} />
           <Route path="masters/locations" element={<MasterLocationsPage />} />
           <Route path="masters/crops" element={<MasterCropsPage />} />

@@ -1,7 +1,7 @@
-﻿import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { friendlyErrorMessage } from "../utils/friendlyError";
+import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
 import Logo from "../components/Logo";
 import { BarChart3, Leaf, LockKeyhole, MapPin, Navigation, ShieldCheck, Sprout } from "lucide-react";
 
@@ -46,8 +46,20 @@ const Login = () => {
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [sessionNotice, setSessionNotice] = useState("");
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { login } = useAuth();
+
+    useEffect(() => {
+        const reason = searchParams.get("reason");
+        if (reason === "admin_session_expired") {
+            const stored =
+                sessionStorage.getItem("auth_redirect_message") || ADMIN_SESSION_EXPIRED_MESSAGE;
+            setSessionNotice(stored);
+            sessionStorage.removeItem("auth_redirect_message");
+        }
+    }, [searchParams]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -57,7 +69,7 @@ const Login = () => {
             await login(username, password);
             navigate("/dashboard");
         } catch (err) {
-            setError(friendlyErrorMessage(err, "Invalid username or password. Please check and try again."));
+            setError(loginAuthErrorMessage(err, "Invalid username or password. Please check and try again."));
         } finally {
             setLoading(false);
         }
@@ -202,6 +214,18 @@ const Login = () => {
                                 Manage visits, farmers, employees and live tracking
                             </p>
                         </div>
+
+                        {/* Session expired notice */}
+                        {sessionNotice && (
+                            <div style={{
+                                marginBottom: 16, padding: "13px 16px", borderRadius: 12,
+                                background: "#eff6ff", border: "1px solid #bfdbfe",
+                                display: "flex", alignItems: "flex-start", gap: 10,
+                            }} role="status">
+                                <ShieldCheck style={{ width: 16, height: 16, flexShrink: 0, color: "#2563eb", marginTop: 1 }} />
+                                <span style={{ fontSize: 13, color: "#1e40af", fontWeight: 500 }}>{sessionNotice}</span>
+                            </div>
+                        )}
 
                         {/* Error alert */}
                         {error && (
