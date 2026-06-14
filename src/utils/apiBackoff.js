@@ -42,6 +42,9 @@ export function backendUnavailableMessage() {
   if (apiBase && !apiBase.startsWith("/")) {
     return `Backend unavailable (${apiBase}). Check the API is running and refresh.`;
   }
+  if (import.meta.env.PROD) {
+    return "Backend unavailable. Check the API is running and refresh.";
+  }
   const target = import.meta.env.VITE_PROXY_TARGET || "http://127.0.0.1:8000";
   return `Backend unavailable. Start Django (${target}) and refresh.`;
 }
