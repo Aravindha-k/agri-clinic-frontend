@@ -66,17 +66,12 @@ export default function SidebarNavItem({ item, onClose }) {
         to={path}
         onClick={onClose}
         className={({ isActive }) =>
-          `relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group
-          ${isActive ? "text-white" : "text-white/50 hover:text-white/85"}`
+          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group
+          ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90"}`
         }
         style={({ isActive }) =>
           isActive
-            ? {
-                background:
-                  "linear-gradient(135deg, rgba(34,197,94,0.18) 0%, rgba(16,185,129,0.10) 100%)",
-                border: "1px solid rgba(34,197,94,0.20)",
-                boxShadow: "0 2px 12px rgba(34,197,94,0.12)",
-              }
+            ? undefined
             : { border: "1px solid transparent" }
         }
         onMouseEnter={(e) => {
@@ -94,8 +89,8 @@ export default function SidebarNavItem({ item, onClose }) {
           <>
             {isActive && (
               <span
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full"
-                style={{ background: "var(--grad-primary)" }}
+                className="sidebar-nav-item__indicator"
+                aria-hidden="true"
               />
             )}
             <SafeIcon

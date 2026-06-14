@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import PageErrorBoundary from "./PageErrorBoundary";
 import { Outlet, useLocation } from "react-router-dom";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
+import { logOverlayState, startOverlayObserver } from "../../utils/overlayDebug";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -10,14 +12,10 @@ export default function Layout() {
   const mainRef = useRef(null);
   const isDesktop = useIsDesktop();
 
-  // Close mobile drawer after navigation
   useEffect(() => {
-    if (!isDesktop) {
-      setSidebarOpen(false);
-    }
-  }, [location.pathname, isDesktop]);
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
-  // When entering desktop width, ensure sidebar is not stuck off-screen
   useEffect(() => {
     if (isDesktop) {
       setSidebarOpen(false);
@@ -28,18 +26,31 @@ export default function Layout() {
     mainRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    logOverlayState({
+      modalOpen: false,
+      drawerOpen: sidebarOpen,
+      backdropRendered: sidebarOpen && !isDesktop,
+      route: location.pathname,
+    });
+    return startOverlayObserver({
+      drawerOpen: sidebarOpen,
+      route: location.pathname,
+    });
+  }, [sidebarOpen, isDesktop, location.pathname]);
+
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ background: "var(--grad-page)" }}
-    >
+    <div className="app-shell flex h-screen overflow-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="app-shell__main flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen((open) => !open)} />
-        <main ref={mainRef} className="flex-1 overflow-y-auto">
-          <div key={location.pathname} className="page-enter">
-            <Outlet />
-          </div>
+        <main ref={mainRef} className="app-shell__content flex-1 overflow-y-auto overflow-x-hidden">
+          <PageErrorBoundary resetKey={location.pathname}>
+            <div key={location.pathname} className="page-enter">
+              <Outlet />
+            </div>
+          </PageErrorBoundary>
         </main>
       </div>
     </div>

@@ -17,7 +17,8 @@ export function useAdaptivePolling(callback, intervalMs = 30_000, userDeps = [])
 
     const run = async (isRefresh = false) => {
       if (cancelled || document.visibilityState === "hidden") return;
-      if (shouldPausePolling()) return;
+      // Always allow the first load; only back off scheduled refreshes.
+      if (isRefresh && shouldPausePolling()) return;
       if (inFlightRef.current) {
         if (import.meta.env.DEV) {
           console.debug("[useAdaptivePolling] skipped — load already in flight");

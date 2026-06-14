@@ -11,6 +11,7 @@ import Masters from "./pages/Masters";
 import MasterLocationsPage from "./pages/masters/MasterLocationsPage";
 import MasterCropsPage from "./pages/masters/MasterCropsPage";
 import MasterProblemCategories from "./pages/masters/MasterProblemCategories";
+import MasterProblemItems from "./pages/masters/MasterProblemItems";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FarmersList from "./pages/FarmersList";
 import Layout from "./components/layout/Layout";
@@ -117,6 +118,7 @@ function App() {
           <Route path="masters/locations" element={<MasterLocationsPage />} />
           <Route path="masters/crops" element={<MasterCropsPage />} />
           <Route path="masters/problem-categories" element={<MasterProblemCategories />} />
+          <Route path="masters/problem-items" element={<MasterProblemItems />} />
         </Route>
       </Routes>
     </Router>

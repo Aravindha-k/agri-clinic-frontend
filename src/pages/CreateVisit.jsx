@@ -1,449 +1,591 @@
-import { useState, useEffect } from "react";
-import { getCrops, createCrop } from "../api/crop.api";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import CustomDropdown from "../components/CustomDropdown";
-import api from "../api/axios";
-import { createVisit } from "../api/visit.api";
-import { reverseGeocodeSafe } from "../utils/reverseGeocode";
-import { locationFieldsForPayload } from "../utils/visitLocation";
+import VisitMediaUploadField from "../components/visits/VisitMediaUploadField";
+import { PageHeader } from "../components/ui/command";
+import { fetchAllCrops } from "../api/crop.api";
+import { fetchAllVillages, fetchProblemCategories, fetchAllProblemMasters } from "../api/master.api";
+import { fetchAllFarmers } from "../api/farmer.api";
+import { createVisit, uploadVisitAttachment } from "../api/visit.api";
+import {
+  farmerRecordToVisitForm,
+  farmersToDropdownOptions,
+} from "../utils/farmerFormMapping";
+import {
+  PROBLEM_TYPE_PILLS,
+  PROBLEM_TYPE_CODES,
+  validateCreateVisitForm,
+  buildCreateVisitPayload,
+  findCategoryForCode,
+  categoryRequiresMaster,
+} from "../utils/createVisitForm";
+import { ChevronLeft, Loader2 } from "lucide-react";
 
-/* ---------- UI COMPONENTS ---------- */
-
-const Card = ({ title, children }) => (
-    <div className="section-card">
-        <div className="px-5 py-3 border-b text-sm font-semibold text-gray-700">
-            {title}
-        </div>
-        <div className="panel-body">{children}</div>
-    </div>
-);
+const EMPTY_FORM = {
+  farmer_mode: "new",
+  farmer_id: null,
+  farmer_name: "",
+  farmer_phone: "",
+  village: null,
+  crop: null,
+  land_area: "",
+  problem_type_code: "",
+  problem_category: null,
+  problem_master: null,
+  problem_other: "",
+  problem_description: "",
+};
 
 const Field = ({
-    label,
-    name,
-    value,
-    onChange,
-    type = "text",
-    required = false,
-    error,
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+  error,
+  placeholder,
+  children,
 }) => (
-    <div className="mb-2">
-        <label className="text-xs text-gray-700 font-medium">
-            {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {type === "textarea" ? (
-            <textarea
-                name={name}
-                value={value}
-                onChange={onChange}
-                className={`w-full mt-1 px-3 py-2 rounded-lg border ${error ? 'border-red-400' : 'border-gray-200'} focus:ring-2 focus:ring-emerald-500`}
-            />
-        ) : (
-            <input
-                type={type}
-                name={name}
-                value={value}
-                onChange={onChange}
-                className={`w-full mt-1 px-3 py-2 rounded-lg border ${error ? 'border-red-400' : 'border-gray-200'} focus:ring-2 focus:ring-emerald-500`}
-            />
-        )}
-        {error && <div className="text-xs text-red-500 mt-1">{error}</div>}
-    </div>
+  <div className="mb-4">
+    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    {children ?? (
+      type === "textarea" ? (
+        <textarea
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          rows={4}
+          className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white ${
+            error ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-emerald-100"
+          } focus:outline-none focus:ring-2 focus:border-emerald-400`}
+        />
+      ) : (
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white ${
+            error ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-emerald-100"
+          } focus:outline-none focus:ring-2 focus:border-emerald-400`}
+        />
+      )
+    )}
+    {error && <p className="text-xs text-red-600 mt-1.5 font-medium">{error}</p>}
+  </div>
 );
 
-/* ---------- MAIN COMPONENT ---------- */
+const SectionCard = ({ title, subtitle, children }) => (
+  <section className="section-card overflow-hidden">
+    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-emerald-50/30">
+      <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+      {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+    </div>
+    <div className="p-5">{children}</div>
+  </section>
+);
+
+const ModeToggle = ({ value, onChange }) => (
+  <div className="flex flex-wrap gap-2 mb-4">
+    {[
+      { id: "existing", label: "Existing farmer" },
+      { id: "new", label: "New farmer" },
+    ].map((opt) => (
+      <button
+        key={opt.id}
+        type="button"
+        onClick={() => onChange(opt.id)}
+        className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
+          value === opt.id
+            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+            : "bg-white text-gray-600 border-gray-200 hover:border-emerald-300"
+        }`}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
 
 export default function CreateVisit() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    const [loading, setLoading] = useState(false);
-    const [crops, setCrops] = useState([]);
-    const [cropLoading, setCropLoading] = useState(false);
-    const [showAddCrop, setShowAddCrop] = useState(false);
-    const [newCrop, setNewCrop] = useState({ name_en: "", name_ta: "" });
-    const [addCropError, setAddCropError] = useState("");
-    const [addCropSuccess, setAddCropSuccess] = useState("");
-    // Remove cropSearch, not needed for custom dropdown
+  const [villages, setVillages] = useState([]);
+  const [crops, setCrops] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [problemMasters, setProblemMasters] = useState([]);
+  const [mastersLoading, setMastersLoading] = useState(false);
+  const [mastersApiMissing, setMastersApiMissing] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState([]);
 
-    const [formData, setFormData] = useState({
-        farmer_name: "",
-        farmer_phone: "",
-        district: null,
-        village: null,
-        latitude: "",
-        longitude: "",
-        address: "",
-        land_name: "",
-        land_area: "",
-        crop: "",
-        crop_stage: "",
-        crop_health: "Good",
-        pest_issue: false,
-        disease_issue: false,
-        weed_condition: "",
-        notes: "",
-        fertilizer_advice: "",
-        pesticide_advice: "",
-        irrigation_advice: "",
-        general_advice: "",
-        follow_up_required: false,
-        next_visit_date: "",
-        visit_date: "",
-        visit_time: "",
-        location_name: "",
-        locality: "",
-        state: "",
-        formatted_address: "",
+  const [farmers, setFarmers] = useState([]);
+  const [farmerOptions, setFarmerOptions] = useState([]);
+  const [farmersLoading, setFarmersLoading] = useState(true);
+  const [villageLoading, setVillageLoading] = useState(true);
+  const [cropLoading, setCropLoading] = useState(true);
+
+  const isExistingFarmer = form.farmer_mode === "existing";
+  const isOthers = form.problem_type_code === PROBLEM_TYPE_CODES.OTHERS;
+
+  const selectedCategory = useMemo(
+    () => findCategoryForCode(categories, form.problem_type_code),
+    [categories, form.problem_type_code]
+  );
+
+  const needsMasterDropdown = useMemo(() => {
+    if (!form.problem_type_code || isOthers) return false;
+    return categoryRequiresMaster(selectedCategory, form.problem_type_code);
+  }, [selectedCategory, form.problem_type_code, isOthers]);
+
+  useEffect(() => {
+    setVillageLoading(true);
+    fetchAllVillages()
+      .then((page) => setVillages(page.results || []))
+      .catch(() => setVillages([]))
+      .finally(() => setVillageLoading(false));
+
+    setCropLoading(true);
+    fetchAllCrops()
+      .then((page) => setCrops(page.results || []))
+      .catch(() => setCrops([]))
+      .finally(() => setCropLoading(false));
+
+    fetchProblemCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+
+    setFarmersLoading(true);
+    fetchAllFarmers()
+      .then((page) => {
+        const list = page.results ?? [];
+        setFarmers(list);
+        setFarmerOptions(farmersToDropdownOptions(list));
+      })
+      .catch(() => {
+        setFarmers([]);
+        setFarmerOptions([]);
+      })
+      .finally(() => setFarmersLoading(false));
+  }, []);
+
+  const preselectFarmerId = location.state?.farmerId;
+  useEffect(() => {
+    if (!preselectFarmerId || !farmers.length || !villages.length) return;
+    const farmer = farmers.find((f) => f.id === preselectFarmerId);
+    if (!farmer) return;
+    const mapped = farmerRecordToVisitForm(farmer, villages);
+    if (!mapped) return;
+    setForm((prev) => ({
+      ...prev,
+      farmer_mode: "existing",
+      ...mapped,
+    }));
+  }, [preselectFarmerId, farmers, villages]);
+
+  const loadProblemMasters = useCallback(async () => {
+    if (!form.problem_type_code || !selectedCategory?.id) {
+      setProblemMasters([]);
+      return;
+    }
+    setMastersLoading(true);
+    try {
+      const { items, apiAvailable } = await fetchAllProblemMasters({
+        category_id: selectedCategory.id,
+        problem_category: selectedCategory.id,
+        crop_id: form.crop || undefined,
+      });
+      setMastersApiMissing(apiAvailable === false);
+      setProblemMasters(items || []);
+    } catch {
+      setProblemMasters([]);
+      setMastersApiMissing(true);
+    } finally {
+      setMastersLoading(false);
+    }
+  }, [form.problem_type_code, selectedCategory?.id, form.crop]);
+
+  useEffect(() => {
+    loadProblemMasters();
+  }, [loadProblemMasters]);
+
+  const setField = (name, value) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setField(name, value);
+  };
+
+  const setFarmerMode = (mode) => {
+    setForm({ ...EMPTY_FORM, farmer_mode: mode });
+    setErrors({});
+  };
+
+  const selectExistingFarmer = (farmerId) => {
+    const farmer = farmers.find((f) => f.id === farmerId);
+    const mapped = farmerRecordToVisitForm(farmer, villages);
+    if (!mapped) {
+      setField("farmer_id", farmerId);
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      farmer_mode: "existing",
+      ...mapped,
+    }));
+    setErrors({});
+  };
+
+  const selectProblemType = (code) => {
+    const cat = findCategoryForCode(categories, code);
+    setForm((prev) => ({
+      ...prev,
+      problem_type_code: code,
+      problem_category: cat?.id ?? null,
+      problem_master: null,
+      problem_other: code === PROBLEM_TYPE_CODES.OTHERS ? prev.problem_other : "",
+    }));
+    setErrors((prev) => ({
+      ...prev,
+      problem_type_code: undefined,
+      problem_category: undefined,
+      problem_master: undefined,
+      problem_other: undefined,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    setSubmitError("");
+
+    const requiresMaster = needsMasterDropdown && problemMasters.length > 0;
+
+    const validation = validateCreateVisitForm(form, {
+      requiresMaster,
+      mediaFiles,
     });
+    if (Object.keys(validation).length > 0) {
+      setErrors(validation);
+      return;
+    }
 
-    const [geocodingAddress, setGeocodingAddress] = useState(false);
+    try {
+      setLoading(true);
+      const payload = buildCreateVisitPayload(form, categories);
+      const visit = await createVisit(payload);
+      const visitId = visit?.id;
 
-    // District/Village state
-    const [districts, setDistricts] = useState([]);
-    const [villages, setVillages] = useState([]);
-    const [districtLoading, setDistrictLoading] = useState(false);
-    const [villageLoading, setVillageLoading] = useState(false);
-    // Reverse geocode GPS when coordinates change (fills address if empty; cached)
-    useEffect(() => {
-        const lat = parseFloat(formData.latitude);
-        const lng = parseFloat(formData.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
-
-        let cancelled = false;
-        const timer = setTimeout(async () => {
-            if (formData.formatted_address?.trim() || formData.address?.trim()) return;
-            setGeocodingAddress(true);
-            const resolved = await reverseGeocodeSafe(lat, lng);
-            if (cancelled || !resolved) {
-                setGeocodingAddress(false);
-                return;
-            }
-            setFormData((f) => ({
-                ...f,
-                ...locationFieldsForPayload(resolved),
-            }));
-            setGeocodingAddress(false);
-        }, 900);
-
-        return () => {
-            cancelled = true;
-            clearTimeout(timer);
-        };
-    }, [formData.latitude, formData.longitude]);
-
-    // Fetch districts on mount
-    useEffect(() => {
-        setDistrictLoading(true);
-        api.get("masters/districts/")
-            .then(res => {
-                setDistricts(Array.isArray(res.data?.results) ? res.data.results : []);
-            })
-            .catch(() => setDistricts([]))
-            .finally(() => setDistrictLoading(false));
-    }, []);
-
-    // Fetch villages when district changes
-    useEffect(() => {
-        if (!formData.district) {
-            setVillages([]);
-            setFormData(f => ({ ...f, village: null }));
-            return;
+      if (visitId && mediaFiles.length > 0) {
+        const uploadErrors = [];
+        for (const item of mediaFiles) {
+          try {
+            await uploadVisitAttachment(visitId, item.file);
+          } catch {
+            uploadErrors.push(item.file.name);
+          }
         }
-        setVillageLoading(true);
-        api.get(`masters/villages/?district_id=${formData.district}`)
-            .then(res => {
-                setVillages(Array.isArray(res.data?.results) ? res.data.results : []);
-            })
-            .catch(() => setVillages([]))
-            .finally(() => setVillageLoading(false));
-    }, [formData.district]);
-    // Fetch crops on load
-    useEffect(() => {
-        setCropLoading(true);
-        getCrops()
-            .then(res => {
-                // Support both .results and array direct
-                if (res?.results) setCrops(res.results);
-                else if (Array.isArray(res)) setCrops(res);
-                else setCrops([]);
-            })
-            .catch((err) => {
-                console.error("Failed to load crops", err);
-                setCrops([]);
-            })
-            .finally(() => setCropLoading(false));
-    }, []);
-
-    // Add Crop Handler
-    const handleAddCrop = async (e) => {
-        e.preventDefault();
-        setAddCropError("");
-        setAddCropSuccess("");
-        if (!newCrop.name_en.trim() || !newCrop.name_ta.trim()) {
-            setAddCropError("Both names are required");
-            return;
+        if (uploadErrors.length > 0) {
+          setSubmitError(
+            `Visit created, but some files failed to upload: ${uploadErrors.join(", ")}`
+          );
+          navigate("/visits", { state: { refreshVisits: Date.now() } });
+          return;
         }
-        // Prevent duplicate (case-insensitive)
-        if (crops.some(c => c.name.toLowerCase() === newCrop.name_en.trim().toLowerCase())) {
-            setAddCropError("Crop already exists");
-            return;
+      }
+
+      navigate("/visits", { state: { refreshVisits: Date.now() } });
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data && typeof data === "object" && !data.detail) {
+        const fieldErrors = data.errors || data;
+        if (typeof fieldErrors === "object") {
+          const mapped = {};
+          Object.entries(fieldErrors).forEach(([k, v]) => {
+            mapped[k] = Array.isArray(v) ? v[0] : String(v);
+          });
+          setErrors(mapped);
+          return;
         }
-        try {
-            await createCrop(newCrop);
-            setAddCropSuccess("Crop added!");
-            setNewCrop({ name_en: "", name_ta: "" });
-            setCropLoading(true);
-            // Refresh crop list
-            const res = await getCrops();
-            setCrops(Array.isArray(res) ? res : []);
-        } catch {
-            setAddCropError("Failed to add crop");
-        } finally {
-            setCropLoading(false);
-            setTimeout(() => {
-                setAddCropSuccess("");
-                setShowAddCrop(false);
-            }, 1000);
+      }
+      setSubmitError(
+        err?.message ||
+          (typeof data?.detail === "string" ? data.detail : null) ||
+          "Failed to create visit. Please check required fields and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cropOptions = crops.map((c) => ({
+    ...c,
+    name_en: c.name_en || c.name || `Crop #${c.id}`,
+  }));
+
+  const masterLabel =
+    form.problem_type_code === PROBLEM_TYPE_CODES.PEST
+      ? "Pest"
+      : form.problem_type_code === PROBLEM_TYPE_CODES.DISEASE
+        ? "Disease"
+        : form.problem_type_code === PROBLEM_TYPE_CODES.NUTRIENT
+          ? "Nutrient deficiency"
+          : "Other problem";
+
+  return (
+    <div className="page-container max-w-3xl">
+      <PageHeader
+        title="Add Visit"
+        subtitle="Record a field visit with farmer, crop, problem, and media"
+        actions={
+          <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-md">
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
         }
-    };
+      />
 
-    // --- Validation ---
-    const [errors, setErrors] = useState({});
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <SectionCard title="Farmer Information" subtitle="Select existing or enter new farmer details">
+          <ModeToggle value={form.farmer_mode} onChange={setFarmerMode} />
 
-    const requiredFields = [
-        "farmer_name",
-        "farmer_phone",
-        "district",
-        "village",
-        "visit_date",
-        "visit_time",
-        "land_name",
-        "crop",
-    ];
-
-    const validate = () => {
-        const newErrors = {};
-        requiredFields.forEach((field) => {
-            if (!formData[field] || formData[field].toString().trim() === "") {
-                newErrors[field] = "Required";
-            }
-        });
-        return newErrors;
-    };
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: type === "checkbox" ? checked : value,
-        }));
-        setErrors((prev) => ({ ...prev, [name]: undefined }));
-    };
-
-    const isFormValid = () => {
-        return requiredFields.every((field) => formData[field] && formData[field].toString().trim() !== "");
-    };
-
-    const handleSubmit = async () => {
-        const validationErrors = validate();
-        setErrors(validationErrors);
-        if (Object.keys(validationErrors).length > 0) return;
-        try {
-            setLoading(true);
-            const payload = {
-                ...formData,
-                crop: formData.crop,
-            };
-            await createVisit(payload);
-            navigate("/visits", { state: { refreshVisits: Date.now() } });
-        } catch (err) {
-            setErrors({ submit: "Failed to create visit" });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    /* ---------- UI ---------- */
-
-    return (
-        <div className="p-6 bg-gray-50 min-h-screen space-y-6">
-
-            {/* HEADER */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-xl font-bold">Create Visit</h1>
-                    <p className="text-sm text-gray-500">
-                        Add a new field visit
-                    </p>
-                </div>
-
-                <button
-                    onClick={() => navigate(-1)}
-                    className="px-4 py-2 border rounded-lg"
-                >
-                    Back
-                </button>
+          {isExistingFarmer && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Farmer <span className="text-red-500">*</span>
+              </label>
+              <CustomDropdown
+                options={farmerOptions}
+                value={form.farmer_id}
+                onChange={selectExistingFarmer}
+                labelKey="name"
+                placeholder={farmersLoading ? "Loading farmers…" : "Select farmer"}
+                disabled={farmersLoading || farmerOptions.length === 0}
+              />
+              {errors.farmer_id && (
+                <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.farmer_id}</p>
+              )}
+              {!farmersLoading && farmerOptions.length === 0 && (
+                <p className="text-xs text-amber-700 mt-2">
+                  No farmers found. Switch to <strong>New farmer</strong> to enter details.
+                </p>
+              )}
             </div>
+          )}
 
-            <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <Field
+              label="Farmer Name"
+              name="farmer_name"
+              value={form.farmer_name}
+              onChange={handleChange}
+              required
+              error={errors.farmer_name}
+              placeholder="Full name"
+            />
+            <Field
+              label="Phone Number"
+              name="farmer_phone"
+              value={form.farmer_phone}
+              onChange={handleChange}
+              required
+              error={errors.farmer_phone}
+              placeholder="10-digit mobile"
+            />
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Village <span className="text-red-500">*</span>
+              </label>
+              <CustomDropdown
+                options={villages}
+                value={form.village}
+                onChange={(id) => setField("village", id)}
+                labelKey="name"
+                placeholder={villageLoading ? "Loading villages…" : "Select village"}
+                disabled={villageLoading || villages.length === 0}
+              />
+              {errors.village && (
+                <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.village}</p>
+              )}
+            </div>
+          </div>
+        </SectionCard>
 
-                {/* FARMER */}
-                <Card title="Farmer Info">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Name" name="farmer_name" value={formData.farmer_name} onChange={handleChange} required error={errors.farmer_name} />
-                        <Field label="Phone" name="farmer_phone" value={formData.farmer_phone} onChange={handleChange} required error={errors.farmer_phone} />
-                        <div>
-                            <label className="text-xs text-gray-700 font-medium mb-2 block">District <span className="text-red-500">*</span></label>
-                            <CustomDropdown
-                                options={districts}
-                                value={formData.district}
-                                onChange={id => setFormData(f => ({ ...f, district: id, village: null }))}
-                                valueKey="id"
-                                labelKey="name"
-                                placeholder={districtLoading ? "Loading districts..." : "Select District"}
-                                disabled={districtLoading || districts.length === 0}
-                            />
-                            {errors.district && <div className="text-xs text-red-500 mt-1">{errors.district}</div>}
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-700 font-medium mb-2 block">Village <span className="text-red-500">*</span></label>
-                            <CustomDropdown
-                                options={villages}
-                                value={formData.village}
-                                onChange={id => setFormData(f => ({ ...f, village: id }))}
-                                valueKey="id"
-                                labelKey="name"
-                                placeholder={villageLoading ? "Loading villages..." : "Select Village"}
-                                disabled={villageLoading || villages.length === 0}
-                            />
-                            {errors.village && <div className="text-xs text-red-500 mt-1">{errors.village}</div>}
-                        </div>
-                    </div>
-                </Card>
+        <SectionCard title="Crop Information" subtitle="Crop and land area">
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Crop <span className="text-red-500">*</span>
+            </label>
+            <CustomDropdown
+              options={cropOptions}
+              value={form.crop}
+              onChange={(id) => {
+                setField("crop", id);
+                setField("problem_master", null);
+              }}
+              labelKey="name_en"
+              subLabelKey="name_ta"
+              placeholder={cropLoading ? "Loading crops…" : "Select crop"}
+              disabled={cropLoading || cropOptions.length === 0}
+            />
+            {errors.crop && (
+              <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.crop}</p>
+            )}
+          </div>
 
-                {/* LOCATION */}
-                <Card title="Location">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Latitude" name="latitude" value={formData.latitude} onChange={handleChange} />
-                        <Field label="Longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
-                        <div className="col-span-2">
-                            {geocodingAddress && (
-                                <p className="text-xs text-gray-500 mb-2">Resolving place name from GPS…</p>
-                            )}
-                            {formData.formatted_address && !geocodingAddress && (
-                                <p className="text-sm font-medium text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mb-2">
-                                    📍 {formData.formatted_address}
-                                </p>
-                            )}
-                        </div>
-                        <Field label="Address" name="address" value={formData.address} onChange={handleChange} />
-                    </div>
-                </Card>
+          <Field
+            label="Acreage"
+            name="land_area"
+            type="number"
+            value={form.land_area}
+            onChange={handleChange}
+            required
+            error={errors.land_area}
+            placeholder="e.g. 2.5"
+          />
+        </SectionCard>
 
-                {/* FIELD */}
-                <Card title="Field Info">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Land Name" name="land_name" value={formData.land_name} onChange={handleChange} required error={errors.land_name} />
-                        <Field label="Area" name="land_area" value={formData.land_area} onChange={handleChange} />
-                    </div>
-                </Card>
+        <SectionCard title="Problem Information" subtitle="Type, sub-category, and description">
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              Problem Type <span className="text-red-500">*</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PROBLEM_TYPE_PILLS.map((pill) => {
+                const active = form.problem_type_code === pill.code;
+                const cat = findCategoryForCode(categories, pill.code);
+                const disabled = categories.length > 0 && !cat;
+                return (
+                  <button
+                    key={pill.code}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => selectProblemType(pill.code)}
+                    className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
+                      active
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-emerald-300 disabled:opacity-40"
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.problem_type_code && (
+              <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.problem_type_code}</p>
+            )}
+            {errors.problem_category && (
+              <p className="text-xs text-red-600 mt-1 font-medium">{errors.problem_category}</p>
+            )}
+          </div>
 
-                {/* CROP */}
-                <Card title="Crop Info">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="mb-2">
-                            <label className="text-xs text-gray-700 font-medium mb-2 block">
-                                Crop <span className="text-red-500">*</span>
-                            </label>
-                            <CustomDropdown
-                                options={crops}
-                                value={formData.crop}
-                                onChange={id => setFormData(f => ({ ...f, crop: id }))}
-                                valueKey="id"
-                                labelKey="name_en"
-                                placeholder={cropLoading ? "Loading crops..." : "Select Crop"}
-                                disabled={cropLoading || crops.length === 0}
-                            />
-                            <div className="flex justify-end mt-1">
-                                <button type="button" className="text-emerald-600 text-xs underline" onClick={() => setShowAddCrop(true)}>
-                                    + Add Crop
-                                </button>
-                            </div>
-                            {cropLoading && <div className="text-xs text-gray-400 mt-1">Loading crops...</div>}
-                            {errors.crop && <div className="text-xs text-red-500 mt-1">{errors.crop}</div>}
-                        </div>
-                        {/* Add Crop Modal */}
-                        {showAddCrop && (
-                            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-                                <div className="bg-white rounded-lg p-6 w-80 shadow-lg">
-                                    <h3 className="font-semibold mb-2">Add Crop</h3>
-                                    <form onSubmit={handleAddCrop}>
-                                        <input
-                                            className="w-full mb-2 px-3 py-2 border rounded"
-                                            placeholder="English Name"
-                                            value={newCrop.name_en}
-                                            onChange={e => setNewCrop({ ...newCrop, name_en: e.target.value })}
-                                            autoFocus
-                                        />
-                                        <input
-                                            className="w-full mb-2 px-3 py-2 border rounded"
-                                            placeholder="Tamil Name"
-                                            value={newCrop.name_ta}
-                                            onChange={e => setNewCrop({ ...newCrop, name_ta: e.target.value })}
-                                        />
-                                        {addCropError && <div className="text-xs text-red-500 mb-2">{addCropError}</div>}
-                                        {addCropSuccess && <div className="text-xs text-emerald-600 mb-2">{addCropSuccess}</div>}
-                                        <div className="flex gap-2 justify-end">
-                                            <button type="button" className="px-3 py-1 text-gray-600" onClick={() => setShowAddCrop(false)}>Cancel</button>
-                                            <button type="submit" className="px-3 py-1 bg-emerald-600 text-white rounded">Add</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-                        <Field label="Stage" name="crop_stage" value={formData.crop_stage} onChange={handleChange} />
-                        <Field label="Health" name="crop_health" value={formData.crop_health} onChange={handleChange} />
-                    </div>
-                </Card>
+          {form.problem_type_code && needsMasterDropdown && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                {masterLabel}
+                <span className="text-red-500"> *</span>
+              </label>
+              {mastersApiMissing ? (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  Problem list API is not available yet. Add items under{" "}
+                  <button
+                    type="button"
+                    className="underline font-semibold"
+                    onClick={() => navigate("/masters/problem-items")}
+                  >
+                    Masters → Problem items
+                  </button>{" "}
+                  when enabled, or choose <strong>Others</strong> and describe below.
+                </p>
+              ) : (
+                <CustomDropdown
+                  options={problemMasters}
+                  value={form.problem_master}
+                  onChange={(id) => setField("problem_master", id)}
+                  labelKey="name"
+                  placeholder={
+                    mastersLoading
+                      ? "Loading options…"
+                      : problemMasters.length
+                        ? `Select ${masterLabel.toLowerCase()}`
+                        : "No items — add under Masters"
+                  }
+                  disabled={mastersLoading || problemMasters.length === 0}
+                />
+              )}
+              {errors.problem_master && (
+                <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.problem_master}</p>
+              )}
+            </div>
+          )}
 
-                {/* NOTES */}
-                <Card title="Notes & Advice">
-                    <div className="space-y-4">
-                        <Field label="Notes" name="notes" value={formData.notes} onChange={handleChange} type="textarea" />
-                        <Field label="Fertilizer" name="fertilizer_advice" value={formData.fertilizer_advice} onChange={handleChange} />
-                        <Field label="Pesticide" name="pesticide_advice" value={formData.pesticide_advice} onChange={handleChange} />
-                        <Field label="Irrigation" name="irrigation_advice" value={formData.irrigation_advice} onChange={handleChange} />
-                    </div>
-                </Card>
+          {isOthers && (
+            <Field
+              label="Other problem"
+              name="problem_other"
+              value={form.problem_other}
+              onChange={handleChange}
+              required
+              error={errors.problem_other}
+              placeholder="Describe the problem type"
+            />
+          )}
 
-                {/* VISIT */}
-                <Card title="Visit Info">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Date" name="visit_date" value={formData.visit_date} onChange={handleChange} type="date" required error={errors.visit_date} />
-                        <Field label="Time" name="visit_time" value={formData.visit_time} onChange={handleChange} type="time" required error={errors.visit_time} />
-                    </div>
-                </Card>
+          <Field
+            label="Problem Description"
+            name="problem_description"
+            type="textarea"
+            value={form.problem_description}
+            onChange={handleChange}
+            required
+            error={errors.problem_description}
+            placeholder="Describe symptoms, severity, and field observations"
+          />
+        </SectionCard>
 
-            </div >
+        <SectionCard title="Media Upload" subtitle="Photos and documents for this visit">
+          <VisitMediaUploadField
+            files={mediaFiles}
+            onChange={(next) => {
+              setMediaFiles(next);
+              setErrors((prev) => ({ ...prev, media: undefined }));
+            }}
+            error={errors.media}
+          />
+        </SectionCard>
 
-            {/* ACTIONS */}
-            < div className="flex justify-end gap-3" >
-                <button
-                    onClick={() => navigate(-1)}
-                    className="px-5 py-2 border rounded-lg"
-                >
-                    Cancel
-                </button>
-                <button
-                    onClick={handleSubmit}
-                    disabled={loading || !isFormValid()}
-                    className={`px-6 py-2 rounded-lg text-white ${loading || !isFormValid() ? 'bg-gray-300' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                >
-                    {loading ? "Creating..." : "Create Visit"}
-                </button>
-                {errors.submit && <div className="text-red-500 text-sm mt-2">{errors.submit}</div>}
-            </div >
+        {submitError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
 
-        </div >
-    );
+        <div className="flex flex-wrap justify-end gap-3 pt-2">
+          <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-md">
+            Cancel
+          </button>
+          <button type="submit" disabled={loading} className="btn btn-primary btn-md">
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Creating…
+              </>
+            ) : (
+              "Create Visit"
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }

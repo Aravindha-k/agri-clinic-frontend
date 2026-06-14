@@ -127,6 +127,10 @@ export function normalizeEmployeeRoute(payload) {
     date: meta.date ?? null,
     totalPoints,
     totalDistanceKm: meta.total_distance_km ?? meta.distance_km ?? null,
+    durationSeconds: meta.duration_seconds ?? null,
+    duration: meta.duration ?? null,
+    startTime: meta.start_time ?? meta.workday_start_time ?? null,
+    endTime: meta.end_time ?? meta.workday_end_time ?? null,
     points,
   };
 }
@@ -151,7 +155,31 @@ export function formatRouteTimestamp(value) {
 }
 
 export const ROUTE_EMPTY_MESSAGE =
-  "No route data found for this date. Employee must start workday, allow GPS, keep app open, and wait for sync.";
+  "No GPS points received for this date.";
+
+export const ROUTE_SINGLE_POINT_MESSAGE =
+  "Only one GPS point received. Route cannot be drawn yet.";
+
+/** User-facing empty state for route map based on point count. */
+export function resolveRouteEmptyState(routeData) {
+  const total = Number(routeData?.totalPoints ?? routeData?.points?.length ?? 0);
+  if (total <= 0) {
+    return {
+      title: "No GPS points received",
+      subtitle: ROUTE_EMPTY_MESSAGE,
+    };
+  }
+  if (total === 1) {
+    return {
+      title: "Insufficient route data",
+      subtitle: ROUTE_SINGLE_POINT_MESSAGE,
+    };
+  }
+  return {
+    title: "No route recorded for this date",
+    subtitle: ROUTE_EMPTY_MESSAGE,
+  };
+}
 
 /** Map API / network errors to user-visible messages (never use empty-state copy). */
 export function resolveRouteFetchError(err) {
@@ -198,12 +226,17 @@ export function computeRouteSummary(routeData, employee = null) {
   const endTime = last?.captured_at ?? last?.created_at ?? null;
 
   let durationMinutes = null;
-  if (startTime && endTime) {
+  if (routeData?.durationSeconds != null && Number.isFinite(Number(routeData.durationSeconds))) {
+    durationMinutes = Math.round(Number(routeData.durationSeconds) / 60);
+  } else if (startTime && endTime) {
     const ms = new Date(endTime).getTime() - new Date(startTime).getTime();
     if (Number.isFinite(ms) && ms > 0) {
       durationMinutes = Math.round(ms / 60000);
     }
   }
+
+  const apiStart = routeData?.startTime ?? null;
+  const apiEnd = routeData?.endTime ?? null;
 
   const currentLat =
     parseCoord(employee?.latitude ?? employee?.last_latitude) ??
@@ -215,8 +248,8 @@ export function computeRouteSummary(routeData, employee = null) {
   return {
     distanceKm: routeData?.totalDistanceKm ?? null,
     durationMinutes,
-    startTime,
-    endTime,
+    startTime: apiStart ?? startTime,
+    endTime: apiEnd ?? endTime,
     totalPoints: routeData?.totalPoints ?? points.length,
     currentLat,
     currentLng,

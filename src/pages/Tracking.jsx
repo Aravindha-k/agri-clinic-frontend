@@ -14,6 +14,7 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
+import useCloseOnRouteChange from "../hooks/useCloseOnRouteChange";
 import {
     recordApiFailure,
     recordApiSuccess,
@@ -28,12 +29,23 @@ import {
 } from "../api/tracking.api";
 import { Link } from "react-router-dom";
 import {
-    WorkStatusBadge,
-    GpsOnlineBadge,
+    WorkdayStatusBadge,
+    GpsDataStatusBadge,
+    TrackingTaskBadge,
     MovementBadge,
 } from "../components/tracking/TrackingStatusBadges";
-import { getTrackingStatusColor, workStatusLabel, gpsOnlineLabel, movementLabel } from "../utils/trackingStatus";
-import { empName, timeAgo, formatDuration } from "../utils/trackingDisplay";
+import TrackingDiagnosticPanel from "../components/tracking/TrackingDiagnosticPanel";
+import {
+    getTrackingStatusColor,
+    formatLocationAge,
+    formatDistanceKm,
+    gpsDataStatusLabel,
+    workdayStatusLabel,
+    trackingTaskLabel,
+    movementLabel,
+    resolveGpsDataStatusKey,
+} from "../utils/trackingStatus";
+import { empName, timeAgo } from "../utils/trackingDisplay";
 import {
     normalizeTrackingEmployee,
     resolveTrackingEmployeeList,
@@ -59,15 +71,19 @@ import {
     Layers,
     TrendingUp,
     ShieldAlert,
-    HeartPulse,
+    Bug,
+    Gauge,
+    Battery,
 } from "lucide-react";
 
 /* ================================================================
    CONSTANTS
    ================================================================ */
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-const SHADOW_LG = "0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.1)";
-const REFRESH_INTERVAL = 45000;
+import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
+
+const SHADOW = "var(--card-shadow)";
+const SHADOW_LG = "var(--card-shadow-hover)";
+const REFRESH_INTERVAL = 30000;
 
 /* ================================================================
    ANIMATED COUNT-UP HOOK
@@ -97,9 +113,10 @@ const useCountUp = (target, duration = 900) => {
    LEAFLET CUSTOM MARKERS
    ================================================================ */
 const markerColors = {
-    green: "#22c55e",
-    yellow: "#eab308",
-    red: "#ef4444",
+    green: BRAND.primaryLight,
+    orange: "#f97316",
+    yellow: BRAND.warning,
+    red: BRAND.danger,
     gray: "#9ca3af",
 };
 
@@ -134,45 +151,6 @@ const getStatusColor = getTrackingStatusColor;
    HELPERS — empName, timeAgo in utils/trackingDisplay.js
    ================================================================ */
 
-/**
- * Tracking health: prefer API field `tracking_health`, else compute from last_seen.
- * OK (data < 2 min), STALE (2-10 min), STOPPED (>10 min / null)
- */
-const getTrackingHealth = (emp) => {
-    const apiVal = emp?.tracking_health?.toLowerCase?.();
-    if (apiVal === "ok" || apiVal === "stale" || apiVal === "stopped") return apiVal;
-    if (!emp?.last_seen) return "stopped";
-    const diffSec = (Date.now() - new Date(emp.last_seen).getTime()) / 1000;
-    if (diffSec < 120) return "ok";
-    if (diffSec < 600) return "stale";
-    return "stopped";
-};
-
-const HEALTH_CFG = {
-    ok: { color: "emerald", label: "OK", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
-    stale: { color: "yellow", label: "STALE", bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200", dot: "bg-yellow-500" },
-    stopped: { color: "red", label: "STOPPED", bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500" },
-};
-
-/* ================================================================
-   SKELETON COMPONENTS
-   ================================================================ */
-const Bone = ({ className = "" }) => (
-    <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />
-);
-
-const StatsSkeleton = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="mini-kpi-card bg-white" style={{ boxShadow: SHADOW }}>
-                <Bone className="w-8 h-8 rounded-lg mb-2" />
-                <Bone className="w-14 h-6 mb-2" />
-                <Bone className="w-20 h-3.5" />
-            </div>
-        ))}
-    </div>
-);
-
 /* ================================================================
    STAT CARD
    ================================================================ */
@@ -203,20 +181,6 @@ StatCard.displayName = "StatCard";
    ================================================================ */
 
 /* ================================================================
-   TRACKING HEALTH BADGE
-   ================================================================ */
-const TrackingHealthBadge = ({ employee }) => {
-    const health = getTrackingHealth(employee);
-    const c = HEALTH_CFG[health];
-    return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${c.bg} ${c.text} ${c.border}`}>
-            <HeartPulse className="w-3 h-3" />
-            {c.label}
-        </span>
-    );
-};
-
-/* ================================================================
    SUSPICIOUS ALERT
    ================================================================ */
 const SuspiciousAlert = ({ employee }) => {
@@ -240,10 +204,10 @@ const MapLegend = () => (
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Legend</p>
         <div className="space-y-1.5">
             {[
-                { color: "bg-green-500", label: "Working + Online" },
-                { color: "bg-yellow-500", label: "Working + Offline" },
-                { color: "bg-red-500", label: "GPS Off" },
-                { color: "bg-gray-400", label: "Not Working" },
+                { color: "bg-green-500", label: "Active + recent GPS" },
+                { color: "bg-orange-500", label: "Working, stale GPS" },
+                { color: "bg-red-500", label: "Stopped / no points" },
+                { color: "bg-gray-400", label: "Not started / ended" },
             ].map((item) => (
                 <div key={item.label} className="flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
@@ -264,6 +228,15 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
     const [loading, setLoading] = useState(false);
 
     const userId = employee?.user_id ?? employee?.id;
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const onKey = (e) => {
+            if (e.key === "Escape") onClose?.();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [isOpen, onClose]);
 
     /* Reset on open / employee change */
     useEffect(() => {
@@ -308,17 +281,19 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
         gray: { grad: "from-gray-500 to-gray-700" },
     };
 
+    if (!isOpen) return null;
+
     return (
         <>
-            {/* Backdrop */}
             <div
-                className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
+                aria-hidden="true"
+                data-overlay="tracking-drawer-backdrop"
             />
 
-            {/* Drawer Panel */}
             <div
-                className={`fixed top-0 right-0 z-50 h-full w-full max-w-lg bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+                className="fixed top-0 right-0 z-50 h-full w-full max-w-lg bg-white shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
             >
                 {employee && (
                     <div className="flex flex-col h-full">
@@ -378,7 +353,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                     drawerOpen={isOpen}
                                 />
                             ) : loading ? (
-                                <PageLoader label="Loading employee data…" />
+                                <PageLoader label="Loading employee data…" compact wrap={false} />
                             ) : (
                                 <>
                                     {/* SUMMARY */}
@@ -391,18 +366,20 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                                 <>
                                                     {/* Tracking Health + Status Row */}
                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                        <TrackingHealthBadge employee={employee} />
-                                                        <WorkStatusBadge employee={employee} />
-                                                        <GpsOnlineBadge employee={employee} />
-                                                        <MovementBadge employee={employee} />
+                                                        <WorkdayStatusBadge employee={summary} />
+                                                        <GpsDataStatusBadge employee={summary} />
+                                                        <TrackingTaskBadge employee={summary} />
+                                                        <MovementBadge employee={summary} />
                                                     </div>
 
                                                     <div className="grid grid-cols-2 gap-3">
                                                         {[
-                                                            { label: "Today\u2019s Visits", value: summary.visits_today ?? summary.total_visits ?? "\u2014", icon: MapPin },
-                                                            { label: "Distance", value: summary.distance_km ? `${summary.distance_km} km` : "\u2014", icon: Navigation },
-                                                            { label: "Work Hours", value: summary.work_hours ?? summary.hours_worked ?? "\u2014", icon: Clock },
-                                                            { label: "Last Seen", value: timeAgo(summary.last_seen || employee.last_seen), icon: Eye },
+                                                            { label: "GPS points today", value: summary.total_points ?? employee.total_points ?? "\u2014", icon: MapPin },
+                                                            { label: "Distance today", value: formatDistanceKm(summary.today_distance_km ?? summary.distance_km), icon: Navigation },
+                                                            { label: "Last GPS age", value: formatLocationAge(summary), icon: Clock },
+                                                            { label: "Last seen", value: timeAgo(summary.last_location_at ?? summary.last_seen ?? employee.last_seen), icon: Eye },
+                                                            { label: "Accuracy", value: summary.accuracy != null ? `${summary.accuracy} m` : "\u2014", icon: Gauge },
+                                                            { label: "Battery", value: summary.battery_level != null ? `${summary.battery_level}%` : "\u2014", icon: Battery },
                                                         ].map((item) => (
                                                             <div key={item.label} className="bg-white rounded-xl p-4 border border-gray-100" style={{ boxShadow: SHADOW }}>
                                                                 <div className="flex items-center gap-2 mb-2">
@@ -514,6 +491,13 @@ export default function Tracking() {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [diagnosticEmployee, setDiagnosticEmployee] = useState(null);
+
+    const closeDrawer = useCallback(() => {
+        setDrawerOpen(false);
+        setSelectedEmployee(null);
+    }, []);
+    useCloseOnRouteChange(closeDrawer, drawerOpen);
 
     /* ── Data Loading ── */
     const loadData = useCallback(async (isRefresh = false) => {
@@ -576,7 +560,8 @@ export default function Tracking() {
             const matchFilter =
                 filterStatus === "all" ||
                 (filterStatus === "working" && color === "green") ||
-                (filterStatus === "offline" && color === "yellow") ||
+                (filterStatus === "stale" && color === "orange") ||
+                (filterStatus === "offline" && (color === "yellow" || color === "orange")) ||
                 (filterStatus === "gps_off" && color === "red") ||
                 (filterStatus === "inactive" && color === "gray");
             return matchSearch && matchFilter;
@@ -617,15 +602,15 @@ export default function Tracking() {
             icon: Users,
             label: "Total Employees",
             value: stats?.total_employees ?? employees.length,
-            accent: "#166534",
-            gradient: "linear-gradient(135deg,#fff 0%,#f0fdf4 100%)",
+            accent: BRAND.primary,
+            gradient: BRAND_GRADIENTS.cardGreen,
             iconBg: "#dcfce7",
         },
         {
             icon: Briefcase,
             label: "Working Now",
             value: stats?.working_now ?? stats?.working ?? 0,
-            accent: "#059669",
+            accent: BRAND.primaryDark,
             gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
             iconBg: "#d1fae5",
         },
@@ -633,66 +618,41 @@ export default function Tracking() {
             icon: Wifi,
             label: "Online",
             value: stats?.online ?? 0,
-            accent: "#2563eb",
-            gradient: "linear-gradient(135deg,#fff 0%,#eff6ff 100%)",
-            iconBg: "#dbeafe",
+            accent: BRAND.info,
+            gradient: "linear-gradient(135deg,#fff 0%,#ecfeff 100%)",
+            iconBg: BRAND.infoLight,
         },
         {
             icon: WifiOff,
             label: "Offline",
             value: stats?.offline ?? 0,
-            accent: "#d97706",
-            gradient: "linear-gradient(135deg,#fff 0%,#fffbeb 100%)",
-            iconBg: "#fef3c7",
+            accent: BRAND.warning,
+            gradient: BRAND_GRADIENTS.cardAccent,
+            iconBg: BRAND.warningLight,
         },
         {
             icon: AlertTriangle,
             label: "GPS Issues",
             value: stats?.gps_issues ?? stats?.gps_off ?? 0,
-            accent: "#dc2626",
+            accent: BRAND.danger,
             gradient: "linear-gradient(135deg,#fff 0%,#fef2f2 100%)",
-            iconBg: "#fee2e2",
+            iconBg: BRAND.dangerLight,
         },
     ];
 
     const filterOptions = [
         { key: "all", label: "All", count: employees.length },
-        { key: "working", label: "Working", count: employees.filter((e) => getStatusColor(e) === "green").length },
-        { key: "offline", label: "Offline", count: employees.filter((e) => getStatusColor(e) === "yellow").length },
-        { key: "gps_off", label: "GPS Off", count: employees.filter((e) => getStatusColor(e) === "red").length },
-        { key: "inactive", label: "Inactive", count: employees.filter((e) => getStatusColor(e) === "gray").length },
+        { key: "working", label: "Healthy", count: employees.filter((e) => getStatusColor(e) === "green").length },
+        { key: "stale", label: "Stale GPS", count: employees.filter((e) => getStatusColor(e) === "orange").length },
+        { key: "gps_off", label: "No GPS", count: employees.filter((e) => getStatusColor(e) === "red").length },
+        { key: "inactive", label: "Not started", count: employees.filter((e) => getStatusColor(e) === "gray").length },
     ];
 
     /* ── Loading screen ── */
     if (loading && employees.length === 0) {
         return (
-            <div className="min-h-screen bg-[#f4f6f8] p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                        <Bone className="w-48 h-7" />
-                        <Bone className="w-72 h-4" />
-                    </div>
-                    <Bone className="w-32 h-9 rounded-xl" />
-                </div>
-                <StatsSkeleton />
-                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
-                    <Bone className="w-full h-[420px]" />
-                </div>
-                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
-                    <div className="px-3 py-2 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-50">
-                            <Bone className="w-9 h-9 !rounded-xl" />
-                            <Bone className="w-28 h-4" />
-                            <Bone className="w-20 h-4" />
-                            <Bone className="w-20 h-6 rounded-full" />
-                            <Bone className="w-16 h-6 rounded-full" />
-                            <Bone className="w-16 h-6 rounded-full" />
-                            <Bone className="w-16 h-4" />
-                            <Bone className="w-14 h-4 ml-auto" />
-                        </div>
-                    ))}
-                </div>
+            <div className="page-container">
+                <PageLoader label="Loading live tracking…" />
             </div>
         );
     }
@@ -701,47 +661,39 @@ export default function Tracking() {
        RENDER
        ================================================================ */
     return (
-        <div className="min-h-screen bg-[#f4f6f8]">
-            {/* Ping keyframes for markers */}
+        <>
             <style>{`
                 @keyframes ping {
                     75%, 100% { transform: scale(2.2); opacity: 0; }
                 }
             `}</style>
 
-            <div className="page-container">
-                {/* ====== PAGE HEADER ====== */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-lg shadow-emerald-500/20">
-                                <Layers className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Live Tracking</h1>
-                                <p className="text-gray-500 text-sm">Real-time GPS monitoring &amp; field employee status</p>
-                            </div>
+            <div className="page-container space-y-5">
+                <div className="tracking-page-header">
+                    <div className="flex items-center gap-3">
+                        <div className="tracking-page-header__icon">
+                            <Layers className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h1 className="page-title">Live Tracking</h1>
+                            <p className="page-subtitle">Real-time GPS monitoring and field employee status</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-200 text-xs text-gray-400" style={{ boxShadow: SHADOW }}>
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            Live &mdash; <span className="text-gray-600 font-medium">{lastRefresh.toLocaleTimeString()}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="tracking-live-pill">
+                            <div className="w-2 h-2 rounded-full bg-[var(--brand-primary-light)] animate-pulse" />
+                            Live — <span className="text-slate-700 font-semibold tabular-nums">{lastRefresh.toLocaleTimeString()}</span>
                         </div>
                         <button
                             onClick={() => loadData(true)}
                             disabled={refreshing}
-                            className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-emerald-600 hover:border-emerald-300 hover:shadow-md transition-all disabled:opacity-50"
-                            style={{ boxShadow: SHADOW }}
+                            className="btn btn-secondary btn-md disabled:opacity-50"
                             title="Refresh now"
                         >
                             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
                         </button>
-                        <Link
-                            to="/tracking/routes"
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition-colors"
-                        >
+                        <Link to="/tracking/routes" className="btn btn-secondary btn-md">
                             <Route className="w-4 h-4" />
                             Route History
                         </Link>
@@ -810,15 +762,9 @@ export default function Tracking() {
                                                 lat={emp.latitude ?? emp.last_latitude}
                                                 lng={emp.longitude ?? emp.last_longitude}
                                                 entity={emp}
-                                                statusLabel={gpsOnlineLabel(emp)}
-                                                statusOnline={
-                                                    String(
-                                                        emp.connection_status ??
-                                                            emp.connection ??
-                                                            ""
-                                                    ).toUpperCase() === "ONLINE"
-                                                }
-                                                workStatus={workStatusLabel(emp)}
+                                                statusLabel={gpsDataStatusLabel(emp)}
+                                                statusOnline={resolveGpsDataStatusKey(emp) === "online"}
+                                                workStatus={workdayStatusLabel(emp)}
                                                 movementStatus={movementLabel(emp)}
                                                 lastUpdated={timeAgo(emp.last_seen) || "\u2014"}
                                             >
@@ -828,14 +774,12 @@ export default function Tracking() {
                                                         Suspicious activity
                                                     </p>
                                                 ) : null}
-                                                {emp.work_status ? (
-                                                    <p className="text-[10px] text-gray-500">
-                                                        Work:{" "}
-                                                        <span className="font-medium text-gray-700">
-                                                            {emp.work_status}
-                                                        </span>
-                                                    </p>
-                                                ) : null}
+                                                <p className="text-[10px] text-gray-500">
+                                                    Tracking:{" "}
+                                                    <span className="font-medium text-gray-700">
+                                                        {trackingTaskLabel(emp)}
+                                                    </span>
+                                                </p>
                                             </EmployeeMapPopup>
                                         </Popup>
                                     </Marker>
@@ -897,10 +841,7 @@ export default function Tracking() {
                                         <button
                                             key={f.key}
                                             onClick={() => setFilterStatus(f.key)}
-                                            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${filterStatus === f.key
-                                                ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                                                : "bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                                                }`}
+                                            className={`tracking-filter-chip ${filterStatus === f.key ? "tracking-filter-chip--active" : "tracking-filter-chip--idle"}`}
                                         >
                                             {f.label} <span className="ml-1 opacity-60">{f.count}</span>
                                         </button>
@@ -915,66 +856,93 @@ export default function Tracking() {
                         <table className="w-full">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-50 border-b border-gray-100">
-                                    {["Employee", "District", "Work Status", "GPS Status", "Movement", "Health", "Last Seen", "Today Duration", ""].map(
-                                        (h) => (
-                                            <th key={h} className="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 whitespace-nowrap">
+                                    {[
+                                        "Employee",
+                                        "Workday",
+                                        "GPS Data",
+                                        "Tracking",
+                                        "Movement",
+                                        "Last GPS",
+                                        "Points",
+                                        "Distance",
+                                        "",
+                                    ].map((h) => (
+                                            <th key={h} className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 whitespace-nowrap">
                                                 {h}
                                             </th>
-                                        )
-                                    )}
+                                        ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredEmployees.length > 0 ? (
                                     filteredEmployees.map((emp, idx) => {
                                         const c = getStatusColor(emp);
-                                        const dotMap = { green: "bg-emerald-500", yellow: "bg-yellow-500", red: "bg-red-500", gray: "bg-gray-400" };
+                                        const dotMap = {
+                                            green: "bg-emerald-500",
+                                            orange: "bg-orange-500",
+                                            yellow: "bg-yellow-500",
+                                            red: "bg-red-500",
+                                            gray: "bg-gray-400",
+                                        };
                                         return (
                                             <tr
                                                 key={emp.user_id || emp.id || idx}
                                                 className="group hover:bg-emerald-50/40 transition-colors cursor-pointer"
                                                 onClick={() => openDrawer(emp)}
                                             >
-                                                <td className="px-5 py-3.5">
+                                                <td className="px-4 py-3.5">
                                                     <div className="flex items-center gap-3">
                                                         <div className="relative flex-shrink-0">
                                                             <ProfileAvatar entity={emp} name={empName(emp)} size="md" variant="neutral" />
-                                                            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${dotMap[c]}`} />
-                                                            <span className={`absolute -top-0.5 -left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${HEALTH_CFG[getTrackingHealth(emp)].dot}`} title={`Tracking: ${HEALTH_CFG[getTrackingHealth(emp)].label}`} />
+                                                            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${dotMap[c] ?? dotMap.gray}`} />
                                                         </div>
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors">{empName(emp)}</p>
-                                                            {emp.employee_id && <p className="text-[11px] text-gray-400">{emp.employee_id}</p>}
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors truncate">{empName(emp)}</p>
+                                                            <p className="text-[11px] text-gray-400 truncate">
+                                                                {[emp.district, emp.employee_id].filter(Boolean).join(" · ") || "\u2014"}
+                                                            </p>
                                                         </div>
+                                                        {emp.is_suspicious ? (
+                                                            <ShieldAlert className="w-3.5 h-3.5 text-red-500 shrink-0" title="Suspicious activity" />
+                                                        ) : null}
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-3.5 text-sm text-gray-600">{emp.district || "\u2014"}</td>
-                                                <td className="px-5 py-3.5"><WorkStatusBadge employee={emp} /></td>
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <GpsOnlineBadge employee={emp} />
-                                                        {emp.is_suspicious && <ShieldAlert className="w-3.5 h-3.5 text-red-500" title="Suspicious activity" />}
-                                                    </div>
+                                                <td className="px-4 py-3.5"><WorkdayStatusBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5"><GpsDataStatusBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5"><TrackingTaskBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5"><MovementBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">
+                                                    <span className="block">{timeAgo(emp.last_location_at ?? emp.last_seen)}</span>
+                                                    <span className="text-[10px] text-gray-400">{formatLocationAge(emp)} ago</span>
                                                 </td>
-                                                <td className="px-5 py-3.5"><MovementBadge employee={emp} /></td>
-                                                <td className="px-5 py-3.5"><TrackingHealthBadge employee={emp} /></td>
-                                                <td className="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{timeAgo(emp.last_seen)}</td>
-                                                <td className="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{emp.today_duration ?? formatDuration(emp.duration_minutes ?? emp.work_duration) ?? "\u2014"}</td>
-                                                <td className="px-5 py-3.5">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); openDrawer(emp); }}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 border border-emerald-200 transition-all opacity-0 group-hover:opacity-100"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                        View
-                                                    </button>
+                                                <td className="px-4 py-3.5 text-sm text-gray-700 tabular-nums">{emp.total_points ?? 0}</td>
+                                                <td className="px-4 py-3.5 text-sm text-gray-700 whitespace-nowrap">{formatDistanceKm(emp.distance_km ?? emp.today_distance_km)}</td>
+                                                <td className="px-4 py-3.5">
+                                                    <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); setDiagnosticEmployee(emp); }}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium hover:bg-slate-100 border border-slate-200"
+                                                        >
+                                                            <Bug className="w-3.5 h-3.5" />
+                                                            Debug
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); openDrawer(emp); }}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 border border-emerald-200"
+                                                        >
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                            View
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan="9">
+                                        <td colSpan="9" className="px-4">
                                             <EmptyState
                                                 icon={Search}
                                                 title="No employees match your filters"
@@ -994,11 +962,14 @@ export default function Tracking() {
             <EmployeeDrawer
                 employee={selectedEmployee}
                 isOpen={drawerOpen}
-                onClose={() => {
-                    setDrawerOpen(false);
-                    setTimeout(() => setSelectedEmployee(null), 300);
-                }}
+                onClose={closeDrawer}
             />
-        </div>
+
+            <TrackingDiagnosticPanel
+                employee={diagnosticEmployee}
+                open={Boolean(diagnosticEmployee)}
+                onClose={() => setDiagnosticEmployee(null)}
+            />
+        </>
     );
 }

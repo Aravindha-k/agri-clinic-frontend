@@ -275,7 +275,7 @@ export default function VisitEvidenceSection({ visitId, onCountChange }) {
       <div className="panel-body">
         {loading && (
           <div className="py-8">
-            <PageLoader label="Loading evidence…" />
+            <PageLoader label="Loading evidence…" compact wrap={false} />
           </div>
         )}
 

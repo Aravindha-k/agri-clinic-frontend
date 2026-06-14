@@ -23,8 +23,7 @@ import {
   FilterBar,
   EmptyState,
   GpsIndicator,
-  SkeletonCard,
-  SkeletonTable,
+  PageLoader,
 } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
@@ -41,6 +40,7 @@ import {
   LayoutGrid,
   List,
   Paperclip,
+  Plus,
 } from "lucide-react";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 
@@ -232,6 +232,15 @@ export default function Visits() {
             <Calendar className="w-3 h-3" /> Submitted only
           </span>
         }
+        actions={
+          <button
+            type="button"
+            onClick={() => navigate("/visits/create")}
+            className="btn btn-primary btn-md"
+          >
+            <Plus className="w-4 h-4" /> Add Visit
+          </button>
+        }
       />
 
       {!loading && total > 0 && (
@@ -339,15 +348,7 @@ export default function Visits() {
       )}
 
       {loading ? (
-        viewMode === "grid" ? (
-          <div className="list-grid list-grid--visits">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : (
-          <SkeletonTable rows={8} cols={12} />
-        )
+        <PageLoader label="Loading submitted field visits…" />
       ) : filteredVisits.length === 0 ? (
         <div className="section-card">
           <EmptyState

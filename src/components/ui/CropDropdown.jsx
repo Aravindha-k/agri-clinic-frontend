@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
-import { getCrops } from "../../api/master.api";
+import { fetchAllMasterCrops } from "../../api/master.api";
 import { Leaf, ChevronDown } from "lucide-react";
-
-const resolveList = (d) => {
-    const raw = d?.data ?? d;
-    if (Array.isArray(raw)) return raw;
-    if (raw?.results) return raw.results;
-    if (raw?.data) return raw.data;
-    return [];
-};
 
 export default function CropDropdown({ value, onChange, label = "Crop", className = "" }) {
     const [crops, setCrops] = useState([]);
@@ -17,8 +9,8 @@ export default function CropDropdown({ value, onChange, label = "Crop", classNam
     useEffect(() => {
         (async () => {
             try {
-                const raw = await getCrops();
-                setCrops(resolveList(raw));
+                const page = await fetchAllMasterCrops();
+                setCrops(page.results || []);
             } catch { /* silent */ }
             finally { setLoading(false); }
         })();

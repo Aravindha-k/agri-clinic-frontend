@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { MapPin, Wheat, TreePine, Tag, ChevronRight, Database } from "lucide-react";
-
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
+import { MapPin, Wheat, Tag, Bug, ChevronRight } from "lucide-react";
+import { PageHeader } from "../components/ui/command";
 
 const MASTER_SECTIONS = [
     {
@@ -24,12 +23,21 @@ const MASTER_SECTIONS = [
     },
     {
         title: "Problem Categories",
-        description: "Crop disease & issue classifications",
+        description: "Pest, disease, nutrient & other types",
         icon: Tag,
         color: "#7c3aed",
         bg: "linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%)",
         iconBg: "#ddd6fe",
         path: "/masters/problem-categories",
+    },
+    {
+        title: "Problem Items",
+        description: "Pest, disease & nutrient dropdown options",
+        icon: Bug,
+        color: "#b45309",
+        bg: "linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%)",
+        iconBg: "#fde68a",
+        path: "/masters/problem-items",
     },
 ];
 
@@ -37,26 +45,20 @@ export default function Masters() {
     const navigate = useNavigate();
 
     return (
-        <div className="page-container max-w-5xl">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                    <Database className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                    <h1 className="text-xl font-bold text-gray-900">Master Data</h1>
-                    <p className="text-sm text-gray-500">Manage reference data used across the system</p>
-                </div>
-            </div>
+        <div className="page-container">
+            <PageHeader
+                title="Master Data"
+                subtitle="Manage reference data used across the system"
+            />
 
-            {/* Cards */}
-            <div className="list-grid lg:grid-cols-3">
+            <div className="masters-hub-grid">
                 {MASTER_SECTIONS.map((section) => (
                     <button
                         key={section.path}
+                        type="button"
                         onClick={() => navigate(section.path)}
-                        className="text-left rounded-xl p-4 group transition-all hover:-translate-y-0.5 hover:shadow-md"
-                        style={{ background: section.bg, boxShadow: SHADOW }}
+                        className="masters-hub-card group"
+                        style={{ background: section.bg }}
                     >
                         <div className="flex items-start justify-between mb-3">
                             <div
@@ -69,8 +71,8 @@ export default function Masters() {
                                 className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all"
                             />
                         </div>
-                        <h3 className="font-semibold text-gray-900 text-sm mb-1">{section.title}</h3>
-                        <p className="text-xs text-gray-500 leading-relaxed">{section.description}</p>
+                        <h3 className="masters-hub-card__title">{section.title}</h3>
+                        <p className="masters-hub-card__desc">{section.description}</p>
                     </button>
                 ))}
             </div>

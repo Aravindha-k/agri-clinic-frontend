@@ -1,9 +1,11 @@
 import { PageLoader } from "../../components/ui/command";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-    getDistricts, createDistrict, updateDistrict, deleteDistrict,
-    getVillages, createVillage, updateVillage, deleteVillage,
+    fetchAllDistricts, fetchAllVillages,
+    createDistrict, updateDistrict, deleteDistrict,
+    createVillage, updateVillage, deleteVillage,
 } from "../../api/master.api";
+import { logApiDiagnostics } from "../../utils/apiDiagnostics";
 import {
     MapPin, Search, X, RefreshCw, Edit3, Trash2, Plus, AlertCircle, Loader2,
 } from "lucide-react";
@@ -11,14 +13,7 @@ import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
-const resolveList = (d) => {
-    const raw = d?.data ?? d;
-    if (Array.isArray(raw)) return raw;
-    if (raw?.results) return raw.results;
-    if (raw?.data) return raw.data;
-    return [];
-};
+const TABLE_PAGE_SIZE = 25;
 
 const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
 const inputClass = "w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
@@ -78,6 +73,9 @@ export default function MasterLocationsPage() {
     const [activeTab, setActiveTab] = useState("districts");
     const [districts, setDistricts] = useState([]);
     const [villages, setVillages] = useState([]);
+    const [districtTotal, setDistrictTotal] = useState(0);
+    const [villageTotal, setVillageTotal] = useState(0);
+    const [tablePage, setTablePage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
@@ -91,17 +89,30 @@ export default function MasterLocationsPage() {
         setLoading(true);
         setError(null);
         try {
-            const [d, v] = await Promise.allSettled([getDistricts(), getVillages()]);
-            if (d.status === "fulfilled") setDistricts(resolveList(d.value));
-            if (v.status === "fulfilled") setVillages(resolveList(v.value));
+            const [dRes, vRes] = await Promise.all([
+                fetchAllDistricts(),
+                fetchAllVillages(),
+            ]);
+            setDistricts(dRes.results);
+            setDistrictTotal(dRes.count);
+            setVillages(vRes.results);
+            setVillageTotal(vRes.count);
         } catch {
             setError("Failed to load locations.");
+            setDistricts([]);
+            setVillages([]);
+            setDistrictTotal(0);
+            setVillageTotal(0);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
+
+    useEffect(() => {
+        setTablePage(1);
+    }, [activeTab, search]);
 
     const getCurrentList = () => {
         const list = activeTab === "districts" ? districts : villages;
@@ -156,7 +167,24 @@ export default function MasterLocationsPage() {
     const openEdit = (item) => { setEditTarget(item); setFormOpen(true); };
 
     const currentList = getCurrentList();
+    const apiTotal = activeTab === "districts" ? districtTotal : villageTotal;
+    const tableTotalPages = Math.max(1, Math.ceil(currentList.length / TABLE_PAGE_SIZE));
+    const pagedList = useMemo(
+        () => currentList.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE),
+        [currentList, tablePage]
+    );
     const parentCol = activeTab === "villages";
+
+    useEffect(() => {
+        logApiDiagnostics({
+            label: `locations-${activeTab}`,
+            url: `/api/v1/masters/${activeTab}/`,
+            apiCount: apiTotal,
+            rowsLoaded: activeTab === "districts" ? districts.length : villages.length,
+            rowsRendered: pagedList.length,
+            pagination: { tablePage, tableTotalPages, search: search.trim() || null },
+        });
+    }, [activeTab, apiTotal, districts.length, villages.length, pagedList.length, tablePage, tableTotalPages, search]);
 
     return (
         <div className="page-container">
@@ -188,7 +216,7 @@ export default function MasterLocationsPage() {
                         className={`px-5 py-3 text-sm font-medium border-b-2 transition-all ${activeTab === tab ? "border-emerald-500 text-emerald-700 bg-emerald-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
                         {TAB_LABELS[tab]}
                         <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            {(tab === "districts" ? districts : villages).length}
+                            {tab === "districts" ? districtTotal : villageTotal}
                         </span>
                     </button>
                 ))}
@@ -237,7 +265,7 @@ export default function MasterLocationsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentList.map((item, idx) => (
+                                {pagedList.map((item, idx) => (
                                     <tr key={item.id || idx} className={`border-b border-gray-50 hover:bg-violet-50/40 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5">
@@ -263,6 +291,33 @@ export default function MasterLocationsPage() {
                             </tbody>
                         </table>
                     </div>
+                    {tableTotalPages > 1 && (
+                        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 text-sm text-gray-600">
+                            <span>
+                                Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, currentList.length)} of {currentList.length}
+                                {search.trim() ? ` (filtered from ${apiTotal} total)` : ` (${apiTotal} total)`}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    disabled={tablePage <= 1}
+                                    onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40"
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-xs font-medium">{tablePage} / {tableTotalPages}</span>
+                                <button
+                                    type="button"
+                                    disabled={tablePage >= tableTotalPages}
+                                    onClick={() => setTablePage((p) => Math.min(tableTotalPages, p + 1))}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

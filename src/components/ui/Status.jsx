@@ -1,19 +1,15 @@
 import React from "react";
-import AgriLoader from "./command/AgriLoader";
+import { PageLoader } from "./BrandLoader";
 import CanonicalEmptyState from "./command/EmptyState";
 
 export function PageSpinner({ message = "Loading…" }) {
-  return (
-    <div className="page-loader page-loader--inline">
-      <AgriLoader label={message} size="md" />
-    </div>
-  );
+  return <PageLoader label={message} />;
 }
 
 export function Loading({ className = "", message = "Loading…" }) {
   return (
-    <div className={`flex items-center justify-center py-6 ${className}`.trim()} role="status" aria-live="polite">
-      <AgriLoader label={message} size="sm" />
+    <div className={className}>
+      <PageLoader label={message} compact wrap={false} />
     </div>
   );
 }

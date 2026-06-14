@@ -61,7 +61,7 @@ export default function VisitListCard({ visit: v, onView }) {
   const attachmentCount = resolveVisitAttachmentCount(v);
 
   return (
-    <AdminCard className="visit-card" onClick={() => onView(v.id)}>
+    <AdminCard className="visit-card visit-timeline-card" onClick={() => onView(v.id)}>
       <AdminCardAccent />
       <AdminCardBody>
         <div className="flex items-start justify-between gap-2">

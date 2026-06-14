@@ -1,6 +1,7 @@
 import { PageLoader } from "../../components/ui/command";
 import { useEffect, useState, useCallback } from "react";
-import { getCrops, createCrop, updateCrop, deleteCrop } from "../../api/master.api";
+import { fetchAllMasterCrops, createCrop, updateCrop, deleteCrop } from "../../api/master.api";
+import { logApiDiagnostics } from "../../utils/apiDiagnostics";
 import {
     Wheat, Search, X, RefreshCw, Edit3, Trash2, Plus, AlertCircle,
     ChevronLeft, ChevronRight, Loader2, Leaf,
@@ -9,14 +10,6 @@ import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
-const resolveList = (d) => {
-    const raw = d?.data ?? d;
-    if (Array.isArray(raw)) return raw;
-    if (raw?.results) return raw.results;
-    if (raw?.data) return raw.data;
-    return [];
-};
 
 const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
 
@@ -92,6 +85,7 @@ function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
 
 export default function MasterCropsPage() {
     const [crops, setCrops] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
@@ -107,11 +101,13 @@ export default function MasterCropsPage() {
         setLoading(true);
         setError(null);
         try {
-            const raw = await getCrops();
-            setCrops(resolveList(raw));
+            const merged = await fetchAllMasterCrops();
+            setCrops(merged.results);
+            setTotalCount(merged.count);
         } catch {
             setError("Failed to load crops.");
             setCrops([]);
+            setTotalCount(0);
         } finally {
             setLoading(false);
         }
@@ -168,6 +164,17 @@ export default function MasterCropsPage() {
         );
     });
 
+    useEffect(() => {
+        logApiDiagnostics({
+            label: "masters-crops-ui",
+            url: "/api/v1/masters/crops/",
+            apiCount: totalCount,
+            rowsLoaded: crops.length,
+            rowsRendered: filtered.length,
+            pagination: { search: search.trim() || null },
+        });
+    }, [totalCount, crops.length, filtered.length, search]);
+
     return (
         <div className="page-container">
             {/* Header */}
@@ -179,7 +186,10 @@ export default function MasterCropsPage() {
                         </div>
                         Master Crops
                     </h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Manage crop database for dropdown selection</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Manage crop database for dropdown selection
+                        {!loading && <span className="ml-2 font-semibold text-emerald-700">{totalCount} total</span>}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm">

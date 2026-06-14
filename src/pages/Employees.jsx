@@ -1,6 +1,7 @@
-import { PageLoader, EmptyState, SkeletonTable } from "../components/ui/command";
+import { PageLoader, EmptyState } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
+import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
 function resolveList(res) {
   const raw = res?.data?.data ?? res?.data ?? res;
   if (Array.isArray(raw)) return raw;
@@ -117,50 +118,6 @@ const KpiSkeleton = () => (
   </div>
 );
 
-const CardSkeleton = () => (
-  <div className="list-card-surface">
-    <Bone className="h-0.5 rounded-none" />
-    <div className="p-3.5">
-      <div className="flex items-start gap-2.5 mb-3">
-        <Bone className="!rounded-full w-9 h-9 flex-shrink-0" />
-        <div className="flex-1 space-y-2">
-          <Bone className="w-28 h-4" />
-          <Bone className="w-20 h-3" />
-        </div>
-        <Bone className="w-16 h-5 rounded-full" />
-      </div>
-      <div className="space-y-2.5 mb-4">
-        <Bone className="w-full h-3" />
-        <Bone className="w-full h-3" />
-      </div>
-      <Bone className="w-full h-8 rounded-xl" />
-    </div>
-  </div>
-);
-
-const GridSkeleton = () => (
-  <div className="list-grid">
-    {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
-  </div>
-);
-
-const DrawerSkeleton = () => (
-  <div className="p-6 space-y-6 animate-pulse">
-    <div className="flex items-center gap-4">
-      <Bone className="!rounded-2xl w-14 h-14 flex-shrink-0" />
-      <div className="flex-1 space-y-2"><Bone className="w-36 h-5" /><Bone className="w-24 h-4" /></div>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
-          <Bone className="w-16 h-3" /><Bone className="w-24 h-4" />
-        </div>
-      ))}
-    </div>
-    <div className="space-y-2"><Bone className="w-full h-4" /><Bone className="w-full h-12" /><Bone className="w-full h-12" /></div>
-  </div>
-);
-
 /* ================================================================
    SUB-COMPONENTS
    ================================================================ */
@@ -200,15 +157,15 @@ const EmployeeStats = memo(({ stats, loading: isLoading, error: statsErr, onRetr
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       <KpiCard icon={Users} label="Total Employees" value={s.total ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #f0fdf4 100%)" iconBg="#dcfce7" iconColor="#166534" />
+        gradient={BRAND_GRADIENTS.cardGreen} iconBg="#dcfce7" iconColor={BRAND.primary} />
       <KpiCard icon={Activity} label="Active Now" value={s.online ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #f0fdfa 100%)" iconBg="#ccfbf1" iconColor="#0d9488" />
+        gradient="linear-gradient(135deg, #fff 0%, #f0fdfa 100%)" iconBg="#ccfbf1" iconColor={BRAND.info} />
       <KpiCard icon={MapPin} label="On Field" value={s.on_field ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #eff6ff 100%)" iconBg="#dbeafe" iconColor="#2563eb" />
+        gradient="linear-gradient(135deg, #fff 0%, #eff6ff 100%)" iconBg={BRAND.infoLight} iconColor={BRAND.info} />
       <KpiCard icon={WifiOff} label="Offline" value={s.offline ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #fef2f2 100%)" iconBg="#fee2e2" iconColor="#dc2626" />
+        gradient="linear-gradient(135deg, #fff 0%, #fef2f2 100%)" iconBg={BRAND.dangerLight} iconColor={BRAND.danger} />
       <KpiCard icon={Timer} label="Avg Hours Today" value={s.avg_hours_today ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #fefce8 100%)" iconBg="#fef9c3" iconColor="#ca8a04" />
+        gradient={BRAND_GRADIENTS.cardAccent} iconBg={BRAND.warningLight} iconColor={BRAND.warning} />
     </div>
   );
 });
@@ -347,19 +304,7 @@ EmployeeCard.displayName = "EmployeeCard";
 /* --- Employee Grid --- */
 const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOpen, onAddEmployee }) => {
   if (isLoading) {
-    return viewMode === "grid" ? (
-      <div className="list-grid">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="list-card animate-pulse-soft">
-            <div className="skeleton w-12 h-12 rounded-full mb-3" />
-            <div className="skeleton h-4 w-28 mb-2" />
-            <div className="skeleton h-3 w-full" />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <SkeletonTable rows={6} cols={6} />
-    );
+    return <PageLoader label="Loading employees…" />;
   }
   if (emps.length === 0) return (
     <div className="section-card">

@@ -10,7 +10,8 @@ export const BRAND = {
   black: "#071713",
   ink: "#0f172a",
   white: "#ffffff",
-  surface: "#f6f8fb",
+  surface: "#ffffff",
+  surfaceMuted: "#f4f7f5",
   success: "#48BB78",
   successDark: "#1E8449",
   info: "#0e7490",
@@ -19,6 +20,14 @@ export const BRAND = {
   warningLight: "#ffedd5",
   danger: "#dc2626",
   dangerLight: "#fee2e2",
+  slate: {
+    50: "#f8fafc",
+    100: "#f1f5f9",
+    200: "#e2e8f0",
+    500: "#64748b",
+    700: "#334155",
+    900: "#0f172a",
+  },
 };
 
 export const BRAND_GRADIENTS = {

@@ -1,5 +1,11 @@
 import api from "./axios";
-import { unwrapSuccessEnvelope, resolvePaginated, resolveList } from "../utils/apiUnwrap";
+import {
+  unwrapSuccessEnvelope,
+  resolvePaginated,
+  resolveList,
+  fetchAllPaginated,
+} from "../utils/apiUnwrap";
+import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { normalizeVisitAttachmentList } from "../utils/visitAttachments";
 import { normalizeVisitRecord, normalizeVisitList, logVisitFarmerBlock } from "../utils/visitFarmer";
 import { isUnreachableError, backendUnavailableMessage } from "../utils/apiBackoff";
@@ -78,15 +84,25 @@ export const getVisits = async (params = {}) => {
     if (import.meta.env?.DEV && records[0]) {
       logVisitFarmerBlock(records[0]);
     }
-    return {
-      ...page,
-      results: records,
-    };
+    const out = { ...page, results: records };
+    logApiDiagnostics({
+      label: "admin/visits",
+      url: "/api/v1/admin/visits/",
+      apiCount: out.count,
+      rowsLoaded: records.length,
+      pagination: { page: query.page, page_size: query.page_size },
+    });
+    return out;
   } catch (err) {
     console.error(TAG, "getVisits failed:", err.response?.status, err.message);
     throw formatVisitError(err, "Failed to load visits");
   }
 };
+
+/** Fetch all visit pages (reports / exports) */
+export async function fetchAllVisits(params = {}) {
+  return fetchAllPaginated(getVisits, { page_size: 100, ordering: "-created_at", ...params });
+}
 
 // List visit evidence — GET /admin/visits/{id}/attachments/
 export const getVisitAttachments = async (visitId) => {
@@ -129,6 +145,39 @@ export const updateVisit = async (id, data) => {
 // Upload photo - POST /visits/upload-photo/
 export const uploadVisitPhoto = async (data) => {
   const response = await api.post("visits/upload-photo/", data);
+  return unwrapSuccessEnvelope(response) ?? {};
+};
+
+function inferAttachmentType(file) {
+  const mime = (file?.type || "").toLowerCase();
+  const name = (file?.name || "").toLowerCase();
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+  if (
+    mime.includes("word") ||
+    mime.includes("document") ||
+    name.endsWith(".doc") ||
+    name.endsWith(".docx")
+  ) {
+    return "document";
+  }
+  return "other";
+}
+
+/** POST /visits/{id}/attachments/ — multipart file upload */
+export const uploadVisitAttachment = async (visitId, file, options = {}) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append(
+    "attachment_type",
+    options.attachment_type || inferAttachmentType(file)
+  );
+  if (options.text_content) formData.append("text_content", options.text_content);
+
+  const response = await api.post(`visits/${visitId}/attachments/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return unwrapSuccessEnvelope(response) ?? {};
 };
 

@@ -35,8 +35,27 @@ export default function StatCard({
   onClick,
   subValue,
   className = "",
+  loading = false,
 }) {
-  const animVal = useCountUp(value);
+  const animVal = useCountUp(loading ? 0 : value);
+
+  if (loading) {
+    return (
+      <div
+        className={`kpi-card kpi-card--loading ${className}`}
+        style={{ background: gradient }}
+        aria-busy="true"
+        aria-label={`Loading ${label}`}
+      >
+        <div className="kpi-card__icon skeleton !rounded-xl" />
+        <div className="relative z-10 min-w-0 flex-1 space-y-1.5">
+          <div className="kpi-card__skeleton-value" />
+          <div className="kpi-card__skeleton-label" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       role={onClick ? "button" : undefined}

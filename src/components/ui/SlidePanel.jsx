@@ -1,11 +1,26 @@
+import { useEffect } from "react";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 
 export default function SlidePanel({ open, onClose, title, wide, children }) {
+    useEffect(() => {
+        if (!open) return undefined;
+        const onKey = (e) => {
+            if (e.key === "Escape") onClose?.();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [open, onClose]);
+
     if (!open) return null;
     return createPortal(
-        <div className="fixed inset-0 z-[9997] flex justify-end">
-            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="fixed inset-0 z-[9997] flex justify-end" data-overlay="slide-panel">
+            <div
+                className="absolute inset-0 bg-black/40"
+                onClick={onClose}
+                aria-hidden="true"
+                data-overlay="slide-panel-backdrop"
+            />
             <div
                 className={`relative bg-white shadow-2xl h-full overflow-y-auto ${wide ? "w-full max-w-2xl" : "w-full max-w-lg"}`}
             >

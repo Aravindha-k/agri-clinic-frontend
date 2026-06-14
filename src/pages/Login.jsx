@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
 import Logo from "../components/Logo";
+import BrandLoader from "../components/ui/BrandLoader";
 import { BarChart3, Leaf, LockKeyhole, MapPin, Navigation, ShieldCheck, Sprout } from "lucide-react";
 
 /* ── Icon: Eye show/hide ─────────────────────────────── */
@@ -188,7 +189,20 @@ const Login = () => {
 
                 {/* Centered form area */}
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 40px", position: "relative" }}>
-                    <div style={{ width: "100%", maxWidth: 440 }}>
+                    {loading && (
+                        <div className="login-loading-overlay" aria-hidden="false">
+                            <BrandLoader variant="inline" label="Signing you in…" />
+                        </div>
+                    )}
+                    <div
+                        style={{
+                            width: "100%",
+                            maxWidth: 440,
+                            opacity: loading ? 0.35 : 1,
+                            pointerEvents: loading ? "none" : "auto",
+                            transition: "opacity 0.2s ease",
+                        }}
+                    >
 
                         {/* Section header */}
                         <div style={{ marginBottom: 36 }}>

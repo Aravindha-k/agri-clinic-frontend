@@ -1,43 +1,9 @@
 ﻿import { NavLink, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard, Users, Sprout, Leaf, AlertTriangle, MapPin, Route,
-  LogOut, X, ClipboardCheck, BarChart3, Bell, Database, ShieldCheck, LockKeyhole,
-} from "lucide-react";
+import { LayoutDashboard, LogOut, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
 import Logo from "../Logo";
-
-/** Static nav — never depends on user/role so sidebar stays populated while auth loads. */
-export const NAV_SECTIONS = [
-  {
-    label: "Core",
-    items: [
-      { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-      { label: "Employees", icon: Users, path: "/employees" },
-      { label: "Farmers", icon: Sprout, path: "/farmers" },
-    ],
-  },
-  {
-    label: "Field Operations",
-    items: [
-      { label: "Visits", icon: Leaf, path: "/visits" },
-      { label: "Crop Issues", icon: AlertTriangle, path: "/crop-issues" },
-      { label: "Recommendations", icon: ClipboardCheck, path: "/recommendations" },
-      { label: "Live Tracking", icon: MapPin, path: "/tracking" },
-      { label: "Route History", icon: Route, path: "/tracking/routes" },
-    ],
-  },
-  {
-    label: "Administration",
-    items: [
-      { label: "Masters", icon: Database, path: "/masters" },
-      { label: "Reports", icon: BarChart3, path: "/reports" },
-      { label: "Notifications", icon: Bell, path: "/notifications" },
-      { label: "Audit Log", icon: ShieldCheck, path: "/audit" },
-      { label: "Security & Sessions", icon: LockKeyhole, path: "/settings/security" },
-    ],
-  },
-];
+import { NAV_SECTIONS } from "./navConfig";
 
 function resolveNavSections() {
   if (!Array.isArray(NAV_SECTIONS) || NAV_SECTIONS.length === 0) {
@@ -69,10 +35,7 @@ function SidebarUserCard({ user, loading }) {
   ).toUpperCase();
 
   return (
-    <div
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-    >
+    <div className="sidebar-user-card">
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs text-white"
         style={{
@@ -164,17 +127,17 @@ export default function Sidebar({ isOpen, onClose }) {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="relative z-10 px-5 pt-6 pb-4 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Logo size="sm" variant="sidebar" showShadow={false} />
+        <div className="relative z-10 px-3 pt-2 pb-2 flex-shrink-0">
+          <div className="sidebar-brand">
+            <div className="sidebar-brand__logo">
+              <Logo size="sm" variant="sidebar" showShadow={false} />
+            </div>
             <div className="min-w-0">
-              <h1 className="text-[14.5px] font-bold text-white leading-tight tracking-tight truncate">
-                Kavya Agri Clinic
-              </h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="sidebar-brand__title">Kavya Agri Clinic</p>
+              <span className="sidebar-brand__tag">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <p className="text-[10.5px] text-emerald-400/80 font-medium">Admin Panel</p>
-              </div>
+                Admin Panel
+              </span>
             </div>
           </div>
         </div>
@@ -193,9 +156,7 @@ export default function Sidebar({ isOpen, onClose }) {
         >
           {sections.map((section) => (
             <div key={section.label}>
-              <p className="px-3 mb-1.5 text-[9.5px] font-bold text-white/25 uppercase tracking-[0.14em]">
-                {section.label}
-              </p>
+              <p className="sidebar-nav-label">{section.label}</p>
               <div className="space-y-0.5">
                 {(section.items ?? []).map((item) => (
                   <SidebarNavItem

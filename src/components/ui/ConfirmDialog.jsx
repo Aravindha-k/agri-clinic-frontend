@@ -1,7 +1,17 @@
+import { useEffect } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
 export default function ConfirmDialog({ open, title, message, onConfirm, onCancel, loading, variant = "danger" }) {
+    useEffect(() => {
+        if (!open) return undefined;
+        const onKey = (e) => {
+            if (e.key === "Escape" && !loading) onCancel?.();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [open, onCancel, loading]);
+
     if (!open) return null;
 
     const btnClass =

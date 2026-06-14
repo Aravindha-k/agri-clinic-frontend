@@ -1,6 +1,7 @@
 import { PageLoader } from "../components/ui/command";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
-import { getIssues, getRecommendations } from "../api/issue.api";
+import { fetchAllIssues, getRecommendations } from "../api/issue.api";
+import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import {
     resolveCropLabel,
     resolveFarmerLabel,
@@ -91,6 +92,7 @@ KpiCard.displayName = "KpiCard";
 
 export default function Recommendations() {
     const [recommendations, setRecommendations] = useState([]);
+    const [totalRecCount, setTotalRecCount] = useState(0);
     const [issuesById, setIssuesById] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -105,17 +107,26 @@ export default function Recommendations() {
         try {
             const params = { page, page_size: pageSize };
             if (search.trim()) params.search = search.trim();
-            const [recPage, issuePage] = await Promise.all([
+            const [recPage, issueMerged] = await Promise.all([
                 getRecommendations(params),
-                getIssues({ page: 1, page_size: 200 }),
+                fetchAllIssues(),
             ]);
             const list = Array.isArray(recPage?.results) ? recPage.results : [];
-            const issues = Array.isArray(issuePage?.results) ? issuePage.results : [];
+            const issues = Array.isArray(issueMerged?.results) ? issueMerged.results : [];
             const issueLookup = Object.fromEntries(issues.map((issue) => [String(issue.id), issue]));
             setRecommendations(list);
             setIssuesById(issueLookup);
-            const count = recPage?.count ?? list.length;
+            const count = typeof recPage?.count === "number" ? recPage.count : list.length;
+            setTotalRecCount(count);
             setTotalPages(Math.max(1, Math.ceil(count / pageSize)));
+            logApiDiagnostics({
+                label: "recommendations-ui",
+                url: "/api/v1/recommendations/",
+                apiCount: count,
+                rowsLoaded: list.length,
+                rowsRendered: list.length,
+                pagination: { page, page_size: pageSize, search: search.trim() || null },
+            });
         } catch (err) {
             setError(err?.message || "Failed to load recommendations.");
             setRecommendations([]);
@@ -172,7 +183,7 @@ export default function Recommendations() {
 
             {/* ── KPI ── */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard icon={ClipboardCheck} label="Total Recommendations" value={enrichedRecommendations.length} accent="#166534" gradient="linear-gradient(135deg,#fff 0%,#f0fdf4 100%)" iconBg="#dcfce7" />
+                <KpiCard icon={ClipboardCheck} label="Total Recommendations" value={totalRecCount} accent="#166534" gradient="linear-gradient(135deg,#fff 0%,#f0fdf4 100%)" iconBg="#dcfce7" />
                 <KpiCard icon={CheckCircle2} label="Issues Resolved" value={enrichedRecommendations.filter((r) => (r.displayStatus || "").toLowerCase() === "resolved").length} accent="#2563eb" gradient="linear-gradient(135deg,#fff 0%,#eff6ff 100%)" iconBg="#dbeafe" />
                 <KpiCard icon={Leaf} label="Unique Crops" value={[...new Set(enrichedRecommendations.map((r) => r.displayCropName).filter(Boolean))].length} accent="#ca8a04" gradient="linear-gradient(135deg,#fff 0%,#fefce8 100%)" iconBg="#fef9c3" />
             </div>
@@ -227,7 +238,7 @@ export default function Recommendations() {
                             <div className="icon-box"><ClipboardCheck className="w-4 h-4" /></div>
                             <div>
                                 <h3 className="section-title">Recommendation Records</h3>
-                                <p className="section-subtitle">{enrichedRecommendations.length} records</p>
+                                <p className="section-subtitle">{totalRecCount} total · page {page} of {totalPages}</p>
                             </div>
                         </div>
                     </div>

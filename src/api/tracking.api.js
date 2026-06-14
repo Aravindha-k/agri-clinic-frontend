@@ -108,6 +108,21 @@ export const getEmployeeSummary = async (userId) => {
     }
 };
 
+// Tracking diagnostics — GET /tracking/admin/employee/<user_id>/diagnostics/
+export const getEmployeeTrackingDiagnostics = async (userId) => {
+    try {
+        const url = `tracking/admin/employee/${userId}/diagnostics/`;
+        if (import.meta.env.DEV) {
+          console.debug(TAG, "getEmployeeTrackingDiagnostics →", url);
+        }
+        const response = await api.get(url);
+        return unwrapSuccessEnvelope(response) ?? response.data;
+    } catch (err) {
+        console.error(TAG, `getEmployeeTrackingDiagnostics(${userId}) failed:`, err.response?.status, err.message);
+        throw err;
+    }
+};
+
 // Single employee activity timeline — GET /tracking/admin/employee/<user_id>/activity/
 export const getEmployeeActivity = async (userId) => {
     try {

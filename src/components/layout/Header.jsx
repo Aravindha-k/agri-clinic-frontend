@@ -1,7 +1,11 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Bell, RefreshCw, ChevronRight, LogOut, User, Settings } from "lucide-react";
+import GlobalSearch from "./GlobalSearch";
+import Logo from "../Logo";
+import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
+import { logOverlayState } from "../../utils/overlayDebug";
 
 const PAGE_META = {
   "/dashboard": { name: "Dashboard", parent: null },
@@ -16,6 +20,7 @@ const PAGE_META = {
   "/masters/locations": { name: "Locations", parent: "Masters" },
   "/masters/crops": { name: "Crops", parent: "Masters" },
   "/masters/problem-categories": { name: "Problem Categories", parent: "Masters" },
+  "/masters/problem-items": { name: "Problem Items", parent: "Masters" },
   "/reports": { name: "Reports", parent: null },
   "/notifications": { name: "Notifications", parent: null },
   "/audit": { name: "Audit Log", parent: null },
@@ -40,6 +45,23 @@ export default function Header({ onMenuClick }) {
   const now = useClock();
   const [refreshing, setRefreshing] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
+  useCloseOnRouteChange(closeUserMenu, userMenuOpen);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !userMenuOpen) return;
+    logOverlayState({ modalOpen: userMenuOpen, drawerOpen: false, backdropRendered: true });
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    if (!userMenuOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") closeUserMenu();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [userMenuOpen, closeUserMenu]);
 
   const meta = (() => {
     const p = location.pathname;
@@ -79,49 +101,43 @@ export default function Header({ onMenuClick }) {
   });
 
   return (
-    <header
-      className="sticky top-0 z-20"
-      style={{
-        background: "rgba(255,255,255,0.84)",
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
-        borderBottom: "1px solid rgba(15,23,42,0.07)",
-        boxShadow: "0 1px 0 rgba(15,23,42,0.04)",
-      }}
-    >
-      {/* Premium green accent line at top */}
-      <div className="h-[2px] w-full" style={{ background: "linear-gradient(90deg, var(--brand-primary-dark) 0%, var(--brand-primary) 50%, var(--brand-accent) 100%)" }} />
+    <header className="app-header sticky top-0 z-20">
+      <div className="app-header__accent" />
 
-      <div className="flex items-center justify-between h-[52px] px-3 sm:px-5 lg:px-6">
-
-        {/* ── Left: menu + breadcrumb ── */}
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center justify-between h-[60px] px-3 sm:px-4 lg:px-6 gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={onMenuClick}
-            className="lg:hidden p-2 -ml-1 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all"
+            className="lg:hidden p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 transition-all flex-shrink-0"
             aria-label="Toggle sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 min-w-0">
+          <div className="hidden md:flex items-center flex-shrink-0 header-brand-mark">
+            <Logo size="header" variant="header" showShadow={false} />
+          </div>
+
+          <nav className="hidden sm:flex items-center gap-1.5 min-w-0 max-w-[140px] lg:max-w-none">
             {meta.parent && (
               <>
-                <span className="text-sm text-gray-400 font-medium hidden sm:block truncate">
+                <span className="text-sm text-slate-400 font-medium truncate">
                   {meta.parent}
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300 hidden sm:block flex-shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
               </>
             )}
-            <h2 className="text-sm font-semibold text-gray-900 truncate">
+            <h2 className="text-sm font-semibold text-slate-900 truncate tracking-tight">
               {meta.name}
             </h2>
           </nav>
         </div>
 
-        {/* ── Right: clock + actions + user ── */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="hidden lg:flex flex-1 justify-center max-w-md px-2">
+          <GlobalSearch />
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
 
           {/* Date/time */}
           <div className="hidden md:flex flex-col items-end mr-2">
@@ -143,33 +159,27 @@ export default function Header({ onMenuClick }) {
           {/* Notifications */}
           <button
             onClick={() => navigate("/notifications")}
-            className="relative p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+            className="header-notify-btn"
             title="Notifications"
           >
-            <Bell className="w-[17px] h-[17px]" />
-            <span className="absolute top-1.5 right-1.5 w-[7px] h-[7px] rounded-full bg-red-500 ring-[1.5px] ring-white" />
+            <Bell className="w-[18px] h-[18px]" />
+            <span className="header-notify-btn__dot" />
           </button>
 
-          <div className="w-px h-6 bg-gray-200 mx-1" />
+          <div className="hidden sm:block w-px h-7 bg-slate-200 mx-0.5" />
 
-          {/* User menu */}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen((v) => !v)}
-              className="flex items-center gap-2.5 pl-1 pr-2.5 py-1.5 rounded-xl hover:bg-gray-100/80 transition-all"
+              className="header-profile-btn"
             >
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white"
-                style={{ background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)", boxShadow: "0 2px 6px rgba(21,128,61,0.35), 0 0 0 2px rgba(34,197,94,0.20)" }}
-              >
-                {initials}
-              </div>
-              <div className="hidden sm:block text-left min-w-0">
-                <p className="text-[12.5px] font-semibold text-gray-900 truncate leading-tight max-w-[120px]">
+              <div className="header-profile-avatar">{initials}</div>
+              <div className="hidden md:block text-left min-w-0">
+                <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[120px]">
                   {displayName}
                 </p>
-                <p className="text-[10px] text-gray-400 leading-tight capitalize">
-                  {user?.role || "administrator"}
+                <p className="text-[10px] text-slate-500 leading-tight capitalize">
+                  {user?.role || "Administrator"}
                 </p>
               </div>
             </button>
@@ -177,7 +187,12 @@ export default function Header({ onMenuClick }) {
             {/* Dropdown */}
             {userMenuOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={closeUserMenu}
+                  aria-hidden="true"
+                  data-overlay="profile-menu-backdrop"
+                />
                 <div
                   className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl z-50 overflow-hidden"
                   style={{

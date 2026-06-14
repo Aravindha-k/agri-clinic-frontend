@@ -1,7 +1,8 @@
 import { PageLoader } from "../components/ui/command";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { addRecommendation, getIssues } from "../api/issue.api";
+import { addRecommendation, fetchAllIssues } from "../api/issue.api";
+import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import {
   asDisplayString,
   resolveCropLabel,
@@ -179,6 +180,7 @@ const StatusBadge = ({ status }) => {
 export default function Issues() {
     const navigate = useNavigate();
     const [issues, setIssues] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
@@ -194,12 +196,21 @@ export default function Issues() {
         setLoading(true);
         setError(null);
         try {
-            const page = await getIssues({ page: 1, page_size: 200 });
-            const list = Array.isArray(page?.results) ? page.results : [];
+            const merged = await fetchAllIssues();
+            const list = Array.isArray(merged?.results) ? merged.results : [];
             setIssues(list);
+            setTotalCount(typeof merged?.count === "number" ? merged.count : list.length);
+            logApiDiagnostics({
+                label: "issues-ui",
+                url: "/api/v1/issues/",
+                apiCount: merged?.count,
+                rowsLoaded: list.length,
+                pagination: { pagesLoaded: merged?.pagesLoaded },
+            });
         } catch (err) {
             setError(err?.message || "Failed to load issues.");
             setIssues([]);
+            setTotalCount(0);
         } finally {
             setLoading(false);
         }
@@ -270,7 +281,7 @@ export default function Issues() {
 
             {/* KPI */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <KpiCard icon={AlertTriangle} label="Total Issues" value={filteredIssues.length} accent="#dc2626" gradient="linear-gradient(135deg,#fff 0%,#fef2f2 100%)" iconBg="#fee2e2" />
+                <KpiCard icon={AlertTriangle} label="Total Issues" value={search.trim() ? filteredIssues.length : totalCount} accent="#dc2626" gradient="linear-gradient(135deg,#fff 0%,#fef2f2 100%)" iconBg="#fee2e2" />
                 <KpiCard icon={Flame} label="High Severity" value={highCount} accent="#ea580c" gradient="linear-gradient(135deg,#fff 0%,#fff7ed 100%)" iconBg="#ffedd5" />
                 <KpiCard icon={AlertCircle} label="Open Issues" value={openCount} accent="#ca8a04" gradient="linear-gradient(135deg,#fff 0%,#fefce8 100%)" iconBg="#fef9c3" />
                 <KpiCard icon={Leaf} label="Unique Crops" value={[...new Set(filteredIssues.map((i) => getCropName(i)).filter((name) => name && name !== "\u2014"))].length} accent="#16a34a" gradient="linear-gradient(135deg,#fff 0%,#f0fdf4 100%)" iconBg="#dcfce7" />
@@ -323,7 +334,7 @@ export default function Issues() {
                             <div className="icon-box"><AlertTriangle className="w-4 h-4 text-red-600" /></div>
                             <div>
                                 <h3 className="section-title">Issue Records</h3>
-                                <p className="section-subtitle">{filteredIssues.length} issues tracked</p>
+                                <p className="section-subtitle">{search.trim() ? `${filteredIssues.length} matching` : `${totalCount} total`} issues tracked</p>
                             </div>
                         </div>
                     </div>

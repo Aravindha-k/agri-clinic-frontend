@@ -42,7 +42,6 @@ import {
   getValidEmployeeLocations,
   getMapCenter,
 } from "../utils/mapCoordinates";
-import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
 import QuickActions from "../components/dashboard/QuickActions";
 import LiveOperationsPanel from "../components/dashboard/LiveOperationsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
@@ -56,6 +55,7 @@ import {
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 import { formatEvidenceRateLabel } from "../utils/analyticsLabels";
 
+import PremiumKpiCard from "../components/ui/PremiumKpiCard";
 const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
 const DashboardVisitChart = lazy(() => import("../components/dashboard/DashboardVisitChart"));
 import {
@@ -118,60 +118,8 @@ const formatRelative = (d) => {
 const STABLE_FORMAT_RELATIVE = formatRelative;
 
 /* ================================================================
-   ANIMATED COUNT-UP HOOK
-   ================================================================ */
-const useCountUp = (target, duration = 1200) => {
-  const [val, setVal] = useState(0);
-  const prev = useRef(0);
-  useEffect(() => {
-    const start = prev.current;
-    const end = Number(target) || 0;
-    if (start === end) { setVal(end); return; }
-    const t0 = performance.now();
-    const step = (now) => {
-      const p = Math.min((now - t0) / duration, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      setVal(Math.round(start + (end - start) * ease));
-      if (p < 1) requestAnimationFrame(step);
-      else prev.current = end;
-    };
-    requestAnimationFrame(step);
-  }, [target, duration]);
-  return val;
-};
-
-/* ================================================================
    SUB-COMPONENTS
    ================================================================ */
-
-/* ---- KPI STAT CARD ---- */
-const StatCard = ({ icon: Icon, label, value, gradient, iconBg, iconColor, onClick, subValue }) => {
-  const animVal = useCountUp(value);
-  return (
-    <div
-      onClick={onClick}
-      className={`mini-kpi-card group ${onClick ? "cursor-pointer" : "cursor-default"}`}
-      style={{
-        background: gradient,
-        boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
-        border: "1px solid rgba(15,118,110,0.07)",
-      }}
-    >
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: iconColor }} />
-      <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.07]" style={{ background: iconColor }} />
-      <div className="relative z-10">
-        <div className="mini-kpi-icon" style={{ background: iconBg, color: iconColor }}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <p className="mini-kpi-value">{animVal}</p>
-        <p className="mini-kpi-label">{label}</p>
-        {subValue && (
-          <p className="mt-1 text-[10px] font-semibold" style={{ color: iconColor }}>{subValue}</p>
-        )}
-      </div>
-    </div>
-  );
-};
 
 /* ---- Section Header ---- */
 const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
@@ -443,6 +391,10 @@ const Dashboard = () => {
 
   useAdaptivePolling(loadDashboard, 30000);
 
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
   const validLocations = useMemo(
     () => getValidEmployeeLocations(geoData),
     [geoData]
@@ -513,7 +465,11 @@ const Dashboard = () => {
 
   /* ---- Loading state ---- */
   if (loading) {
-    return <DashboardSkeleton />;
+    return (
+      <div className="page-container page-container--dashboard">
+        <PageLoader label="Preparing your field operations dashboard…" />
+      </div>
+    );
   }
 
   const pageHeader = (
@@ -537,7 +493,7 @@ const Dashboard = () => {
   /* ---- Render ---- */
   return (
     <DashboardShellErrorBoundary header={pageHeader}>
-    <div className="page-container">
+    <div className="page-container page-container--dashboard">
       {pageHeader}
 
       {/* Error banner */}
@@ -554,9 +510,9 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* ================== KPI CARDS ================== */}
-      <div className="kpi-grid">
-        <StatCard
+      <div className="dashboard-bento">
+      <div className="dashboard-kpi-row">
+        <PremiumKpiCard
           icon={Sprout}
           label="Total Farmers"
           value={stats.farmers}
@@ -564,16 +520,18 @@ const Dashboard = () => {
           iconBg={KPI_THEMES.farmers.iconBg}
           iconColor={KPI_THEMES.farmers.iconColor}
           onClick={() => navigate("/farmers")}
+          trend={{ direction: "neutral", text: "Registry" }}
         />
-        <StatCard
+        <PremiumKpiCard
           icon={LandPlot}
           label="Total Fields"
           value={stats.fields}
           gradient={KPI_THEMES.fields.gradient}
           iconBg={KPI_THEMES.fields.iconBg}
           iconColor={KPI_THEMES.fields.iconColor}
+          trend={{ direction: "up", text: "Mapped" }}
         />
-        <StatCard
+        <PremiumKpiCard
           icon={Calendar}
           label="Total Visits"
           value={stats.totalVisits}
@@ -582,8 +540,13 @@ const Dashboard = () => {
           iconColor={KPI_THEMES.visits.iconColor}
           onClick={() => navigate("/visits")}
           subValue={stats.todayVisits > 0 ? `${stats.todayVisits} today` : undefined}
+          trend={
+            stats.todayVisits > 0
+              ? { direction: "up", text: `+${stats.todayVisits} today` }
+              : { direction: "neutral", text: "All time" }
+          }
         />
-        <StatCard
+        <PremiumKpiCard
           icon={AlertTriangle}
           label="Open Issues"
           value={stats.issues_open}
@@ -591,8 +554,13 @@ const Dashboard = () => {
           iconBg={KPI_THEMES.issues.iconBg}
           iconColor={KPI_THEMES.issues.iconColor}
           onClick={() => navigate("/crop-issues")}
+          trend={
+            stats.issues_open > 0
+              ? { direction: "down", text: "Needs attention" }
+              : { direction: "up", text: "All clear" }
+          }
         />
-        <StatCard
+        <PremiumKpiCard
           icon={CalendarCheck}
           label="Today's Visits"
           value={stats.todayVisits}
@@ -600,8 +568,13 @@ const Dashboard = () => {
           iconBg={KPI_THEMES.today.iconBg}
           iconColor={KPI_THEMES.today.iconColor}
           onClick={() => navigate("/visits")}
+          trend={
+            stats.todayVisits > 0
+              ? { direction: "up", text: "On track" }
+              : { direction: "neutral", text: "No visits yet" }
+          }
         />
-        <StatCard
+        <PremiumKpiCard
           icon={Users}
           label="Working Now"
           value={stats.workingNow}
@@ -616,10 +589,15 @@ const Dashboard = () => {
                 ? `${stats.onlineNow} online`
                 : undefined
           }
+          trend={
+            stats.workingNow > 0
+              ? { direction: "up", text: "In field" }
+              : { direction: "neutral", text: "Idle" }
+          }
         />
-        <StatCard
+        <PremiumKpiCard
           icon={Radio}
-          label="GPS Tracking Compliance"
+          label="GPS Compliance"
           value={stats.onlineNow}
           gradient={KPI_THEMES.gps.gradient}
           iconBg={KPI_THEMES.gps.iconBg}
@@ -627,10 +605,17 @@ const Dashboard = () => {
           onClick={() => navigate("/tracking")}
           subValue={
             stats.workingNow > 0
-              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% of working staff online`
+              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% online`
               : mappedGeoCount > 0
-                ? `${mappedGeoCount} employee${mappedGeoCount !== 1 ? "s" : ""} on live map`
-                : "Live GPS tracking status"
+                ? `${mappedGeoCount} on map`
+                : "Live GPS status"
+          }
+          trend={
+            stats.workingNow > 0 && stats.onlineNow >= stats.workingNow
+              ? { direction: "up", text: "Healthy" }
+              : stats.gpsIssues > 0
+                ? { direction: "down", text: `${stats.gpsIssues} issues` }
+                : { direction: "neutral", text: "Monitoring" }
           }
         />
       </div>
@@ -649,15 +634,15 @@ const Dashboard = () => {
         />
       </WidgetErrorBoundary>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="dashboard-insight-row">
         <button
           type="button"
           onClick={() => navigate("/tracking/routes")}
-          className="section-card p-4 text-left hover:border-emerald-200 transition-all group"
+          className="dashboard-insight-widget group"
         >
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-              <Route className="w-5 h-5 text-indigo-600" />
+            <div className="dashboard-insight-widget__icon bg-indigo-50 text-indigo-600">
+              <Route className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Route Tracking Summary</p>
@@ -677,11 +662,11 @@ const Dashboard = () => {
         <button
           type="button"
           onClick={() => navigate("/visits")}
-          className="section-card p-4 text-left hover:border-emerald-200 transition-all group"
+          className="dashboard-insight-widget group"
         >
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
-              <Paperclip className="w-5 h-5 text-violet-600" />
+            <div className="dashboard-insight-widget__icon bg-violet-50 text-violet-600">
+              <Paperclip className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Evidence Upload Summary</p>
@@ -732,8 +717,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* ================== MAP + WORKDAY ================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="dashboard-main-row">
         <WidgetErrorBoundary
           name="LiveMap"
           title="Live Field Map unavailable"
@@ -939,6 +923,7 @@ const Dashboard = () => {
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
     </DashboardShellErrorBoundary>

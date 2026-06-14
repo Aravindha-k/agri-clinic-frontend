@@ -1,13 +1,13 @@
 import { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
-import { getVisits } from "../api/visit.api";
+import { fetchAllVisits } from "../api/visit.api";
+import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { getEmployeeGeo, getAdminStatus } from "../api/tracking.api";
 import {
   PageHeader,
   PageLoader,
   EmptyState,
   FilterBar,
-  SkeletonTable,
   ErrorRetry,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
@@ -165,14 +165,22 @@ export default function Reports() {
     setLoading(true);
     try {
       const [visitsR, geoR, adminR] = await Promise.allSettled([
-        getVisits({ page_size: 500 }),
+        fetchAllVisits(),
         getEmployeeGeo(),
         getAdminStatus(),
       ]);
 
       if (visitsR.status === "fulfilled") {
-        const records = normalizeVisitsResponse(visitsR.value).map(normalizeReportRow);
+        const merged = visitsR.value;
+        const records = normalizeVisitsResponse(merged).map(normalizeReportRow);
         setData(records);
+        logApiDiagnostics({
+          label: "reports-visits",
+          url: "/api/v1/admin/visits/",
+          apiCount: merged?.count,
+          rowsLoaded: records.length,
+          pagination: { pagesLoaded: merged?.pagesLoaded },
+        });
       } else {
         throw visitsR.reason;
       }
@@ -284,9 +292,8 @@ export default function Reports() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-4">
-        <PageHeader title="Analytics & Reports" subtitle="Loading report data\u2026" />
-        <SkeletonTable rows={8} cols={4} />
+      <div className="page-container">
+        <PageLoader label="Loading report data…" />
       </div>
     );
   }

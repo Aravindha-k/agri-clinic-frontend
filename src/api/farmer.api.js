@@ -1,11 +1,15 @@
 import api from "./axios";
 import { unwrapSuccessEnvelope, resolvePaginated, fetchAllPaginated, getResponseBody } from "../utils/apiUnwrap";
+import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { photoUrlFromUploadResponse } from "../utils/profilePhoto";
 
 const TAG = "[farmer.api]";
+/** GET /api/v1/farmers/ — paginated list with ?search= & ?village= (admin SPA primary) */
 const BASE = "farmers";
+/** GET /api/v1/admin/farmers/ — admin viewset (same DB, DRF filters) */
+const ADMIN_BASE = "admin/farmers";
 
-/** Single page — GET /farmers/?page=&page_size= */
+/** Single page — GET /api/v1/farmers/?page=&page_size=&search=&village= */
 export async function getFarmers(params = {}) {
   const clean = {};
   Object.entries(params).forEach(([k, v]) => {
@@ -14,13 +18,32 @@ export async function getFarmers(params = {}) {
   const response = await api.get(`${BASE}/`, { params: clean });
   const page = resolvePaginated(response);
 
+  logApiDiagnostics({
+    label: "farmers",
+    url: "/api/v1/farmers/",
+    apiCount: page.count,
+    rowsLoaded: page.results.length,
+    pagination: { page: clean.page, page_size: clean.page_size, next: Boolean(page.next) },
+    extra: { params: clean },
+  });
+
+  return page;
+}
+
+/** Optional admin list — GET /api/v1/admin/farmers/ */
+export async function getAdminFarmers(params = {}) {
+  const clean = {};
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== "" && v !== null && v !== undefined) clean[k] = v;
+  });
+  const response = await api.get(`${ADMIN_BASE}/`, { params: clean });
+  const page = resolvePaginated(response);
+
   if (import.meta.env?.DEV) {
-    const body = getResponseBody(response);
-    console.log("[admin] farmers API page", {
-      page: clean.page ?? 1,
-      count: body?.data?.count ?? body?.count ?? page.count,
-      resultsLen: body?.data?.results?.length ?? body?.results?.length ?? page.results.length,
-      next: !!(body?.data?.next ?? body?.next),
+    console.log("[admin] GET /api/v1/admin/farmers/", {
+      params: clean,
+      count: page.count,
+      resultsLen: page.results.length,
     });
   }
 
