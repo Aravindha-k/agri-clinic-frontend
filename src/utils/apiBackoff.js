@@ -3,6 +3,8 @@
  * Stops hammering the dev proxy when Django is not running.
  */
 
+import { getApiHostLabel } from "../config/api";
+
 let failureCount = 0;
 let lastFailureAt = 0;
 
@@ -36,8 +38,6 @@ export function shouldPausePolling() {
   if (failureCount === 0) return false;
   return Date.now() - lastFailureAt < getBackoffMs();
 }
-
-import { getApiHostLabel } from "../config/api";
 
 export function backendUnavailableMessage() {
   const host =

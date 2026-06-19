@@ -10,25 +10,26 @@ function BasemapTileLayer({ layer, fallback, onFallback }) {
   }, [layer.url]);
 
   const active = useFallback ? fallback : layer;
+  const tileProps = {
+    url: active.url,
+    attribution: active.attribution,
+    maxZoom: active.maxZoom ?? 19,
+    opacity: useFallback ? 1 : layer.opacity,
+    eventHandlers: {
+      tileerror: () => {
+        if (!useFallback) {
+          setUseFallback(true);
+          onFallback?.();
+        }
+      },
+    },
+  };
 
-  return (
-    <TileLayer
-      key={active.url}
-      url={active.url}
-      attribution={active.attribution}
-      maxZoom={active.maxZoom ?? 19}
-      subdomains={active.subdomains}
-      opacity={useFallback ? 1 : layer.opacity}
-      eventHandlers={{
-        tileerror: () => {
-          if (!useFallback) {
-            setUseFallback(true);
-            onFallback?.();
-          }
-        },
-      }}
-    />
-  );
+  if (active.subdomains) {
+    tileProps.subdomains = active.subdomains;
+  }
+
+  return <TileLayer key={active.url} {...tileProps} />;
 }
 
 /** Invalidate size when basemap type changes (tile swap). */
