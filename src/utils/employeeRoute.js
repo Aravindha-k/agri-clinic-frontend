@@ -122,15 +122,43 @@ export function normalizeEmployeeRoute(payload) {
   const totalFromApi = Number(meta.total_points);
   const totalPoints = Number.isFinite(totalFromApi) && totalFromApi >= 0 ? totalFromApi : points.length;
 
+  const polylineRaw = meta.polyline;
+  const polyline = Array.isArray(polylineRaw)
+    ? polylineRaw
+        .map((pair) => {
+          if (!Array.isArray(pair) || pair.length < 2) return null;
+          const lat = parseCoord(pair[0]);
+          const lng = parseCoord(pair[1]);
+          if (!isValidRouteCoordinate(lat, lng)) return null;
+          return [lat, lng];
+        })
+        .filter(Boolean)
+    : [];
+
   return {
     userId: meta.user_id ?? meta.userId ?? null,
+    employeeId: meta.employee_id ?? null,
     date: meta.date ?? null,
+    dutySessionId: meta.duty_session_id ?? null,
     totalPoints,
     totalDistanceKm: meta.total_distance_km ?? meta.distance_km ?? null,
     durationSeconds: meta.duration_seconds ?? null,
     duration: meta.duration ?? null,
-    startTime: meta.start_time ?? meta.workday_start_time ?? null,
-    endTime: meta.end_time ?? meta.workday_end_time ?? null,
+    startTime:
+      meta.duty_started_at ??
+      meta.start_time ??
+      meta.workday_start_time ??
+      null,
+    endTime:
+      meta.duty_ended_at ??
+      meta.end_time ??
+      meta.workday_end_time ??
+      null,
+    latestUpdate:
+      meta.latest_update ??
+      (points.length ? points[points.length - 1]?.captured_at : null),
+    polyline,
+    stops: Array.isArray(meta.stops) ? meta.stops : [],
     points,
   };
 }

@@ -1,41 +1,73 @@
-import { LayerGroup, LayersControl, TileLayer } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { TileLayer, useMap } from "react-leaflet";
+import { DEFAULT_ADMIN_MAP_BASEMAP, getMapBasemapLayers } from "../../config/mapBasemap";
 
-const ESRI_WORLD_IMAGERY =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+function BasemapTileLayer({ layer, fallback, onFallback }) {
+  const [useFallback, setUseFallback] = useState(false);
 
-const ESRI_REFERENCE_LABELS =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+  useEffect(() => {
+    setUseFallback(false);
+  }, [layer.url]);
 
-const OSM_STREET = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const active = useFallback ? fallback : layer;
+
+  return (
+    <TileLayer
+      key={active.url}
+      url={active.url}
+      attribution={active.attribution}
+      maxZoom={active.maxZoom ?? 19}
+      subdomains={active.subdomains}
+      opacity={useFallback ? 1 : layer.opacity}
+      eventHandlers={{
+        tileerror: () => {
+          if (!useFallback) {
+            setUseFallback(true);
+            onFallback?.();
+          }
+        },
+      }}
+    />
+  );
+}
+
+/** Invalidate size when basemap type changes (tile swap). */
+function MapInvalidateOnType({ mapType }) {
+  const map = useMap();
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch {
+        /* unmounting */
+      }
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [map, mapType]);
+  return null;
+}
 
 /**
- * Satellite (hybrid labels) + street basemap toggle for admin maps.
+ * Programmatic basemap layers with satellite/hybrid support and OSM fallback.
+ * @param {{ mapType: import('../../config/mapBasemap').MapBasemapType, onFallback?: () => void }} props
  */
-export default function MapBasemapLayers() {
+export default function MapBasemapLayers({
+  mapType = DEFAULT_ADMIN_MAP_BASEMAP,
+  onFallback,
+}) {
+  const config = getMapBasemapLayers(mapType);
+
   return (
-    <LayersControl position="topright">
-      <LayersControl.BaseLayer checked name="Satellite">
-        <LayerGroup>
-          <TileLayer
-            url={ESRI_WORLD_IMAGERY}
-            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
-            maxZoom={19}
-          />
-          <TileLayer
-            url={ESRI_REFERENCE_LABELS}
-            attribution=""
-            maxZoom={19}
-            opacity={0.85}
-          />
-        </LayerGroup>
-      </LayersControl.BaseLayer>
-      <LayersControl.BaseLayer name="Street">
-        <TileLayer
-          url={OSM_STREET}
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          maxZoom={19}
+    <>
+      <MapInvalidateOnType mapType={mapType} />
+      {config.layers.map((layer, index) => (
+        <BasemapTileLayer
+          key={`${config.key}-${index}-${layer.url}`}
+          layer={layer}
+          fallback={config.fallback}
+          onFallback={index === 0 ? onFallback : undefined}
         />
-      </LayersControl.BaseLayer>
-    </LayersControl>
+      ))}
+    </>
   );
 }

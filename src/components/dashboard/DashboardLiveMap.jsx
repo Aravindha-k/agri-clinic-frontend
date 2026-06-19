@@ -10,7 +10,7 @@ import { Radio, MapPin } from "lucide-react";
 const createMarkerIcon = (isOnline) =>
   L.divIcon({
     className: "",
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${isOnline ? BRAND.primaryLight : "#9ca3af"};border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>`,
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${isOnline ? BRAND.primaryLight : "#9ca3af"};border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.4),0 2px 8px rgba(0,0,0,0.5)"></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });

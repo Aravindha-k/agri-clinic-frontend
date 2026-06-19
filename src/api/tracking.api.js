@@ -30,6 +30,7 @@ export const getDashboardStats = async () => {
 };
 
 // Live employee status — GET /tracking/admin/status/
+/** @deprecated Use getTrackingLive from adminTracking.api.js for duty tracking */
 export const getAdminStatus = async () => {
     try {
         const response = await api.get("tracking/admin/status/");
@@ -41,6 +42,7 @@ export const getAdminStatus = async () => {
 };
 
 // Employee route — GET /tracking/admin/employee/<user_id>/route/?date=YYYY-MM-DD
+/** @deprecated Use getEmployeeDutyRoute from adminTracking.api.js */
 export const getEmployeeRoute = async (userId, { date } = {}) => {
     try {
         const url = `tracking/admin/employee/${userId}/route/`;
@@ -72,6 +74,7 @@ export const getWorkdayLocations = async (workdayId, params = {}) => {
 };
 
 /** Paginated fetch of all workday location points (admin fallback for today). */
+/** @deprecated Duty routes use /api/admin/tracking/ — do not use LocationLog workday APIs */
 export async function fetchAllWorkdayLocations(workdayId) {
     const combined = [];
     for (let page = 1; page <= 25; page += 1) {

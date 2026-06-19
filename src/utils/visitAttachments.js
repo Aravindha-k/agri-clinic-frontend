@@ -2,6 +2,8 @@
  * Normalize visit attachment/evidence records from admin API.
  */
 
+import { getApiOrigin } from "../config/api";
+
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"]);
 const PDF_EXT = new Set(["pdf"]);
 const AUDIO_EXT = new Set(["mp3", "wav", "ogg", "m4a", "aac", "webm", "opus", "amr", "3gp"]);
@@ -43,13 +45,9 @@ export function resolveAttachmentUrl(raw) {
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith("blob:") || s.startsWith("data:")) return s;
 
-  const apiBase = import.meta.env.VITE_API_BASE_URL?.trim() || "/api/v1/";
-  let origin;
+  let origin = getApiOrigin();
   try {
-    if (apiBase.startsWith("http")) {
-      const u = new URL(apiBase);
-      origin = u.origin;
-    } else if (typeof window !== "undefined") {
+    if (!origin && typeof window !== "undefined") {
       origin = window.location.origin;
     }
   } catch {

@@ -1,52 +1,52 @@
-import { useCallback, useEffect, useState } from "react";
-import { getEmployeeRoute, fetchAllWorkdayLocations } from "../../api/tracking.api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getEmployeeDutyRoute } from "../../api/adminTracking.api";
 import { todayIsoDate, resolveRouteFetchError } from "../../utils/employeeRoute";
 import EmployeeRouteMapView from "./EmployeeRouteMapView";
+import useTodayAutoSync from "../../hooks/useTodayAutoSync";
 
 /**
- * Route tab in employee drawer — loads route for one employee.
+ * Route tab in employee drawer — today's route via duty tracking API with live refresh.
  */
 export default function EmployeeRoutePanel({ userId, employee, isActive, drawerOpen }) {
   const [routeDate, setRouteDate] = useState(() => todayIsoDate());
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [routeSyncing, setRouteSyncing] = useState(false);
   const [routeError, setRouteError] = useState("");
+  const inFlightRef = useRef(false);
 
-  const workdayId = employee?.workday_id ?? employee?.workdayId ?? null;
+  const isToday = routeDate === todayIsoDate();
 
-  const loadRoute = useCallback(async () => {
-    if (!userId) return;
+  const loadRoute = useCallback(
+    async (silent = false) => {
+      if (!userId) return;
+      if (inFlightRef.current) return;
 
-    setRouteLoading(true);
-    setRouteError("");
-    setRouteData(null);
-
-    try {
-      let data = await getEmployeeRoute(userId, { date: routeDate });
-
-      if (!data.points.length && routeDate === todayIsoDate() && workdayId) {
-        try {
-          const fallbackPoints = await fetchAllWorkdayLocations(workdayId);
-          if (fallbackPoints.length) {
-            data = {
-              ...data,
-              points: fallbackPoints,
-              totalPoints: fallbackPoints.length,
-            };
-          }
-        } catch {
-          /* optional fallback */
-        }
+      inFlightRef.current = true;
+      if (silent) {
+        setRouteSyncing(true);
+      } else {
+        setRouteLoading(true);
+        setRouteError("");
       }
 
-      setRouteData(data);
-    } catch (err) {
-      setRouteData(null);
-      setRouteError(resolveRouteFetchError(err));
-    } finally {
-      setRouteLoading(false);
-    }
-  }, [userId, routeDate, workdayId]);
+      try {
+        const data = await getEmployeeDutyRoute(userId, { date: routeDate, isToday });
+        setRouteData(data);
+        setRouteError("");
+      } catch (err) {
+        if (!silent) {
+          setRouteData(null);
+          setRouteError(resolveRouteFetchError(err));
+        }
+      } finally {
+        inFlightRef.current = false;
+        if (silent) setRouteSyncing(false);
+        else setRouteLoading(false);
+      }
+    },
+    [userId, routeDate, isToday]
+  );
 
   useEffect(() => {
     if (!drawerOpen || !userId) return;
@@ -55,8 +55,14 @@ export default function EmployeeRoutePanel({ userId, employee, isActive, drawerO
 
   useEffect(() => {
     if (!drawerOpen || !isActive || !userId) return;
-    loadRoute();
+    loadRoute(false);
   }, [drawerOpen, isActive, userId, routeDate, loadRoute]);
+
+  useTodayAutoSync({
+    date: routeDate,
+    enabled: drawerOpen && isActive && Boolean(userId),
+    onPoll: loadRoute,
+  });
 
   return (
     <EmployeeRouteMapView
@@ -66,10 +72,13 @@ export default function EmployeeRoutePanel({ userId, employee, isActive, drawerO
       onRouteDateChange={setRouteDate}
       routeData={routeData}
       routeLoading={routeLoading}
+      routeSyncing={routeSyncing}
       routeError={routeError}
-      onRetry={loadRoute}
+      onRetry={() => loadRoute(false)}
+      autoSyncing={isToday}
       drawerOpen={drawerOpen}
       dateInputId="drawer-route-date"
+      showDutyMeta
     />
   );
 }

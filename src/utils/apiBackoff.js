@@ -37,14 +37,13 @@ export function shouldPausePolling() {
   return Date.now() - lastFailureAt < getBackoffMs();
 }
 
+import { getApiHostLabel } from "../config/api";
+
 export function backendUnavailableMessage() {
-  const apiBase = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (apiBase && !apiBase.startsWith("/")) {
-    return `Backend unavailable (${apiBase}). Check the API is running and refresh.`;
-  }
+  const host =
+    import.meta.env.VITE_API_BASE_URL?.trim() || getApiHostLabel();
   if (import.meta.env.PROD) {
-    return "Backend unavailable. Check the API is running and refresh.";
+    return `Backend unavailable (${host}). Check the API is running and refresh.`;
   }
-  const target = import.meta.env.VITE_PROXY_TARGET || "http://127.0.0.1:8000";
-  return `Backend unavailable. Start Django (${target}) and refresh.`;
+  return `Backend unavailable. Start Django (${host}) and refresh.`;
 }

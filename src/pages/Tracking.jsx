@@ -3,15 +3,12 @@ import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
-import { MapContainer, Marker, Popup } from "react-leaflet";
-import MapBasemapLayers from "../components/map/MapBasemapLayers";
+import AdminMapFrame from "../components/map/AdminMapFrame";
+import { GpsStatusMapLegend } from "../components/map/MapLegendPanel";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
-import EmployeeMapPopup from "../components/map/EmployeeMapPopup";
+import LiveMapMarkers from "../components/tracking/LiveMapMarkers";
 import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
-import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate } from "../utils/mapCoordinates";
-import MarkerClusterGroup from "react-leaflet-cluster";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
 import useCloseOnRouteChange from "../hooks/useCloseOnRouteChange";
@@ -23,36 +20,26 @@ import {
 } from "../utils/apiBackoff";
 import {
     getDashboardStats,
-    getAdminStatus,
-    getEmployeeSummary,
-    getEmployeeActivity,
 } from "../api/tracking.api";
 import { Link } from "react-router-dom";
 import {
-    WorkdayStatusBadge,
-    GpsDataStatusBadge,
-    TrackingTaskBadge,
-    MovementBadge,
+    DutyGpsStatusBadge,
+    DutyWorkdayBadge,
+    DutyMovementBadge,
 } from "../components/tracking/TrackingStatusBadges";
-import TrackingDiagnosticPanel from "../components/tracking/TrackingDiagnosticPanel";
 import {
-    getTrackingStatusColor,
-    formatLocationAge,
-    formatDistanceKm,
-    gpsDataStatusLabel,
-    workdayStatusLabel,
-    trackingTaskLabel,
-    movementLabel,
-    resolveGpsDataStatusKey,
-} from "../utils/trackingStatus";
-import { empName, timeAgo } from "../utils/trackingDisplay";
-import {
-    normalizeTrackingEmployee,
-    resolveTrackingEmployeeList,
-} from "../utils/trackingNormalize";
+    getDutyStatusColor,
+    resolveCanonicalGpsStatusKey,
+    resolveCanonicalDutyStatusKey,
+    canonicalDutyLabel,
+    canonicalGpsLabel,
+    dutyMovementLabel,
+    formatLastGpsUpdate,
+} from "../utils/dutyTracking";
+import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate } from "../utils/mapCoordinates";
+import { empName } from "../utils/trackingDisplay";
 import {
     Users,
-    Briefcase,
     Wifi,
     WifiOff,
     AlertTriangle,
@@ -60,9 +47,7 @@ import {
     Clock,
     Eye,
     X,
-    RefreshCw,
     Search,
-    Activity,
     Navigation,
     FileText,
     Radio,
@@ -70,20 +55,16 @@ import {
     Route,
     Layers,
     TrendingUp,
-    ShieldAlert,
-    Bug,
     Gauge,
     Battery,
+    ClipboardList,
 } from "lucide-react";
-
-/* ================================================================
-   CONSTANTS
-   ================================================================ */
+import { getTrackingLive } from "../api/adminTracking.api";
 import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
 
 const SHADOW = "var(--card-shadow)";
 const SHADOW_LG = "var(--card-shadow-hover)";
-const REFRESH_INTERVAL = 30000;
+const REFRESH_INTERVAL = 12_000;
 
 /* ================================================================
    ANIMATED COUNT-UP HOOK
@@ -108,48 +89,6 @@ const useCountUp = (target, duration = 900) => {
     }, [target, duration]);
     return val;
 };
-
-/* ================================================================
-   LEAFLET CUSTOM MARKERS
-   ================================================================ */
-const markerColors = {
-    green: BRAND.primaryLight,
-    orange: "#f97316",
-    yellow: BRAND.warning,
-    red: BRAND.danger,
-    gray: "#9ca3af",
-};
-
-const createColoredIcon = (color, pulse = false) =>
-    L.divIcon({
-        className: "",
-        html: `
-      <div style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
-        ${pulse ? `<div style="position:absolute;width:32px;height:32px;border-radius:50%;background:${color};opacity:0.25;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>` : ""}
-        <div style="
-          width:14px;height:14px;border-radius:50%;
-          background:${color};
-          border:3px solid #fff;
-          box-shadow:0 2px 8px rgba(0,0,0,0.3);
-          position:relative;z-index:1;
-        "></div>
-      </div>
-    `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-    });
-
-const getMarkerIcon = (emp) => {
-    const color = getTrackingStatusColor(emp);
-    const pulse = color === "green";
-    return createColoredIcon(markerColors[color] ?? markerColors.gray, pulse);
-};
-
-const getStatusColor = getTrackingStatusColor;
-
-/* ================================================================
-   HELPERS — empName, timeAgo in utils/trackingDisplay.js
-   ================================================================ */
 
 /* ================================================================
    STAT CARD
@@ -181,52 +120,10 @@ StatCard.displayName = "StatCard";
    ================================================================ */
 
 /* ================================================================
-   SUSPICIOUS ALERT
-   ================================================================ */
-const SuspiciousAlert = ({ employee }) => {
-    if (!employee?.is_suspicious) return null;
-    return (
-        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm" style={{ boxShadow: SHADOW }}>
-            <ShieldAlert className="w-5 h-5 flex-shrink-0 text-red-600" />
-            <div>
-                <p className="font-semibold text-sm">Suspicious Activity Detected</p>
-                <p className="text-xs text-red-500 mt-0.5">{employee.suspicious_reason || "Unusual location or movement pattern flagged by the system."}</p>
-            </div>
-        </div>
-    );
-};
-
-/* ================================================================
-   MAP LEGEND
-   ================================================================ */
-const MapLegend = () => (
-    <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur-md rounded-xl p-3 border border-gray-200 shadow-lg">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Legend</p>
-        <div className="space-y-1.5">
-            {[
-                { color: "bg-green-500", label: "Active + recent GPS" },
-                { color: "bg-orange-500", label: "Working, stale GPS" },
-                { color: "bg-red-500", label: "Stopped / no points" },
-                { color: "bg-gray-400", label: "Not started / ended" },
-            ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                    <span className="text-[11px] text-gray-600">{item.label}</span>
-                </div>
-            ))}
-        </div>
-    </div>
-);
-
-/* ================================================================
    EMPLOYEE DRAWER
    ================================================================ */
 const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState("summary");
-    const [summary, setSummary] = useState(null);
-    const [activityData, setActivityData] = useState(null);
-    const [loading, setLoading] = useState(false);
-
     const userId = employee?.user_id ?? employee?.id;
 
     useEffect(() => {
@@ -238,45 +135,19 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
         return () => window.removeEventListener("keydown", onKey);
     }, [isOpen, onClose]);
 
-    /* Reset on open / employee change */
     useEffect(() => {
-        if (!isOpen || !userId) return;
-        setActiveTab("summary");
-        setSummary(null);
-        setActivityData(null);
-        loadSummary();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (isOpen) setActiveTab("summary");
     }, [isOpen, userId]);
-
-    /* Tab switching */
-    useEffect(() => {
-        if (!isOpen || !userId) return;
-        if (activeTab === "summary" && !summary) loadSummary();
-        if (activeTab === "activity" && !activityData) loadActivity();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab]);
-
-    const loadSummary = async () => {
-        setLoading(true);
-        try { setSummary(await getEmployeeSummary(userId)); } catch { setSummary(null); }
-        setLoading(false);
-    };
-    const loadActivity = async () => {
-        setLoading(true);
-        try { setActivityData(await getEmployeeActivity(userId)); } catch { setActivityData(null); }
-        setLoading(false);
-    };
 
     const tabs = [
         { key: "summary", label: "Summary", icon: FileText },
-        { key: "route", label: "Route", icon: Route },
-        { key: "activity", label: "Activity", icon: Activity },
+        { key: "route", label: "Today Route", icon: Route },
     ];
 
-    const color = employee ? getStatusColor(employee) : "gray";
+    const color = employee ? getDutyStatusColor(employee) : "gray";
     const accentMap = {
         green: { grad: "from-emerald-500 to-emerald-700" },
-        yellow: { grad: "from-yellow-500 to-amber-600" },
+        orange: { grad: "from-orange-500 to-amber-600" },
         red: { grad: "from-red-500 to-red-700" },
         gray: { grad: "from-gray-500 to-gray-700" },
     };
@@ -292,13 +163,10 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                 data-overlay="tracking-drawer-backdrop"
             />
 
-            <div
-                className="fixed top-0 right-0 z-50 h-full w-full max-w-lg bg-white shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
-            >
+            <div className="fixed top-0 right-0 z-50 h-full w-full max-w-lg bg-white shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0">
                 {employee && (
                     <div className="flex flex-col h-full">
-                        {/* ── Header ── */}
-                        <div className={`bg-gradient-to-r ${accentMap[color].grad} p-6`}>
+                        <div className={`bg-gradient-to-r ${accentMap[color]?.grad ?? accentMap.gray.grad} p-6`}>
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-xl ring-2 ring-white/30">
@@ -306,13 +174,15 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-bold text-white">{empName(employee)}</h3>
-                                        <p className="text-white/80 text-sm mt-0.5">{employee.district || employee.designation || "\u2014"}</p>
-                                        <div className="flex items-center gap-2 mt-2">
+                                        <p className="text-white/80 text-sm mt-0.5">
+                                            {[employee.employee_id, employee.district].filter(Boolean).join(" · ") || "—"}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/20 text-white">
-                                                {employee.work_status || "\u2014"}
+                                                {canonicalDutyLabel(employee)}
                                             </span>
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/20 text-white">
-                                                {employee.connection_status || "\u2014"}
+                                                {canonicalGpsLabel(employee)}
                                             </span>
                                         </div>
                                     </div>
@@ -326,7 +196,6 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                             </div>
                         </div>
 
-                        {/* ── Tabs ── */}
                         <div className="flex border-b border-gray-200 bg-gray-50">
                             {tabs.map((tab) => (
                                 <button
@@ -343,7 +212,6 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                             ))}
                         </div>
 
-                        {/* ── Tab Content ── */}
                         <div className="flex-1 overflow-y-auto p-5 bg-gray-50">
                             {activeTab === "route" ? (
                                 <EmployeeRoutePanel
@@ -352,122 +220,55 @@ const EmployeeDrawer = ({ employee, isOpen, onClose }) => {
                                     isActive={activeTab === "route"}
                                     drawerOpen={isOpen}
                                 />
-                            ) : loading ? (
-                                <PageLoader label="Loading employee data…" compact wrap={false} />
                             ) : (
-                                <>
-                                    {/* SUMMARY */}
-                                    {activeTab === "summary" && (
-                                        <div className="space-y-4">
-                                            {/* Suspicious Alert */}
-                                            <SuspiciousAlert employee={employee} />
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <DutyWorkdayBadge employee={employee} />
+                                        <DutyGpsStatusBadge employee={employee} />
+                                        <DutyMovementBadge employee={employee} />
+                                    </div>
 
-                                            {summary ? (
-                                                <>
-                                                    {/* Tracking Health + Status Row */}
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <WorkdayStatusBadge employee={summary} />
-                                                        <GpsDataStatusBadge employee={summary} />
-                                                        <TrackingTaskBadge employee={summary} />
-                                                        <MovementBadge employee={summary} />
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        {[
-                                                            { label: "GPS points today", value: summary.total_points ?? employee.total_points ?? "\u2014", icon: MapPin },
-                                                            { label: "Distance today", value: formatDistanceKm(summary.today_distance_km ?? summary.distance_km), icon: Navigation },
-                                                            { label: "Last GPS age", value: formatLocationAge(summary), icon: Clock },
-                                                            { label: "Last seen", value: timeAgo(summary.last_location_at ?? summary.last_seen ?? employee.last_seen), icon: Eye },
-                                                            { label: "Accuracy", value: summary.accuracy != null ? `${summary.accuracy} m` : "\u2014", icon: Gauge },
-                                                            { label: "Battery", value: summary.battery_level != null ? `${summary.battery_level}%` : "\u2014", icon: Battery },
-                                                        ].map((item) => (
-                                                            <div key={item.label} className="bg-white rounded-xl p-4 border border-gray-100" style={{ boxShadow: SHADOW }}>
-                                                                <div className="flex items-center gap-2 mb-2">
-                                                                    <item.icon className="w-4 h-4 text-emerald-600" />
-                                                                    <span className="text-xs text-gray-400 font-medium">{item.label}</span>
-                                                                </div>
-                                                                <p className="text-lg font-bold text-gray-900">{item.value}</p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-
-                                                    {summary.current_location && (
-                                                        <div className="bg-white rounded-xl p-4 border border-gray-100" style={{ boxShadow: SHADOW }}>
-                                                            <p className="text-xs text-gray-400 mb-1 flex items-center gap-2 font-medium">
-                                                                <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Current Location
-                                                            </p>
-                                                            <p className="text-sm text-gray-700">{summary.current_location}</p>
-                                                        </div>
-                                                    )}
-
-                                                    {(summary.phone || summary.employee_id) && (
-                                                        <div className="bg-white rounded-xl p-4 border border-gray-100 flex items-center gap-4" style={{ boxShadow: SHADOW }}>
-                                                            <Smartphone className="w-5 h-5 text-blue-600" />
-                                                            <div>
-                                                                {summary.employee_id && <p className="text-xs text-gray-400">ID: {summary.employee_id}</p>}
-                                                                {summary.phone && <p className="text-sm text-gray-700">{summary.phone}</p>}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Device Info */}
-                                                    <EmployeeDeviceInfoSection employee={employee} summary={summary} />
-
-                                                    {/* Distance Today */}
-                                                    <div className="bg-white rounded-xl p-4 border border-gray-100" style={{ boxShadow: SHADOW }}>
-                                                        <p className="text-xs text-gray-400 mb-1 flex items-center gap-2 font-medium">
-                                                            <Navigation className="w-3.5 h-3.5 text-emerald-600" /> Today Distance
-                                                        </p>
-                                                        <p className="text-xl font-semibold text-gray-900">
-                                                            {(() => {
-                                                                const dist = employee?.today_distance_km ?? employee?.distance_km ?? summary?.today_distance_km ?? summary?.distance_km ?? 0;
-                                                                return typeof dist === "number" ? dist.toFixed(1) : dist;
-                                                            })()}{" "}
-                                                            <span className="text-sm font-medium text-gray-400">km</span>
-                                                        </p>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div className="text-center text-gray-400 py-12">
-                                                    <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                                                    <p>No summary data available</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            { label: "Last GPS update", value: formatLastGpsUpdate(employee), icon: Eye },
+                                            { label: "Battery", value: employee.battery_level != null ? `${employee.battery_level}%` : "—", icon: Battery },
+                                            { label: "Accuracy", value: employee.accuracy != null ? `${Math.round(employee.accuracy)} m` : "—", icon: Gauge },
+                                            { label: "Speed", value: employee.speed != null ? `${Number(employee.speed).toFixed(1)} km/h` : "—", icon: Navigation },
+                                            { label: "Latitude", value: employee.latitude != null ? Number(employee.latitude).toFixed(5) : "—", icon: MapPin },
+                                            { label: "Longitude", value: employee.longitude != null ? Number(employee.longitude).toFixed(5) : "—", icon: MapPin },
+                                        ].map((item) => (
+                                            <div key={item.label} className="bg-white rounded-xl p-4 border border-gray-100" style={{ boxShadow: SHADOW }}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <item.icon className="w-4 h-4 text-emerald-600" />
+                                                    <span className="text-xs text-gray-400 font-medium">{item.label}</span>
                                                 </div>
-                                            )}
+                                                <p className="text-sm font-bold text-gray-900">{item.value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {(employee.phone || employee.employee_id) && (
+                                        <div className="bg-white rounded-xl p-4 border border-gray-100 flex items-center gap-4" style={{ boxShadow: SHADOW }}>
+                                            <Smartphone className="w-5 h-5 text-blue-600" />
+                                            <div>
+                                                {employee.employee_id && <p className="text-xs text-gray-400">ID: {employee.employee_id}</p>}
+                                                {employee.phone && <p className="text-sm text-gray-700">{employee.phone}</p>}
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* ACTIVITY */}
-                                    {activeTab === "activity" && (
-                                        <div className="space-y-3">
-                                            {(Array.isArray(activityData) ? activityData : activityData?.activities || []).length > 0 ? (
-                                                <div className="relative">
-                                                    <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200" />
-                                                    {(Array.isArray(activityData) ? activityData : activityData?.activities || []).map((act, i) => (
-                                                        <div key={i} className="relative flex items-start gap-4 pb-5">
-                                                            <div className="relative z-10 w-10 h-10 rounded-full bg-white border-2 border-emerald-200 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                                                <Activity className="w-4 h-4 text-emerald-600" />
-                                                            </div>
-                                                            <div className="flex-1 bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <p className="text-sm font-semibold text-gray-800">{act.type || act.action || act.title || "Activity"}</p>
-                                                                    <span className="text-xs text-gray-400">{act.timestamp || act.time || act.created_at || ""}</span>
-                                                                </div>
-                                                                {(act.description || act.details || act.location) && (
-                                                                    <p className="text-xs text-gray-500">{act.description || act.details || act.location}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="text-center text-gray-400 py-12">
-                                                    <Activity className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                                                    <p>No activity recorded today</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
+                                    <EmployeeDeviceInfoSection employee={employee} summary={employee} />
+
+                                    {userId ? (
+                                        <Link
+                                            to="/reports"
+                                            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-violet-50 border border-violet-100 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors"
+                                        >
+                                            <ClipboardList className="w-4 h-4" />
+                                            View reports &amp; exports
+                                        </Link>
+                                    ) : null}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -491,7 +292,6 @@ export default function Tracking() {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
-    const [diagnosticEmployee, setDiagnosticEmployee] = useState(null);
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
@@ -505,18 +305,14 @@ export default function Tracking() {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
 
-            const [statsRes, statusRes] = await Promise.allSettled([
+            const [liveRes, statsRes] = await Promise.allSettled([
+                getTrackingLive(),
                 getDashboardStats(),
-                getAdminStatus(),
             ]);
 
-            const statsErr = statsRes.status === "rejected" ? statsRes.reason : null;
-            const statusErr = statusRes.status === "rejected" ? statusRes.reason : null;
-            const unreachable =
-                isUnreachableError(statsErr) || isUnreachableError(statusErr);
-
-            if (unreachable) {
-                recordApiFailure(statsErr || statusErr);
+            const liveErr = liveRes.status === "rejected" ? liveRes.reason : null;
+            if (isUnreachableError(liveErr)) {
+                recordApiFailure(liveErr);
                 setError(backendUnavailableMessage());
                 return;
             }
@@ -524,12 +320,11 @@ export default function Tracking() {
             recordApiSuccess();
             setError(null);
 
+            if (liveRes.status === "fulfilled") {
+                setEmployees(liveRes.value?.employees ?? []);
+            }
             if (statsRes.status === "fulfilled" && statsRes.value) {
                 setStats(statsRes.value);
-            }
-            if (statusRes.status === "fulfilled") {
-                const list = resolveTrackingEmployeeList(statusRes.value);
-                setEmployees(list.map(normalizeTrackingEmployee));
             }
             setLastRefresh(new Date());
         } catch (err) {
@@ -547,23 +342,39 @@ export default function Tracking() {
 
     useAdaptivePolling(loadData, REFRESH_INTERVAL, [loadData]);
 
+    const dutyStats = useMemo(() => {
+        const onDuty = employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "on_duty");
+        return {
+            on_duty: onDuty.length,
+            gps_active: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_active").length,
+            gps_delayed: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_delayed").length,
+            gps_lost: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_lost").length,
+            gps_off: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_off").length,
+            logged_out: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "logged_out").length,
+        };
+    }, [employees]);
+
     /* ── Filtered employees ── */
     const filteredEmployees = useMemo(() => {
         return employees.filter((emp) => {
             const name = empName(emp).toLowerCase();
+            const id = String(emp.employee_id ?? "").toLowerCase();
             const district = (emp.district || "").toLowerCase();
             const matchSearch =
                 !searchTerm ||
                 name.includes(searchTerm.toLowerCase()) ||
+                id.includes(searchTerm.toLowerCase()) ||
                 district.includes(searchTerm.toLowerCase());
-            const color = getStatusColor(emp);
+            const gps = resolveCanonicalGpsStatusKey(emp);
+            const duty = resolveCanonicalDutyStatusKey(emp);
             const matchFilter =
                 filterStatus === "all" ||
-                (filterStatus === "working" && color === "green") ||
-                (filterStatus === "stale" && color === "orange") ||
-                (filterStatus === "offline" && (color === "yellow" || color === "orange")) ||
-                (filterStatus === "gps_off" && color === "red") ||
-                (filterStatus === "inactive" && color === "gray");
+                (filterStatus === "on_duty" && duty === "on_duty") ||
+                (filterStatus === "logged_out" && duty === "logged_out") ||
+                (filterStatus === "gps_active" && gps === "gps_active") ||
+                (filterStatus === "gps_delayed" && gps === "gps_delayed") ||
+                (filterStatus === "gps_lost" && gps === "gps_lost") ||
+                (filterStatus === "gps_off" && gps === "gps_off");
             return matchSearch && matchFilter;
         });
     }, [employees, searchTerm, filterStatus]);
@@ -571,11 +382,10 @@ export default function Tracking() {
     /* ── Map helpers (Tamil Nadu bounds only) ── */
     const mapEmployees = useMemo(
         () =>
-            filteredEmployees.filter((emp) =>
-                isValidTamilNaduCoordinate(
-                    emp.latitude ?? emp.last_latitude,
-                    emp.longitude ?? emp.last_longitude
-                )
+            filteredEmployees.filter(
+                (emp) =>
+                    emp.is_on_duty &&
+                    isValidTamilNaduCoordinate(emp.latitude, emp.longitude)
             ),
         [filteredEmployees]
     );
@@ -600,52 +410,53 @@ export default function Tracking() {
     const statCards = [
         {
             icon: Users,
-            label: "Total Employees",
-            value: stats?.total_employees ?? employees.length,
+            label: "On Duty",
+            value: dutyStats.on_duty,
             accent: BRAND.primary,
             gradient: BRAND_GRADIENTS.cardGreen,
             iconBg: "#dcfce7",
         },
         {
-            icon: Briefcase,
-            label: "Working Now",
-            value: stats?.working_now ?? stats?.working ?? 0,
+            icon: MapPin,
+            label: "GPS Active",
+            value: dutyStats.gps_active,
             accent: BRAND.primaryDark,
             gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
             iconBg: "#d1fae5",
         },
         {
-            icon: Wifi,
-            label: "Online",
-            value: stats?.online ?? 0,
-            accent: BRAND.info,
-            gradient: "linear-gradient(135deg,#fff 0%,#ecfeff 100%)",
-            iconBg: BRAND.infoLight,
-        },
-        {
-            icon: WifiOff,
-            label: "Offline",
-            value: stats?.offline ?? 0,
+            icon: Clock,
+            label: "GPS Delayed",
+            value: dutyStats.gps_delayed,
             accent: BRAND.warning,
             gradient: BRAND_GRADIENTS.cardAccent,
             iconBg: BRAND.warningLight,
         },
         {
             icon: AlertTriangle,
-            label: "GPS Issues",
-            value: stats?.gps_issues ?? stats?.gps_off ?? 0,
+            label: "GPS Lost",
+            value: dutyStats.gps_lost,
             accent: BRAND.danger,
             gradient: "linear-gradient(135deg,#fff 0%,#fef2f2 100%)",
             iconBg: BRAND.dangerLight,
+        },
+        {
+            icon: WifiOff,
+            label: "GPS Off",
+            value: dutyStats.gps_off,
+            accent: "#64748b",
+            gradient: "linear-gradient(135deg,#fff 0%,#f8fafc 100%)",
+            iconBg: "#e2e8f0",
         },
     ];
 
     const filterOptions = [
         { key: "all", label: "All", count: employees.length },
-        { key: "working", label: "Healthy", count: employees.filter((e) => getStatusColor(e) === "green").length },
-        { key: "stale", label: "Stale GPS", count: employees.filter((e) => getStatusColor(e) === "orange").length },
-        { key: "gps_off", label: "No GPS", count: employees.filter((e) => getStatusColor(e) === "red").length },
-        { key: "inactive", label: "Not started", count: employees.filter((e) => getStatusColor(e) === "gray").length },
+        { key: "on_duty", label: "On duty", count: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "on_duty").length },
+        { key: "gps_active", label: "GPS Active", count: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_active").length },
+        { key: "gps_delayed", label: "GPS Delayed", count: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_delayed").length },
+        { key: "gps_lost", label: "GPS Lost", count: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_lost").length },
+        { key: "gps_off", label: "GPS Off", count: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_off").length },
     ];
 
     /* ── Loading screen ── */
@@ -684,18 +495,15 @@ export default function Tracking() {
                         <div className="tracking-live-pill">
                             <div className="w-2 h-2 rounded-full bg-[var(--brand-primary-light)] animate-pulse" />
                             Live — <span className="text-slate-700 font-semibold tabular-nums">{lastRefresh.toLocaleTimeString()}</span>
+                            <span className="text-slate-500">· auto 12s</span>
                         </div>
-                        <button
-                            onClick={() => loadData(true)}
-                            disabled={refreshing}
-                            className="btn btn-secondary btn-md disabled:opacity-50"
-                            title="Refresh now"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-                        </button>
                         <Link to="/tracking/routes" className="btn btn-secondary btn-md">
                             <Route className="w-4 h-4" />
                             Route History
+                        </Link>
+                        <Link to="/reports" className="btn btn-secondary btn-md">
+                            <ClipboardList className="w-4 h-4" />
+                            Reports
                         </Link>
                     </div>
                 </div>
@@ -730,70 +538,28 @@ export default function Tracking() {
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-400">
                             <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                            Auto-refresh 45s
+                            Auto-refresh 12s
                         </div>
                     </div>
 
                     <div className="relative h-[420px] lg:h-[500px]">
-                        <MapContainer
+                        <AdminMapFrame
                             center={mapCenter}
                             zoom={mapZoom}
-                            style={{ width: "100%", height: "100%" }}
-                            className="z-0"
+                            height="100%"
+                            legend={<GpsStatusMapLegend />}
+                            legendTitle="Employee GPS"
                         >
-                            <MapBasemapLayers />
-                            <MapEmployeeViewport locations={validMapLocations} />
-                            <MarkerClusterGroup
-                                chunkedLoading
-                                maxClusterRadius={50}
-                                spiderfyOnMaxZoom
-                                showCoverageOnHover={false}
-                            >
-                                {mapEmployees.map((emp, idx) => (
-                                    <Marker
-                                        key={emp.user_id || emp.id || idx}
-                                        position={[Number(emp.latitude), Number(emp.longitude)]}
-                                        icon={getMarkerIcon(emp)}
-                                        eventHandlers={{ click: () => openDrawer(emp) }}
-                                    >
-                                        <Popup>
-                                            <EmployeeMapPopup
-                                                name={empName(emp)}
-                                                lat={emp.latitude ?? emp.last_latitude}
-                                                lng={emp.longitude ?? emp.last_longitude}
-                                                entity={emp}
-                                                statusLabel={gpsDataStatusLabel(emp)}
-                                                statusOnline={resolveGpsDataStatusKey(emp) === "online"}
-                                                workStatus={workdayStatusLabel(emp)}
-                                                movementStatus={movementLabel(emp)}
-                                                lastUpdated={timeAgo(emp.last_seen) || "\u2014"}
-                                            >
-                                                {emp.is_suspicious ? (
-                                                    <p className="flex items-center gap-1 text-[10px] text-red-600 font-medium">
-                                                        <ShieldAlert className="w-3 h-3" />
-                                                        Suspicious activity
-                                                    </p>
-                                                ) : null}
-                                                <p className="text-[10px] text-gray-500">
-                                                    Tracking:{" "}
-                                                    <span className="font-medium text-gray-700">
-                                                        {trackingTaskLabel(emp)}
-                                                    </span>
-                                                </p>
-                                            </EmployeeMapPopup>
-                                        </Popup>
-                                    </Marker>
-                                ))}
-                            </MarkerClusterGroup>
-                        </MapContainer>
-                        <MapLegend />
-                        {validMapLocations.length === 0 && (
+                            <MapEmployeeViewport locations={validMapLocations} refitMode="roster" />
+                            <LiveMapMarkers employees={mapEmployees} onSelect={openDrawer} />
+                        </AdminMapFrame>
+                        {mapEmployees.length === 0 && (
                             <div className="absolute inset-0 z-[500] flex items-center justify-center pointer-events-none bg-white/80 backdrop-blur-[1px]">
                                 <div className="pointer-events-auto max-w-sm px-6">
                                     <EmptyState
                                         icon={MapPin}
-                                        title="No GPS locations yet"
-                                        subtitle="Employee pins appear when field agents start a workday and share location from the mobile app."
+                                        title="No employees on duty"
+                                        subtitle="Map pins appear when field agents start duty and share GPS from the mobile app."
                                         action={
                                             <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
                                                 View route history
@@ -858,13 +624,13 @@ export default function Tracking() {
                                 <tr className="bg-gray-50 border-b border-gray-100">
                                     {[
                                         "Employee",
-                                        "Workday",
-                                        "GPS Data",
-                                        "Tracking",
+                                        "Duty",
+                                        "GPS",
                                         "Movement",
-                                        "Last GPS",
-                                        "Points",
-                                        "Distance",
+                                        "Last GPS update",
+                                        "Battery",
+                                        "Accuracy",
+                                        "Speed",
                                         "",
                                     ].map((h) => (
                                             <th key={h} className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 whitespace-nowrap">
@@ -876,13 +642,13 @@ export default function Tracking() {
                             <tbody className="divide-y divide-gray-100">
                                 {filteredEmployees.length > 0 ? (
                                     filteredEmployees.map((emp, idx) => {
-                                        const c = getStatusColor(emp);
+                                        const c = getDutyStatusColor(emp);
                                         const dotMap = {
                                             green: "bg-emerald-500",
-                                            orange: "bg-orange-500",
-                                            yellow: "bg-yellow-500",
+                                            orange: "bg-amber-500",
                                             red: "bg-red-500",
                                             gray: "bg-gray-400",
+                                            slate: "bg-slate-500",
                                         };
                                         return (
                                             <tr
@@ -899,34 +665,28 @@ export default function Tracking() {
                                                         <div className="min-w-0">
                                                             <p className="text-sm font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors truncate">{empName(emp)}</p>
                                                             <p className="text-[11px] text-gray-400 truncate">
-                                                                {[emp.district, emp.employee_id].filter(Boolean).join(" · ") || "\u2014"}
+                                                                {[emp.district, emp.employee_id].filter(Boolean).join(" · ") || "—"}
                                                             </p>
                                                         </div>
-                                                        {emp.is_suspicious ? (
-                                                            <ShieldAlert className="w-3.5 h-3.5 text-red-500 shrink-0" title="Suspicious activity" />
-                                                        ) : null}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3.5"><WorkdayStatusBadge employee={emp} /></td>
-                                                <td className="px-4 py-3.5"><GpsDataStatusBadge employee={emp} /></td>
-                                                <td className="px-4 py-3.5"><TrackingTaskBadge employee={emp} /></td>
-                                                <td className="px-4 py-3.5"><MovementBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5"><DutyWorkdayBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5"><DutyGpsStatusBadge employee={emp} /></td>
+                                                <td className="px-4 py-3.5"><DutyMovementBadge employee={emp} /></td>
                                                 <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">
-                                                    <span className="block">{timeAgo(emp.last_location_at ?? emp.last_seen)}</span>
-                                                    <span className="text-[10px] text-gray-400">{formatLocationAge(emp)} ago</span>
+                                                    {formatLastGpsUpdate(emp)}
                                                 </td>
-                                                <td className="px-4 py-3.5 text-sm text-gray-700 tabular-nums">{emp.total_points ?? 0}</td>
-                                                <td className="px-4 py-3.5 text-sm text-gray-700 whitespace-nowrap">{formatDistanceKm(emp.distance_km ?? emp.today_distance_km)}</td>
+                                                <td className="px-4 py-3.5 text-sm text-gray-700 tabular-nums">
+                                                    {emp.battery_level != null ? `${emp.battery_level}%` : "—"}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-sm text-gray-700 tabular-nums">
+                                                    {emp.accuracy != null ? `${Math.round(emp.accuracy)} m` : "—"}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-sm text-gray-700 tabular-nums">
+                                                    {emp.speed != null ? `${Number(emp.speed).toFixed(1)}` : "—"}
+                                                </td>
                                                 <td className="px-4 py-3.5">
                                                     <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => { e.stopPropagation(); setDiagnosticEmployee(emp); }}
-                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium hover:bg-slate-100 border border-slate-200"
-                                                        >
-                                                            <Bug className="w-3.5 h-3.5" />
-                                                            Debug
-                                                        </button>
                                                         <button
                                                             type="button"
                                                             onClick={(e) => { e.stopPropagation(); openDrawer(emp); }}
@@ -963,12 +723,6 @@ export default function Tracking() {
                 employee={selectedEmployee}
                 isOpen={drawerOpen}
                 onClose={closeDrawer}
-            />
-
-            <TrackingDiagnosticPanel
-                employee={diagnosticEmployee}
-                open={Boolean(diagnosticEmployee)}
-                onClose={() => setDiagnosticEmployee(null)}
             />
         </>
     );
