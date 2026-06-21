@@ -444,6 +444,7 @@ const EmployeeProfile = memo(({ profile, loading: isLoading, onPhotoUpdated }) =
         entity={profile}
         displayName={empName(profile)}
         size="2xl"
+        enableCrop
         variant={profile.is_active !== false ? "emerald" : "neutral"}
         online={profile.is_online}
         onUpload={(file) => uploadEmployeePhoto(profile.id, file)}

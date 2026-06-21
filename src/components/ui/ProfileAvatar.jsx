@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getProfileInitials,
   resolveProfilePhotoDisplayUrl,
@@ -31,6 +31,10 @@ export default function ProfileAvatar({
     src ??
     resolveProfilePhotoDisplayUrl(entity) ??
     (entity ? resolveProfilePhotoUrl(entity) : null);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [photoUrl]);
   const displayName = name ?? (entity && typeof entity === "object" ? profileNameFromEntity(entity) : "");
   const initials = getProfileInitials(displayName, "?");
   const s = SIZE[size] ?? SIZE.md;
