@@ -7,12 +7,13 @@ import { empName } from "../../utils/trackingDisplay";
 import {
   canonicalGpsLabel,
   canonicalDutyLabel,
-  dutyMovementLabel,
   resolveCanonicalGpsStatusKey,
-  resolveCanonicalDutyStatusKey,
   getDutyStatusColor,
   formatLastGpsUpdate,
+  formatLastHeartbeat,
   isGpsActiveStatus,
+  isOnDutyWorking,
+  dedupeLiveEmployees,
 } from "../../utils/dutyTracking";
 import { BRAND } from "../../theme/brand";
 
@@ -61,21 +62,20 @@ function getMarkerIcon(emp) {
 }
 
 /**
- * Memoized live markers — updates positions without remounting MapContainer.
+ * One latest-location marker per active employee — no trail, no polyline.
+ * Marker key is employee ID so position updates move the same marker.
  */
 function LiveMapMarkers({ employees, onSelect }) {
-  const mappable = useMemo(
-    () =>
-      employees.filter(
-        (emp) =>
-          emp.is_on_duty &&
-          emp.latitude != null &&
-          emp.longitude != null &&
-          Number.isFinite(Number(emp.latitude)) &&
-          Number.isFinite(Number(emp.longitude))
-      ),
-    [employees]
-  );
+  const mappable = useMemo(() => {
+    const active = dedupeLiveEmployees(employees).filter(isOnDutyWorking);
+    return active.filter(
+      (emp) =>
+        emp.latitude != null &&
+        emp.longitude != null &&
+        Number.isFinite(Number(emp.latitude)) &&
+        Number.isFinite(Number(emp.longitude))
+    );
+  }, [employees]);
 
   if (!mappable.length) return null;
 
@@ -85,10 +85,12 @@ function LiveMapMarkers({ employees, onSelect }) {
         const userId = emp.user_id ?? emp.id;
         const lat = Number(emp.latitude);
         const lng = Number(emp.longitude);
+        const code = emp.employee_code ?? emp.employee_id;
+        const heartbeat = formatLastHeartbeat(emp);
 
         return (
           <Marker
-            key={userId}
+            key={String(userId)}
             position={[lat, lng]}
             icon={getMarkerIcon(emp)}
             eventHandlers={{ click: () => onSelect?.(emp) }}
@@ -102,28 +104,21 @@ function LiveMapMarkers({ employees, onSelect }) {
                 statusLabel={canonicalGpsLabel(emp)}
                 statusOnline={isGpsActiveStatus(emp)}
                 workStatus={canonicalDutyLabel(emp)}
-                movementStatus={dutyMovementLabel(emp)}
                 lastUpdated={formatLastGpsUpdate(emp)}
               >
-                {emp.employee_id ? (
+                {code ? (
                   <p className="text-[10px] text-gray-500">
-                    ID: <span className="font-medium text-gray-700">{emp.employee_id}</span>
+                    Code: <span className="font-medium text-gray-700">{code}</span>
                   </p>
                 ) : null}
-                {emp.battery_level != null ? (
+                {heartbeat ? (
                   <p className="text-[10px] text-gray-500">
-                    Battery: <span className="font-medium text-gray-700">{emp.battery_level}%</span>
+                    Heartbeat: <span className="font-medium text-gray-700">{heartbeat}</span>
                   </p>
                 ) : null}
-                {emp.accuracy != null ? (
-                  <p className="text-[10px] text-gray-500">
-                    Accuracy: <span className="font-medium text-gray-700">{Math.round(emp.accuracy)} m</span>
-                  </p>
-                ) : null}
-                {emp.speed != null ? (
-                  <p className="text-[10px] text-gray-500">
-                    Speed: <span className="font-medium text-gray-700">{Number(emp.speed).toFixed(1)} km/h</span>
-                  </p>
+                {resolveCanonicalGpsStatusKey(emp) === "gps_offline" &&
+                (emp.latitude == null || emp.longitude == null) ? (
+                  <p className="text-[10px] text-amber-700">No location available</p>
                 ) : null}
               </EmployeeMapPopup>
             </Popup>

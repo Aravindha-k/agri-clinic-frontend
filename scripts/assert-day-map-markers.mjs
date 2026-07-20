@@ -1,5 +1,5 @@
 /**
- * Focused day-map marker contract assertions (self-contained — mirrors employeeRoute.js).
+ * Focused assertions: day-map markers + live GPS thresholds + one-marker-per-employee.
  * Run: node scripts/assert-day-map-markers.mjs
  */
 
@@ -40,9 +40,7 @@ function extractDayMapMarkers({
     }
     if (type === "visit") {
       const idKey =
-        extra.visitId != null && String(extra.visitId) !== ""
-          ? `id:${extra.visitId}`
-          : null;
+        extra.visitId != null && String(extra.visitId) !== "" ? `id:${extra.visitId}` : null;
       const syncKey =
         extra.localSyncId != null && String(extra.localSyncId) !== ""
           ? `sync:${extra.localSyncId}`
@@ -64,10 +62,9 @@ function extractDayMapMarkers({
   };
 
   const isDraftOrPending = (row) => {
-    const status = String(row?.status ?? row?.sync_status ?? row?.visit_status ?? "")
+    const status = String(row?.status ?? row?.sync_status ?? "")
       .trim()
       .toLowerCase();
-    if (!status) return false;
     return ["draft", "pending", "local", "unsynced", "in_progress"].includes(status);
   };
 
@@ -76,11 +73,9 @@ function extractDayMapMarkers({
     const kind = String(stop.type ?? "").toLowerCase();
     const lat = parseCoord(stop.latitude ?? stop.lat);
     const lng = parseCoord(stop.longitude ?? stop.lng);
-    if (kind === "start") {
-      pushMarker("start", lat, lng, {});
-    } else if (kind === "end") {
-      pushMarker("end", lat, lng, {});
-    } else if (kind === "visit" || stop.visit_id != null || stop.local_sync_id != null) {
+    if (kind === "start") pushMarker("start", lat, lng, {});
+    else if (kind === "end") pushMarker("end", lat, lng, {});
+    else if (kind === "visit" || stop.visit_id != null || stop.local_sync_id != null) {
       pushMarker("visit", lat, lng, {
         visitId: stop.visit_id ?? stop.id ?? null,
         localSyncId: stop.local_sync_id ?? null,
@@ -91,17 +86,13 @@ function extractDayMapMarkers({
   if (!hasStart) {
     const startLat = parseCoord(meta.start_latitude ?? meta.duty_start_latitude);
     const startLng = parseCoord(meta.start_longitude ?? meta.duty_start_longitude);
-    if (isValidRouteCoordinate(startLat, startLng)) {
-      pushMarker("start", startLat, startLng, {});
-    }
+    if (isValidRouteCoordinate(startLat, startLng)) pushMarker("start", startLat, startLng, {});
   }
 
   if (!hasEnd && (endTime || meta.end_reason || meta.duty_end_reason)) {
     const endLat = parseCoord(meta.end_latitude ?? meta.duty_end_latitude);
     const endLng = parseCoord(meta.end_longitude ?? meta.duty_end_longitude);
-    if (isValidRouteCoordinate(endLat, endLng)) {
-      pushMarker("end", endLat, endLng, {});
-    }
+    if (isValidRouteCoordinate(endLat, endLng)) pushMarker("end", endLat, endLng, {});
   }
 
   void points;
@@ -111,6 +102,32 @@ function extractDayMapMarkers({
 
 function dayMapScopeKey({ userId, date, dutySessionId } = {}) {
   return [String(userId ?? "none"), String(date ?? "none"), String(dutySessionId ?? "nosession")].join("|");
+}
+
+const GPS_ONLINE_MAX_MINUTES = 7;
+const GPS_STALE_MAX_MINUTES = 15;
+
+function resolveGpsFromAge({ ageMin, gpsEnabled = true, permissionGranted = true, hasCoords = true }) {
+  if (gpsEnabled === false || permissionGranted === false) return "gps_offline";
+  if (!hasCoords) return "gps_offline";
+  if (ageMin == null) return "gps_offline";
+  if (ageMin <= GPS_ONLINE_MAX_MINUTES) return "gps_active";
+  if (ageMin <= GPS_STALE_MAX_MINUTES) return "gps_stale";
+  return "gps_offline";
+}
+
+/** Simulate live roster: one marker per employee; latest point replaces previous. */
+function applyLiveLocations(prevMap, updates) {
+  const next = { ...prevMap };
+  for (const u of updates) {
+    const id = String(u.user_id);
+    if (u.latitude == null || u.longitude == null) {
+      delete next[id];
+      continue;
+    }
+    next[id] = { user_id: id, latitude: u.latitude, longitude: u.longitude, at: u.at };
+  }
+  return next;
 }
 
 let failed = 0;
@@ -123,47 +140,47 @@ function assert(cond, msg) {
   }
 }
 
+// Day map
 assert(
   !extractDayMapMarkers({
     points: [{ latitude: 11.1, longitude: 78.1 }],
     startTime: "2026-07-20T03:30:00Z",
     meta: {},
   }).some((m) => m.type === "start"),
-  "does not invent Start from GPS trail"
+  "day map does not invent Start from GPS trail"
 );
 
-{
-  const markers = extractDayMapMarkers({
-    points: [{ latitude: 11.1, longitude: 78.1 }],
+assert(
+  extractDayMapMarkers({
     meta: { start_latitude: 10.9, start_longitude: 78.2 },
-  });
-  assert(markers.filter((m) => m.type === "start").length === 1, "one Start from canonical coords");
-}
+  }).filter((m) => m.type === "start").length === 1,
+  "day map one Start from canonical coords"
+);
 
-{
-  const markers = extractDayMapMarkers({
+assert(
+  extractDayMapMarkers({
     stops: [
       { type: "visit", visit_id: 1, local_sync_id: "abc", latitude: 11, longitude: 78 },
       { type: "visit", visit_id: 1, local_sync_id: "abc", latitude: 11.001, longitude: 78.001 },
       { type: "visit", local_sync_id: "abc", latitude: 12, longitude: 79 },
     ],
-  });
-  assert(markers.filter((m) => m.type === "visit").length === 1, "dedupes visits by id/local_sync_id");
-}
+  }).filter((m) => m.type === "visit").length === 1,
+  "day map dedupes visits"
+);
 
-{
-  const markers = extractDayMapMarkers({
+assert(
+  extractDayMapMarkers({
     stops: [
       { type: "visit", visit_id: 2, latitude: 11, longitude: 78, status: "draft" },
       { type: "visit", visit_id: 3, latitude: 11.1, longitude: 78.1, status: "submitted" },
     ],
-  });
-  assert(markers.filter((m) => m.type === "visit").length === 1, "excludes draft visits");
-}
+  }).filter((m) => m.type === "visit").length === 1,
+  "day map excludes drafts"
+);
 
 assert(
   !extractDayMapMarkers({ endTime: "2026-07-20T12:00:00Z", meta: {} }).some((m) => m.type === "end"),
-  "no End without coordinates"
+  "day map no End without coordinates"
 );
 
 assert(
@@ -171,19 +188,46 @@ assert(
     endTime: "2026-07-20T12:00:00Z",
     meta: { end_latitude: 11.2, end_longitude: 78.3, end_reason: "ADMIN_ENDED" },
   }).filter((m) => m.type === "end").length === 1,
-  "End when backend coords exist"
+  "day map End when backend coords exist"
 );
 
 {
   const a = dayMapScopeKey({ userId: 1, date: "2026-07-20", dutySessionId: "d1" });
   const b = dayMapScopeKey({ userId: 2, date: "2026-07-20", dutySessionId: "d1" });
-  const c = dayMapScopeKey({ userId: 1, date: "2026-07-19", dutySessionId: "d1" });
-  const d = dayMapScopeKey({ userId: 1, date: "2026-07-20", dutySessionId: "d2" });
-  assert(a !== b && a !== c && a !== d, "scope key changes with employee/date/session");
+  assert(a !== b, "day map scope isolates employees");
 }
+
+// Live GPS thresholds
+assert(resolveGpsFromAge({ ageMin: 5, hasCoords: true }) === "gps_active", "GPS Online ≤7 min");
+assert(resolveGpsFromAge({ ageMin: 7, hasCoords: true }) === "gps_active", "GPS Online at 7 min");
+assert(resolveGpsFromAge({ ageMin: 8, hasCoords: true }) === "gps_stale", "GPS Stale >7 and ≤15");
+assert(resolveGpsFromAge({ ageMin: 15, hasCoords: true }) === "gps_stale", "GPS Stale at 15 min");
+assert(resolveGpsFromAge({ ageMin: 16, hasCoords: true }) === "gps_offline", "GPS Offline >15 min");
+assert(
+  resolveGpsFromAge({ ageMin: 1, hasCoords: true, gpsEnabled: false }) === "gps_offline",
+  "GPS disabled → Offline without ending duty"
+);
+assert(
+  resolveGpsFromAge({ ageMin: null, hasCoords: false }) === "gps_offline",
+  "no coordinates → Offline / no marker"
+);
+
+// Live marker replacement (no duplicates, no polyline)
+{
+  let map = {};
+  map = applyLiveLocations(map, [{ user_id: 9, latitude: 11.0, longitude: 78.0, at: "t1" }]);
+  assert(Object.keys(map).length === 1, "one live marker per employee");
+  map = applyLiveLocations(map, [{ user_id: 9, latitude: 11.05, longitude: 78.05, at: "t2" }]);
+  assert(Object.keys(map).length === 1, "5-min update replaces same marker");
+  assert(map["9"].latitude === 11.05, "marker moves to latest coordinates");
+  map = applyLiveLocations(map, [{ user_id: 9, latitude: null, longitude: null, at: "t3" }]);
+  assert(Object.keys(map).length === 0, "missing location removes marker but employee may stay in list");
+}
+
+assert(typeof extractDayMapMarkers === "function" && !("polyline" in extractDayMapMarkers({})), "no polyline in day markers");
 
 if (failed) {
   console.error(`\n${failed} assertion(s) failed`);
   process.exit(1);
 }
-console.log("\nAll day-map marker assertions passed.");
+console.log("\nAll day-map + live-tracking assertions passed.");

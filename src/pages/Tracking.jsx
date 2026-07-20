@@ -57,13 +57,15 @@ import {
     ClipboardList,
     Activity,
     Square,
+    Maximize2,
 } from "lucide-react";
 import { forceEndEmployeeDuty, getTrackingLive } from "../api/adminTracking.api";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { normalizeForceEndError } from "../utils/apiErrorNormalize";
+import { LIVE_TRACKING_POLL_MS } from "../utils/trackingPoll";
 import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
 
-const REFRESH_INTERVAL = 12_000;
+const REFRESH_INTERVAL = LIVE_TRACKING_POLL_MS;
 
 const useCountUp = (target, duration = 900) => {
     const [val, setVal] = useState(0);
@@ -477,6 +479,7 @@ export default function Tracking() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
     const [routeRefreshToken, setRouteRefreshToken] = useState(0);
+    const [fitRequestId, setFitRequestId] = useState(0);
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
@@ -526,23 +529,29 @@ export default function Tracking() {
 
     useAdaptivePolling(loadData, REFRESH_INTERVAL, [loadData]);
 
+    const activeEmployees = useMemo(
+        () => employees.filter((e) => isOnDutyWorking(e)),
+        [employees]
+    );
+
     const dutyStats = useMemo(() => {
-        const working = employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "working");
+        const working = activeEmployees;
         return {
             working: working.length,
             stopped: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "stopped").length,
             auto_ended: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "auto_ended").length,
             admin_ended: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "admin_ended").length,
-            gps_active: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_active").length,
-            gps_stale: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_stale").length,
-            gps_offline: employees.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_offline").length,
+            gps_active: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_active").length,
+            gps_stale: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_stale").length,
+            gps_offline: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_offline").length,
+            no_location: working.filter((e) => e.latitude == null || e.longitude == null).length,
         };
-    }, [employees]);
+    }, [employees, activeEmployees]);
 
     const filteredEmployees = useMemo(() => {
-        return employees.filter((emp) => {
+        return activeEmployees.filter((emp) => {
             const name = empName(emp).toLowerCase();
-            const id = String(emp.employee_id ?? "").toLowerCase();
+            const id = String(emp.employee_id ?? emp.employee_code ?? "").toLowerCase();
             const district = (emp.district || "").toLowerCase();
             const matchSearch =
                 !searchTerm ||
@@ -550,25 +559,21 @@ export default function Tracking() {
                 id.includes(searchTerm.toLowerCase()) ||
                 district.includes(searchTerm.toLowerCase());
             const gps = resolveCanonicalGpsStatusKey(emp);
-            const duty = resolveCanonicalDutyStatusKey(emp);
             const matchFilter =
                 filterStatus === "all" ||
-                (filterStatus === "working" && duty === "working") ||
-                (filterStatus === "stopped" && duty === "stopped") ||
-                (filterStatus === "auto_ended" && duty === "auto_ended") ||
-                (filterStatus === "admin_ended" && duty === "admin_ended") ||
+                (filterStatus === "working" && true) ||
                 (filterStatus === "gps_active" && gps === "gps_active") ||
                 (filterStatus === "gps_stale" && gps === "gps_stale") ||
-                (filterStatus === "gps_offline" && gps === "gps_offline");
+                (filterStatus === "gps_offline" && gps === "gps_offline") ||
+                (filterStatus === "no_location" && (emp.latitude == null || emp.longitude == null));
             return matchSearch && matchFilter;
         });
-    }, [employees, searchTerm, filterStatus]);
+    }, [activeEmployees, searchTerm, filterStatus]);
 
     const mapEmployees = useMemo(
         () =>
             filteredEmployees.filter(
                 (emp) =>
-                    isOnDutyWorking(emp) &&
                     emp.latitude != null &&
                     emp.longitude != null &&
                     isValidTamilNaduCoordinate(emp.latitude, emp.longitude)
@@ -633,7 +638,7 @@ export default function Tracking() {
         },
         {
             icon: MapPin,
-            label: "GPS online",
+            label: "Online",
             value: dutyStats.gps_active,
             accent: BRAND.primaryDark,
             gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
@@ -641,7 +646,7 @@ export default function Tracking() {
         },
         {
             icon: Clock,
-            label: "Location stale",
+            label: "Stale",
             value: dutyStats.gps_stale,
             accent: BRAND.warning,
             gradient: BRAND_GRADIENTS.cardAccent,
@@ -649,7 +654,7 @@ export default function Tracking() {
         },
         {
             icon: WifiOff,
-            label: "GPS offline",
+            label: "Offline",
             value: dutyStats.gps_offline,
             accent: "#64748b",
             gradient: "linear-gradient(135deg,#fff 0%,#f8fafc 100%)",
@@ -657,8 +662,8 @@ export default function Tracking() {
         },
         {
             icon: AlertTriangle,
-            label: "Auto ended",
-            value: dutyStats.auto_ended,
+            label: "No location",
+            value: dutyStats.no_location,
             accent: BRAND.danger,
             gradient: "linear-gradient(135deg,#fff 0%,#fef2f2 100%)",
             iconBg: BRAND.dangerLight,
@@ -666,21 +671,21 @@ export default function Tracking() {
     ];
 
     const filterOptions = [
-        { key: "all", label: "All", count: employees.length },
+        { key: "all", label: "All active", count: activeEmployees.length },
         { key: "working", label: "Working", count: dutyStats.working },
-        { key: "gps_active", label: "GPS online", count: dutyStats.gps_active },
-        { key: "gps_stale", label: "Location stale", count: dutyStats.gps_stale },
-        { key: "gps_offline", label: "GPS offline", count: dutyStats.gps_offline },
-        { key: "stopped", label: "Stopped", count: dutyStats.stopped },
+        { key: "gps_active", label: "Online", count: dutyStats.gps_active },
+        { key: "gps_stale", label: "Stale", count: dutyStats.gps_stale },
+        { key: "gps_offline", label: "Offline", count: dutyStats.gps_offline },
+        { key: "no_location", label: "No location", count: dutyStats.no_location },
     ];
 
     const todaySummary = [
         { label: "Working", value: dutyStats.working },
-        { label: "GPS online", value: dutyStats.gps_active },
-        { label: "Location stale", value: dutyStats.gps_stale },
-        { label: "GPS offline", value: dutyStats.gps_offline },
-        { label: "Total roster", value: stats?.total_employees ?? employees.length },
+        { label: "Online", value: dutyStats.gps_active },
+        { label: "Stale", value: dutyStats.gps_stale },
+        { label: "Offline", value: dutyStats.gps_offline },
         { label: "On map", value: mapEmployees.length },
+        { label: "No location", value: dutyStats.no_location },
     ];
 
     if (loading && employees.length === 0) {
@@ -711,7 +716,7 @@ export default function Tracking() {
                                 <span className="text-slate-700 font-bold tabular-nums">
                                     {lastRefresh.toLocaleTimeString()}
                                 </span>
-                                <span className="text-slate-400 font-medium">· 12s sync</span>
+                                <span className="text-slate-400 font-medium">· 60s sync</span>
                                 {refreshing ? (
                                     <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" aria-hidden="true" />
                                 ) : null}
@@ -771,9 +776,20 @@ export default function Tracking() {
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 shrink-0">
-                                <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" aria-hidden="true" />
-                                Auto-refresh
+                            <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setFitRequestId((n) => n + 1)}
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={validMapLocations.length === 0}
+                                >
+                                    <Maximize2 className="w-3.5 h-3.5" aria-hidden="true" />
+                                    Fit all
+                                </button>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" aria-hidden="true" />
+                                    60s refresh
+                                </span>
                             </div>
                         </div>
 
@@ -785,7 +801,7 @@ export default function Tracking() {
                                 </span>
                                 <span className="tracking-map-overlay__pill">
                                     <Activity className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
-                                    {dutyStats.gps_active} GPS live
+                                    {dutyStats.gps_active} online
                                 </span>
                             </div>
 
@@ -796,7 +812,11 @@ export default function Tracking() {
                                 legend={<GpsStatusMapLegend />}
                                 legendTitle="Employee GPS"
                             >
-                                <MapEmployeeViewport locations={validMapLocations} refitMode="roster" />
+                                <MapEmployeeViewport
+                                    locations={validMapLocations}
+                                    refitMode="once"
+                                    fitRequestId={fitRequestId}
+                                />
                                 <LiveMapMarkers employees={mapEmployees} onSelect={openDrawer} />
                             </AdminMapFrame>
 
@@ -829,7 +849,7 @@ export default function Tracking() {
                                 <div className="min-w-0 flex-1">
                                     <h2 className="text-sm font-bold text-slate-900">Field roster</h2>
                                     <p className="text-xs text-slate-500">
-                                        {filteredEmployees.length} of {employees.length} employees
+                                        {filteredEmployees.length} of {activeEmployees.length} active
                                     </p>
                                 </div>
                             </div>

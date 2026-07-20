@@ -15,18 +15,12 @@ import { unwrapSuccessEnvelope, getResponseBody } from "./apiUnwrap";
 
 export const DUTY_MOVING_SPEED_KMH = 1;
 
-/** Legacy thresholds — used only when gps_status is missing */
-const LEGACY_GPS_ACTIVE_MINUTES = 3;
-const LEGACY_GPS_DELAYED_MINUTES = 10;
-
-const GPS_API_TO_KEY = {
-  GPS_ACTIVE: "gps_active",
-  GPS_DELAYED: "gps_stale",
-  GPS_STALE: "gps_stale",
-  GPS_LOST: "gps_offline",
-  GPS_OFF: "gps_offline",
-  GPS_OFFLINE: "gps_offline",
-};
+/**
+ * Live GPS health from backend timestamps (mobile ~5 min updates).
+ * Online ≤7 min · Stale 7–15 min · Offline >15 min or GPS disabled.
+ */
+export const GPS_ONLINE_MAX_MINUTES = 7;
+export const GPS_STALE_MAX_MINUTES = 15;
 
 const DUTY_API_TO_KEY = {
   WORKING: "working",
@@ -58,15 +52,6 @@ function secondsSince(iso) {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return null;
   return Math.max(Math.floor((Date.now() - t) / 1000), 0);
-}
-
-function isAccuracyInvalid(accuracy) {
-  if (accuracy == null || accuracy === "") return true;
-  const n = Number(accuracy);
-  if (!Number.isFinite(n)) return true;
-  if (n <= 0) return true;
-  if (n > 5000) return true;
-  return false;
 }
 
 function hasValidCoords(emp) {
@@ -119,44 +104,56 @@ export function resolveCanonicalDutyStatusKey(emp) {
   return "no_workday";
 }
 
+function resolveLocationAgeMinutes(emp) {
+  if (emp?.last_seen_minutes != null && Number.isFinite(Number(emp.last_seen_minutes))) {
+    return Number(emp.last_seen_minutes);
+  }
+  if (emp?.last_update_age_minutes != null && Number.isFinite(Number(emp.last_update_age_minutes))) {
+    return Number(emp.last_update_age_minutes);
+  }
+  if (emp?.last_location_age_minutes != null && Number.isFinite(Number(emp.last_location_age_minutes))) {
+    return Number(emp.last_location_age_minutes);
+  }
+  return minutesSince(
+    emp?.location_recorded_at ??
+      emp?.last_gps_update ??
+      emp?.last_location_at ??
+      emp?.last_update ??
+      emp?.last_seen
+  );
+}
+
 function resolveLegacyGpsStatusKey(emp) {
-  const gpsOff =
+  const gpsDisabled =
     emp?.gps_enabled === false ||
+    emp?.permission_granted === false ||
     normalizeApiToken(emp?.gps_signal) === "GPS_OFF" ||
     normalizeApiToken(emp?.legacy_gps_status) === "GPS_OFF";
 
-  if (gpsOff || !hasValidCoords(emp) || isAccuracyInvalid(emp?.accuracy)) {
-    return "gps_offline";
-  }
+  if (gpsDisabled) return "gps_offline";
+  if (!hasValidCoords(emp)) return "gps_offline";
 
-  const ageMin =
-    emp?.last_seen_minutes != null
-      ? Number(emp.last_seen_minutes)
-      : emp?.last_update_age_minutes != null
-        ? Number(emp.last_update_age_minutes)
-        : minutesSince(
-            emp?.last_gps_update ?? emp?.last_update ?? emp?.last_seen ?? emp?.last_location_at
-          );
-
+  const ageMin = resolveLocationAgeMinutes(emp);
   if (ageMin == null) return "gps_offline";
-  if (ageMin <= LEGACY_GPS_ACTIVE_MINUTES) return "gps_active";
-  if (ageMin <= LEGACY_GPS_DELAYED_MINUTES) return "gps_stale";
+  if (ageMin <= GPS_ONLINE_MAX_MINUTES) return "gps_active";
+  if (ageMin <= GPS_STALE_MAX_MINUTES) return "gps_stale";
   return "gps_offline";
 }
 
-/** @returns {'gps_active'|'gps_stale'|'gps_offline'} */
+/**
+ * GPS health from backend timestamps (preferred) — separate from duty status.
+ * @returns {'gps_active'|'gps_stale'|'gps_offline'}
+ */
 export function resolveCanonicalGpsStatusKey(emp) {
-  const fromApi = GPS_API_TO_KEY[normalizeApiToken(emp?.gps_status)];
-  if (fromApi) return fromApi;
+  const gpsDisabled =
+    emp?.gps_enabled === false ||
+    emp?.permission_granted === false;
+  if (gpsDisabled) return "gps_offline";
 
-  const legacyHealth = normalizeApiToken(emp?.tracking_health);
-  if (legacyHealth === "OK") return "gps_active";
-  if (legacyHealth === "STALE") return "gps_stale";
-  if (legacyHealth === "STOPPED") return "gps_offline";
+  const apiToken = normalizeApiToken(emp?.gps_status);
+  if (apiToken === "GPS_OFF" || apiToken === "GPS_OFFLINE") return "gps_offline";
 
-  const conn = normalizeApiToken(emp?.connection);
-  if (conn === "OFFLINE") return "gps_offline";
-
+  // Timestamp thresholds are authoritative for Online / Stale / Offline.
   return resolveLegacyGpsStatusKey(emp);
 }
 
@@ -196,12 +193,12 @@ export const CANONICAL_DUTY_LABELS = {
 };
 
 export const CANONICAL_GPS_LABELS = {
-  gps_active: "GPS Online",
-  gps_stale: "Location Stale",
-  gps_offline: "GPS Offline",
-  gps_delayed: "Location Stale",
-  gps_lost: "GPS Offline",
-  gps_off: "GPS Offline",
+  gps_active: "Online",
+  gps_stale: "Stale",
+  gps_offline: "Offline",
+  gps_delayed: "Stale",
+  gps_lost: "Offline",
+  gps_off: "Offline",
 };
 
 export const DUTY_MOVEMENT_LABELS = {
@@ -219,7 +216,7 @@ export function canonicalDutyLabel(emp) {
 }
 
 export function canonicalGpsLabel(emp) {
-  return CANONICAL_GPS_LABELS[resolveCanonicalGpsStatusKey(emp)] ?? "GPS Offline";
+  return CANONICAL_GPS_LABELS[resolveCanonicalGpsStatusKey(emp)] ?? "Offline";
 }
 
 /** @deprecated */
@@ -247,6 +244,7 @@ export function isOnDutyWorking(emp) {
 /** Human-readable last GPS update: "10 sec ago", "2 min ago", "Never" */
 export function formatLastGpsUpdate(emp) {
   const iso =
+    emp?.location_recorded_at ??
     emp?.last_gps_update ??
     emp?.last_update ??
     emp?.last_seen ??
@@ -278,6 +276,16 @@ export function formatLastGpsUpdate(emp) {
   return "Never";
 }
 
+/** Human-readable last heartbeat time */
+export function formatLastHeartbeat(emp) {
+  const iso = emp?.last_heartbeat_at ?? emp?.last_heartbeat ?? null;
+  if (!iso) return null;
+  const sec = secondsSince(iso);
+  if (sec == null) return null;
+  if (sec < 60) return `${sec} sec ago`;
+  return `${Math.floor(sec / 60)} min ago`;
+}
+
 /** @deprecated — use formatLastGpsUpdate */
 export function formatDutyLastSeen(emp) {
   return formatLastGpsUpdate(emp);
@@ -293,36 +301,46 @@ export function resolveLiveEmployeeList(payload) {
 export function normalizeLiveEmployee(emp) {
   if (!emp || typeof emp !== "object") return emp;
 
-  const gpsKey = resolveCanonicalGpsStatusKey(emp);
-  const coordsValid = hasValidCoords(emp) && gpsKey !== "gps_offline";
-
+  // Keep last valid coords for map even when GPS is Stale/Offline — never invent fakes.
+  const coordsValid = hasValidCoords(emp);
   const lat = coordsValid ? parseCoord(emp.latitude) : null;
   const lng = coordsValid ? parseCoord(emp.longitude) : null;
   const lastGpsUpdate =
-    emp.last_gps_update ?? emp.last_update ?? emp.last_seen ?? null;
-  const ageMin =
-    emp.last_seen_minutes != null
-      ? Number(emp.last_seen_minutes)
-      : emp.last_update_age_minutes != null
-        ? Number(emp.last_update_age_minutes)
-        : minutesSince(lastGpsUpdate);
+    emp.location_recorded_at ??
+    emp.last_gps_update ??
+    emp.last_location_at ??
+    emp.last_update ??
+    emp.last_seen ??
+    null;
+  const lastHeartbeat =
+    emp.last_heartbeat_at ?? emp.last_heartbeat ?? null;
+  const ageMin = resolveLocationAgeMinutes({
+    ...emp,
+    last_gps_update: lastGpsUpdate,
+  });
 
   const dutyStatus = emp.duty_status ?? emp.work_status ?? null;
   const dutyKey = resolveCanonicalDutyStatusKey(emp);
   const isOnDuty = dutyKey === "working";
 
-  return {
+  const normalized = {
     ...emp,
-    user_id: emp.user_id ?? emp.id,
-    employee_name: emp.employee_name ?? emp.username,
+    user_id: emp.user_id ?? emp.employee_id ?? emp.id,
+    employee_name: emp.employee_name ?? emp.name ?? emp.username,
+    employee_code: emp.employee_code ?? emp.employee_id ?? emp.code ?? null,
+    employee_id: emp.employee_id ?? emp.employee_code ?? emp.code ?? null,
     latitude: lat,
     longitude: lng,
     last_latitude: lat,
     last_longitude: lng,
     duty_status: dutyStatus,
     gps_status: emp.gps_status ?? null,
+    gps_enabled: emp.gps_enabled,
+    permission_granted: emp.permission_granted,
     end_reason: emp.end_reason ?? emp.duty_end_reason ?? null,
+    location_recorded_at: lastGpsUpdate,
     last_gps_update: lastGpsUpdate,
+    last_heartbeat_at: lastHeartbeat,
     last_seen_minutes: ageMin,
     last_update: lastGpsUpdate,
     last_seen: lastGpsUpdate,
@@ -338,6 +356,16 @@ export function normalizeLiveEmployee(emp) {
     speed: emp.speed != null ? Number(emp.speed) : null,
     movement_status: resolveDutyMovementKey({ speed: emp.speed }),
   };
+
+  return normalized;
+}
+
+/** Cache key for live tracking active roster */
+export const LIVE_TRACKING_CACHE_KEY = "live-tracking:active-employees";
+
+/** Build day-map cache key */
+export function dayMapCacheKey({ employeeId, businessDate, dutySessionId }) {
+  return `day-map:${employeeId ?? "none"}:${businessDate ?? "none"}:${dutySessionId ?? "nosession"}`;
 }
 
 /** Extract polyline [[lat,lng],...] from route API payload — unused by marker-only maps */

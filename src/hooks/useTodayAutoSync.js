@@ -1,12 +1,17 @@
 import { useEffect } from "react";
 import { todayIsoDate } from "../utils/employeeRoute";
-import { TRACKING_AUTO_SYNC_MS } from "../utils/trackingPoll";
+import { TRACKING_AUTO_SYNC_MS, DAY_MAP_AUTO_SYNC_MS } from "../utils/trackingPoll";
 
 /**
- * Polls `onPoll(true)` every 12s when viewing today's date and tab is visible.
+ * Polls `onPoll(true)` when viewing today's date and tab is visible.
  * Use alongside an initial `onPoll(false)` on filter changes.
  */
-export default function useTodayAutoSync({ date, enabled, onPoll, intervalMs = TRACKING_AUTO_SYNC_MS }) {
+export default function useTodayAutoSync({
+  date,
+  enabled,
+  onPoll,
+  intervalMs = DAY_MAP_AUTO_SYNC_MS ?? TRACKING_AUTO_SYNC_MS,
+}) {
   const isToday = date === todayIsoDate();
 
   useEffect(() => {
