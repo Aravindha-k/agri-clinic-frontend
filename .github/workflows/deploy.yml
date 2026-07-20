@@ -28,7 +28,13 @@ jobs:
 
             EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
             APP_DIR="/var/www/agri-admin/agri-clinic-frontend"
+            REPO_HTTPS="https://github.com/Aravindha-k/agri-clinic-frontend.git"
             export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://13.207.17.117}"
+
+            if [ -z "${EXPECTED_SHA:-}" ]; then
+              echo "EXPECTED_SHA is empty; refusing to deploy"
+              exit 1
+            fi
 
             echo "==> Deploying admin frontend"
             echo "Expected SHA: ${EXPECTED_SHA}"
@@ -40,8 +46,11 @@ jobs:
               cp .env.local /tmp/agri-admin-env.local.bak
             fi
 
+            # Public HTTPS remote avoids silent SSH-key fetch failures on EC2
+            git remote set-url origin "$REPO_HTTPS"
             git fetch --prune origin
-            git checkout main
+            git fetch origin "$EXPECTED_SHA"
+            git checkout -B main "$EXPECTED_SHA"
             git reset --hard "$EXPECTED_SHA"
 
             if [ -f /tmp/agri-admin-env.local.bak ]; then
@@ -67,12 +76,14 @@ jobs:
             test -f dist/index.html
             test -d dist/assets
 
-            BUILT_JS="$(grep -oE '/assets/index-[^"]+\.js' dist/index.html | head -1)"
+            # Avoid grep|head SIGPIPE under pipefail
+            BUILT_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' dist/index.html)"
             if [ -z "$BUILT_JS" ]; then
               echo "Built JS asset not found"
               exit 1
             fi
             test -f "dist${BUILT_JS}"
+            echo "Built asset: $BUILT_JS"
 
             echo "==> Verify latest map UI markers in build"
             if ! grep -R -q "Showing the last known location" dist/assets; then
@@ -86,8 +97,10 @@ jobs:
 
             echo "==> Verify Nginx root and reload"
             NGINX_DUMP="$(sudo nginx -T 2>&1)"
-            if ! printf '%s\n' "$NGINX_DUMP" | grep -q "$EXPECTED_ROOT"; then
+            if ! printf '%s\n' "$NGINX_DUMP" | grep -F -q "$EXPECTED_ROOT"; then
               echo "Nginx is not configured to serve $EXPECTED_ROOT"
+              echo "---- nginx -T (filtered) ----"
+              printf '%s\n' "$NGINX_DUMP" | grep -E 'root |server_name|listen ' || true
               exit 1
             fi
 
@@ -96,9 +109,10 @@ jobs:
             sudo systemctl is-active --quiet nginx
 
             echo "==> Verify live site serves this build"
-            curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html
+            curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html \
+              || curl -fsS http://127.0.0.1/ -o /tmp/live-index.html
 
-            SERVED_JS="$(grep -oE '/assets/index-[^"]+\.js' /tmp/live-index.html | head -1)"
+            SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
             if [ -z "$SERVED_JS" ]; then
               echo "Served JS asset not found in live index.html"
               exit 1
@@ -111,7 +125,12 @@ jobs:
               exit 1
             fi
 
-            curl -fsS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" | grep -qx '200'
+            HTTP_CODE="$(curl -fsS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" \
+              || curl -fsS -o /dev/null -w "%{http_code}" "http://127.0.0.1${SERVED_JS}")"
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "Served JS HTTP status was $HTTP_CODE (expected 200)"
+              exit 1
+            fi
 
             DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
             echo ""
