@@ -1801,7 +1801,7 @@ textarea.input {
     border: none;
     box-shadow: none;
     overflow: visible;
-    animation: loginLogoFloat 6s ease-in-out infinite;
+    animation: adminLogoFloat 3.6s ease-in-out infinite;
 }
 
 .login-aside__seal-img {
@@ -1818,6 +1818,17 @@ textarea.input {
         drop-shadow(0 0 5px rgba(255, 207, 88, 0.48))
         drop-shadow(0 0 14px rgba(255, 191, 55, 0.20));
     image-rendering: auto;
+}
+
+@keyframes adminLogoFloat {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
 @keyframes loginLogoFloat {
