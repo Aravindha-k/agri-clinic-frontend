@@ -1,7 +1,7 @@
 import { getAdminMapBasemapType } from "../config/mapBasemap";
 
 /**
- * Admin maps are satellite-only for now (toggle hidden).
+ * Admin maps use street basemap for now (toggle hidden; matches mobile).
  * @returns {[import('../config/mapBasemap').MapBasemapType, () => void]}
  */
 export default function useMapBasemapType() {

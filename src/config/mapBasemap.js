@@ -5,8 +5,8 @@ export const MAP_BASEMAP_STORAGE_KEY = "agri_admin_map_basemap";
 /** @type {MapBasemapType[]} */
 export const MAP_BASEMAP_TYPES = ["standard", "satellite", "hybrid"];
 
-/** Admin maps always open on satellite imagery. */
-export const DEFAULT_ADMIN_MAP_BASEMAP = "satellite";
+/** Admin maps use street tiles (aligned with the mobile app). */
+export const DEFAULT_ADMIN_MAP_BASEMAP = "standard";
 
 const OSM_FALLBACK =
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -31,7 +31,7 @@ export function normalizeMapBasemapType(value) {
   return DEFAULT_ADMIN_MAP_BASEMAP;
 }
 
-/** Fixed basemap for admin maps (toggle hidden — satellite only). */
+/** Fixed basemap for admin maps (toggle hidden — street map). */
 export function getAdminMapBasemapType() {
   return DEFAULT_ADMIN_MAP_BASEMAP;
 }
