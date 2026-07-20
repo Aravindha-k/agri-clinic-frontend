@@ -241,6 +241,18 @@ export function isOnDutyWorking(emp) {
   return resolveCanonicalDutyStatusKey(emp) === "working";
 }
 
+export function hasLiveMapLocation(emp) {
+  const lat = Number(emp?.latitude);
+  const lng = Number(emp?.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng);
+}
+
+/** User-facing GPS/location label for live roster */
+export function liveLocationStatusLabel(emp) {
+  if (!hasLiveMapLocation(emp)) return "No Location Yet";
+  return canonicalGpsLabel(emp);
+}
+
 /** Human-readable last GPS update: "10 sec ago", "2 min ago", "Never" */
 export function formatLastGpsUpdate(emp) {
   const iso =

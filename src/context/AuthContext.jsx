@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { loginUser, refreshToken, getCurrentUser, logout as logoutAPI } from '../api/auth.api';
 import { unwrapSuccessEnvelope } from '../utils/apiUnwrap';
 import { loginAuthErrorMessage } from '../utils/authErrors';
+import { clearAllAdminMapSnapshots } from '../utils/mapSnapshotCache';
 
 const AuthContext = createContext();
 
@@ -68,6 +69,7 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         localStorage.removeItem('access');
         localStorage.removeItem('refresh');
+        clearAllAdminMapSnapshots();
     }, []);
 
     useEffect(() => {

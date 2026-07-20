@@ -25,11 +25,11 @@ const markerColors = {
   slate: "#6b7280",
 };
 
-const createColoredIcon = (color, pulse = false) =>
+const createColoredIcon = (color, pulse = false, muted = false) =>
   L.divIcon({
     className: "",
     html: `
-      <div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+      <div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;opacity:${muted ? "0.72" : "1"};">
         ${pulse ? `<div style="position:absolute;width:30px;height:30px;border-radius:50%;background:${color};opacity:0.22;animation:tracking-ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>` : ""}
         <div style="
           width:18px;height:18px;border-radius:50% 50% 50% 0;
@@ -38,6 +38,7 @@ const createColoredIcon = (color, pulse = false) =>
           border:2.5px solid #fff;
           box-shadow:0 0 0 1px rgba(15,23,42,0.3),0 3px 10px rgba(0,0,0,0.4);
           position:relative;z-index:1;
+          filter:${muted ? "grayscale(0.35)" : "none"};
         "></div>
         <div style="
           position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
@@ -52,18 +53,23 @@ const createColoredIcon = (color, pulse = false) =>
 const iconCache = new Map();
 
 function getMarkerIcon(emp) {
+  const gps = resolveCanonicalGpsStatusKey(emp);
   const colorKey = getDutyStatusColor(emp);
-  const pulse = colorKey === "green";
-  const cacheKey = `${colorKey}-${pulse}`;
+  const muted = gps === "gps_stale" || gps === "gps_offline";
+  const pulse = colorKey === "green" && gps === "gps_active";
+  const cacheKey = `${colorKey}-${pulse}-${muted}`;
   if (!iconCache.has(cacheKey)) {
-    iconCache.set(cacheKey, createColoredIcon(markerColors[colorKey] ?? markerColors.gray, pulse));
+    iconCache.set(
+      cacheKey,
+      createColoredIcon(markerColors[colorKey] ?? markerColors.gray, pulse, muted)
+    );
   }
   return iconCache.get(cacheKey);
 }
 
 /**
- * One latest-location marker per active employee — no trail, no polyline.
- * Marker key is employee ID so position updates move the same marker.
+ * One latest-location marker per active employee.
+ * Offline/Stale keep last known coords; no fake markers when never located.
  */
 function LiveMapMarkers({ employees, onSelect }) {
   const mappable = useMemo(() => {
@@ -87,6 +93,7 @@ function LiveMapMarkers({ employees, onSelect }) {
         const lng = Number(emp.longitude);
         const code = emp.employee_code ?? emp.employee_id;
         const heartbeat = formatLastHeartbeat(emp);
+        const gps = resolveCanonicalGpsStatusKey(emp);
 
         return (
           <Marker
@@ -116,9 +123,8 @@ function LiveMapMarkers({ employees, onSelect }) {
                     Heartbeat: <span className="font-medium text-gray-700">{heartbeat}</span>
                   </p>
                 ) : null}
-                {resolveCanonicalGpsStatusKey(emp) === "gps_offline" &&
-                (emp.latitude == null || emp.longitude == null) ? (
-                  <p className="text-[10px] text-amber-700">No location available</p>
+                {gps === "gps_offline" || gps === "gps_stale" ? (
+                  <p className="text-[10px] text-amber-700">Showing the last known location.</p>
                 ) : null}
               </EmployeeMapPopup>
             </Popup>

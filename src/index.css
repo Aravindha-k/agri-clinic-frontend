@@ -2990,6 +2990,77 @@ textarea.input {
     margin-top: 12px;
 }
 
+.admin-map-frame__crash {
+    position: absolute;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    background: #f8fafc;
+    text-align: center;
+}
+
+.admin-map-status {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 1150;
+    pointer-events: none;
+}
+
+.admin-map-status__body {
+    pointer-events: auto;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(6px);
+}
+
+.admin-map-status--info .admin-map-status__body {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e2e8f0;
+}
+
+.admin-map-status--warn .admin-map-status__body {
+    background: rgba(255, 251, 235, 0.96);
+    border: 1px solid #fde68a;
+}
+
+.admin-map-status--error .admin-map-status__body {
+    background: rgba(254, 242, 242, 0.96);
+    border: 1px solid #fecaca;
+}
+
+.admin-map-status--success .admin-map-status__body {
+    background: rgba(236, 253, 245, 0.96);
+    border: 1px solid #a7f3d0;
+}
+
+.admin-map-status__message {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 650;
+    color: #0f172a;
+}
+
+.admin-map-status__detail {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.admin-map-status__action {
+    margin-top: 8px;
+}
+
 @media (max-width: 640px) {
     .admin-map-type-toggle__label {
         display: none;

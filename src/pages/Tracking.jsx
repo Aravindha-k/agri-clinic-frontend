@@ -32,10 +32,17 @@ import {
     canonicalDutyLabel,
     canonicalGpsLabel,
     formatLastGpsUpdate,
+    formatLastHeartbeat,
     dedupeLiveEmployees,
     isOnDutyWorking,
+    hasLiveMapLocation,
+    liveLocationStatusLabel,
 } from "../utils/dutyTracking";
-import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate } from "../utils/mapCoordinates";
+import {
+    saveLiveTrackingSnapshot,
+    loadLiveTrackingSnapshot,
+} from "../utils/mapSnapshotCache";
+import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate, TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../utils/mapCoordinates";
 import { empName } from "../utils/trackingDisplay";
 import {
     Users,
@@ -149,6 +156,10 @@ function EmployeeRosterCard({ emp, onView }) {
         gray: "bg-slate-400",
         slate: "bg-slate-500",
     };
+    const hasLoc = hasLiveMapLocation(emp);
+    const locationLabel = liveLocationStatusLabel(emp);
+    const lastLoc = formatLastGpsUpdate(emp);
+    const heartbeat = formatLastHeartbeat(emp);
 
     return (
         <article
@@ -176,12 +187,20 @@ function EmployeeRosterCard({ emp, onView }) {
                         {empName(emp)}
                     </p>
                     <p className="tracking-emp-card__meta">
-                        {[emp.district, emp.employee_id].filter(Boolean).join(" · ") || "—"}
+                        {[emp.employee_code ?? emp.employee_id, emp.district].filter(Boolean).join(" · ") || "—"}
                     </p>
                     <div className="tracking-emp-card__badges">
                         <DutyWorkdayBadge employee={emp} />
-                        <DutyGpsStatusBadge employee={emp} />
+                        <span className="tracking-status-badge bg-slate-50 text-slate-700 border-slate-200">
+                            {locationLabel}
+                        </span>
                     </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                        {!hasLoc
+                            ? "Waiting for first GPS update"
+                            : `Last updated ${lastLoc}`}
+                        {heartbeat ? ` · Heartbeat ${heartbeat}` : ""}
+                    </p>
                 </div>
                 <button
                     type="button"
@@ -190,35 +209,10 @@ function EmployeeRosterCard({ emp, onView }) {
                         onView(emp);
                     }}
                     className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                    aria-label={`View ${empName(emp)}`}
+                    aria-label={hasLoc ? `View ${empName(emp)} on map` : `View ${empName(emp)}`}
                 >
                     <Eye className="w-4 h-4" />
                 </button>
-            </div>
-
-            <div className="tracking-emp-card__metrics">
-                <div className="tracking-emp-card__metric">
-                    <p className="tracking-emp-card__metric-label">GPS</p>
-                    <p className="tracking-emp-card__metric-value truncate">
-                        {formatLastGpsUpdate(emp)}
-                    </p>
-                </div>
-                <div className="tracking-emp-card__metric">
-                    <p className="tracking-emp-card__metric-label">Battery</p>
-                    <p className="tracking-emp-card__metric-value">
-                        {emp.battery_level != null ? `${emp.battery_level}%` : "—"}
-                    </p>
-                </div>
-                <div className="tracking-emp-card__metric">
-                    <p className="tracking-emp-card__metric-label">Speed</p>
-                    <p className="tracking-emp-card__metric-value">
-                        {emp.speed != null ? `${Number(emp.speed).toFixed(1)}` : "—"}
-                    </p>
-                </div>
-            </div>
-
-            <div className="mt-2">
-                <DutyMovementBadge employee={emp} />
             </div>
         </article>
     );
@@ -480,6 +474,12 @@ export default function Tracking() {
     const [refreshing, setRefreshing] = useState(false);
     const [routeRefreshToken, setRouteRefreshToken] = useState(0);
     const [fitRequestId, setFitRequestId] = useState(0);
+    const [showingCachedLive, setShowingCachedLive] = useState(false);
+    const employeesRef = useRef([]);
+
+    useEffect(() => {
+        employeesRef.current = employees;
+    }, [employees]);
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
@@ -498,9 +498,19 @@ export default function Tracking() {
             ]);
 
             const liveErr = liveRes.status === "rejected" ? liveRes.reason : null;
-            if (isUnreachableError(liveErr)) {
-                recordApiFailure(liveErr);
-                setError(backendUnavailableMessage());
+            if (liveRes.status === "rejected") {
+                if (isUnreachableError(liveErr)) {
+                    recordApiFailure(liveErr);
+                }
+                setError("Live updates are temporarily unavailable.");
+                setShowingCachedLive(Boolean(employeesRef.current?.length));
+                if (!employeesRef.current?.length) {
+                    const snap = loadLiveTrackingSnapshot();
+                    if (snap?.employees?.length) {
+                        setEmployees(dedupeLiveEmployees(snap.employees));
+                        setShowingCachedLive(true);
+                    }
+                }
                 return;
             }
 
@@ -508,7 +518,12 @@ export default function Tracking() {
             setError(null);
 
             if (liveRes.status === "fulfilled") {
-                setEmployees(dedupeLiveEmployees(liveRes.value?.employees ?? []));
+                const list = dedupeLiveEmployees(liveRes.value?.employees ?? []);
+                setEmployees(list);
+                setShowingCachedLive(false);
+                if (list.some((e) => isOnDutyWorking(e))) {
+                    saveLiveTrackingSnapshot(list.filter(isOnDutyWorking));
+                }
             }
             if (statsRes.status === "fulfilled" && statsRes.value) {
                 setStats(statsRes.value);
@@ -517,10 +532,9 @@ export default function Tracking() {
         } catch (err) {
             if (isUnreachableError(err)) {
                 recordApiFailure(err);
-                setError(backendUnavailableMessage());
-            } else {
-                setError("Failed to load tracking data.");
             }
+            setError("Live updates are temporarily unavailable.");
+            setShowingCachedLive(Boolean(employeesRef.current?.length));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -543,8 +557,8 @@ export default function Tracking() {
             admin_ended: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "admin_ended").length,
             gps_active: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_active").length,
             gps_stale: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_stale").length,
-            gps_offline: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_offline").length,
-            no_location: working.filter((e) => e.latitude == null || e.longitude == null).length,
+            gps_offline: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_offline" && hasLiveMapLocation(e)).length,
+            no_location: working.filter((e) => !hasLiveMapLocation(e)).length,
         };
     }, [employees, activeEmployees]);
 
@@ -564,8 +578,8 @@ export default function Tracking() {
                 (filterStatus === "working" && true) ||
                 (filterStatus === "gps_active" && gps === "gps_active") ||
                 (filterStatus === "gps_stale" && gps === "gps_stale") ||
-                (filterStatus === "gps_offline" && gps === "gps_offline") ||
-                (filterStatus === "no_location" && (emp.latitude == null || emp.longitude == null));
+                (filterStatus === "gps_offline" && gps === "gps_offline" && hasLiveMapLocation(emp)) ||
+                (filterStatus === "no_location" && !hasLiveMapLocation(emp));
             return matchSearch && matchFilter;
         });
     }, [activeEmployees, searchTerm, filterStatus]);
@@ -806,11 +820,39 @@ export default function Tracking() {
                             </div>
 
                             <AdminMapFrame
-                                center={mapCenter}
-                                zoom={mapZoom}
+                                center={validMapLocations.length ? mapCenter : TAMIL_NADU_CENTER}
+                                zoom={validMapLocations.length ? mapZoom : TAMIL_NADU_ZOOM}
                                 height="100%"
+                                mapKey="live-tracking-active"
                                 legend={<GpsStatusMapLegend />}
                                 legendTitle="Employee GPS"
+                                loading={loading && activeEmployees.length === 0}
+                                loadingLabel="Updating live locations…"
+                                statusMessage={
+                                    showingCachedLive
+                                        ? "Showing the last known location."
+                                        : error
+                                          ? "Live updates are temporarily unavailable."
+                                          : !loading && activeEmployees.length === 0
+                                            ? "No employees are on an active workday."
+                                            : !loading && mapEmployees.length === 0 && activeEmployees.length > 0
+                                              ? "No location has been received yet."
+                                              : null
+                                }
+                                statusTone={error || showingCachedLive ? "warn" : "info"}
+                                statusDetail={
+                                    !loading && mapEmployees.length === 0 && activeEmployees.length > 0
+                                        ? "Employees appear in the roster until the first GPS update arrives."
+                                        : showingCachedLive
+                                          ? "Markers will update when connectivity returns."
+                                          : null
+                                }
+                                onRetry={() => loadData(true)}
+                                fallbackAction={
+                                    <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
+                                        Open route history
+                                    </Link>
+                                }
                             >
                                 <MapEmployeeViewport
                                     locations={validMapLocations}
@@ -819,24 +861,6 @@ export default function Tracking() {
                                 />
                                 <LiveMapMarkers employees={mapEmployees} onSelect={openDrawer} />
                             </AdminMapFrame>
-
-                            {mapEmployees.length === 0 && (
-                                <div className="tracking-map-empty">
-                                    <div className="max-w-sm px-6 pointer-events-auto">
-                                        <EmptyState
-                                            icon={MapPin}
-                                            title="No employees on duty"
-                                            subtitle="Map pins appear when field agents start duty and share GPS from the mobile app."
-                                            action={
-                                                <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
-                                                    View route history
-                                                </Link>
-                                            }
-                                            className="py-8"
-                                        />
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </section>
 

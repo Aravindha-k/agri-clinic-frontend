@@ -1,21 +1,18 @@
 import { useMemo } from "react";
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import { RefreshCw, Route, Radio } from "lucide-react";
+import { RefreshCw, Radio } from "lucide-react";
 import AdminMapFrame from "../map/AdminMapFrame";
 import { RouteEndpointMapLegend } from "../map/MapLegendPanel";
 import MapRouteViewport from "../map/MapRouteViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
-import { PageLoader, EmptyState } from "../ui/command";
-import ErrorRetry from "../ui/ErrorRetry";
 import {
   todayIsoDate,
   formatRouteTimestamp,
   formatRouteDuration,
   computeRouteSummary,
-  resolveRouteEmptyState,
-  resolveRouteFetchError,
 } from "../../utils/employeeRoute";
+import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
@@ -25,9 +22,9 @@ const MARKER_COLORS = {
   end: "#ef4444",
 };
 
-function SummaryCard({ label, value, className = "" }) {
+function SummaryCard({ label, value }) {
   return (
-    <div className={`tracking-drawer-route__summary-card ${className}`}>
+    <div className="tracking-drawer-route__summary-card">
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="text-sm font-bold text-slate-900 mt-0.5 tabular-nums">{value}</p>
     </div>
@@ -46,8 +43,7 @@ function routeIcon(color, size = 18) {
 }
 
 /**
- * Shared employee day map + summary (drawer tab and dedicated route page).
- * Marker-only: Start, submitted Visits, End (when backend end coords exist).
+ * Day map — always mounts. Marker-only Start / Visit / End.
  */
 export default function EmployeeRouteMapView({
   userId,
@@ -66,10 +62,10 @@ export default function EmployeeRouteMapView({
   showDutyMeta = false,
   variant = "default",
   mapScopeKey = null,
+  showingCached = false,
 }) {
   const markers = routeData?.markers ?? [];
   const markerCount = markers.length;
-  const canShowMap = markerCount >= 1;
 
   const summary = useMemo(
     () => computeRouteSummary(routeData, employee),
@@ -94,13 +90,34 @@ export default function EmployeeRouteMapView({
       routeData?.dutySessionId ?? "nosession",
     ].join("-");
 
-  // Keep map mounted while syncing if markers already exist (no TN default flash).
-  const mapReady = drawerOpen && canShowMap && !routeError;
-
-  const emptyState = resolveRouteEmptyState(routeData);
-  const errorMessage = routeError ? resolveRouteFetchError(routeError) : null;
+  const center = markerCount
+    ? [markers[0].latitude, markers[0].longitude]
+    : TAMIL_NADU_CENTER;
+  const zoom = markerCount === 1 ? 14 : markerCount > 1 ? 12 : TAMIL_NADU_ZOOM;
 
   const isDrawerVariant = variant === "tracking-drawer";
+
+  let statusMessage = null;
+  let statusTone = "info";
+  let statusDetail = null;
+
+  if (routeLoading && markerCount === 0) {
+    statusMessage = "Updating day map…";
+  } else if (routeError && markerCount > 0) {
+    statusMessage = "Unable to refresh. Showing the last available data.";
+    statusTone = "warn";
+  } else if (routeError && markerCount === 0) {
+    statusMessage = "Unable to load day map right now.";
+    statusTone = "error";
+  } else if (showingCached && markerCount > 0) {
+    statusMessage = "Showing the last available map data.";
+    statusTone = "warn";
+  } else if (!routeLoading && markerCount === 0) {
+    statusMessage = "No Start, Visit or End points were recorded for this day.";
+  } else if (markerCount === 1 && markers[0]?.type === "start") {
+    statusMessage = "Only the start marker is available for this day so far.";
+    statusTone = "info";
+  }
 
   return (
     <div className={isDrawerVariant ? "tracking-drawer-route" : "space-y-4"}>
@@ -120,36 +137,27 @@ export default function EmployeeRouteMapView({
           type="date"
           value={routeDate}
           max={todayIsoDate()}
-          disabled={routeLoading}
+          disabled={routeLoading && markerCount === 0}
           onChange={(e) => onRouteDateChange(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-800 disabled:opacity-50"
         />
-        {routeData && !routeError ? (
-          <span className="text-xs text-gray-500 ml-auto flex items-center gap-2">
-            {autoSyncing ? (
-              <span className="inline-flex items-center gap-1 text-emerald-600">
-                <Radio className={`w-3 h-3 ${routeSyncing ? "animate-pulse" : ""}`} />
-                Live
-              </span>
-            ) : null}
-            {markerCount} marker{markerCount === 1 ? "" : "s"}
-            {summary.visitCount > 0 ? ` · ${summary.visitCount} visit${summary.visitCount === 1 ? "" : "s"}` : ""}
-          </span>
-        ) : autoSyncing ? (
-          <span className="text-xs text-emerald-600 ml-auto inline-flex items-center gap-1">
-            <Radio className={`w-3 h-3 ${routeSyncing ? "animate-pulse" : ""}`} />
-            Auto-syncing…
-          </span>
-        ) : null}
+        <span className="text-xs text-gray-500 ml-auto flex items-center gap-2">
+          {autoSyncing || routeSyncing ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600">
+              <Radio className={`w-3 h-3 ${routeSyncing ? "animate-pulse" : ""}`} />
+              {routeSyncing ? "Updating…" : "Live"}
+            </span>
+          ) : null}
+          {markerCount > 0
+            ? `${markerCount} marker${markerCount === 1 ? "" : "s"}`
+            : null}
+          {summary.visitCount > 0
+            ? ` · ${summary.visitCount} visit${summary.visitCount === 1 ? "" : "s"}`
+            : ""}
+        </span>
       </div>
 
-      {routeLoading && !canShowMap ? <PageLoader label="Loading route…" compact wrap={false} /> : null}
-
-      {!routeLoading && errorMessage ? (
-        <ErrorRetry compact message={errorMessage} onRetry={onRetry} />
-      ) : null}
-
-      {!routeLoading && !routeError && markerCount > 0 ? (
+      {markerCount > 0 ? (
         <div
           className={
             isDrawerVariant
@@ -161,10 +169,7 @@ export default function EmployeeRouteMapView({
           {showDutyMeta ? (
             <>
               <SummaryCard label="Duty start" value={formatRouteTimestamp(routeData?.startTime)} />
-              <SummaryCard
-                label="Duty end"
-                value={formatRouteTimestamp(routeData?.endTime)}
-              />
+              <SummaryCard label="Duty end" value={formatRouteTimestamp(routeData?.endTime)} />
             </>
           ) : (
             <>
@@ -180,67 +185,56 @@ export default function EmployeeRouteMapView({
         </div>
       ) : null}
 
-      {!routeLoading && !routeError && markerCount === 1 && markers[0]?.type === "start" ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-          {emptyState.subtitle}
-        </div>
-      ) : null}
-
-      {!routeLoading && !routeError && canShowMap ? (
-        <AdminMapFrame
-          center={[markers[0].latitude, markers[0].longitude]}
-          zoom={14}
-          mapKey={mapKey}
-          height={mapHeight}
-          className="rounded-xl border border-gray-200"
-          legend={<RouteEndpointMapLegend />}
-          legendTitle="Day markers"
-          loading={!mapReady}
-          loadingLabel="Preparing map…"
-        >
-          <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
-          {markers.map((marker, idx) => (
-            <Marker
-              key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
-              position={[marker.latitude, marker.longitude]}
-              icon={routeIcon(MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit, marker.type === "visit" ? 16 : 18)}
-            >
-              <Popup>
-                <EmployeeMapPopup
-                  name={
-                    marker.type === "start"
-                      ? "Start"
-                      : marker.type === "end"
-                        ? "End"
-                        : marker.label || "Visit"
-                  }
-                  lat={marker.latitude}
-                  lng={marker.longitude}
-                  entity={marker}
-                  lastUpdated={formatRouteTimestamp(marker.captured_at)}
-                />
-              </Popup>
-            </Marker>
-          ))}
-        </AdminMapFrame>
-      ) : null}
-
-      {!routeLoading && !routeError && markerCount === 0 ? (
-        <div className="section-card">
-          <EmptyState
-            icon={Route}
-            title={emptyState.title}
-            subtitle={emptyState.subtitle}
-            action={
-              onRetry ? (
-                <button type="button" onClick={onRetry} className="btn btn-secondary btn-md">
-                  <RefreshCw className="w-4 h-4" /> Refresh route
-                </button>
-              ) : null
-            }
-          />
-        </div>
-      ) : null}
+      <AdminMapFrame
+        center={center}
+        zoom={zoom}
+        mapKey={mapKey}
+        height={mapHeight}
+        className="rounded-xl border border-gray-200"
+        legend={<RouteEndpointMapLegend />}
+        legendTitle="Day markers"
+        loading={Boolean(routeLoading && markerCount === 0)}
+        loadingLabel="Updating day map…"
+        statusMessage={!routeLoading || markerCount > 0 ? statusMessage : null}
+        statusTone={statusTone}
+        statusDetail={statusDetail}
+        onRetry={onRetry}
+        fallbackAction={
+          onRetry ? (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh data
+            </button>
+          ) : null
+        }
+      >
+        <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
+        {markers.map((marker, idx) => (
+          <Marker
+            key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
+            position={[marker.latitude, marker.longitude]}
+            icon={routeIcon(
+              MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
+              marker.type === "visit" ? 16 : 18
+            )}
+          >
+            <Popup>
+              <EmployeeMapPopup
+                name={
+                  marker.type === "start"
+                    ? "Start"
+                    : marker.type === "end"
+                      ? "End"
+                      : marker.label || "Visit"
+                }
+                lat={marker.latitude}
+                lng={marker.longitude}
+                entity={marker}
+                lastUpdated={formatRouteTimestamp(marker.captured_at)}
+              />
+            </Popup>
+          </Marker>
+        ))}
+      </AdminMapFrame>
     </div>
   );
 }

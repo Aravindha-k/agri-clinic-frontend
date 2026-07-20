@@ -16,6 +16,11 @@ import {
   resolveRouteFetchError,
   dayMapScopeKey,
 } from "../utils/employeeRoute";
+import {
+  dayMapCacheKey,
+  saveDayMapSnapshot,
+  loadDayMapSnapshot,
+} from "../utils/mapSnapshotCache";
 import { empName } from "../utils/trackingDisplay";
 
 export default function EmployeeRoutes() {
@@ -29,8 +34,14 @@ export default function EmployeeRoutes() {
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState("");
+  const [showingCached, setShowingCached] = useState(false);
   const requestSeqRef = useRef(0);
   const scopeRef = useRef("");
+  const routeDataRef = useRef(null);
+
+  useEffect(() => {
+    routeDataRef.current = routeData;
+  }, [routeData]);
 
   const loadEmployees = useCallback(async () => {
     setListLoading(true);
@@ -71,10 +82,21 @@ export default function EmployeeRoutes() {
 
     const requestScope = `${selectedUserId}|${routeDate}`;
     const seq = ++requestSeqRef.current;
+    const cacheKeyForScope = dayMapCacheKey({
+      employeeId: selectedUserId,
+      businessDate: routeDate,
+      dutySessionId: "nosession",
+    });
 
-    // Clear previous employee/date markers immediately to prevent cache bleed.
     if (scopeRef.current && scopeRef.current !== requestScope) {
-      setRouteData(null);
+      const snap = loadDayMapSnapshot(cacheKeyForScope);
+      if (snap?.routeData?.markers?.length) {
+        setRouteData(snap.routeData);
+        setShowingCached(true);
+      } else {
+        setRouteData(null);
+        setShowingCached(false);
+      }
     }
     scopeRef.current = requestScope;
     setRouteLoading(true);
@@ -88,11 +110,33 @@ export default function EmployeeRoutes() {
       });
       if (seq !== requestSeqRef.current) return;
       if (`${selectedUserId}|${routeDate}` !== requestScope) return;
+
       setRouteData(data);
+      setRouteError("");
+      setShowingCached(false);
+      if (data?.markers?.length) {
+        saveDayMapSnapshot(
+          dayMapCacheKey({
+            employeeId: selectedUserId,
+            businessDate: routeDate,
+            dutySessionId: data.dutySessionId ?? "nosession",
+          }),
+          data
+        );
+      }
     } catch (err) {
       if (seq !== requestSeqRef.current) return;
-      setRouteData(null);
       setRouteError(resolveRouteFetchError(err));
+      const current = routeDataRef.current;
+      if (!current?.markers?.length) {
+        const snap = loadDayMapSnapshot(cacheKeyForScope);
+        if (snap?.routeData?.markers?.length) {
+          setRouteData(snap.routeData);
+          setShowingCached(true);
+        }
+      } else {
+        setShowingCached(true);
+      }
     } finally {
       if (seq === requestSeqRef.current) {
         setRouteLoading(false);
@@ -109,8 +153,6 @@ export default function EmployeeRoutes() {
     date: routeDate,
     dutySessionId: routeData?.dutySessionId ?? selectedEmployee?.duty_session_id ?? null,
   });
-
-  const showBlockingLoader = routeLoading && !routeData;
 
   if (listLoading && employees.length === 0) {
     return <RouteFallback label="Loading route history\u2026" />;
@@ -138,7 +180,7 @@ export default function EmployeeRoutes() {
           <EmptyState
             icon={Users}
             title="No employees available"
-            subtitle="Route history appears once field employees are registered and sharing GPS."
+            subtitle="Route history appears once field employees are registered and sharing GPS from the mobile app."
             action={
               <Link to="/employees" className="btn btn-primary btn-md">
                 Manage employees
@@ -175,14 +217,15 @@ export default function EmployeeRoutes() {
         routeDate={routeDate}
         onRouteDateChange={setRouteDate}
         routeData={routeData}
-        routeLoading={showBlockingLoader}
-        routeSyncing={routeLoading && Boolean(routeData)}
+        routeLoading={routeLoading && !(routeData?.markers?.length)}
+        routeSyncing={routeLoading && Boolean(routeData?.markers?.length)}
         routeError={routeError}
         onRetry={loadRoute}
         drawerOpen
         mapHeight="520px"
         dateInputId="page-route-date"
         mapScopeKey={scopeKey}
+        showingCached={showingCached}
       />
     </div>
   );

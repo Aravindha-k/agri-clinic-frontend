@@ -5,11 +5,16 @@ import {
   resolveRouteFetchError,
   dayMapScopeKey,
 } from "../../utils/employeeRoute";
+import {
+  dayMapCacheKey,
+  saveDayMapSnapshot,
+  loadDayMapSnapshot,
+} from "../../utils/mapSnapshotCache";
 import EmployeeRouteMapView from "./EmployeeRouteMapView";
 import useTodayAutoSync from "../../hooks/useTodayAutoSync";
 
 /**
- * Route tab in employee drawer — duty day map with single-flight fetch + scope isolation.
+ * Route tab — always keeps last-valid day markers on temporary failures.
  */
 export default function EmployeeRoutePanel({
   userId,
@@ -23,8 +28,14 @@ export default function EmployeeRoutePanel({
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeSyncing, setRouteSyncing] = useState(false);
   const [routeError, setRouteError] = useState("");
+  const [showingCached, setShowingCached] = useState(false);
   const requestSeqRef = useRef(0);
   const scopeRef = useRef("");
+  const routeDataRef = useRef(null);
+
+  useEffect(() => {
+    routeDataRef.current = routeData;
+  }, [routeData]);
 
   const isToday = routeDate === todayIsoDate();
   const scopeKey = dayMapScopeKey({
@@ -33,17 +44,45 @@ export default function EmployeeRoutePanel({
     dutySessionId: routeData?.dutySessionId ?? employee?.duty_session_id ?? null,
   });
 
+  const applyScopedData = useCallback((data, requestScope) => {
+    setRouteData(data);
+    setRouteError("");
+    setShowingCached(false);
+    scopeRef.current = requestScope;
+    if (data?.markers?.length) {
+      saveDayMapSnapshot(
+        dayMapCacheKey({
+          employeeId: userId,
+          businessDate: routeDate,
+          dutySessionId: data.dutySessionId ?? "nosession",
+        }),
+        data
+      );
+    }
+  }, [userId, routeDate]);
+
   const loadRoute = useCallback(
     async (silent = false) => {
       if (!userId) return;
 
       const requestScope = `${userId}|${routeDate}`;
       const seq = ++requestSeqRef.current;
+      const cacheKeyForScope = dayMapCacheKey({
+        employeeId: userId,
+        businessDate: routeDate,
+        dutySessionId: "nosession",
+      });
 
       if (!silent) {
-        // Clear only when employee/date scope changes — never flash default map on silent poll.
         if (scopeRef.current && scopeRef.current !== requestScope) {
-          setRouteData(null);
+          const snap = loadDayMapSnapshot(cacheKeyForScope);
+          if (snap?.routeData?.markers?.length) {
+            setRouteData(snap.routeData);
+            setShowingCached(true);
+          } else {
+            setRouteData(null);
+            setShowingCached(false);
+          }
         }
         scopeRef.current = requestScope;
         setRouteLoading(true);
@@ -54,20 +93,40 @@ export default function EmployeeRoutePanel({
 
       try {
         const data = await getEmployeeDutyRoute(userId, { date: routeDate, isToday });
-        if (seq !== requestSeqRef.current) return; // stale response
+        if (seq !== requestSeqRef.current) return;
         if (`${userId}|${routeDate}` !== requestScope) return;
 
-        setRouteData(data);
-        setRouteError("");
-        scopeRef.current = requestScope;
+        const markers = data?.markers ?? [];
+        if (markers.length === 0) {
+          setRouteData(data ?? { markers: [] });
+          setRouteError("");
+          setShowingCached(false);
+          scopeRef.current = requestScope;
+        } else {
+          applyScopedData(data, requestScope);
+        }
       } catch (err) {
         if (seq !== requestSeqRef.current) return;
-        if (!silent) {
-          // Authoritative failure for this scope — clear markers.
-          setRouteData(null);
-          setRouteError(resolveRouteFetchError(err));
+        if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") return;
+
+        setRouteError(resolveRouteFetchError(err));
+        const current = routeDataRef.current;
+        if (!current?.markers?.length) {
+          const snap =
+            loadDayMapSnapshot(
+              dayMapCacheKey({
+                employeeId: userId,
+                businessDate: routeDate,
+                dutySessionId: current?.dutySessionId ?? "nosession",
+              })
+            ) || loadDayMapSnapshot(cacheKeyForScope);
+          if (snap?.routeData?.markers?.length) {
+            setRouteData(snap.routeData);
+            setShowingCached(true);
+          }
+        } else {
+          setShowingCached(true);
         }
-        // Silent poll keeps existing valid markers on transient errors.
       } finally {
         if (seq === requestSeqRef.current) {
           if (silent) setRouteSyncing(false);
@@ -75,7 +134,7 @@ export default function EmployeeRoutePanel({
         }
       }
     },
-    [userId, routeDate, isToday]
+    [userId, routeDate, isToday, applyScopedData]
   );
 
   useEffect(() => {
@@ -94,9 +153,6 @@ export default function EmployeeRoutePanel({
     onPoll: loadRoute,
   });
 
-  // Hide map only when loading a new scope with no retained markers.
-  const showBlockingLoader = routeLoading && !routeData;
-
   return (
     <EmployeeRouteMapView
       userId={userId}
@@ -104,8 +160,8 @@ export default function EmployeeRoutePanel({
       routeDate={routeDate}
       onRouteDateChange={setRouteDate}
       routeData={routeData}
-      routeLoading={showBlockingLoader}
-      routeSyncing={routeSyncing || (routeLoading && Boolean(routeData))}
+      routeLoading={routeLoading && !(routeData?.markers?.length)}
+      routeSyncing={routeSyncing || (routeLoading && Boolean(routeData?.markers?.length))}
       routeError={routeError}
       onRetry={() => loadRoute(false)}
       autoSyncing={isToday}
@@ -114,6 +170,7 @@ export default function EmployeeRoutePanel({
       showDutyMeta
       variant="tracking-drawer"
       mapScopeKey={scopeKey}
+      showingCached={showingCached}
     />
   );
 }

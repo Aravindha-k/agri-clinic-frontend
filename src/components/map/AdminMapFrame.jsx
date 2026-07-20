@@ -1,35 +1,58 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback, Component } from "react";
 import { MapContainer, ZoomControl } from "react-leaflet";
 import MapBasemapLayers from "./MapBasemapLayers";
 import MapFullscreenButton from "./MapFullscreenButton";
 import MapLegendPanel from "./MapLegendPanel";
+import MapStatusOverlay from "./MapStatusOverlay";
 import { DEFAULT_ADMIN_MAP_BASEMAP } from "../../config/mapBasemap";
-import { PageLoader } from "../ui/command";
-import ErrorRetry from "../ui/ErrorRetry";
+import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
 
 /**
- * Shared admin map shell: modern controls, basemap toggle, fullscreen, legend, overlays.
- *
- * @param {{
- *   center: [number, number],
- *   zoom: number,
- *   mapKey?: string,
- *   height?: string | number,
- *   className?: string,
- *   mapClassName?: string,
- *   scrollWheelZoom?: boolean,
- *   legend?: import('react').ReactNode,
- *   legendTitle?: string,
- *   showTypeToggle?: boolean, // hidden — satellite-only for now
- *   showFullscreen?: boolean,
- *   showZoomControl?: boolean,
- *   loading?: boolean,
- *   loadingLabel?: string,
- *   error?: string | null,
- *   onRetry?: () => void,
- *   empty?: { title: string, subtitle?: string, action?: import('react').ReactNode } | null,
- *   children: import('react').ReactNode,
- * }} props
+ * Catch Leaflet/React-Leaflet render failures and offer a single remount retry.
+ */
+class MapErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    /* swallow — fallback UI handles it */
+  }
+
+  reset = () => {
+    this.setState({ failed: false });
+    this.props.onRetry?.();
+  };
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="admin-map-frame__crash">
+          <p className="admin-map-empty__title">Map could not be loaded.</p>
+          <p className="admin-map-empty__subtitle">
+            The map view failed to start. You can retry without leaving this page.
+          </p>
+          <div className="admin-map-empty__action flex flex-wrap gap-2 justify-center">
+            <button type="button" className="btn btn-primary btn-sm" onClick={this.reset}>
+              Retry Map
+            </button>
+            {this.props.fallbackAction}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * Shared admin map shell — MapContainer always mounts.
+ * Loading / empty / error are overlays; never replace the map.
  */
 export default function AdminMapFrame({
   center,
@@ -45,17 +68,35 @@ export default function AdminMapFrame({
   showFullscreen = true,
   showZoomControl = true,
   loading = false,
-  loadingLabel = "Loading map…",
+  loadingLabel = "Updating map…",
   error = null,
   onRetry,
   empty = null,
+  statusMessage = null,
+  statusTone = "info",
+  statusDetail = null,
+  fallbackAction = null,
   children,
 }) {
+  void showTypeToggle;
   const containerRef = useRef(null);
   const mapType = DEFAULT_ADMIN_MAP_BASEMAP;
   const [basemapFallback, setBasemapFallback] = useState(false);
+  const [remountKey, setRemountKey] = useState(0);
 
-  const showMap = !loading && !error && !empty;
+  const handleMapRetry = useCallback(() => {
+    setRemountKey((n) => n + 1);
+    onRetry?.();
+  }, [onRetry]);
+
+  const mapCenter =
+    Array.isArray(center) &&
+    Number.isFinite(Number(center[0])) &&
+    Number.isFinite(Number(center[1]))
+      ? center
+      : TAMIL_NADU_CENTER;
+  const mapZoom = Number.isFinite(Number(zoom)) ? Number(zoom) : TAMIL_NADU_ZOOM;
+  const leafletKey = `${mapKey ?? "admin-map"}-r${remountKey}`;
 
   return (
     <div
@@ -65,11 +106,11 @@ export default function AdminMapFrame({
       data-basemap={mapType}
       data-basemap-fallback={basemapFallback ? "true" : "false"}
     >
-      {showMap ? (
+      <MapErrorBoundary onRetry={handleMapRetry} fallbackAction={fallbackAction}>
         <MapContainer
-          key={mapKey}
-          center={center}
-          zoom={zoom}
+          key={leafletKey}
+          center={mapCenter}
+          zoom={mapZoom}
           scrollWheelZoom={scrollWheelZoom}
           zoomControl={false}
           className={`admin-map-frame__leaflet z-0 ${mapClassName}`}
@@ -82,48 +123,60 @@ export default function AdminMapFrame({
           {showZoomControl ? <ZoomControl position="topright" /> : null}
           {children}
         </MapContainer>
-      ) : (
-        <div className="admin-map-frame__placeholder" />
-      )}
+      </MapErrorBoundary>
 
-      {showFullscreen && showMap ? (
+      {showFullscreen ? (
         <MapFullscreenButton containerRef={containerRef} />
       ) : null}
 
-      {legend && showMap ? (
-        <MapLegendPanel title={legendTitle}>{legend}</MapLegendPanel>
-      ) : null}
+      {legend ? <MapLegendPanel title={legendTitle}>{legend}</MapLegendPanel> : null}
 
-      {basemapFallback && showMap ? (
+      {basemapFallback ? (
         <div className="admin-map-basemap-notice" role="status">
           Satellite tiles unavailable — showing street map
         </div>
       ) : null}
 
       {loading ? (
-        <div className="admin-map-overlay">
-          <PageLoader label={loadingLabel} compact wrap={false} />
-        </div>
+        <MapStatusOverlay tone="info" message={loadingLabel} />
       ) : null}
 
-      {error ? (
-        <div className="admin-map-overlay admin-map-overlay--error">
-          <ErrorRetry compact message={error} onRetry={onRetry} />
-        </div>
+      {!loading && statusMessage ? (
+        <MapStatusOverlay
+          tone={statusTone}
+          message={statusMessage}
+          detail={statusDetail}
+          action={
+            onRetry ? (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+                Retry
+              </button>
+            ) : null
+          }
+        />
       ) : null}
 
-      {empty ? (
-        <div className="admin-map-overlay admin-map-overlay--empty">
-          <div className="admin-map-empty">
-            <p className="admin-map-empty__title">{empty.title}</p>
-            {empty.subtitle ? (
-              <p className="admin-map-empty__subtitle">{empty.subtitle}</p>
-            ) : null}
-            {empty.action ? (
-              <div className="admin-map-empty__action">{empty.action}</div>
-            ) : null}
-          </div>
-        </div>
+      {!loading && !statusMessage && error ? (
+        <MapStatusOverlay
+          tone="error"
+          message={typeof error === "string" ? error : "Live updates are temporarily unavailable."}
+          action={
+            onRetry ? (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+                Retry
+              </button>
+            ) : null
+          }
+        />
+      ) : null}
+
+      {!loading && !statusMessage && !error && empty ? (
+        <MapStatusOverlay
+          tone="info"
+          message={empty.title}
+          detail={empty.subtitle}
+          action={empty.action}
+        />
       ) : null}
     </div>
   );
