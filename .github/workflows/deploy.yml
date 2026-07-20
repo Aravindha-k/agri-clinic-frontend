@@ -25,12 +25,14 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           printf '%s\n' "$EXPECTED_SHA" > .github-deploy-sha
           git log -1 --oneline > .github-deploy-log
-          tar -czf agri-admin-src.tgz \
-            --exclude=./agri-admin-src.tgz \
+          # Write archive outside the tree so tar does not error with
+          # "file changed as we read it" under set -e.
+          tar -czf /tmp/agri-admin-src.tgz \
             --exclude=./node_modules \
             --exclude=./dist \
             --exclude=./.git \
             .
+          mv /tmp/agri-admin-src.tgz "${GITHUB_WORKSPACE}/agri-admin-src.tgz"
           ls -lh agri-admin-src.tgz .github-deploy-sha
           echo "Packed SHA: $(cat .github-deploy-sha)"
 
