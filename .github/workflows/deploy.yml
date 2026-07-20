@@ -43,49 +43,52 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "agri-admin-src.tgz"
-          target: "/tmp/"
+          target: "/tmp/agri-admin-deploy/"
           overwrite: true
 
       - name: Build and activate on EC2
+        id: remote_deploy
         uses: appleboy/ssh-action@v1.2.5
-        env:
-          EXPECTED_SHA: ${{ github.sha }}
-          VITE_API_BASE_URL: http://13.207.17.117
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 20m
-          envs: EXPECTED_SHA,VITE_API_BASE_URL
+          capture_stdout: true
           script: |
             set -Eeuo pipefail
             trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
 
+            EXPECTED_SHA='${{ github.sha }}'
+            VITE_API_BASE_URL='http://13.207.17.117'
+            export VITE_API_BASE_URL
+
             EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
             APP_DIR="/var/www/agri-admin/agri-clinic-frontend"
-            export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://13.207.17.117}"
-
-            if [ -z "${EXPECTED_SHA:-}" ]; then
-              echo "EXPECTED_SHA is empty; refusing to deploy"
-              exit 1
-            fi
 
             echo "==> Deploying admin frontend"
             echo "Expected SHA: ${EXPECTED_SHA}"
 
-            test -f /tmp/agri-admin-src.tgz
+            SRC_TGZ="/tmp/agri-admin-deploy/agri-admin-src.tgz"
+            if [ ! -f "$SRC_TGZ" ]; then
+              SRC_TGZ="$(find /tmp -name 'agri-admin-src.tgz' -type f -print -quit || true)"
+            fi
+            if [ -z "${SRC_TGZ}" ] || [ ! -f "$SRC_TGZ" ]; then
+              echo "Uploaded source archive not found under /tmp"
+              ls -la /tmp /tmp/agri-admin-deploy 2>/dev/null || true
+              exit 1
+            fi
+            echo "Using source archive: $SRC_TGZ"
 
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
-            # Preserve untracked local env overrides (not in git)
             if [ -f .env.local ]; then
               cp .env.local /tmp/agri-admin-env.local.bak
             fi
 
-            # Replace app source with the exact GitHub SHA packed by Actions
             find . -mindepth 1 -maxdepth 1 ! -name 'node_modules' ! -name '.env.local' -exec rm -rf {} +
-            tar -xzf /tmp/agri-admin-src.tgz -C "$APP_DIR"
+            tar -xzf "$SRC_TGZ" -C "$APP_DIR"
 
             if [ -f /tmp/agri-admin-env.local.bak ]; then
               mv /tmp/agri-admin-env.local.bak .env.local
@@ -102,7 +105,6 @@ jobs:
 
             echo "Deployed commit:"
             cat .github-deploy-log
-            echo "Working tree markers:"
             ls -la .github-deploy-sha .env.production package.json package-lock.json
 
             echo "==> Clean production build"
@@ -113,7 +115,6 @@ jobs:
             test -f dist/index.html
             test -d dist/assets
 
-            # Avoid grep|head SIGPIPE under pipefail
             BUILT_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' dist/index.html)"
             if [ -z "$BUILT_JS" ]; then
               echo "Built JS asset not found"
@@ -172,7 +173,7 @@ jobs:
               exit 1
             fi
 
-            rm -f /tmp/agri-admin-src.tgz
+            rm -f "$SRC_TGZ"
 
             DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
             echo ""
@@ -184,3 +185,21 @@ jobs:
             echo "API base URL: $VITE_API_BASE_URL"
             echo "Nginx root: $EXPECTED_ROOT"
             echo "Deployment time: $DEPLOY_TIME"
+
+      - name: Publish remote deploy log
+        if: always() && steps.remote_deploy.outcome != 'skipped'
+        env:
+          REMOTE_STDOUT: ${{ steps.remote_deploy.outputs.stdout }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## EC2 deploy output"
+            echo '```'
+            echo "$REMOTE_STDOUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$REMOTE_STDOUT"
+          if [ "${{ steps.remote_deploy.outcome }}" != "success" ]; then
+            echo "::error::EC2 deploy failed. See job summary for remote stdout."
+            exit 1
+          fi
