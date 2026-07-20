@@ -3,9 +3,10 @@ import { useMap } from "react-leaflet";
 import { fitEmployeeBounds } from "../../utils/mapCoordinates";
 
 /**
- * Fit map to route polyline after drawer/tab open (Leaflet needs invalidateSize).
+ * Fit map to day markers once per marker identity set.
+ * Does not refit on silent heartbeat polls when the marker set is unchanged.
  */
-export default function MapRouteViewport({ points, drawerOpen = true }) {
+export default function MapRouteViewport({ points, drawerOpen = true, fitKey = "" }) {
   const map = useMap();
   const prevSig = useRef("");
 
@@ -17,7 +18,8 @@ export default function MapRouteViewport({ points, drawerOpen = true }) {
       lng: p.longitude ?? p.lng,
     }));
 
-    const sig = locations.map((l) => `${l.lat},${l.lng}`).join("|");
+    const coordSig = locations.map((l) => `${Number(l.lat).toFixed(5)},${Number(l.lng).toFixed(5)}`).join("|");
+    const sig = fitKey ? `${fitKey}::${coordSig}` : coordSig;
     if (sig === prevSig.current && map.getZoom() > 1) return;
     prevSig.current = sig;
 
@@ -31,7 +33,7 @@ export default function MapRouteViewport({ points, drawerOpen = true }) {
     }, 150);
 
     return () => window.clearTimeout(timer);
-  }, [map, points, drawerOpen]);
+  }, [map, points, drawerOpen, fitKey]);
 
   return null;
 }

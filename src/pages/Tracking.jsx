@@ -222,7 +222,7 @@ function EmployeeRosterCard({ emp, onView }) {
     );
 }
 
-const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess }) => {
+const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRefreshToken = 0 }) => {
     const [activeTab, setActiveTab] = useState("summary");
     const [confirmEnd, setConfirmEnd] = useState(false);
     const [ending, setEnding] = useState(false);
@@ -363,6 +363,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess }) => {
                                     employee={employee}
                                     isActive={activeTab === "route"}
                                     drawerOpen={isOpen}
+                                    refreshToken={routeRefreshToken}
                                 />
                             ) : (
                                 <div className="space-y-4">
@@ -475,6 +476,7 @@ export default function Tracking() {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
+    const [routeRefreshToken, setRouteRefreshToken] = useState(0);
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
@@ -614,6 +616,7 @@ export default function Tracking() {
                     end_reason: reason ?? "ADMIN_ENDED",
                 };
             });
+            setRouteRefreshToken((n) => n + 1);
             loadData(true);
         },
         [loadData]
@@ -890,6 +893,7 @@ export default function Tracking() {
                 isOpen={drawerOpen}
                 onClose={closeDrawer}
                 onForceEndSuccess={handleForceEndSuccess}
+                routeRefreshToken={routeRefreshToken}
             />
         </>
     );

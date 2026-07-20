@@ -191,7 +191,9 @@ export function formatRouteTimestamp(value) {
 
 /**
  * Build Start / Visit / End markers for admin day map (matches mobile Day map).
- * End marker only when backend provides real end coordinates.
+ * - Start: backend canonical start only (never invent from live GPS trail)
+ * - Visits: submitted only, deduped by visit ID / local_sync_id
+ * - End: only when backend provides real end coordinates
  */
 export function extractDayMapMarkers({
   stops = [],
@@ -202,14 +204,42 @@ export function extractDayMapMarkers({
 } = {}) {
   const markers = [];
   const seenVisitKeys = new Set();
+  let hasStart = false;
+  let hasEnd = false;
 
   const pushMarker = (type, lat, lng, extra = {}) => {
-    if (!isValidRouteCoordinate(lat, lng)) return;
-    if (type === "visit") {
-      const key = `${extra.visitId ?? extra.id ?? ""}:${lat.toFixed(5)},${lng.toFixed(5)}`;
-      if (seenVisitKeys.has(key)) return;
-      seenVisitKeys.add(key);
+    if (!isValidRouteCoordinate(lat, lng)) return false;
+
+    if (type === "start") {
+      if (hasStart) return false;
+      hasStart = true;
     }
+    if (type === "end") {
+      if (hasEnd) return false;
+      hasEnd = true;
+    }
+    if (type === "visit") {
+      const idKey =
+        extra.visitId != null && String(extra.visitId) !== ""
+          ? `id:${extra.visitId}`
+          : null;
+      const syncKey =
+        extra.localSyncId != null && String(extra.localSyncId) !== ""
+          ? `sync:${extra.localSyncId}`
+          : null;
+      const coordKey = `coord:${lat.toFixed(5)},${lng.toFixed(5)}`;
+      if (
+        (idKey && seenVisitKeys.has(idKey)) ||
+        (syncKey && seenVisitKeys.has(syncKey)) ||
+        (!idKey && !syncKey && seenVisitKeys.has(coordKey))
+      ) {
+        return false;
+      }
+      if (idKey) seenVisitKeys.add(idKey);
+      if (syncKey) seenVisitKeys.add(syncKey);
+      if (!idKey && !syncKey) seenVisitKeys.add(coordKey);
+    }
+
     markers.push({
       type,
       latitude: lat,
@@ -218,26 +248,46 @@ export function extractDayMapMarkers({
       lng,
       ...extra,
     });
+    return true;
+  };
+
+  const isDraftOrPending = (row) => {
+    const status = String(row?.status ?? row?.sync_status ?? row?.visit_status ?? "")
+      .trim()
+      .toLowerCase();
+    if (!status) return false;
+    return (
+      status === "draft" ||
+      status === "pending" ||
+      status === "local" ||
+      status === "unsynced" ||
+      status === "in_progress"
+    );
   };
 
   const typedStops = Array.isArray(stops) ? stops : [];
   for (const stop of typedStops) {
     if (!stop || typeof stop !== "object") continue;
+    if (isDraftOrPending(stop)) continue;
+
     const kind = String(stop.type ?? stop.marker_type ?? stop.kind ?? stop.stop_type ?? "")
       .trim()
       .toLowerCase();
     const lat = parseCoord(stop.latitude ?? stop.lat);
     const lng = parseCoord(stop.longitude ?? stop.lng);
+
     if (kind === "start" || kind === "duty_start" || kind === "workday_start") {
       pushMarker("start", lat, lng, {
         label: "Start",
         captured_at: stop.captured_at ?? stop.timestamp ?? startTime,
+        dutySessionId: stop.duty_session_id ?? meta.duty_session_id ?? null,
       });
     } else if (kind === "end" || kind === "duty_end" || kind === "workday_end") {
       pushMarker("end", lat, lng, {
         label: "End",
         captured_at: stop.captured_at ?? stop.timestamp ?? endTime,
-        endReason: stop.end_reason ?? meta.end_reason ?? null,
+        endReason: stop.end_reason ?? meta.end_reason ?? meta.duty_end_reason ?? null,
+        dutySessionId: stop.duty_session_id ?? meta.duty_session_id ?? null,
       });
     } else if (
       kind === "visit" ||
@@ -250,47 +300,84 @@ export function extractDayMapMarkers({
         visitId: stop.visit_id ?? stop.id ?? null,
         localSyncId: stop.local_sync_id ?? null,
         captured_at: stop.captured_at ?? stop.submitted_at ?? stop.timestamp ?? null,
+        dutySessionId: stop.duty_session_id ?? meta.duty_session_id ?? null,
       });
     }
   }
 
-  if (!markers.some((m) => m.type === "start")) {
+  // Submitted visits array (when backend separates markers from GPS trail)
+  const visitRows = Array.isArray(meta.visits)
+    ? meta.visits
+    : Array.isArray(meta.submitted_visits)
+      ? meta.submitted_visits
+      : [];
+  for (const visit of visitRows) {
+    if (!visit || typeof visit !== "object" || isDraftOrPending(visit)) continue;
+    const lat = parseCoord(visit.latitude ?? visit.lat ?? visit.gps_latitude);
+    const lng = parseCoord(visit.longitude ?? visit.lng ?? visit.gps_longitude);
+    pushMarker("visit", lat, lng, {
+      label: visit.label ?? visit.farmer_name ?? "Visit",
+      visitId: visit.visit_id ?? visit.id ?? null,
+      localSyncId: visit.local_sync_id ?? null,
+      captured_at: visit.captured_at ?? visit.submitted_at ?? visit.created_at ?? null,
+      dutySessionId: visit.duty_session_id ?? meta.duty_session_id ?? null,
+    });
+  }
+
+  if (!hasStart) {
     const startLat = parseCoord(
-      meta.start_latitude ?? meta.duty_start_latitude ?? meta.start_lat
+      meta.start_latitude ??
+        meta.duty_start_latitude ??
+        meta.start_lat ??
+        meta.started_latitude
     );
     const startLng = parseCoord(
-      meta.start_longitude ?? meta.duty_start_longitude ?? meta.start_lng
+      meta.start_longitude ??
+        meta.duty_start_longitude ??
+        meta.start_lng ??
+        meta.started_longitude
     );
+    // Canonical backend start only — never invent from GPS trail / live heartbeat.
     if (isValidRouteCoordinate(startLat, startLng)) {
       pushMarker("start", startLat, startLng, {
         label: "Start",
         captured_at: startTime,
-      });
-    } else if (points.length > 0 && startTime) {
-      pushMarker("start", points[0].latitude, points[0].longitude, {
-        label: "Start",
-        captured_at: startTime,
+        dutySessionId: meta.duty_session_id ?? meta.dutySessionId ?? null,
       });
     }
   }
 
-  if (!markers.some((m) => m.type === "end") && endTime) {
+  if (!hasEnd && (endTime || meta.end_reason || meta.duty_end_reason || meta.duty_ended_at)) {
     const endLat = parseCoord(
-      meta.end_latitude ?? meta.duty_end_latitude ?? meta.end_lat
+      meta.end_latitude ?? meta.duty_end_latitude ?? meta.end_lat ?? meta.ended_latitude
     );
     const endLng = parseCoord(
-      meta.end_longitude ?? meta.duty_end_longitude ?? meta.end_lng
+      meta.end_longitude ?? meta.duty_end_longitude ?? meta.end_lng ?? meta.ended_longitude
     );
+    // End only when backend supplies real end coordinates (auto-end or force-end).
     if (isValidRouteCoordinate(endLat, endLng)) {
       pushMarker("end", endLat, endLng, {
         label: "End",
         captured_at: endTime,
         endReason: meta.end_reason ?? meta.duty_end_reason ?? null,
+        dutySessionId: meta.duty_session_id ?? meta.dutySessionId ?? null,
       });
     }
   }
 
+  // `points` (raw GPS trail) intentionally unused for markers.
+  void points;
+
   return markers;
+}
+
+/** Stable cache/state key for day-map scope isolation. */
+export function dayMapScopeKey({ userId, date, dutySessionId } = {}) {
+  return [
+    String(userId ?? "none"),
+    String(date ?? "none"),
+    String(dutySessionId ?? "nosession"),
+  ].join("|");
 }
 
 export const ROUTE_EMPTY_MESSAGE =

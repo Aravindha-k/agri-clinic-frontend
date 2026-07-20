@@ -14,6 +14,7 @@ import {
 import {
   todayIsoDate,
   resolveRouteFetchError,
+  dayMapScopeKey,
 } from "../utils/employeeRoute";
 import { empName } from "../utils/trackingDisplay";
 
@@ -28,7 +29,8 @@ export default function EmployeeRoutes() {
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState("");
-  const inFlightRef = useRef(false);
+  const requestSeqRef = useRef(0);
+  const scopeRef = useRef("");
 
   const loadEmployees = useCallback(async () => {
     setListLoading(true);
@@ -66,12 +68,17 @@ export default function EmployeeRoutes() {
 
   const loadRoute = useCallback(async () => {
     if (!selectedUserId) return;
-    if (inFlightRef.current) return;
 
-    inFlightRef.current = true;
+    const requestScope = `${selectedUserId}|${routeDate}`;
+    const seq = ++requestSeqRef.current;
+
+    // Clear previous employee/date markers immediately to prevent cache bleed.
+    if (scopeRef.current && scopeRef.current !== requestScope) {
+      setRouteData(null);
+    }
+    scopeRef.current = requestScope;
     setRouteLoading(true);
     setRouteError("");
-    setRouteData(null);
 
     try {
       const isToday = routeDate === todayIsoDate();
@@ -79,18 +86,31 @@ export default function EmployeeRoutes() {
         date: routeDate,
         isToday,
       });
+      if (seq !== requestSeqRef.current) return;
+      if (`${selectedUserId}|${routeDate}` !== requestScope) return;
       setRouteData(data);
     } catch (err) {
+      if (seq !== requestSeqRef.current) return;
+      setRouteData(null);
       setRouteError(resolveRouteFetchError(err));
     } finally {
-      inFlightRef.current = false;
-      setRouteLoading(false);
+      if (seq === requestSeqRef.current) {
+        setRouteLoading(false);
+      }
     }
   }, [selectedUserId, routeDate]);
 
   useEffect(() => {
     if (selectedUserId) loadRoute();
   }, [selectedUserId, routeDate, loadRoute]);
+
+  const scopeKey = dayMapScopeKey({
+    userId: selectedUserId,
+    date: routeDate,
+    dutySessionId: routeData?.dutySessionId ?? selectedEmployee?.duty_session_id ?? null,
+  });
+
+  const showBlockingLoader = routeLoading && !routeData;
 
   if (listLoading && employees.length === 0) {
     return <RouteFallback label="Loading route history\u2026" />;
@@ -155,12 +175,14 @@ export default function EmployeeRoutes() {
         routeDate={routeDate}
         onRouteDateChange={setRouteDate}
         routeData={routeData}
-        routeLoading={routeLoading}
+        routeLoading={showBlockingLoader}
+        routeSyncing={routeLoading && Boolean(routeData)}
         routeError={routeError}
         onRetry={loadRoute}
         drawerOpen
         mapHeight="520px"
         dateInputId="page-route-date"
+        mapScopeKey={scopeKey}
       />
     </div>
   );

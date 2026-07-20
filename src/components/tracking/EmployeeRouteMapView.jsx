@@ -65,6 +65,7 @@ export default function EmployeeRouteMapView({
   dateInputId = "route-date",
   showDutyMeta = false,
   variant = "default",
+  mapScopeKey = null,
 }) {
   const markers = routeData?.markers ?? [];
   const markerCount = markers.length;
@@ -84,14 +85,17 @@ export default function EmployeeRouteMapView({
     [markers]
   );
 
-  const mapKey = [
-    "day",
-    userId ?? "none",
-    routeDate ?? "none",
-    routeData?.dutySessionId ?? "nosession",
-  ].join("-");
+  const mapKey =
+    mapScopeKey ||
+    [
+      "day",
+      userId ?? "none",
+      routeDate ?? "none",
+      routeData?.dutySessionId ?? "nosession",
+    ].join("-");
 
-  const mapReady = drawerOpen && canShowMap && !routeLoading && !routeError;
+  // Keep map mounted while syncing if markers already exist (no TN default flash).
+  const mapReady = drawerOpen && canShowMap && !routeError;
 
   const emptyState = resolveRouteEmptyState(routeData);
   const errorMessage = routeError ? resolveRouteFetchError(routeError) : null;
@@ -139,7 +143,7 @@ export default function EmployeeRouteMapView({
         ) : null}
       </div>
 
-      {routeLoading ? <PageLoader label="Loading route…" compact wrap={false} /> : null}
+      {routeLoading && !canShowMap ? <PageLoader label="Loading route…" compact wrap={false} /> : null}
 
       {!routeLoading && errorMessage ? (
         <ErrorRetry compact message={errorMessage} onRetry={onRetry} />
@@ -194,10 +198,10 @@ export default function EmployeeRouteMapView({
           loading={!mapReady}
           loadingLabel="Preparing map…"
         >
-          <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} />
+          <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
           {markers.map((marker, idx) => (
             <Marker
-              key={`${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}-${marker.latitude}-${marker.longitude}`}
+              key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
               position={[marker.latitude, marker.longitude]}
               icon={routeIcon(MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit, marker.type === "visit" ? 16 : 18)}
             >
