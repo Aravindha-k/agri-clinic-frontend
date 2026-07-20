@@ -17,189 +17,174 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 1
 
-      - name: Pack source for EC2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Clean production build
         env:
+          VITE_API_BASE_URL: http://13.207.17.117
           EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -Eeuo pipefail
+          trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
+
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          printf '%s\n' "$EXPECTED_SHA" > .github-deploy-sha
-          git log -1 --oneline > .github-deploy-log
-          # Write archive outside the tree so tar does not error with
-          # "file changed as we read it" under set -e.
-          tar -czf /tmp/agri-admin-src.tgz \
-            --exclude=./node_modules \
-            --exclude=./dist \
-            --exclude=./.git \
-            .
-          mv /tmp/agri-admin-src.tgz "${GITHUB_WORKSPACE}/agri-admin-src.tgz"
-          ls -lh agri-admin-src.tgz .github-deploy-sha
-          echo "Packed SHA: $(cat .github-deploy-sha)"
+          git log -1 --oneline
+          git status --short
 
-      - name: Upload source to EC2
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "agri-admin-src.tgz"
-          target: "/tmp/agri-admin-deploy/"
-          overwrite: true
+          rm -rf dist
+          npm ci
+          npm run build
 
-      - name: Build and activate on EC2
-        id: remote_deploy
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 20m
-          capture_stdout: true
-          script: |
-            set -Eeuo pipefail
-            trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
+          test -f dist/index.html
+          test -d dist/assets
 
-            EXPECTED_SHA='${{ github.sha }}'
-            VITE_API_BASE_URL='http://13.207.17.117'
-            export VITE_API_BASE_URL
-
-            EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
-            APP_DIR="/var/www/agri-admin/agri-clinic-frontend"
-
-            echo "==> Deploying admin frontend"
-            echo "Expected SHA: ${EXPECTED_SHA}"
-
-            SRC_TGZ="/tmp/agri-admin-deploy/agri-admin-src.tgz"
-            if [ ! -f "$SRC_TGZ" ]; then
-              SRC_TGZ="$(find /tmp -name 'agri-admin-src.tgz' -type f -print -quit || true)"
-            fi
-            if [ -z "${SRC_TGZ}" ] || [ ! -f "$SRC_TGZ" ]; then
-              echo "Uploaded source archive not found under /tmp"
-              ls -la /tmp /tmp/agri-admin-deploy 2>/dev/null || true
-              exit 1
-            fi
-            echo "Using source archive: $SRC_TGZ"
-
-            mkdir -p "$APP_DIR"
-            cd "$APP_DIR"
-
-            if [ -f .env.local ]; then
-              cp .env.local /tmp/agri-admin-env.local.bak
-            fi
-
-            find . -mindepth 1 -maxdepth 1 ! -name 'node_modules' ! -name '.env.local' -exec rm -rf {} +
-            tar -xzf "$SRC_TGZ" -C "$APP_DIR"
-
-            if [ -f /tmp/agri-admin-env.local.bak ]; then
-              mv /tmp/agri-admin-env.local.bak .env.local
-            fi
-
-            test -f .github-deploy-sha
-            ACTUAL_SHA="$(tr -d '[:space:]' < .github-deploy-sha)"
-            if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-              echo "Commit mismatch"
-              echo "Expected: $EXPECTED_SHA"
-              echo "Actual:   $ACTUAL_SHA"
-              exit 1
-            fi
-
-            echo "Deployed commit:"
-            cat .github-deploy-log
-            ls -la .github-deploy-sha .env.production package.json package-lock.json
-
-            echo "==> Clean production build"
-            rm -rf dist
-            npm ci
-            npm run build
-
-            test -f dist/index.html
-            test -d dist/assets
-
-            BUILT_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' dist/index.html)"
-            if [ -z "$BUILT_JS" ]; then
-              echo "Built JS asset not found"
-              exit 1
-            fi
-            test -f "dist${BUILT_JS}"
-            echo "Built asset: $BUILT_JS"
-
-            echo "==> Verify latest map UI markers in build"
-            if ! grep -R -q "Showing the last known location" dist/assets; then
-              echo "Missing required string: Showing the last known location"
-              exit 1
-            fi
-            if ! grep -R -qE "Waiting for first GPS update|Retry Map|No Start, Visit or End points" dist/assets; then
-              echo "Missing secondary map UI marker strings"
-              exit 1
-            fi
-
-            echo "==> Verify Nginx root and reload"
-            NGINX_DUMP="$(sudo nginx -T 2>&1)"
-            if ! printf '%s\n' "$NGINX_DUMP" | grep -F -q "$EXPECTED_ROOT"; then
-              echo "Nginx is not configured to serve $EXPECTED_ROOT"
-              echo "---- nginx -T (filtered) ----"
-              printf '%s\n' "$NGINX_DUMP" | grep -E 'root |server_name|listen ' || true
-              exit 1
-            fi
-
-            sudo nginx -t
-            sudo systemctl reload nginx
-            sudo systemctl is-active --quiet nginx
-
-            echo "==> Verify live site serves this build"
-            if ! curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html; then
-              curl -fsS http://127.0.0.1/ -o /tmp/live-index.html
-            fi
-
-            SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
-            if [ -z "$SERVED_JS" ]; then
-              echo "Served JS asset not found in live index.html"
-              exit 1
-            fi
-
-            if [ "$SERVED_JS" != "$BUILT_JS" ]; then
-              echo "Served asset does not match the new build"
-              echo "Built:  $BUILT_JS"
-              echo "Served: $SERVED_JS"
-              exit 1
-            fi
-
-            HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" || true)"
-            if [ "$HTTP_CODE" != "200" ]; then
-              HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1${SERVED_JS}" || true)"
-            fi
-            if [ "$HTTP_CODE" != "200" ]; then
-              echo "Served JS HTTP status was $HTTP_CODE (expected 200)"
-              exit 1
-            fi
-
-            rm -f "$SRC_TGZ"
-
-            DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-            echo ""
-            echo "Deployment successful"
-            echo "Expected SHA: $EXPECTED_SHA"
-            echo "EC2 SHA: $ACTUAL_SHA"
-            echo "Built asset: $BUILT_JS"
-            echo "Served asset: $SERVED_JS"
-            echo "API base URL: $VITE_API_BASE_URL"
-            echo "Nginx root: $EXPECTED_ROOT"
-            echo "Deployment time: $DEPLOY_TIME"
-
-      - name: Publish remote deploy log
-        if: always() && steps.remote_deploy.outcome != 'skipped'
-        env:
-          REMOTE_STDOUT: ${{ steps.remote_deploy.outputs.stdout }}
-        run: |
-          set -Eeuo pipefail
-          {
-            echo "## EC2 deploy output"
-            echo '```'
-            echo "$REMOTE_STDOUT"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "$REMOTE_STDOUT"
-          if [ "${{ steps.remote_deploy.outcome }}" != "success" ]; then
-            echo "::error::EC2 deploy failed. See job summary for remote stdout."
+          BUILT_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' dist/index.html)"
+          if [ -z "$BUILT_JS" ]; then
+            echo "Built JS asset not found"
             exit 1
           fi
+          test -f "dist${BUILT_JS}"
+
+          if ! grep -R -q "Showing the last known location" dist/assets; then
+            echo "Missing required string: Showing the last known location"
+            exit 1
+          fi
+          if ! grep -R -qE "Waiting for first GPS update|Retry Map|No Start, Visit or End points" dist/assets; then
+            echo "Missing secondary map UI marker strings"
+            exit 1
+          fi
+
+          printf '%s\n' "$EXPECTED_SHA" > dist/.deploy-sha
+          printf '%s\n' "$BUILT_JS" > dist/.deploy-asset
+          echo "Built asset: $BUILT_JS"
+          echo "BUILT_JS=$BUILT_JS" >> "$GITHUB_ENV"
+          echo "EXPECTED_SHA=$EXPECTED_SHA" >> "$GITHUB_ENV"
+
+      - name: Configure SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_deploy_key
+          chmod 600 ~/.ssh/ec2_deploy_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "SSH configured for $EC2_HOST"
+
+      - name: Sync dist to EC2 and verify live
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          VITE_API_BASE_URL: http://13.207.17.117
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
+
+          EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
+          SSH=(ssh -i ~/.ssh/ec2_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
+          RSYNC=(rsync -az --delete -e "ssh -i ~/.ssh/ec2_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes")
+          REMOTE="${EC2_USER}@${EC2_HOST}"
+
+          echo "==> Ensure remote dist parent exists"
+          "${SSH[@]}" "$REMOTE" "mkdir -p '$EXPECTED_ROOT'"
+
+          echo "==> Sync production dist to EC2"
+          "${RSYNC[@]}" dist/ "${REMOTE}:${EXPECTED_ROOT}/"
+
+          echo "==> Verify Nginx root, reload, and live assets"
+          "${SSH[@]}" "$REMOTE" "EXPECTED_SHA='$EXPECTED_SHA' BUILT_JS='$BUILT_JS' EXPECTED_ROOT='$EXPECTED_ROOT' VITE_API_BASE_URL='$VITE_API_BASE_URL' bash -s" <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+          trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
+
+          ACTUAL_SHA="$(tr -d '[:space:]' < "$EXPECTED_ROOT/.deploy-sha")"
+          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+            echo "Commit mismatch"
+            echo "Expected: $EXPECTED_SHA"
+            echo "Actual:   $ACTUAL_SHA"
+            exit 1
+          fi
+
+          REMOTE_BUILT_JS="$(tr -d '[:space:]' < "$EXPECTED_ROOT/.deploy-asset")"
+          if [ "$REMOTE_BUILT_JS" != "$BUILT_JS" ]; then
+            echo "Remote asset marker mismatch"
+            echo "Expected: $BUILT_JS"
+            echo "Actual:   $REMOTE_BUILT_JS"
+            exit 1
+          fi
+
+          test -f "$EXPECTED_ROOT/index.html"
+          test -f "$EXPECTED_ROOT${BUILT_JS}"
+
+          if ! grep -R -q "Showing the last known location" "$EXPECTED_ROOT/assets"; then
+            echo "Missing required string on EC2 dist"
+            exit 1
+          fi
+
+          NGINX_DUMP="$(sudo nginx -T 2>&1)"
+          if ! printf '%s\n' "$NGINX_DUMP" | grep -F -q "$EXPECTED_ROOT"; then
+            echo "Nginx is not configured to serve $EXPECTED_ROOT"
+            printf '%s\n' "$NGINX_DUMP" | grep -E 'root |server_name|listen ' || true
+            exit 1
+          fi
+
+          sudo nginx -t
+          sudo systemctl reload nginx
+          sudo systemctl is-active --quiet nginx
+
+          if ! curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html; then
+            curl -fsS http://127.0.0.1/ -o /tmp/live-index.html
+          fi
+
+          SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
+          if [ -z "$SERVED_JS" ]; then
+            echo "Served JS asset not found in live index.html"
+            exit 1
+          fi
+
+          if [ "$SERVED_JS" != "$BUILT_JS" ]; then
+            echo "Served asset does not match the new build"
+            echo "Built:  $BUILT_JS"
+            echo "Served: $SERVED_JS"
+            exit 1
+          fi
+
+          HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" || true)"
+          if [ "$HTTP_CODE" != "200" ]; then
+            HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1${SERVED_JS}" || true)"
+          fi
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Served JS HTTP status was $HTTP_CODE (expected 200)"
+            exit 1
+          fi
+
+          DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo ""
+          echo "Deployment successful"
+          echo "Expected SHA: $EXPECTED_SHA"
+          echo "EC2 SHA: $ACTUAL_SHA"
+          echo "Built asset: $BUILT_JS"
+          echo "Served asset: $SERVED_JS"
+          echo "API base URL: $VITE_API_BASE_URL"
+          echo "Nginx root: $EXPECTED_ROOT"
+          echo "Deployment time: $DEPLOY_TIME"
+          REMOTE_SCRIPT
+
+          echo "==> External confirmation from public host"
+          LIVE_HTML="$(mktemp)"
+          curl -fsS -H "Cache-Control: no-cache" "http://${EC2_HOST}/" -o "$LIVE_HTML"
+          SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' "$LIVE_HTML")"
+          echo "Public served asset: $SERVED_JS"
+          if [ "$SERVED_JS" != "$BUILT_JS" ]; then
+            echo "Public site still serving old asset"
+            echo "Built:  $BUILT_JS"
+            echo "Served: $SERVED_JS"
+            exit 1
+          fi
+          curl -fsS -o /dev/null "http://${EC2_HOST}${SERVED_JS}"
+
+          echo "Public verification passed for $EXPECTED_SHA ($BUILT_JS)"
