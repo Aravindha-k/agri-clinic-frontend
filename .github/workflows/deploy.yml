@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -11,14 +12,114 @@ jobs:
 
     steps:
       - name: Deploy Admin
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          VITE_API_BASE_URL: http://13.207.17.117
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
+          envs: EXPECTED_SHA,VITE_API_BASE_URL
           script: |
-            cd /var/www/agri-admin/agri-clinic-frontend
-            git pull origin main
-            npm install
+            set -Eeuo pipefail
+            trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
+
+            EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
+            APP_DIR="/var/www/agri-admin/agri-clinic-frontend"
+            export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://13.207.17.117}"
+
+            echo "==> Deploying admin frontend"
+            echo "Expected SHA: ${EXPECTED_SHA}"
+
+            cd "$APP_DIR"
+
+            # Preserve untracked local env overrides (not in git)
+            if [ -f .env.local ]; then
+              cp .env.local /tmp/agri-admin-env.local.bak
+            fi
+
+            git fetch --prune origin
+            git checkout main
+            git reset --hard "$EXPECTED_SHA"
+
+            if [ -f /tmp/agri-admin-env.local.bak ]; then
+              mv /tmp/agri-admin-env.local.bak .env.local
+            fi
+
+            ACTUAL_SHA="$(git rev-parse HEAD)"
+            if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+              echo "Commit mismatch"
+              echo "Expected: $EXPECTED_SHA"
+              echo "Actual:   $ACTUAL_SHA"
+              exit 1
+            fi
+
+            git log -1 --oneline
+            git status --short
+
+            echo "==> Clean production build"
+            rm -rf dist
+            npm ci
             npm run build
-            sudo systemctl restart nginx
+
+            test -f dist/index.html
+            test -d dist/assets
+
+            BUILT_JS="$(grep -oE '/assets/index-[^"]+\.js' dist/index.html | head -1)"
+            if [ -z "$BUILT_JS" ]; then
+              echo "Built JS asset not found"
+              exit 1
+            fi
+            test -f "dist${BUILT_JS}"
+
+            echo "==> Verify latest map UI markers in build"
+            if ! grep -R -q "Showing the last known location" dist/assets; then
+              echo "Missing required string: Showing the last known location"
+              exit 1
+            fi
+            if ! grep -R -qE "Waiting for first GPS update|Retry Map|No Start, Visit or End points" dist/assets; then
+              echo "Missing secondary map UI marker strings"
+              exit 1
+            fi
+
+            echo "==> Verify Nginx root and reload"
+            NGINX_DUMP="$(sudo nginx -T 2>&1)"
+            if ! printf '%s\n' "$NGINX_DUMP" | grep -q "$EXPECTED_ROOT"; then
+              echo "Nginx is not configured to serve $EXPECTED_ROOT"
+              exit 1
+            fi
+
+            sudo nginx -t
+            sudo systemctl reload nginx
+            sudo systemctl is-active --quiet nginx
+
+            echo "==> Verify live site serves this build"
+            curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html
+
+            SERVED_JS="$(grep -oE '/assets/index-[^"]+\.js' /tmp/live-index.html | head -1)"
+            if [ -z "$SERVED_JS" ]; then
+              echo "Served JS asset not found in live index.html"
+              exit 1
+            fi
+
+            if [ "$SERVED_JS" != "$BUILT_JS" ]; then
+              echo "Served asset does not match the new build"
+              echo "Built:  $BUILT_JS"
+              echo "Served: $SERVED_JS"
+              exit 1
+            fi
+
+            curl -fsS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" | grep -qx '200'
+
+            DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo ""
+            echo "Deployment successful"
+            echo "Expected SHA: $EXPECTED_SHA"
+            echo "EC2 SHA: $ACTUAL_SHA"
+            echo "Built asset: $BUILT_JS"
+            echo "Served asset: $SERVED_JS"
+            echo "API base URL: $VITE_API_BASE_URL"
+            echo "Nginx root: $EXPECTED_ROOT"
+            echo "Deployment time: $DEPLOY_TIME"
