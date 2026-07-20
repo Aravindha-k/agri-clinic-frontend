@@ -79,6 +79,7 @@ export default function EmployeeRoutePanel({ userId, employee, isActive, drawerO
       drawerOpen={drawerOpen}
       dateInputId="drawer-route-date"
       showDutyMeta
+      variant="tracking-drawer"
     />
   );
 }

@@ -150,7 +150,8 @@ export default function Header({ onMenuClick }) {
           {/* Refresh */}
           <button
             onClick={handleRefresh}
-            className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+            className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all"
+            aria-label="Refresh page"
             title="Refresh page"
           >
             <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? "animate-spin" : ""}`} />
@@ -160,6 +161,7 @@ export default function Header({ onMenuClick }) {
           <button
             onClick={() => navigate("/notifications")}
             className="header-notify-btn"
+            aria-label="Notifications"
             title="Notifications"
           >
             <Bell className="w-[18px] h-[18px]" />
@@ -193,35 +195,32 @@ export default function Header({ onMenuClick }) {
                   aria-hidden="true"
                   data-overlay="profile-menu-backdrop"
                 />
-                <div
-                  className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl z-50 overflow-hidden"
-                  style={{
-                    boxShadow: "0 0 0 1px rgba(15,118,110,0.08), 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
-                    border: "1px solid rgba(15,118,110,0.08)",
-                  }}
-                >
-                  <div className="px-4 py-3" style={{ background: "linear-gradient(135deg, #f0fdf8, #f8fffc)", borderBottom: "1px solid rgba(15,118,110,0.07)" }}>
-                    <p className="text-sm font-semibold text-gray-900">{displayName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{user?.email || user?.username}</p>
+                <div className="enterprise-dropdown">
+                  <div className="enterprise-dropdown__head">
+                    <p className="text-sm font-semibold text-slate-900">{displayName}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{user?.email || user?.username}</p>
                   </div>
                   <div className="py-1.5">
                     <button
+                      type="button"
                       onClick={() => { setUserMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50/60 hover:text-emerald-800 transition-colors"
+                      className="enterprise-dropdown__item"
                     >
-                      <User className="w-4 h-4 text-gray-400" /> Profile
+                      <User className="w-4 h-4 text-slate-400" /> Profile
                     </button>
                     <button
+                      type="button"
                       onClick={() => { setUserMenuOpen(false); navigate("/masters"); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50/60 hover:text-emerald-800 transition-colors"
+                      className="enterprise-dropdown__item"
                     >
-                      <Settings className="w-4 h-4 text-gray-400" /> Settings
+                      <Settings className="w-4 h-4 text-slate-400" /> Settings
                     </button>
                   </div>
-                  <div className="py-1.5" style={{ borderTop: "1px solid rgba(15,118,110,0.07)" }}>
+                  <div className="py-1.5 border-t border-slate-100">
                     <button
+                      type="button"
                       onClick={() => { setUserMenuOpen(false); handleLogout(); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                      className="enterprise-dropdown__item enterprise-dropdown__item--danger"
                     >
                       <LogOut className="w-4 h-4" /> Sign out
                     </button>

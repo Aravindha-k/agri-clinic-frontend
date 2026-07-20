@@ -12,14 +12,11 @@ import {
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 const TABLE_PAGE_SIZE = 25;
-
-const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
-const inputClass = "w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
-
 const TABS = ["districts", "villages"];
 const TAB_LABELS = { districts: "Districts", villages: "Villages" };
+
+const inputClass = "masters-admin-field";
 
 /* ── Generic Location Form ── */
 function LocationForm({ type, initial = {}, parents = [], onSubmit, onCancel, loading }) {
@@ -36,30 +33,28 @@ function LocationForm({ type, initial = {}, parents = [], onSubmit, onCancel, lo
             const payload = { name };
             if (type === "villages" && parentId) payload.district = parentId;
             onSubmit(payload);
-        }} className="space-y-5">
-            <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Name *</label>
+        }} className="masters-admin-form">
+            <div className={inputClass}>
+                <label>Name *</label>
                 <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                    placeholder={`Enter ${type.slice(0, -1)} name`} className={inputClass} />
+                    placeholder={`Enter ${type.slice(0, -1)} name`} />
             </div>
             {parentLabel && (
-                <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">{parentLabel}</label>
-                    <select value={parentId} onChange={(e) => setParentId(e.target.value)} className={inputClass + " appearance-none"}>
+                <div className={inputClass}>
+                    <label>{parentLabel}</label>
+                    <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
                         <option value="">Select {parentLabel}</option>
                         {parents.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                 </div>
             )}
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <button type="submit" disabled={loading || !name.trim()}
-                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm disabled:opacity-50">
-                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <div className="masters-admin-form__foot">
+                <button type="submit" disabled={loading || !name.trim()} className="btn btn-primary btn-md">
+                    {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                     {initial.id ? "Update" : "Create"}
                 </button>
                 {onCancel && (
-                    <button type="button" onClick={onCancel}
-                        className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                    <button type="button" onClick={onCancel} className="btn btn-secondary btn-md">
                         Cancel
                     </button>
                 )}
@@ -187,101 +182,122 @@ export default function MasterLocationsPage() {
     }, [activeTab, apiTotal, districts.length, villages.length, pagedList.length, tablePage, tableTotalPages, search]);
 
     return (
-        <div className="page-container">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600">
-                            <MapPin className="w-5 h-5" />
+        <div className="masters-admin page-container">
+            <header className="masters-admin-header">
+                <div className="masters-admin-header__inner">
+                    <div className="masters-admin-header__brand">
+                        <div className="masters-admin-header__icon" aria-hidden="true">
+                            <MapPin className="w-6 h-6" />
                         </div>
-                        Master Locations
-                    </h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Manage districts and villages</p>
+                        <div className="min-w-0">
+                            <span className="masters-admin-header__badge">
+                                <MapPin className="w-3 h-3" aria-hidden="true" />
+                                Locations
+                            </span>
+                            <h1 className="masters-admin-header__title">Master Locations</h1>
+                            <p className="masters-admin-header__subtitle">Manage districts and villages</p>
+                        </div>
+                    </div>
+                    <div className="masters-admin-header__actions">
+                        <button type="button" onClick={openCreate} className="btn btn-primary btn-md">
+                            <Plus className="w-4 h-4" aria-hidden="true" /> Add {TAB_LABELS[activeTab].slice(0, -1)}
+                        </button>
+                        <button type="button" onClick={fetchAll} className="btn btn-secondary btn-md">
+                            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm">
-                        <Plus className="w-4 h-4" /> Add {TAB_LABELS[activeTab].slice(0, -1)}
-                    </button>
-                    <button onClick={fetchAll} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all">
-                        <RefreshCw className="w-4 h-4" /> Refresh
-                    </button>
+            </header>
+
+            <div className="masters-admin-toolbar">
+                <div className="masters-admin-tabs">
+                    {TABS.map((tab) => (
+                        <button
+                            key={tab}
+                            type="button"
+                            onClick={() => { setActiveTab(tab); setSearch(""); }}
+                            className={`masters-admin-tab ${activeTab === tab ? "masters-admin-tab--active" : ""}`}
+                        >
+                            {TAB_LABELS[tab]}
+                            <span className="masters-admin-tab__count">
+                                {tab === "districts" ? districtTotal : villageTotal}
+                            </span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 gap-0 bg-white rounded-t-2xl" style={{ boxShadow: SHADOW }}>
-                {TABS.map((tab) => (
-                    <button key={tab} onClick={() => { setActiveTab(tab); setSearch(""); }}
-                        className={`px-5 py-3 text-sm font-medium border-b-2 transition-all ${activeTab === tab ? "border-emerald-500 text-emerald-700 bg-emerald-50/50" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-                        {TAB_LABELS[tab]}
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            {tab === "districts" ? districtTotal : villageTotal}
-                        </span>
-                    </button>
-                ))}
-            </div>
-
-            {/* Search */}
-            <div className="filters-bar" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        <input type="text" placeholder={`Search ${TAB_LABELS[activeTab].toLowerCase()}…`} value={search} onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+            <section className="masters-admin-filters" aria-label="Search locations">
+                <div className="masters-admin-filters__row">
+                    <div className="masters-admin-search">
+                        <Search className="search-icon" aria-hidden="true" />
+                        <input
+                            type="search"
+                            placeholder={`Search ${TAB_LABELS[activeTab].toLowerCase()}…`}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="search-input"
+                            aria-label={`Search ${TAB_LABELS[activeTab].toLowerCase()}`}
+                        />
                     </div>
                     {search && (
-                        <button onClick={() => setSearch("")} className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-gray-500 hover:text-red-600 bg-gray-100 hover:bg-red-50 rounded-xl transition-all">
-                            <X className="w-3.5 h-3.5" /> Clear
+                        <button type="button" onClick={() => setSearch("")} className="btn btn-ghost btn-sm">
+                            <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
                         </button>
                     )}
+                    <p className="masters-admin-filters__meta lg:ml-auto">
+                        {currentList.length} {TAB_LABELS[activeTab].toLowerCase()} shown
+                    </p>
                 </div>
-            </div>
+            </section>
 
             {error && (
-                <div className="flex items-center gap-3 px-5 py-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-                    <button onClick={fetchAll} className="ml-auto font-semibold hover:underline">Retry</button>
+                <div className="masters-admin-alert masters-admin-alert--error">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                    <span>{error}</span>
+                    <button type="button" onClick={fetchAll} className="ml-auto font-semibold hover:underline">Retry</button>
                 </div>
             )}
 
-            {/* Table */}
             {loading ? (
                 <PageLoader label="Loading locations…" />
             ) : currentList.length === 0 ? (
-                <div className="bg-white rounded-xl p-10 text-center" style={{ boxShadow: SHADOW }}>
-                    <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-5"><MapPin className="w-9 h-9 text-violet-300" /></div>
-                    <p className="text-base font-semibold text-gray-500">No {TAB_LABELS[activeTab].toLowerCase()} found</p>
+                <div className="masters-admin-empty">
+                    <div className="masters-admin-empty__icon">
+                        <MapPin className="w-7 h-7" aria-hidden="true" />
+                    </div>
+                    <p className="text-base font-semibold text-slate-600">No {TAB_LABELS[activeTab].toLowerCase()} found</p>
+                    <p className="text-sm text-slate-400 mt-1">Add a new record or adjust your search.</p>
                 </div>
             ) : (
-                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                <div className="masters-admin-table-card">
+                    <div className="masters-admin-table-wrap">
+                        <table className="data-table compact-table masters-admin-table w-full">
                             <thead>
-                                <tr className="bg-gray-50/80">
-                                    <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-left">Name</th>
-                                    {parentCol && <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-left">District</th>}
-                                    <th className="px-5 py-3.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-left" />
+                                <tr>
+                                    <th>Name</th>
+                                    {parentCol && <th>District</th>}
+                                    <th className="w-28 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {pagedList.map((item, idx) => (
-                                    <tr key={item.id || idx} className={`border-b border-gray-50 hover:bg-violet-50/40 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 flex-shrink-0">
-                                                    <MapPin className="w-3.5 h-3.5" />
+                                    <tr key={item.id || idx}>
+                                        <td>
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="masters-admin-row-icon">
+                                                    <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </div>
-                                                <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                                                <p className="masters-admin-row-name">{item.name}</p>
                                             </div>
                                         </td>
-                                        {parentCol && <td className="px-5 py-3.5 text-sm text-gray-600">{getParentName(item)}</td>}
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-1 justify-end">
-                                                <button onClick={() => openEdit(item)} title="Edit" className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                                        {parentCol && <td className="text-sm text-slate-600">{getParentName(item)}</td>}
+                                        <td>
+                                            <div className="masters-admin-actions">
+                                                <button type="button" onClick={() => openEdit(item)} title="Edit" className="masters-admin-action-btn masters-admin-action-btn--edit" aria-label="Edit">
                                                     <Edit3 className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => setDeleteTarget(item)} title="Delete" className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                                                <button type="button" onClick={() => setDeleteTarget(item)} title="Delete" className="masters-admin-action-btn masters-admin-action-btn--delete" aria-label="Delete">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -292,26 +308,26 @@ export default function MasterLocationsPage() {
                         </table>
                     </div>
                     {tableTotalPages > 1 && (
-                        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 text-sm text-gray-600">
+                        <div className="masters-admin-pagination">
                             <span>
                                 Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, currentList.length)} of {currentList.length}
                                 {search.trim() ? ` (filtered from ${apiTotal} total)` : ` (${apiTotal} total)`}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="masters-admin-pagination__controls">
                                 <button
                                     type="button"
                                     disabled={tablePage <= 1}
                                     onClick={() => setTablePage((p) => Math.max(1, p - 1))}
-                                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40"
+                                    className="masters-admin-pagination__btn"
                                 >
                                     Previous
                                 </button>
-                                <span className="text-xs font-medium">{tablePage} / {tableTotalPages}</span>
+                                <span className="text-xs font-semibold tabular-nums">{tablePage} / {tableTotalPages}</span>
                                 <button
                                     type="button"
                                     disabled={tablePage >= tableTotalPages}
                                     onClick={() => setTablePage((p) => Math.min(tableTotalPages, p + 1))}
-                                    className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-40"
+                                    className="masters-admin-pagination__btn"
                                 >
                                     Next
                                 </button>
@@ -321,9 +337,12 @@ export default function MasterLocationsPage() {
                 </div>
             )}
 
-            {/* Form Panel */}
-            <SlidePanel open={formOpen} onClose={() => { setFormOpen(false); setEditTarget(null); }}
-                title={editTarget ? `Edit ${TAB_LABELS[activeTab].slice(0, -1)}` : `Add ${TAB_LABELS[activeTab].slice(0, -1)}`}>
+            <SlidePanel
+                tone="masters"
+                open={formOpen}
+                onClose={() => { setFormOpen(false); setEditTarget(null); }}
+                title={editTarget ? `Edit ${TAB_LABELS[activeTab].slice(0, -1)}` : `Add ${TAB_LABELS[activeTab].slice(0, -1)}`}
+            >
                 <LocationForm
                     type={activeTab}
                     initial={editTarget || {}}
@@ -334,7 +353,6 @@ export default function MasterLocationsPage() {
                 />
             </SlidePanel>
 
-            {/* Delete Confirm */}
             <ConfirmDialog
                 open={!!deleteTarget}
                 title={`Delete ${TAB_LABELS[activeTab].slice(0, -1)}`}

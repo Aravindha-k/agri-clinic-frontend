@@ -10,7 +10,7 @@ const SEVERITY = {
 
 export default function AlertsPanel({ alerts = [] }) {
   return (
-    <div className="section-card overflow-hidden flex flex-col">
+    <div className="dashboard-section-card flex flex-col">
       <div className="section-card-header">
         <div className="flex items-center gap-2.5">
           <div className="icon-box">

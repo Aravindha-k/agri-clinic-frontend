@@ -63,14 +63,7 @@ export default function DashboardLiveMap({
   const mappedCount = mappedGeoCount ?? safeLocations.length;
 
   return (
-    <div
-      className="lg:col-span-2 section-card overflow-hidden"
-      style={{
-        boxShadow:
-          "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
-        border: "1px solid rgba(15,118,110,0.08)",
-      }}
-    >
+    <div className="dashboard-section-card dashboard-section-card--map">
       <SectionHeader
         icon={MapPin}
         title="Live Field Map"
@@ -79,28 +72,29 @@ export default function DashboardLiveMap({
           `${mappedCount} employee${mappedCount !== 1 ? "s" : ""} on map · ${workingNow ?? 0} working`
         }
         right={
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            <div className="dashboard-map-legend">
+              <span className="dashboard-map-legend__item">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
                 Online
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-gray-300" />
+              <span className="dashboard-map-legend__item">
+                <span className="w-2 h-2 rounded-full bg-slate-300" aria-hidden="true" />
                 Offline
               </span>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100">
-              <Radio className="w-3 h-3 text-emerald-600 animate-pulse" />
-              <span className="text-[11px] font-semibold text-emerald-700">LIVE</span>
+            <div className="dashboard-map-live-badge">
+              <Radio className="w-3 h-3 text-emerald-600 animate-pulse" aria-hidden="true" />
+              <span className="dashboard-map-live-badge__text">LIVE</span>
             </div>
           </div>
         }
       />
-      <div className="relative" style={{ height: 280, zIndex: 0, isolation: "isolate" }}>
+      <div className="dashboard-map-frame">
         <div
-          className="absolute top-0 left-0 right-0 h-8 z-[400] pointer-events-none"
-          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.6), transparent)" }}
+          className="absolute top-0 left-0 right-0 h-10 z-[400] pointer-events-none"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.65), transparent)" }}
+          aria-hidden="true"
         />
         <MapContainer
           center={safeCenter}
@@ -131,11 +125,8 @@ export default function DashboardLiveMap({
           ))}
         </MapContainer>
         {mappedCount === 0 && (
-          <div
-            className="absolute inset-0 z-[500] flex items-center justify-center pointer-events-none"
-            style={{ background: "rgba(255,255,255,0.75)" }}
-          >
-            <p className="text-sm font-medium text-gray-500 px-6 text-center">
+          <div className="dashboard-map-overlay">
+            <p className="dashboard-map-overlay__text">
               {hasTrackedEmployees
                 ? "No valid employee GPS location available yet."
                 : "No employees with valid GPS coordinates right now. Locations appear after field agents start their workday and share location."}

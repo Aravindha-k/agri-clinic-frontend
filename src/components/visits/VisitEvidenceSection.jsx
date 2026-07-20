@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Paperclip,
   Image as ImageIcon,
@@ -8,7 +8,6 @@ import {
   StickyNote,
   Download,
   ExternalLink,
-  AlertCircle,
   RefreshCw,
   X,
   User,
@@ -16,7 +15,8 @@ import {
   HardDrive,
 } from "lucide-react";
 import { getVisitAttachments } from "../../api/visit.api";
-import { PageLoader } from "../ui/command";
+import { EmptyState } from "../ui/command";
+import ErrorRetry from "../ui/ErrorRetry";
 import { ATTACHMENT_KIND } from "../../utils/visitAttachments";
 
 const KIND_META = {
@@ -70,7 +70,7 @@ function ImagePreviewModal({ item, onClose }) {
             className="max-h-[80vh] w-auto max-w-full mx-auto rounded-xl shadow-2xl object-contain bg-black/20"
           />
         ) : (
-          <div className="rounded-xl bg-white p-8 text-center text-gray-500">
+          <div className="rounded-xl bg-white p-8 text-center text-slate-500">
             Preview unavailable for this file.
           </div>
         )}
@@ -87,9 +87,9 @@ function AttachmentThumb({ item, broken, onBroken }) {
     const Icon = meta.icon;
     return (
       <div
-        className={`w-full h-28 rounded-lg border flex items-center justify-center ${toneClasses(meta.tone)}`}
+        className={`visits-evidence-card__thumb flex items-center justify-center ${toneClasses(meta.tone)}`}
       >
-        <Icon className="w-10 h-10 opacity-80" strokeWidth={1.5} />
+        <Icon className="w-10 h-10 opacity-80" strokeWidth={1.5} aria-hidden="true" />
       </div>
     );
   }
@@ -97,9 +97,46 @@ function AttachmentThumb({ item, broken, onBroken }) {
     <img
       src={src}
       alt=""
-      className="w-full h-28 rounded-lg object-cover border border-gray-100 bg-gray-50"
+      className="visits-evidence-card__thumb object-cover"
       onError={onBroken}
     />
+  );
+}
+
+function ReportPhotoTile({ item, onPreview }) {
+  const [broken, setBroken] = useState(false);
+  const src = item.thumbnailUrl || item.url;
+
+  return (
+    <button
+      type="button"
+      className="visit-report-photo"
+      onClick={() => onPreview(item)}
+      disabled={!src}
+      aria-label={`Preview ${item.filename}`}
+    >
+      {src && !broken ? (
+        <img src={src} alt={item.filename} onError={() => setBroken(true)} />
+      ) : (
+        <div className="visit-report-photo__placeholder">
+          <ImageIcon className="w-8 h-8" aria-hidden="true" />
+        </div>
+      )}
+      <span className="visit-report-photo__caption">{item.filename}</span>
+    </button>
+  );
+}
+
+function EvidenceCardSkeleton() {
+  return (
+    <div className="visits-evidence-card" aria-hidden="true">
+      <div className="skeleton visits-evidence-card__thumb rounded-xl" />
+      <div className="skeleton h-4 w-3/4 rounded" />
+      <div className="space-y-2">
+        <div className="skeleton h-3 w-full rounded" />
+        <div className="skeleton h-3 w-2/3 rounded" />
+      </div>
+    </div>
   );
 }
 
@@ -110,19 +147,19 @@ function EvidenceCard({ item, onPreviewImage }) {
   const canOpen = item.url && item.kind !== ATTACHMENT_KIND.TEXT;
 
   return (
-    <article className="list-card-surface p-3.5 flex flex-col gap-3 h-full">
+    <article className="visits-evidence-card">
       {item.kind === ATTACHMENT_KIND.IMAGE ? (
         <button
           type="button"
-          className="block w-full text-left rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="block w-full text-left rounded-xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
           onClick={() => onPreviewImage(item)}
           disabled={!item.url && !item.thumbnailUrl}
         >
           <AttachmentThumb item={item} broken={imgBroken} onBroken={() => setImgBroken(true)} />
         </button>
       ) : item.kind === ATTACHMENT_KIND.TEXT ? (
-        <div className={`rounded-lg border p-3 min-h-[7rem] ${toneClasses(meta.tone)}`}>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap break-words line-clamp-6">
+        <div className={`visits-evidence-card__thumb flex items-start p-3 min-h-[8rem] ${toneClasses(meta.tone)}`}>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap break-words line-clamp-6">
             {item.textContent || item.description || "—"}
           </p>
         </div>
@@ -134,27 +171,27 @@ function EvidenceCard({ item, onPreviewImage }) {
         <div
           className={`w-8 h-8 rounded-lg border flex items-center justify-center flex-shrink-0 ${toneClasses(meta.tone)}`}
         >
-          <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+          <Icon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate" title={item.filename}>
+          <p className="text-sm font-semibold text-slate-900 truncate" title={item.filename}>
             {item.filename}
           </p>
-          <p className="text-[11px] text-gray-500 mt-0.5">{meta.label}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">{meta.label}</p>
         </div>
       </div>
 
-      <dl className="space-y-1.5 text-xs text-gray-600">
+      <dl className="visits-evidence-card__meta">
         <div className="flex items-center gap-2">
-          <User className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+          <User className="w-3.5 h-3.5 text-slate-300 shrink-0" aria-hidden="true" />
           <dd className="truncate">{item.uploadedBy}</dd>
         </div>
         <div className="flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+          <Clock className="w-3.5 h-3.5 text-slate-300 shrink-0" aria-hidden="true" />
           <dd>{item.uploadedAtLabel}</dd>
         </div>
         <div className="flex items-center gap-2">
-          <HardDrive className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+          <HardDrive className="w-3.5 h-3.5 text-slate-300 shrink-0" aria-hidden="true" />
           <dd>{item.fileSizeLabel}</dd>
         </div>
       </dl>
@@ -166,12 +203,12 @@ function EvidenceCard({ item, onPreviewImage }) {
       )}
 
       {item.kind === ATTACHMENT_KIND.TEXT && item.textContent && item.description && (
-        <p className="text-xs text-gray-500 border-t border-gray-50 pt-2 line-clamp-2">
+        <p className="text-xs text-slate-500 border-t border-slate-50 pt-2 line-clamp-2">
           {item.description}
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2 mt-auto pt-1">
+      <div className="visits-evidence-card__actions">
         {item.kind === ATTACHMENT_KIND.IMAGE && (item.url || item.thumbnailUrl) && (
           <button
             type="button"
@@ -189,7 +226,7 @@ function EvidenceCard({ item, onPreviewImage }) {
               rel="noopener noreferrer"
               className="btn btn-ghost btn-sm text-emerald-700 inline-flex items-center gap-1"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               Open
             </a>
             <a
@@ -197,18 +234,18 @@ function EvidenceCard({ item, onPreviewImage }) {
               download={item.filename}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-ghost btn-sm text-gray-600 inline-flex items-center gap-1"
+              className="btn btn-ghost btn-sm text-slate-600 inline-flex items-center gap-1"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
               Download
             </a>
           </>
         )}
         {item.kind === ATTACHMENT_KIND.TEXT && !item.url && (
-          <span className="text-[11px] text-gray-400">View only</span>
+          <span className="text-[11px] text-slate-400">View only</span>
         )}
         {!item.url && item.kind !== ATTACHMENT_KIND.TEXT && (
-          <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded-md">
+          <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
             File link unavailable
           </span>
         )}
@@ -217,7 +254,72 @@ function EvidenceCard({ item, onPreviewImage }) {
   );
 }
 
-export default function VisitEvidenceSection({ visitId, onCountChange }) {
+function ReportEvidenceContent({ items, loading, error, onLoad, onPreview }) {
+  const { photos, attachments } = useMemo(() => {
+    const imageItems = items.filter((item) => item.kind === ATTACHMENT_KIND.IMAGE);
+    const otherItems = items.filter((item) => item.kind !== ATTACHMENT_KIND.IMAGE);
+    return { photos: imageItems, attachments: otherItems };
+  }, [items]);
+
+  if (loading) {
+    return (
+      <>
+        <div className="visit-report-photo-gallery" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton visit-report-photo rounded-xl" />
+          ))}
+        </div>
+        <div className="visits-evidence__grid mt-5">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <EvidenceCardSkeleton key={i} />
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return <ErrorRetry compact message={error} onRetry={onLoad} />;
+  }
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={Paperclip}
+        title="No evidence uploaded"
+        subtitle="Field agents can attach photos, documents, voice notes, and text from the mobile app."
+      />
+    );
+  }
+
+  return (
+    <>
+      {photos.length > 0 && (
+        <div>
+          <p className="visit-report-attachments__title">Photographic evidence</p>
+          <div className="visit-report-photo-gallery">
+            {photos.map((item) => (
+              <ReportPhotoTile key={item.id} item={item} onPreview={onPreview} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {attachments.length > 0 && (
+        <div>
+          <p className="visit-report-attachments__title">Supporting attachments</p>
+          <div className="visits-evidence__grid">
+            {attachments.map((item) => (
+              <EvidenceCard key={item.id} item={item} onPreviewImage={onPreview} />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function VisitEvidenceSection({ visitId, onCountChange, variant = "default" }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -244,18 +346,33 @@ export default function VisitEvidenceSection({ visitId, onCountChange }) {
     load();
   }, [load]);
 
+  if (variant === "report") {
+    return (
+      <>
+        <ReportEvidenceContent
+          items={items}
+          loading={loading}
+          error={error}
+          onLoad={load}
+          onPreview={setPreview}
+        />
+        <ImagePreviewModal item={preview} onClose={() => setPreview(null)} />
+      </>
+    );
+  }
+
   return (
-    <section className="section-card overflow-hidden" aria-labelledby="visit-evidence-heading">
-      <div className="px-4 py-2.5 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <section className="visits-evidence" aria-labelledby="visit-evidence-heading">
+      <div className="visits-detail-card__header justify-between">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="list-meta-icon list-meta-icon--crop">
-            <Paperclip className="w-3.5 h-3.5" strokeWidth={2} />
+            <Paperclip className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
           </div>
-          <h2 id="visit-evidence-heading" className="text-xs font-semibold text-gray-800">
-            Visit Evidence / Attachments
+          <h2 id="visit-evidence-heading" className="text-xs font-semibold text-slate-800">
+            Visit evidence
           </h2>
           {!loading && !error && (
-            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+            <span className="visits-status-chip visits-status-chip--evidence">
               {items.length}
             </span>
           )}
@@ -264,47 +381,38 @@ export default function VisitEvidenceSection({ visitId, onCountChange }) {
           <button
             type="button"
             onClick={load}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-emerald-700"
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700 transition-colors"
             title="Refresh evidence"
+            aria-label="Refresh evidence"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      <div className="panel-body">
+      <div className="visits-detail-card__body">
         {loading && (
-          <div className="py-8">
-            <PageLoader label="Loading evidence…" compact wrap={false} />
+          <div className="visits-evidence__grid" aria-busy="true" aria-label="Loading evidence">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <EvidenceCardSkeleton key={i} />
+            ))}
           </div>
         )}
 
         {!loading && error && (
-          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-start gap-2 text-sm text-red-700 flex-1">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              {error}
-            </div>
-            <button type="button" onClick={load} className="btn btn-ghost btn-sm text-red-700">
-              Retry
-            </button>
-          </div>
+          <ErrorRetry compact message={error} onRetry={load} />
         )}
 
         {!loading && !error && items.length === 0 && (
-          <div className="text-center py-10 px-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-3">
-              <Paperclip className="w-6 h-6 text-gray-300" />
-            </div>
-            <p className="text-sm font-medium text-gray-600">No evidence uploaded for this visit.</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Field agents can attach photos, documents, voice notes, and text from the mobile app.
-            </p>
-          </div>
+          <EmptyState
+            icon={Paperclip}
+            title="No evidence uploaded"
+            subtitle="Field agents can attach photos, documents, voice notes, and text from the mobile app."
+          />
         )}
 
         {!loading && !error && items.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="visits-evidence__grid">
             {items.map((item) => (
               <EvidenceCard
                 key={item.id}

@@ -1,5 +1,7 @@
-import { PageLoader } from "../components/ui/command";
-import { useEffect, useState, useCallback, useRef, memo } from "react";
+import { PageLoader, EmptyState, PageHeader } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
+import PremiumKpiCard from "../components/ui/PremiumKpiCard";
+import { useEffect, useState, useCallback } from "react";
 import { fetchAllIssues, getRecommendations } from "../api/issue.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import {
@@ -9,11 +11,9 @@ import {
     asDisplayString,
 } from "../utils/displayValue";
 import {
-    ClipboardCheck, Search, X, RefreshCw, ChevronLeft, ChevronRight, AlertCircle,
-    TrendingUp, Leaf, Calendar, CheckCircle2,
+    ClipboardCheck, Search, X, RefreshCw, ChevronLeft, ChevronRight,
+    Leaf, Calendar, CheckCircle2,
 } from "lucide-react";
-
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
 const fmt = (d) => {
     if (!d) return "\u2014";
@@ -42,7 +42,7 @@ const getIssueStatus = (issue) =>
 
 const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
 const TableSkeleton = () => (
-    <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
+    <div className="section-card overflow-hidden">
         <div className="px-3 py-2 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
         {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-50">
@@ -51,44 +51,6 @@ const TableSkeleton = () => (
         ))}
     </div>
 );
-
-const useCountUp = (target, dur = 900) => {
-    const [val, setVal] = useState(0);
-    const prev = useRef(0);
-    useEffect(() => {
-        const s = prev.current, e = Number(target) || 0;
-        if (s === e) { setVal(e); return; }
-        const t0 = performance.now();
-        let raf;
-        const step = (now) => {
-            const p = Math.min((now - t0) / dur, 1);
-            setVal(Math.round(s + (e - s) * (1 - Math.pow(1 - p, 3))));
-            if (p < 1) raf = requestAnimationFrame(step); else prev.current = e;
-        };
-        raf = requestAnimationFrame(step);
-        return () => cancelAnimationFrame(raf);
-    }, [target, dur]);
-    return val;
-};
-
-const KpiCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
-    const animVal = useCountUp(value);
-    return (
-        <div className="mini-kpi-card group cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
-            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-            <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
-            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
-                <Icon className="w-4 h-4" />
-            </div>
-            <p className="mini-kpi-value">{animVal}</p>
-            <div className="flex items-center justify-between mt-1">
-                <p className="mini-kpi-label">{label}</p>
-                <TrendingUp className="w-3 h-3 text-gray-300" />
-            </div>
-        </div>
-    );
-});
-KpiCard.displayName = "KpiCard";
 
 export default function Recommendations() {
     const [recommendations, setRecommendations] = useState([]);
@@ -170,22 +132,20 @@ export default function Recommendations() {
 
     return (
         <div className="page-container">
-            {/* ── Header ── */}
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Recommendations</h1>
-                    <p className="page-subtitle">All recommendations provided for crop issues</p>
-                </div>
-                <button onClick={fetchRecommendations} className="btn btn-primary btn-md">
-                    <RefreshCw className="w-4 h-4" /> Refresh
-                </button>
-            </div>
+            <PageHeader
+                title="Recommendations"
+                subtitle="All recommendations provided for crop issues"
+                actions={
+                    <button type="button" onClick={fetchRecommendations} className="btn btn-primary btn-md">
+                        <RefreshCw className="w-4 h-4" /> Refresh
+                    </button>
+                }
+            />
 
-            {/* ── KPI ── */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <KpiCard icon={ClipboardCheck} label="Total Recommendations" value={totalRecCount} accent="#166534" gradient="linear-gradient(135deg,#fff 0%,#f0fdf4 100%)" iconBg="#dcfce7" />
-                <KpiCard icon={CheckCircle2} label="Issues Resolved" value={enrichedRecommendations.filter((r) => (r.displayStatus || "").toLowerCase() === "resolved").length} accent="#2563eb" gradient="linear-gradient(135deg,#fff 0%,#eff6ff 100%)" iconBg="#dbeafe" />
-                <KpiCard icon={Leaf} label="Unique Crops" value={[...new Set(enrichedRecommendations.map((r) => r.displayCropName).filter(Boolean))].length} accent="#ca8a04" gradient="linear-gradient(135deg,#fff 0%,#fefce8 100%)" iconBg="#fef9c3" />
+                <PremiumKpiCard icon={ClipboardCheck} label="Total Recommendations" value={totalRecCount} iconColor="#166534" gradient="linear-gradient(135deg,#fff 0%,#f0fdf4 100%)" iconBg="#dcfce7" loading={loading} />
+                <PremiumKpiCard icon={CheckCircle2} label="Issues Resolved" value={enrichedRecommendations.filter((r) => (r.displayStatus || "").toLowerCase() === "resolved").length} iconColor="#2563eb" gradient="linear-gradient(135deg,#fff 0%,#eff6ff 100%)" iconBg="#dbeafe" loading={loading} />
+                <PremiumKpiCard icon={Leaf} label="Unique Crops" value={[...new Set(enrichedRecommendations.map((r) => r.displayCropName).filter(Boolean))].length} iconColor="#ca8a04" gradient="linear-gradient(135deg,#fff 0%,#fefce8 100%)" iconBg="#fef9c3" loading={loading} />
             </div>
 
             {/* ── Search + filter bar ── */}
@@ -214,22 +174,16 @@ export default function Recommendations() {
 
             {/* ── Error ── */}
             {error && (
-                <div className="alert-error">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-                    <button onClick={fetchRecommendations} className="ml-auto font-semibold hover:underline">Retry</button>
-                </div>
+                <ErrorRetry message={error} onRetry={fetchRecommendations} />
             )}
 
-            {/* ── Table ── */}
             {loading ? <PageLoader label="Loading recommendations…" /> : enrichedRecommendations.length === 0 ? (
                 <div className="section-card">
-                    <div className="empty-state">
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
-                            <ClipboardCheck className="w-8 h-8 text-emerald-300" />
-                        </div>
-                        <p className="text-gray-600 font-semibold">No recommendations found</p>
-                        <p className="text-sm text-gray-400 mt-1">Recommendations appear here once added from Crop Issues.</p>
-                    </div>
+                    <EmptyState
+                        icon={ClipboardCheck}
+                        title="No recommendations found"
+                        subtitle="Recommendations appear here once added from Crop Issues."
+                    />
                 </div>
             ) : (
                 <div className="section-card">

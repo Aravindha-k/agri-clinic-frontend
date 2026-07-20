@@ -7,41 +7,32 @@ export default function ReportKpiCard({
   description,
   tooltip,
   accent,
-  gradient,
   iconBg,
 }) {
   const hint = tooltip ?? description;
 
   return (
-    <div
-      className="mini-kpi-card group cursor-default"
-      style={{ background: gradient, boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)" }}
-      title={hint}
-    >
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-        style={{ background: accent }}
-      />
-      <div
-        className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]"
-        style={{ background: accent }}
-      />
-      <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
-        <Icon className="w-4 h-4" />
+    <div className="reports-bi-kpi group" title={hint}>
+      <div className="reports-bi-kpi__accent" style={{ background: accent }} aria-hidden="true" />
+      <div className="reports-bi-kpi__glow" style={{ background: accent }} aria-hidden="true" />
+      <div className="reports-bi-kpi__head">
+        <div className="reports-bi-kpi__icon" style={{ background: iconBg, color: accent }}>
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="reports-bi-kpi__value">{value}</p>
+        </div>
       </div>
-      <p className="mini-kpi-value">{value}</p>
-      <div className="mt-1">
-        <div className="flex items-center gap-1">
-          <p className="mini-kpi-label">{label}</p>
+      <div className="mt-2">
+        <div className="reports-bi-kpi__label">
+          {label}
           {hint && (
-            <span title={hint} aria-label={hint} className="text-gray-300">
-              <HelpCircle className="w-3 h-3" />
+            <span title={hint} aria-label={hint} className="text-slate-300">
+              <HelpCircle className="w-3 h-3" aria-hidden="true" />
             </span>
           )}
         </div>
-        {description && (
-          <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">{description}</p>
-        )}
+        {description && <p className="reports-bi-kpi__desc">{description}</p>}
       </div>
     </div>
   );

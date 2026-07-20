@@ -4,10 +4,8 @@ import { fetchAllVisits } from "../api/visit.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { getEmployeeGeo, getAdminStatus } from "../api/tracking.api";
 import {
-  PageHeader,
   PageLoader,
   EmptyState,
-  FilterBar,
   ErrorRetry,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
@@ -49,7 +47,6 @@ import {
   Leaf,
   UserCheck,
   RefreshCw,
-  AlertCircle,
   Download,
   Calendar,
   MapPin,
@@ -57,6 +54,8 @@ import {
   Paperclip,
   Navigation,
   ShieldCheck,
+  Search,
+  FileSpreadsheet,
 } from "lucide-react";
 
 const ReportsRouteChart = lazy(() => import("../components/reports/ReportsRouteChart"));
@@ -108,36 +107,73 @@ function normalizeReportRow(item, index) {
 function StatusBadge({ status }) {
   const s = (status || "completed").toLowerCase();
   const cfg = {
-    verified: { cls: "badge badge-success", dot: "bg-emerald-500", label: "Verified" },
-    completed: { cls: "badge badge-success", dot: "bg-emerald-500", label: "Completed" },
-    pending: { cls: "badge badge-warning", dot: "bg-amber-500", label: "Pending" },
-    in_progress: { cls: "badge badge-info", dot: "bg-sky-500", label: "In Progress" },
+    verified: { cls: "reports-bi-status--verified", label: "Verified" },
+    completed: { cls: "reports-bi-status--completed", label: "Completed" },
+    pending: { cls: "reports-bi-status--pending", label: "Pending" },
+    in_progress: { cls: "reports-bi-status--in_progress", label: "In Progress" },
   };
   const c = cfg[s] || cfg.completed;
   return (
-    <span className={c.cls}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+    <span className={`reports-bi-status ${c.cls}`}>
+      <span className="reports-bi-status__dot" aria-hidden="true" />
       {c.label}
     </span>
   );
 }
 
+function BiMetric({ value, label, hint, tone = "slate", title }) {
+  return (
+    <div className={`reports-bi-metric reports-bi-metric--${tone}`} title={title}>
+      <p className="reports-bi-metric__value">{value}</p>
+      <p className="reports-bi-metric__label">{label}</p>
+      {hint ? <p className="reports-bi-metric__hint">{hint}</p> : null}
+    </div>
+  );
+}
+
+function ReportsLoadingSkeleton() {
+  return (
+    <div className="reports-bi page-container">
+      <div className="reports-bi-header">
+        <div className="reports-bi-header__inner">
+          <div className="skeleton h-12 w-12 rounded-2xl shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="skeleton h-4 w-32 rounded" />
+            <div className="skeleton h-7 w-64 rounded" />
+            <div className="skeleton h-4 w-80 max-w-full rounded" />
+          </div>
+        </div>
+      </div>
+      <div className="reports-bi-skeleton-grid">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="reports-bi-skeleton-card">
+            <div className="skeleton h-10 w-10 rounded-xl" />
+            <div className="skeleton h-8 w-20 mt-4 rounded" />
+            <div className="skeleton h-3 w-28 mt-2 rounded" />
+          </div>
+        ))}
+      </div>
+      <PageLoader label="Loading report data\u2026" />
+    </div>
+  );
+}
+
 function ReportSection({ icon: Icon, title, subtitle, children, action, boundaryName }) {
   const inner = (
-    <div className="section-card">
-      <div className="section-card-header">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="icon-box">
-            <Icon className="w-4 h-4" />
+    <div className="reports-bi-panel">
+      <div className="reports-bi-panel__head">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="reports-bi-panel__icon">
+            <Icon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h3 className="section-title">{title}</h3>
-            {subtitle && <p className="section-subtitle">{subtitle}</p>}
+            <h3 className="reports-bi-panel__title">{title}</h3>
+            {subtitle && <p className="reports-bi-panel__subtitle">{subtitle}</p>}
           </div>
         </div>
         {action}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="reports-bi-panel__body">{children}</div>
     </div>
   );
 
@@ -257,7 +293,6 @@ export default function Reports() {
       value: analytics.totalVisits,
       description: "Field visits submitted in the selected date range",
       accent: BRAND.primary,
-      gradient: "linear-gradient(135deg,#fff 0%,#f0fdf4 100%)",
       iconBg: "#dcfce7",
     },
     {
@@ -266,7 +301,6 @@ export default function Reports() {
       value: analytics.totalFarmers,
       description: "Unique farmers visited at least once",
       accent: BRAND.primaryDark,
-      gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
       iconBg: "#d1fae5",
     },
     {
@@ -276,7 +310,6 @@ export default function Reports() {
       description: `${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS coordinates`,
       tooltip: ANALYTICS_TOOLTIPS.gpsCompliance,
       accent: BRAND.info,
-      gradient: "linear-gradient(135deg,#fff 0%,#ecfeff 100%)",
       iconBg: "#cffafe",
     },
     {
@@ -285,57 +318,44 @@ export default function Reports() {
       value: analytics.visitsWithEvidence,
       description: `${analytics.evidenceRatePct}% of visits include uploaded photos or files`,
       accent: BRAND.accent,
-      gradient: "linear-gradient(135deg,#fff 0%,#f5f3ff 100%)",
       iconBg: "#ede9fe",
     },
   ];
 
   if (loading) {
-    return (
-      <div className="page-container">
-        <PageLoader label="Loading report data…" />
-      </div>
-    );
+    return <ReportsLoadingSkeleton />;
   }
 
   const pageHeader = (
-    <PageHeader
-      title="Analytics & Reports"
-      subtitle="Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity"
-      badge={
-        <span className="command-hero-badge">
-          <BarChart3 className="w-3 h-3" /> Operations
-        </span>
-      }
-      actions={
-        <>
-          <button
-            type="button"
-            onClick={() => exportVisitsExcel(filtered)}
-            disabled={!filtered.length}
-            className="btn btn-secondary btn-md disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" /> Export Excel
-          </button>
-          <button
-            type="button"
-            onClick={() => exportVisitsCsv(filtered)}
-            disabled={!filtered.length}
-            className="btn btn-secondary btn-md disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" /> Export CSV
-          </button>
+    <header className="reports-bi-header">
+      <div className="reports-bi-header__inner">
+        <div className="reports-bi-header__brand">
+          <div className="reports-bi-header__icon" aria-hidden="true">
+            <BarChart3 className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <span className="reports-bi-header__badge">
+              <BarChart3 className="w-3 h-3" aria-hidden="true" />
+              Business intelligence
+            </span>
+            <h1 className="reports-bi-header__title">Analytics &amp; Reports</h1>
+            <p className="reports-bi-header__subtitle">
+              Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity
+            </p>
+          </div>
+        </div>
+        <div className="reports-bi-header__actions">
           <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
-            <RefreshCw className="w-4 h-4" /> Refresh
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
           </button>
-        </>
-      }
-    />
+        </div>
+      </div>
+    </header>
   );
 
   return (
     <DashboardShellErrorBoundary header={pageHeader}>
-    <div className="page-container">
+    <div className="reports-bi page-container">
       {pageHeader}
 
       {error && (
@@ -346,39 +366,66 @@ export default function Reports() {
         />
       )}
 
-      <FilterBar>
-        <div className="flex flex-col lg:flex-row gap-3 items-end">
-          <div>
-            <label htmlFor="report-from" className="block text-xs font-semibold text-gray-500 mb-1">
-              From
-            </label>
-            <input
-              id="report-from"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="search-input w-full sm:w-auto"
-            />
+      <section className="reports-bi-export" aria-label="Export reports">
+        <div className="reports-bi-export__inner">
+          <div className="reports-bi-export__copy">
+            <p className="reports-bi-export__label">Export center</p>
+            <p className="reports-bi-export__title">{filtered.length} visit records ready to export</p>
+            <p className="reports-bi-export__hint">
+              Downloads respect your current date range and search filters
+            </p>
           </div>
-          <div>
-            <label htmlFor="report-to" className="block text-xs font-semibold text-gray-500 mb-1">
-              To
-            </label>
-            <input
-              id="report-to"
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="search-input w-full sm:w-auto"
-            />
+          <div className="reports-bi-export__actions">
+            <button
+              type="button"
+              onClick={() => exportVisitsExcel(filtered)}
+              disabled={!filtered.length}
+              className="btn btn-secondary btn-md disabled:opacity-50"
+            >
+              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Export Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => exportVisitsCsv(filtered)}
+              disabled={!filtered.length}
+              className="btn btn-secondary btn-md disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" aria-hidden="true" /> Export CSV
+            </button>
           </div>
-          <p className="text-xs text-gray-500 lg:ml-auto pb-2">
+        </div>
+      </section>
+
+      <section className="reports-bi-filters" aria-label="Report filters">
+        <div className="reports-bi-filters__row">
+          <div className="reports-bi-filters__dates">
+            <div className="reports-bi-date-field">
+              <label htmlFor="report-from">From date</label>
+              <input
+                id="report-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+            <div className="reports-bi-date-field">
+              <label htmlFor="report-to">To date</label>
+              <input
+                id="report-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+          <p className="reports-bi-filters__summary">
+            <Calendar className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             {dateFiltered.length} visits in selected range
           </p>
         </div>
-      </FilterBar>
+      </section>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="reports-bi-kpi-grid">
         {kpis.map((kpi) => (
           <WidgetErrorBoundary key={kpi.label} name={`KPI:${kpi.label}`} title={`${kpi.label} unavailable`} className="min-h-[120px]">
             <ReportKpiCard {...kpi} />
@@ -386,7 +433,7 @@ export default function Reports() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="reports-bi-analytics-grid">
         <ReportSection
           icon={UserCheck}
           title="Visits by Employee"
@@ -394,7 +441,9 @@ export default function Reports() {
           boundaryName="VisitsByEmployee"
         >
           {topEntries(analytics.visitsByEmployee).length === 0 ? (
-            <EmptyState icon={Users} title="No visit data" subtitle="Visits will appear once field agents submit records." />
+            <div className="reports-bi-empty-panel">
+              <EmptyState icon={Users} title="No visit data" subtitle="Visits will appear once field agents submit records." />
+            </div>
           ) : (
             <div className="space-y-3">
               {topEntries(analytics.visitsByEmployee).map(([name, count]) => (
@@ -417,23 +466,23 @@ export default function Reports() {
           subtitle={`${analytics.totalFarmers} farmers reached across ${analytics.villagesCovered} villages`}
           boundaryName="FarmerCoverage"
         >
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
-              <p className="text-2xl font-bold text-emerald-800 tabular-nums">{analytics.totalFarmers}</p>
-              <p className="text-xs text-emerald-700 mt-1 font-medium">Farmers Served</p>
-              <p className="text-[10px] text-emerald-600 mt-0.5">Unique farmers visited</p>
-            </div>
-            <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center">
-              <p className="text-2xl font-bold text-sky-800 tabular-nums">{analytics.villagesCovered}</p>
-              <p className="text-xs text-sky-700 mt-1 font-medium">Villages Covered</p>
-              <p className="text-[10px] text-sky-600 mt-0.5">Villages with at least one visit</p>
-            </div>
+          <div className="reports-bi-metric-grid reports-bi-metric-grid--2 mb-4">
+            <BiMetric
+              value={analytics.totalFarmers}
+              label="Farmers served"
+              hint="Unique farmers visited"
+              tone="emerald"
+            />
+            <BiMetric
+              value={analytics.villagesCovered}
+              label="Villages covered"
+              hint="Villages with at least one visit"
+              tone="sky"
+            />
           </div>
           {topEntries(analytics.farmerCoverageByVillage, 5).length > 0 ? (
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Top villages by farmers served
-              </p>
+              <p className="reports-bi-section-label">Top villages by farmers served</p>
               {topEntries(analytics.farmerCoverageByVillage, 5).map(([village, count]) => (
                 <AnalyticsBarRow
                   key={village}
@@ -445,13 +494,13 @@ export default function Reports() {
               ))}
             </div>
           ) : (
-            <EmptyState icon={MapPin} title="No village coverage yet" subtitle="Farmer coverage by village appears once visits include location data." />
+            <div className="reports-bi-empty-panel">
+              <EmptyState icon={MapPin} title="No village coverage yet" subtitle="Farmer coverage by village appears once visits include location data." />
+            </div>
           )}
           {Object.keys(analytics.cropTypes).length > 0 && (
-            <div className="space-y-3 mt-5 pt-5 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Visits by crop type
-              </p>
+            <div className="space-y-3 mt-5 pt-5 border-t border-slate-100">
+              <p className="reports-bi-section-label">Visits by crop type</p>
               {topEntries(analytics.cropTypes, 5).map(([crop, count]) => (
                 <AnalyticsBarRow
                   key={crop}
@@ -471,29 +520,27 @@ export default function Reports() {
           subtitle={`${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS location proof`}
           boundaryName="GpsCompliance"
         >
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-2">
             <div
-              className="relative w-20 h-20 rounded-full flex items-center justify-center flex-shrink-0"
+              className="reports-bi-donut"
               style={{
-                background: `conic-gradient(#059669 ${analytics.gpsCompliancePct * 3.6}deg, #e5e7eb 0)`,
+                background: `conic-gradient(#059669 ${analytics.gpsCompliancePct * 3.6}deg, #e2e8f0 0)`,
               }}
               title={ANALYTICS_TOOLTIPS.gpsCompliance}
             >
-              <div className="w-14 h-14 rounded-full bg-white flex flex-col items-center justify-center px-1">
-                <span className="text-sm font-bold text-emerald-700 leading-none">
-                  {analytics.gpsCompliancePct}%
-                </span>
+              <div className="reports-bi-donut__inner">
+                <span className="reports-bi-donut__value">{analytics.gpsCompliancePct}%</span>
               </div>
             </div>
-            <div className="text-sm text-gray-600 space-y-1.5">
+            <div className="reports-bi-donut-copy">
               <p className="font-semibold text-emerald-800">
                 {formatGpsComplianceLabel(analytics.gpsCompliancePct)}
               </p>
               <p>
-                <span className="font-semibold text-gray-900">{analytics.gpsCompliant}</span> visits with GPS coordinates recorded
+                <span className="font-semibold text-slate-900">{analytics.gpsCompliant}</span> visits with GPS coordinates recorded
               </p>
               <p>
-                <span className="font-semibold text-gray-900">{analytics.gpsDisabledIncidents}</span> active GPS incidents right now
+                <span className="font-semibold text-slate-900">{analytics.gpsDisabledIncidents}</span> active GPS incidents right now
               </p>
               <p>
                 Live tracking uptime:{" "}
@@ -509,19 +556,10 @@ export default function Reports() {
           subtitle={`${analytics.attachmentTotal} files uploaded across ${analytics.visitsWithEvidence} visits`}
           boundaryName="Attachments"
         >
-          <div className="grid grid-cols-3 gap-3 mb-2">
-            <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center">
-              <p className="text-xl font-bold text-violet-800 tabular-nums">{analytics.visitsWithEvidence}</p>
-              <p className="text-[10px] text-violet-700 mt-1 font-medium">Visits With Files</p>
-            </div>
-            <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-center">
-              <p className="text-xl font-bold text-amber-800 tabular-nums">{analytics.attachmentTotal}</p>
-              <p className="text-[10px] text-amber-700 mt-1 font-medium">Total Files Uploaded</p>
-            </div>
-            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
-              <p className="text-xl font-bold text-gray-800 tabular-nums">{analytics.evidenceRatePct}%</p>
-              <p className="text-[10px] text-gray-600 mt-1 font-medium">Evidence Upload Rate</p>
-            </div>
+          <div className="reports-bi-metric-grid reports-bi-metric-grid--3">
+            <BiMetric value={analytics.visitsWithEvidence} label="Visits with files" tone="violet" />
+            <BiMetric value={analytics.attachmentTotal} label="Total files uploaded" tone="amber" />
+            <BiMetric value={`${analytics.evidenceRatePct}%`} label="Evidence upload rate" tone="slate" />
           </div>
         </ReportSection>
       </div>
@@ -538,82 +576,70 @@ export default function Reports() {
         }
       >
         {routeDistances.length === 0 ? (
-          <EmptyState
-            icon={Route}
-            title="No route distance data"
-            subtitle="Distance travelled appears when employees share GPS during active workdays."
-            action={
-              <Link to="/tracking" className="btn btn-primary btn-sm">
-                Open Live Tracking
-              </Link>
-            }
-          />
+          <div className="reports-bi-empty-panel">
+            <EmptyState
+              icon={Route}
+              title="No route distance data"
+              subtitle="Distance travelled appears when employees share GPS during active workdays."
+              action={
+                <Link to="/tracking" className="btn btn-primary btn-sm">
+                  Open Live Tracking
+                </Link>
+              }
+            />
+          </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div
-                className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-center"
+            <div className="reports-bi-metric-grid reports-bi-metric-grid--4 mb-4">
+              <BiMetric
+                value={formatDistanceKm(totalRouteKm)}
+                label="Distance travelled"
+                hint="Combined today"
+                tone="indigo"
                 title={ANALYTICS_TOOLTIPS.routeDistance}
-              >
-                <p className="text-xl font-bold text-indigo-800 tabular-nums">
-                  {formatDistanceKm(totalRouteKm)}
-                </p>
-                <p className="text-[10px] text-indigo-700 mt-1 font-medium">Distance Travelled</p>
-                <p className="text-[10px] text-indigo-600 mt-0.5">Combined today</p>
-              </div>
-              <div
-                className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-center"
+              />
+              <BiMetric
+                value={formatDistanceKm(routeAnalytics.avgKm)}
+                label="Average distance"
+                hint="Per employee today"
+                tone="sky"
                 title={ANALYTICS_TOOLTIPS.routeAverage}
-              >
-                <p className="text-xl font-bold text-sky-800 tabular-nums">
-                  {formatDistanceKm(routeAnalytics.avgKm)}
-                </p>
-                <p className="text-[10px] text-sky-700 mt-1 font-medium">Average Distance</p>
-                <p className="text-[10px] text-sky-600 mt-0.5">Per employee today</p>
-              </div>
-              <div
-                className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center"
+              />
+              <BiMetric
+                value={routeAnalytics.employeeCount}
+                label="Total routes"
+                hint="Employees tracked today"
+                tone="emerald"
                 title={ANALYTICS_TOOLTIPS.routeTotal}
-              >
-                <p className="text-xl font-bold text-emerald-800 tabular-nums">
-                  {routeAnalytics.employeeCount}
-                </p>
-                <p className="text-[10px] text-emerald-700 mt-1 font-medium">Total Routes</p>
-                <p className="text-[10px] text-emerald-600 mt-0.5">Employees tracked today</p>
-              </div>
-              <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 text-center col-span-2 sm:col-span-1">
-                <p className="text-sm font-bold text-violet-800 truncate">
-                  {routeAnalytics.topDistance?.name || "\u2014"}
-                </p>
-                <p className="text-[10px] text-violet-700 mt-1 font-medium">Longest Route Today</p>
-                <p className="text-[10px] text-violet-600 mt-0.5">
-                  {routeAnalytics.topDistance
+              />
+              <BiMetric
+                value={routeAnalytics.topDistance?.name || "\u2014"}
+                label="Longest route today"
+                hint={
+                  routeAnalytics.topDistance
                     ? formatDistanceKm(routeAnalytics.topDistance.km)
-                    : "No route data"}
-                </p>
-              </div>
+                    : "No route data"
+                }
+                tone="violet"
+              />
             </div>
             <Suspense fallback={<RouteFallback label="Loading route chart\u2026" />}>
               <WidgetErrorBoundary name="RouteChart" title="Route chart unavailable">
                 <ReportsRouteChart data={routeChartData} />
               </WidgetErrorBoundary>
             </Suspense>
-            <div className="space-y-3 mt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Distance by employee
-              </p>
+            <div className="reports-bi-route-list">
+              <p className="reports-bi-route-list__title">Distance by employee</p>
               {routeDistances
                 .slice()
                 .sort((a, b) => Number(b.km ?? 0) - Number(a.km ?? 0))
                 .slice(0, 8)
                 .map((r) => (
-                  <div key={r.name} className="flex items-center justify-between text-sm gap-3">
-                    <span className="font-medium text-gray-700 truncate">{r.name}</span>
+                  <div key={r.name} className="reports-bi-route-row">
+                    <span className="reports-bi-route-row__name">{r.name}</span>
                     <span className="text-right flex-shrink-0">
-                      <span className="font-semibold text-indigo-700 tabular-nums block">
-                        {formatDistanceKm(r.km)}
-                      </span>
-                      <span className="text-[10px] text-gray-500">Distance Travelled</span>
+                      <span className="reports-bi-route-row__km">{formatDistanceKm(r.km)}</span>
+                      <span className="reports-bi-route-row__hint">Distance travelled</span>
                     </span>
                   </div>
                 ))}
@@ -623,41 +649,31 @@ export default function Reports() {
       </ReportSection>
 
       <WidgetErrorBoundary name="VisitRecords" title="Visit records unavailable">
-      <div className="section-card">
-        <div className="section-card-header">
-          <div className="flex items-center gap-3">
-            <div className="icon-box">
-              <BarChart3 className="w-4 h-4" />
+      <div className="reports-bi-table-card">
+        <div className="reports-bi-table-head">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="reports-bi-panel__icon">
+              <BarChart3 className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
             </div>
             <div>
-              <h3 className="section-title">Visit Records</h3>
-              <p className="section-subtitle">{filtered.length} records</p>
+              <h3 className="reports-bi-panel__title">Visit records</h3>
+              <p className="reports-bi-panel__subtitle">{filtered.length} records</p>
             </div>
           </div>
-          <div className="relative w-56">
+          <div className="reports-bi-table-search">
+            <Search className="search-icon" aria-hidden="true" />
             <input
-              type="text"
+              type="search"
               placeholder="Search records\u2026"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="search-input"
-              style={{ paddingLeft: "2.25rem" }}
+              aria-label="Search visit records"
             />
-            <svg
-              className="search-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
           </div>
         </div>
-        <div className="table-container">
-          <table className="data-table">
+        <div className="reports-bi-table-wrap">
+          <table className="data-table compact-table reports-bi-table w-full">
             <thead>
               <tr>
                 <th>ID</th>
@@ -674,32 +690,30 @@ export default function Reports() {
                 filtered.slice(0, 50).map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <span className="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">
-                        #{item.id}
-                      </span>
+                      <span className="reports-bi-id">#{item.id}</span>
                     </td>
                     <td>
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <ProfileAvatar entity={item.farmer ?? item} name={item.farmer_name} size="xs" />
-                        <span className="font-medium text-gray-900">{item.farmer_name || "\u2014"}</span>
+                        <span className="font-medium text-slate-900 truncate">{item.farmer_name || "\u2014"}</span>
                       </div>
                     </td>
                     <td>
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        <Leaf className="w-3 h-3" />
+                      <span className="reports-bi-crop-chip">
+                        <Leaf className="w-3 h-3 shrink-0" aria-hidden="true" />
                         {item.crop || "\u2014"}
                       </span>
                     </td>
                     <td>
-                      <span className="flex items-center gap-1.5 text-gray-500 text-xs">
-                        <MapPin className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                      <span className="reports-bi-cell-muted">
+                        <MapPin className="w-3 h-3 text-slate-300 shrink-0" aria-hidden="true" />
                         {item.location_name || "\u2014"}
                       </span>
                     </td>
-                    <td className="text-gray-600">{item.employee || "\u2014"}</td>
+                    <td className="text-slate-600 text-sm">{item.employee || "\u2014"}</td>
                     <td>
-                      <span className="flex items-center gap-1.5 text-gray-500 text-xs">
-                        <Calendar className="w-3 h-3 text-gray-300" />
+                      <span className="reports-bi-cell-muted">
+                        <Calendar className="w-3 h-3 text-slate-300 shrink-0" aria-hidden="true" />
                         {item.visit_date
                           ? new Date(item.visit_date).toLocaleDateString("en-IN", {
                               day: "2-digit",
@@ -716,22 +730,24 @@ export default function Reports() {
               ) : (
                 <tr>
                   <td colSpan="7">
-                    <EmptyState
-                      icon={BarChart3}
-                      title="No records found"
-                      subtitle={search ? "Try a different search term or date range." : "Visit records will appear here once field agents submit visits."}
-                      action={
-                        search || dateFrom || dateTo ? (
-                          <button type="button" onClick={() => { setSearch(""); load(); }} className="btn btn-secondary btn-md">
-                            Reset filters
-                          </button>
-                        ) : (
-                          <Link to="/visits" className="btn btn-primary btn-md">
-                            View visits
-                          </Link>
-                        )
-                      }
-                    />
+                    <div className="reports-bi-empty-panel">
+                      <EmptyState
+                        icon={BarChart3}
+                        title="No records found"
+                        subtitle={search ? "Try a different search term or date range." : "Visit records will appear here once field agents submit visits."}
+                        action={
+                          search || dateFrom || dateTo ? (
+                            <button type="button" onClick={() => { setSearch(""); load(); }} className="btn btn-secondary btn-md">
+                              Reset filters
+                            </button>
+                          ) : (
+                            <Link to="/visits" className="btn btn-primary btn-md">
+                              View visits
+                            </Link>
+                          )
+                        }
+                      />
+                    </div>
                   </td>
                 </tr>
               )}
@@ -739,7 +755,7 @@ export default function Reports() {
           </table>
         </div>
         {filtered.length > 50 && (
-          <div className="px-6 py-3 border-t border-gray-50 text-xs text-gray-400 text-center">
+          <div className="reports-bi-table-footer">
             Showing first 50 of {filtered.length} records
           </div>
         )}

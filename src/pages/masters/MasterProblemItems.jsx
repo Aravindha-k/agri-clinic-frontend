@@ -12,7 +12,6 @@ import {
   X,
 } from "lucide-react";
 import { PageLoader, EmptyState } from "../../components/ui/command";
-import { Badge } from "../../components/ui/DataTable";
 import {
   fetchProblemCategories,
   fetchAllProblemMasters,
@@ -37,8 +36,16 @@ import {
   normalizeProblemImportResult,
 } from "../../utils/problemMasterDisplay";
 
-const inputClass =
-  "w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100";
+const inputClass = "masters-admin-field";
+
+function MastersStatus({ active }) {
+  return (
+    <span className={`masters-admin-status ${active !== false ? "masters-admin-status--active" : "masters-admin-status--inactive"}`}>
+      <span className="masters-admin-status__dot" aria-hidden="true" />
+      {active !== false ? "Active" : "Disabled"}
+    </span>
+  );
+}
 
 function ImportSummary({ result, onDismiss }) {
   if (!result) return null;
@@ -325,22 +332,35 @@ export default function MasterProblemItems() {
 
   if (apiAvailable === false) {
     return (
-      <div className="ops-page max-w-3xl">
-        <h1 className="text-xl font-semibold text-gray-900">Problem Items</h1>
-        <p className="text-sm text-gray-500 mt-1 mb-6">
-          Manage Pest, Disease, and Nutrient Issue dropdown options for Add Visit.
-        </p>
-        <EmptyState
-          icon={Bug}
-          title="Problem items API not available"
-          subtitle="The backend endpoint masters/problem-masters/ is not deployed yet. Problem categories can still be managed under Problem Categories."
-        />
+      <div className="masters-admin page-container max-w-3xl">
+        <header className="masters-admin-header">
+          <div className="masters-admin-header__inner">
+            <div className="masters-admin-header__brand">
+              <div className="masters-admin-header__icon" aria-hidden="true">
+                <Bug className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="masters-admin-header__title">Problem Items</h1>
+                <p className="masters-admin-header__subtitle">
+                  Manage Pest, Disease, and Nutrient Issue dropdown options for Add Visit.
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="masters-admin-empty">
+          <EmptyState
+            icon={Bug}
+            title="Problem items API not available"
+            subtitle="The backend endpoint masters/problem-masters/ is not deployed yet. Problem categories can still be managed under Problem Categories."
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="ops-page">
+    <div className="masters-admin page-container">
       <input
         ref={fileInputRef}
         type="file"
@@ -349,52 +369,63 @@ export default function MasterProblemItems() {
         onChange={handleImportFile}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Problem Items</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Pest, Disease, and Nutrient Issue options for the Add Visit form
-            {!loading && (
-              <span className="ml-2 font-semibold text-emerald-700">{totalCount} total</span>
-            )}
-          </p>
+      <header className="masters-admin-header">
+        <div className="masters-admin-header__inner">
+          <div className="masters-admin-header__brand">
+            <div className="masters-admin-header__icon" aria-hidden="true">
+              <Bug className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <span className="masters-admin-header__badge">
+                <Bug className="w-3 h-3" aria-hidden="true" />
+                Visit form options
+              </span>
+              <h1 className="masters-admin-header__title">Problem Items</h1>
+              <p className="masters-admin-header__subtitle">
+                Pest, Disease, and Nutrient Issue options for the Add Visit form
+                {!loading && (
+                  <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="masters-admin-header__actions">
+            <button
+              type="button"
+              onClick={handleImportClick}
+              disabled={importing || loading}
+              className="btn btn-secondary btn-md"
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  {importProgress != null ? `Uploading ${importProgress}%` : "Importing…"}
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" aria-hidden="true" /> Import Excel
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanel({ open: true, mode: "add", item: null })}
+              className="btn btn-primary btn-md"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add item
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleImportClick}
-            disabled={importing || loading}
-            className="btn btn-secondary btn-md"
-          >
-            {importing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {importProgress != null ? `Uploading ${importProgress}%` : "Importing…"}
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" /> Import Excel
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPanel({ open: true, mode: "add", item: null })}
-            className="btn btn-primary btn-md"
-          >
-            <Plus className="w-4 h-4" /> Add item
-          </button>
-        </div>
-      </div>
+      </header>
 
       {importing && (
-        <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3 flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-emerald-600 animate-spin flex-shrink-0" />
+        <div className="masters-admin-alert masters-admin-alert--import mb-0">
+          <Loader2 className="w-5 h-5 text-teal-600 animate-spin flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900">Importing problem items…</p>
-            <div className="mt-2 h-1.5 rounded-full bg-emerald-100 overflow-hidden">
+            <p className="text-sm font-medium text-slate-900">Importing problem items…</p>
+            <div className="masters-admin-import-bar mt-2">
               <div
-                className="h-full bg-emerald-500 transition-all duration-300"
+                className="masters-admin-import-bar__fill"
                 style={{ width: `${importProgress ?? 30}%` }}
               />
             </div>
@@ -404,87 +435,95 @@ export default function MasterProblemItems() {
 
       <ImportSummary result={importResult} onDismiss={() => setImportResult(null)} />
 
-      <div className="section-card overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search English, Tamil, crop, category…"
-              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200"
-            />
+      <div className="masters-admin-table-card">
+        <div className="masters-admin-filters border-0 rounded-none shadow-none p-4 border-b border-slate-100">
+          <div className="masters-admin-filters__row">
+            <div className="masters-admin-search max-w-md">
+              <Search className="search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search English, Tamil, crop, category…"
+                className="search-input"
+                aria-label="Search problem items"
+              />
+            </div>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="masters-admin-filter-select"
+              aria-label="Filter by category"
+            >
+              <option value="">All categories</option>
+              {managedCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <p className="masters-admin-filters__meta lg:ml-auto">{filtered.length} items shown</p>
           </div>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className={inputClass + " max-w-xs"}
-          >
-            <option value="">All categories</option>
-            {managedCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
         </div>
 
         {loading ? (
           <PageLoader label="Loading problem items…" />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={Bug}
-            title="No problem items"
-            subtitle={
-              search || filterCategory
-                ? "No items match your filters"
-                : "Add pests, diseases, or nutrient issues — or import from Excel"
-            }
-          />
+          <div className="masters-admin-empty">
+            <EmptyState
+              icon={Bug}
+              title="No problem items"
+              subtitle={
+                search || filterCategory
+                  ? "No items match your filters"
+                  : "Add pests, diseases, or nutrient issues — or import from Excel"
+              }
+            />
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
+          <div className="masters-admin-table-wrap">
+            <table className="data-table compact-table masters-admin-table w-full">
               <thead>
                 <tr>
                   <th>Crop</th>
                   <th>Category</th>
-                  <th>English Name</th>
-                  <th>Tamil Name</th>
+                  <th>English name</th>
+                  <th>Tamil name</th>
                   <th>Status</th>
-                  <th className="w-24" />
+                  <th className="w-28 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row) => (
                   <tr key={row.id}>
-                    <td className="text-sm text-gray-600">{resolveProblemCropLabel(row)}</td>
-                    <td className="text-sm text-gray-700">{resolveProblemCategoryLabel(row)}</td>
-                    <td className="font-medium text-gray-900">
+                    <td className="text-sm text-slate-600">{resolveProblemCropLabel(row)}</td>
+                    <td className="text-sm text-slate-700">{resolveProblemCategoryLabel(row)}</td>
+                    <td className="font-semibold text-slate-900">
                       {resolveProblemEnglishName(row) || "—"}
                     </td>
-                    <td className="text-sm text-gray-600">
+                    <td className="text-sm text-slate-600">
                       {resolveProblemTamilName(row) || "—"}
                     </td>
                     <td>
-                      <Badge active={row.is_active !== false} />
+                      <MastersStatus active={row.is_active} />
                     </td>
                     <td>
-                      <div className="flex gap-1 justify-end">
+                      <div className="masters-admin-actions">
                         <button
                           type="button"
-                          className="p-2 rounded-lg hover:bg-gray-100"
+                          className="masters-admin-action-btn masters-admin-action-btn--edit"
                           onClick={() => setPanel({ open: true, mode: "edit", item: row })}
                           aria-label="Edit"
                         >
-                          <Pencil className="w-4 h-4 text-gray-500" />
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
-                          className="p-2 rounded-lg hover:bg-red-50"
+                          className="masters-admin-action-btn masters-admin-action-btn--delete"
                           onClick={() => setConfirm({ open: true, item: row })}
                           aria-label="Delete"
                         >
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -497,13 +536,14 @@ export default function MasterProblemItems() {
       </div>
 
       <SlidePanel
+        tone="masters"
         open={panel.open}
         onClose={() => setPanel({ open: false, mode: "add", item: null })}
         title={panel.mode === "edit" ? "Edit problem item" : "Add problem item"}
       >
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
+        <form onSubmit={handleSave} className="masters-admin-form">
+          <div className={inputClass}>
+            <label>
               English Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -511,27 +551,24 @@ export default function MasterProblemItems() {
               required
               defaultValue={resolveProblemEnglishName(panel.item)}
               placeholder="e.g. Stem borer"
-              className={inputClass}
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Tamil Name</label>
+          <div className={inputClass}>
+            <label>Tamil Name</label>
             <input
               name="name_ta"
               defaultValue={resolveProblemTamilName(panel.item)}
               placeholder="e.g. தண்டு துளைப்பான்"
-              className={inputClass}
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
+          <div className={inputClass}>
+            <label>
               Category <span className="text-red-500">*</span>
             </label>
             <select
               name="category"
               required
               defaultValue={panel.item?.category ?? panel.item?.category_id ?? ""}
-              className={inputClass}
             >
               <option value="">Select category</option>
               {managedCategories.map((c) => (
@@ -541,12 +578,11 @@ export default function MasterProblemItems() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Crop (optional)</label>
+          <div className={inputClass}>
+            <label>Crop (optional)</label>
             <select
               name="crop"
               defaultValue={panel.item?.crop ?? panel.item?.crop_id ?? ""}
-              className={inputClass}
             >
               <option value="">Any crop</option>
               {crops.map((c) => (
@@ -557,7 +593,7 @@ export default function MasterProblemItems() {
               ))}
             </select>
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="masters-admin-check">
             <input
               type="checkbox"
               name="is_active"

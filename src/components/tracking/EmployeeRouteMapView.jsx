@@ -4,7 +4,6 @@ import L from "leaflet";
 import { RefreshCw, Route, Radio } from "lucide-react";
 import AdminMapFrame from "../map/AdminMapFrame";
 import { RouteEndpointMapLegend } from "../map/MapLegendPanel";
-import RouteContrastPolyline from "../map/RouteContrastPolyline";
 import MapRouteViewport from "../map/MapRouteViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
 import { PageLoader, EmptyState } from "../ui/command";
@@ -14,34 +13,41 @@ import {
   formatRouteTimestamp,
   formatRouteDuration,
   computeRouteSummary,
-  decimateRoutePoints,
   resolveRouteEmptyState,
   resolveRouteFetchError,
 } from "../../utils/employeeRoute";
-import { extractRoutePolyline } from "../../utils/dutyTracking";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
-function routeIcon(color, size = 16) {
-  return L.divIcon({
-    className: "",
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.45),0 2px 8px rgba(0,0,0,.55)"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
-}
+const MARKER_COLORS = {
+  start: "#3b82f6",
+  visit: "#059669",
+  end: "#ef4444",
+};
 
-function SummaryCard({ label, value }) {
+function SummaryCard({ label, value, className = "" }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 px-3 py-2.5" style={{ boxShadow: SHADOW }}>
-      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
+    <div className={`tracking-drawer-route__summary-card ${className}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-sm font-bold text-slate-900 mt-0.5 tabular-nums">{value}</p>
     </div>
   );
 }
 
+function routeIcon(color, size = 18) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="position:relative;width:${size + 8}px;height:${size + 8}px;display:flex;align-items:center;justify-content:center;">
+      <div style="width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 3px 10px rgba(0,0,0,.45)"></div>
+    </div>`,
+    iconSize: [size + 8, size + 8],
+    iconAnchor: [(size + 8) / 2, size + 4],
+  });
+}
+
 /**
- * Shared employee route map + summary (drawer tab and dedicated route page).
+ * Shared employee day map + summary (drawer tab and dedicated route page).
+ * Marker-only: Start, submitted Visits, End (when backend end coords exist).
  */
 export default function EmployeeRouteMapView({
   userId,
@@ -58,45 +64,49 @@ export default function EmployeeRouteMapView({
   drawerOpen = true,
   dateInputId = "route-date",
   showDutyMeta = false,
+  variant = "default",
 }) {
-  const points = routeData?.points ?? [];
-  const totalPoints = routeData?.totalPoints ?? points.length;
-  const canDrawRoute = totalPoints >= 2;
+  const markers = routeData?.markers ?? [];
+  const markerCount = markers.length;
+  const canShowMap = markerCount >= 1;
 
   const summary = useMemo(
     () => computeRouteSummary(routeData, employee),
     [routeData, employee]
   );
 
-  const polylinePositions = useMemo(() => {
-    if (!canDrawRoute) return [];
-    const fromApi = extractRoutePolyline(routeData);
-    if (fromApi.length >= 2) return fromApi;
-    const decimated = decimateRoutePoints(points);
-    return decimated.map((p) => [p.latitude, p.longitude]);
-  }, [points, canDrawRoute, routeData]);
+  const mapPoints = useMemo(
+    () =>
+      markers.map((m) => ({
+        latitude: m.latitude,
+        longitude: m.longitude,
+      })),
+    [markers]
+  );
 
-  const showCurrentMarker =
-    summary.currentLat != null &&
-    summary.currentLng != null &&
-    isValidCoord(summary.currentLat, summary.currentLng);
+  const mapKey = [
+    "day",
+    userId ?? "none",
+    routeDate ?? "none",
+    routeData?.dutySessionId ?? "nosession",
+  ].join("-");
 
-  const currentDiffersFromEnd =
-    showCurrentMarker &&
-    points.length > 0 &&
-    (Math.abs(summary.currentLat - points[points.length - 1].latitude) > 0.0001 ||
-      Math.abs(summary.currentLng - points[points.length - 1].longitude) > 0.0001);
-
-  const mapReady = drawerOpen && canDrawRoute && !routeLoading && !routeError;
+  const mapReady = drawerOpen && canShowMap && !routeLoading && !routeError;
 
   const emptyState = resolveRouteEmptyState(routeData);
   const errorMessage = routeError ? resolveRouteFetchError(routeError) : null;
 
+  const isDrawerVariant = variant === "tracking-drawer";
+
   return (
-    <div className="space-y-4">
+    <div className={isDrawerVariant ? "tracking-drawer-route" : "space-y-4"}>
       <div
-        className="flex flex-wrap items-center gap-3 bg-white rounded-xl p-3 border border-gray-100"
-        style={{ boxShadow: SHADOW }}
+        className={
+          isDrawerVariant
+            ? "tracking-drawer-route__toolbar"
+            : "flex flex-wrap items-center gap-3 bg-white rounded-xl p-3 border border-gray-100"
+        }
+        style={isDrawerVariant ? undefined : { boxShadow: SHADOW }}
       >
         <label className="text-xs font-medium text-gray-500" htmlFor={dateInputId}>
           Route date
@@ -118,8 +128,8 @@ export default function EmployeeRouteMapView({
                 Live
               </span>
             ) : null}
-            {totalPoints} point{totalPoints === 1 ? "" : "s"}
-            {summary.distanceKm != null ? ` · ${summary.distanceKm} km` : ""}
+            {markerCount} marker{markerCount === 1 ? "" : "s"}
+            {summary.visitCount > 0 ? ` · ${summary.visitCount} visit${summary.visitCount === 1 ? "" : "s"}` : ""}
           </span>
         ) : autoSyncing ? (
           <span className="text-xs text-emerald-600 ml-auto inline-flex items-center gap-1">
@@ -135,18 +145,21 @@ export default function EmployeeRouteMapView({
         <ErrorRetry compact message={errorMessage} onRetry={onRetry} />
       ) : null}
 
-      {!routeLoading && !routeError && totalPoints > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-          <SummaryCard
-            label="Distance"
-            value={summary.distanceKm != null ? `${summary.distanceKm} km` : "—"}
-          />
+      {!routeLoading && !routeError && markerCount > 0 ? (
+        <div
+          className={
+            isDrawerVariant
+              ? "tracking-drawer-route__summary"
+              : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2"
+          }
+        >
+          <SummaryCard label="Visits" value={String(summary.visitCount ?? 0)} />
           {showDutyMeta ? (
             <>
               <SummaryCard label="Duty start" value={formatRouteTimestamp(routeData?.startTime)} />
               <SummaryCard
-                label="Latest update"
-                value={formatRouteTimestamp(routeData?.latestUpdate ?? summary.endTime)}
+                label="Duty end"
+                value={formatRouteTimestamp(routeData?.endTime)}
               />
             </>
           ) : (
@@ -156,87 +169,59 @@ export default function EmployeeRouteMapView({
               <SummaryCard label="End time" value={formatRouteTimestamp(summary.endTime)} />
             </>
           )}
-          <SummaryCard label="Total points" value={String(totalPoints)} />
+          <SummaryCard
+            label="End reason"
+            value={summary.endReason ? String(summary.endReason).replace(/_/g, " ") : "—"}
+          />
         </div>
       ) : null}
 
-      {!routeLoading && !routeError && totalPoints === 1 ? (
+      {!routeLoading && !routeError && markerCount === 1 && markers[0]?.type === "start" ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
           {emptyState.subtitle}
         </div>
       ) : null}
 
-      {!routeLoading && !routeError && canDrawRoute ? (
+      {!routeLoading && !routeError && canShowMap ? (
         <AdminMapFrame
-          center={[points[0].latitude, points[0].longitude]}
+          center={[markers[0].latitude, markers[0].longitude]}
           zoom={14}
-          mapKey={`route-${userId}-${routeDate}`}
+          mapKey={mapKey}
           height={mapHeight}
           className="rounded-xl border border-gray-200"
           legend={<RouteEndpointMapLegend />}
-          legendTitle="Route markers"
+          legendTitle="Day markers"
           loading={!mapReady}
           loadingLabel="Preparing map…"
         >
-          <MapRouteViewport points={points} drawerOpen={drawerOpen} />
-          <RouteContrastPolyline positions={polylinePositions} />
-          <Marker
-            position={[points[0].latitude, points[0].longitude]}
-            icon={routeIcon("#3b82f6", 16)}
-          >
-            <Popup>
-              <EmployeeMapPopup
-                name="Route start"
-                lat={points[0].latitude}
-                lng={points[0].longitude}
-                entity={points[0]}
-                lastUpdated={formatRouteTimestamp(summary.startTime)}
-              />
-            </Popup>
-          </Marker>
-          {points.length > 1 ? (
+          <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} />
+          {markers.map((marker, idx) => (
             <Marker
-              position={[
-                points[points.length - 1].latitude,
-                points[points.length - 1].longitude,
-              ]}
-              icon={routeIcon("#ef4444", 16)}
-            >
-              <Popup>
-                <EmployeeMapPopup
-                  name="Route end"
-                  lat={points[points.length - 1].latitude}
-                  lng={points[points.length - 1].longitude}
-                  entity={points[points.length - 1]}
-                  lastUpdated={formatRouteTimestamp(summary.endTime)}
-                />
-              </Popup>
-            </Marker>
-          ) : null}
-          {showCurrentMarker && currentDiffersFromEnd ? (
-            <Marker
-              position={[summary.currentLat, summary.currentLng]}
-              icon={routeIcon("#059669", 18)}
+              key={`${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}-${marker.latitude}-${marker.longitude}`}
+              position={[marker.latitude, marker.longitude]}
+              icon={routeIcon(MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit, marker.type === "visit" ? 16 : 18)}
             >
               <Popup>
                 <EmployeeMapPopup
                   name={
-                    employee
-                      ? `${employee.employee_name || employee.username || "Employee"} (current)`
-                      : "Current location"
+                    marker.type === "start"
+                      ? "Start"
+                      : marker.type === "end"
+                        ? "End"
+                        : marker.label || "Visit"
                   }
-                  lat={summary.currentLat}
-                  lng={summary.currentLng}
-                  entity={employee}
-                  lastUpdated={formatRouteTimestamp(employee?.last_seen)}
+                  lat={marker.latitude}
+                  lng={marker.longitude}
+                  entity={marker}
+                  lastUpdated={formatRouteTimestamp(marker.captured_at)}
                 />
               </Popup>
             </Marker>
-          ) : null}
+          ))}
         </AdminMapFrame>
       ) : null}
 
-      {!routeLoading && !routeError && totalPoints === 0 ? (
+      {!routeLoading && !routeError && markerCount === 0 ? (
         <div className="section-card">
           <EmptyState
             icon={Route}
@@ -254,8 +239,4 @@ export default function EmployeeRouteMapView({
       ) : null}
     </div>
   );
-}
-
-function isValidCoord(lat, lng) {
-  return Number.isFinite(lat) && Number.isFinite(lng);
 }

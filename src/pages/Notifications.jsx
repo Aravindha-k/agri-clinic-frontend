@@ -1,4 +1,5 @@
-import { PageLoader } from "../components/ui/command";
+import { PageLoader, EmptyState, PageHeader } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
 import { useState, useEffect, useCallback } from "react";
 import { Bell, CheckCircle2, RefreshCw, AlertCircle, Info, AlertTriangle, CheckCircle } from "lucide-react";
 import api from "../api/axios";
@@ -74,10 +75,7 @@ export default function Notifications() {
     if (error) {
         return (
             <div className="page-container">
-                <div className="alert-error">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-                    <button onClick={fetchNotifications} className="ml-auto font-semibold hover:underline">Retry</button>
-                </div>
+                <ErrorRetry message={error} onRetry={fetchNotifications} />
             </div>
         );
     }
@@ -85,32 +83,31 @@ export default function Notifications() {
     return (
         <div className="page-container">
             {/* ── Header ── */}
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Notifications</h1>
-                    <p className="page-subtitle">
-                        {unreadCount > 0
-                            ? <span className="text-emerald-600 font-semibold">{unreadCount} unread</span>
-                            : "All caught up"
-                        }
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="btn btn-secondary btn-md">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Mark all read
+            <PageHeader
+                title="Notifications"
+                subtitle={
+                    unreadCount > 0
+                        ? <span className="text-emerald-600 font-semibold">{unreadCount} unread</span>
+                        : "All caught up"
+                }
+                actions={
+                    <>
+                        {unreadCount > 0 && (
+                            <button type="button" onClick={markAllRead} className="btn btn-secondary btn-md">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Mark all read
+                            </button>
+                        )}
+                        <button type="button" onClick={fetchNotifications} className="btn btn-ghost btn-md" title="Refresh">
+                            <RefreshCw className="w-4 h-4" />
                         </button>
-                    )}
-                    <button onClick={fetchNotifications} className="btn btn-ghost btn-md" title="Refresh">
-                        <RefreshCw className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
+                    </>
+                }
+            />
 
             {/* ── Unread count badge ── */}
             {unreadCount > 0 && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="enterprise-banner">
+                    <span className="enterprise-banner__dot" aria-hidden="true" />
                     <p className="text-sm text-emerald-700 font-medium">
                         You have {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
                     </p>
@@ -120,13 +117,11 @@ export default function Notifications() {
             {/* ── List ── */}
             {notifications.length === 0 ? (
                 <div className="section-card">
-                    <div className="empty-state">
-                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
-                            <Bell className="w-7 h-7 text-gray-300" />
-                        </div>
-                        <p className="text-gray-600 font-semibold">No notifications yet</p>
-                        <p className="text-sm text-gray-400 mt-1">You're all caught up!</p>
-                    </div>
+                    <EmptyState
+                        icon={Bell}
+                        title="No notifications yet"
+                        subtitle="You're all caught up. New alerts from field operations will appear here."
+                    />
                 </div>
             ) : (
                 <div className="space-y-2">

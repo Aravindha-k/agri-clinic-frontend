@@ -1,23 +1,25 @@
+import { useMemo } from "react";
 import { CHART_COLORS } from "../../theme/brand";
 import ChartContainer from "../ui/ChartContainer";
-import { AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
-import { Calendar } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { Calendar, TrendingUp } from "lucide-react";
+import { EmptyState } from "../ui/command";
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   const visits = payload[0]?.value ?? 0;
   return (
-    <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg text-xs">
-      <p className="font-semibold text-gray-700 mb-0.5">{label}</p>
-      <p className="font-medium text-emerald-700">
-        {visits} Visit{visits === 1 ? "" : "s"} Completed
+    <div className="dashboard-chart-tooltip">
+      <p className="dashboard-chart-tooltip__label">{label}</p>
+      <p className="dashboard-chart-tooltip__value">
+        {visits} visit{visits === 1 ? "" : "s"} completed
       </p>
-      <p className="text-gray-500 mt-0.5">Daily field visit count</p>
+      <p className="dashboard-chart-tooltip__hint">Daily field visit count</p>
     </div>
   );
 }
 
-function SectionHeader({ icon: Icon, title, subtitle }) {
+function SectionHeader({ icon: Icon, title, subtitle, right }) {
   return (
     <div className="section-card-header">
       <div className="flex items-center gap-2.5 min-w-0">
@@ -31,54 +33,93 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
           {subtitle && <p className="section-subtitle">{subtitle}</p>}
         </div>
       </div>
+      {right}
     </div>
   );
 }
 
 export default function DashboardVisitChart({ visitTrends = [] }) {
   const trends = Array.isArray(visitTrends) ? visitTrends : [];
+  const totalVisits = useMemo(
+    () => trends.reduce((sum, row) => sum + (Number(row.count) || 0), 0),
+    [trends]
+  );
+  const peakDay = useMemo(() => {
+    if (!trends.length) return null;
+    return trends.reduce((best, row) =>
+      (Number(row.count) || 0) > (Number(best.count) || 0) ? row : best
+    );
+  }, [trends]);
+
   return (
-    <div
-      className="section-card overflow-hidden"
-      style={{
-        boxShadow:
-          "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
-        border: "1px solid rgba(15,118,110,0.08)",
-      }}
-    >
+    <div className="dashboard-chart">
       <SectionHeader
         icon={Calendar}
         title="Visit Activity"
-        subtitle="Number of field visits completed each day (last 30 days)"
+        subtitle="Field visits completed each day (last 30 days)"
+        right={
+          trends.length > 0 ? (
+            <span className="dashboard-chart__summary">
+              <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" />
+              {totalVisits} total
+            </span>
+          ) : null
+        }
       />
-      <div className="px-3 py-3">
+      <div className="dashboard-chart__body">
+        {trends.length > 0 && (
+          <div className="dashboard-chart__meta">
+            <div className="dashboard-chart__legend">
+              <span className="dashboard-chart__legend-item">
+                <span className="dashboard-chart__legend-dot" aria-hidden="true" />
+                Visits completed
+              </span>
+              {peakDay && (
+                <span className="text-slate-400">
+                  Peak: {peakDay.label} ({peakDay.count})
+                </span>
+              )}
+            </div>
+          </div>
+        )}
         {trends.length === 0 ? (
-          <div className="flex flex-col items-center justify-center w-full min-w-0 h-[300px] text-gray-400">
-            <Calendar className="w-10 h-10 text-gray-300 mb-3" />
-            <p className="text-sm font-medium text-gray-500">No visit trend data yet</p>
+          <div className="dashboard-chart__empty">
+            <EmptyState
+              icon={Calendar}
+              title="No visit trend data yet"
+              subtitle="Daily visit analytics will appear once field visits are recorded."
+              className="py-8"
+            />
           </div>
         ) : (
           <ChartContainer>
-            <AreaChart data={trends} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+            <AreaChart data={trends} margin={{ top: 12, right: 12, bottom: 4, left: -12 }}>
               <defs>
                 <linearGradient id="visitTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.25} />
+                  <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.28} />
                   <stop offset="100%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                 </linearGradient>
               </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={CHART_COLORS.grid}
+                vertical={false}
+              />
               <XAxis
                 dataKey="label"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                tick={{ fontSize: 11, fill: CHART_COLORS.axis }}
+                dy={8}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                tick={{ fontSize: 11, fill: CHART_COLORS.axis }}
                 allowDecimals={false}
+                width={36}
               />
-              <Tooltip content={<ChartTooltip />} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: CHART_COLORS.primary, strokeOpacity: 0.15 }} />
               <Area
                 type="monotone"
                 dataKey="count"

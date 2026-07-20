@@ -1,4 +1,4 @@
-import { Navigation, Wifi, WifiOff, MapPinOff, AlertTriangle, Activity, Radio, MapPin, LogOut } from "lucide-react";
+import { Navigation, Wifi, WifiOff, MapPinOff, AlertTriangle, Activity, Radio, MapPin, LogOut, Ban, Clock } from "lucide-react";
 import {
   resolveWorkdayStatusKey,
   resolveGpsDataStatusKey,
@@ -21,10 +21,10 @@ import {
 function Badge({ bg, text, border, dot, label, pulse, icon: Icon }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${bg} ${text} ${border}`}
+      className={`tracking-status-badge ${bg} ${text} ${border}`}
     >
-      {Icon ? <Icon className="w-3 h-3" /> : (
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot} ${pulse ? "animate-pulse" : ""}`} />
+      {Icon ? <Icon className="w-3 h-3" aria-hidden="true" /> : (
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot} ${pulse ? "animate-pulse" : ""}`} aria-hidden="true" />
       )}
       {label}
     </span>
@@ -87,27 +87,35 @@ export function MovementBadge({ employee, status }) {
 
 const CANONICAL_GPS_CFG = {
   gps_active: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", pulse: true, icon: MapPin },
-  gps_delayed: { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500", pulse: false, icon: AlertTriangle },
-  gps_lost: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500", pulse: false, icon: MapPinOff },
+  gps_stale: { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500", pulse: false, icon: Clock },
+  gps_offline: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", dot: "bg-slate-500", pulse: false, icon: MapPinOff },
+  gps_delayed: { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500", pulse: false, icon: Clock },
+  gps_lost: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", dot: "bg-slate-500", pulse: false, icon: MapPinOff },
   gps_off: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", dot: "bg-slate-500", pulse: false, icon: MapPinOff },
 };
 
 const CANONICAL_DUTY_CFG = {
+  working: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", pulse: true, icon: Radio },
+  stopped: { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200", dot: "bg-gray-400", pulse: false, icon: null },
+  auto_ended: { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500", pulse: false, icon: Clock },
+  admin_ended: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", dot: "bg-violet-500", pulse: false, icon: Ban },
+  no_workday: { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400", pulse: false, icon: LogOut },
+  // legacy aliases
   on_duty: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", pulse: true, icon: Radio },
   off_duty: { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200", dot: "bg-gray-400", pulse: false, icon: null },
-  logged_out: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500", pulse: false, icon: LogOut },
+  logged_out: { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400", pulse: false, icon: LogOut },
 };
 
 export function DutyGpsStatusBadge({ employee }) {
   const key = resolveCanonicalGpsStatusKey(employee ?? {});
-  const c = CANONICAL_GPS_CFG[key] ?? CANONICAL_GPS_CFG.gps_off;
-  return <Badge {...c} label={CANONICAL_GPS_LABELS[key]} icon={c.icon} />;
+  const c = CANONICAL_GPS_CFG[key] ?? CANONICAL_GPS_CFG.gps_offline;
+  return <Badge {...c} label={CANONICAL_GPS_LABELS[key] ?? "GPS Offline"} icon={c.icon} />;
 }
 
 export function DutyWorkdayBadge({ employee }) {
   const key = resolveCanonicalDutyStatusKey(employee ?? {});
-  const c = CANONICAL_DUTY_CFG[key] ?? CANONICAL_DUTY_CFG.off_duty;
-  return <Badge {...c} label={CANONICAL_DUTY_LABELS[key]} icon={c.icon} />;
+  const c = CANONICAL_DUTY_CFG[key] ?? CANONICAL_DUTY_CFG.no_workday;
+  return <Badge {...c} label={CANONICAL_DUTY_LABELS[key] ?? "No Workday"} icon={c.icon} />;
 }
 
 export function DutyMovementBadge({ employee }) {

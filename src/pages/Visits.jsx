@@ -20,17 +20,14 @@ import {
 } from "../utils/visitDisplay";
 import {
   PageHeader,
-  FilterBar,
   EmptyState,
   GpsIndicator,
-  PageLoader,
 } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import VisitListCard from "../components/visits/VisitListCard";
 import {
   Search,
-  AlertCircle,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -41,6 +38,7 @@ import {
   List,
   Paperclip,
   Plus,
+  ClipboardList,
 } from "lucide-react";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 
@@ -81,6 +79,59 @@ function matchesDateChip(v, chip) {
   return true;
 }
 
+function VisitsTableSkeleton() {
+  return (
+    <div className="visits-table-skeleton" aria-busy="true" aria-label="Loading visits">
+      <div className="visits-table-skeleton__row border-b border-slate-100 mb-1">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="skeleton h-3 flex-1 rounded hidden sm:block first:block" />
+        ))}
+      </div>
+      {Array.from({ length: 8 }).map((_, r) => (
+        <div key={r} className="visits-table-skeleton__row">
+          <div className="skeleton h-3 w-10 rounded flex-shrink-0" />
+          <div className="skeleton h-3.5 flex-[2] rounded" />
+          <div className="skeleton h-3 flex-1 rounded hidden md:block" />
+          <div className="skeleton h-3 flex-1 rounded hidden lg:block" />
+          <div className="skeleton h-3 flex-1 rounded hidden xl:block" />
+          <div className="skeleton h-6 w-14 rounded-full hidden lg:block" />
+          <div className="skeleton h-8 w-8 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VisitsGridSkeleton() {
+  return (
+    <div className="visits-grid-skeleton" aria-busy="true" aria-label="Loading visits">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="visits-card-skeleton">
+          <div className="flex justify-between gap-2">
+            <div className="skeleton h-5 w-20 rounded-md" />
+            <div className="skeleton h-5 w-24 rounded-md" />
+          </div>
+          <div className="flex gap-3">
+            <div className="skeleton w-10 h-10 rounded-full flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="skeleton h-4 w-3/4 rounded" />
+              <div className="skeleton h-3 w-1/2 rounded" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="skeleton h-6 w-16 rounded-lg" />
+            <div className="skeleton h-6 w-20 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="skeleton h-12 rounded-lg" />
+            <div className="skeleton h-12 rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VisitRow({ v, onView }) {
   const farmer = resolveVisitFarmer(v);
   const whenLabel = visitWhenLabel(v);
@@ -97,42 +148,48 @@ function VisitRow({ v, onView }) {
 
   return (
     <tr
-      className="hover:bg-emerald-50/30 transition-colors cursor-pointer group"
+      className="cursor-pointer group"
       onClick={() => onView(v.id)}
     >
-      <td className="font-mono text-xs text-slate-500">
+      <td className="font-mono text-xs text-slate-500 whitespace-nowrap">
         <span className="inline-flex items-center gap-1.5">
           #{v.id}
           {attachmentCount != null && attachmentCount > 0 && (
             <span
-              className="inline-flex items-center gap-0.5 text-gray-500"
+              className="inline-flex items-center gap-0.5 text-violet-600"
               title={`${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"}`}
             >
-              <Paperclip className="w-3 h-3" />
+              <Paperclip className="w-3 h-3" aria-hidden="true" />
               {attachmentCount}
             </span>
           )}
         </span>
       </td>
       <td>
-        <p className="text-sm font-semibold text-gray-900">{asDisplayString(farmer.name)}</p>
-        <p className="text-xs text-gray-400 font-mono">{asDisplayString(farmer.phone)}</p>
+        <p className="text-sm font-semibold text-slate-900">{asDisplayString(farmer.name)}</p>
+        <p className="text-xs text-slate-500 font-mono tabular-nums">{asDisplayString(farmer.phone)}</p>
       </td>
-      <td className="text-sm text-gray-700">{villageLabel}</td>
-      <td className="text-sm text-gray-700 max-w-[120px]">{cropName}</td>
-      <td className="text-sm text-gray-600 max-w-[160px]">
+      <td className="text-sm text-slate-700">{villageLabel}</td>
+      <td className="text-sm text-slate-700 max-w-[8rem]">
+        <span className="line-clamp-1">{cropName}</span>
+      </td>
+      <td className="text-sm text-slate-600 max-w-[10rem] hidden xl:table-cell">
         <span className="line-clamp-2" title={resolveVisitFieldNotes(v)}>{fieldNotes}</span>
       </td>
-      <td className="text-sm text-gray-600 max-w-[140px]">
+      <td className="text-sm text-slate-600 max-w-[9rem] hidden lg:table-cell">
         <span className="line-clamp-2" title={resolveVisitProblemSeen(v)}>{problemSeen}</span>
       </td>
-      <td className="text-sm text-gray-600 max-w-[140px]">
+      <td className="text-sm text-slate-600 max-w-[9rem] hidden lg:table-cell">
         <span className="line-clamp-2" title={resolveVisitActionTaken(v)}>{actionTaken}</span>
       </td>
-      <td className="text-sm text-gray-500 whitespace-nowrap">{followUpDate}</td>
-      <td className="text-sm text-gray-600">{land}</td>
-      <td className="text-sm text-gray-600">{asDisplayString(visitEmployeeLabel(v))}</td>
-      <td className="text-sm text-gray-500 whitespace-nowrap">{asDisplayString(whenLabel)}</td>
+      <td className="text-sm text-slate-500 whitespace-nowrap hidden md:table-cell">{followUpDate}</td>
+      <td className="text-sm text-slate-600 max-w-[7rem] hidden lg:table-cell">
+        <span className="line-clamp-1">{land}</span>
+      </td>
+      <td className="text-sm text-slate-600 max-w-[8rem] hidden md:table-cell">
+        <span className="line-clamp-1">{asDisplayString(visitEmployeeLabel(v))}</span>
+      </td>
+      <td className="text-sm text-slate-500 whitespace-nowrap">{asDisplayString(whenLabel)}</td>
       <td>
         <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
       </td>
@@ -143,8 +200,9 @@ function VisitRow({ v, onView }) {
             e.stopPropagation();
             onView(v.id);
           }}
-          className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity"
-          title="View"
+          className="visits-action-btn"
+          title="View visit"
+          aria-label="View visit"
         >
           <Eye className="w-4 h-4" />
         </button>
@@ -217,9 +275,10 @@ export default function Visits() {
 
   const showingFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const showingTo = Math.min(page * PAGE_SIZE, total);
+  const hasActiveFilters = Boolean(search.trim()) || dateChip !== "all";
 
   return (
-    <div className="page-container">
+    <div className="page-container page-container--visits">
       <PageHeader
         title="Field Visits"
         subtitle={
@@ -229,7 +288,7 @@ export default function Visits() {
         }
         badge={
           <span className="command-hero-badge">
-            <Calendar className="w-3 h-3" /> Submitted only
+            <Calendar className="w-3 h-3" aria-hidden="true" /> Submitted only
           </span>
         }
         actions={
@@ -238,48 +297,60 @@ export default function Visits() {
             onClick={() => navigate("/visits/create")}
             className="btn btn-primary btn-md"
           >
-            <Plus className="w-4 h-4" /> Add Visit
+            <Plus className="w-4 h-4" aria-hidden="true" /> Add Visit
           </button>
         }
       />
 
       {!loading && total > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <div className="stat-pill">
-            <span className="font-bold text-gray-900">{total}</span>
-            <span className="text-gray-400">Submitted visits</span>
+        <div className="visits-kpi-strip">
+          <div className="visits-kpi-pill visits-kpi-pill--accent">
+            <ClipboardList className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="visits-kpi-pill__value">{total}</p>
+              <p className="visits-kpi-pill__label">Submitted visits</p>
+            </div>
           </div>
-          <div className="stat-pill">
-            <span className="font-bold text-gray-900">{filteredVisits.length}</span>
-            <span className="text-gray-400">
-              {dateChip === "all" ? "On this page" : "Matching filter"}
-            </span>
+          <div className="visits-kpi-pill">
+            <div>
+              <p className="visits-kpi-pill__value">{filteredVisits.length}</p>
+              <p className="visits-kpi-pill__label">
+                {dateChip === "all" ? "On this page" : "Matching filter"}
+              </p>
+            </div>
           </div>
+          {hasActiveFilters && (
+            <div className="visits-kpi-pill">
+              <div>
+                <p className="visits-kpi-pill__value">Filtered</p>
+                <p className="visits-kpi-pill__label">Active search or date</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <FilterBar>
-        <div className="flex flex-wrap gap-2 mb-3">
+      <div className="visits-filters">
+        <div className="visits-date-chips">
           {DATE_CHIPS.map((chip) => (
             <button
               key={chip.id}
               type="button"
               onClick={() => setDateChip(chip.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
-                dateChip === chip.id
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:text-emerald-700"
+              className={`filter-chip ${
+                dateChip === chip.id ? "filter-chip--active" : "filter-chip--idle"
               }`}
             >
               {chip.label}
             </button>
           ))}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="search-wrapper flex-1">
-            <Search className="search-icon" />
+
+        <div className="visits-filters__row">
+          <div className="search-wrapper flex-1 min-w-0">
+            <Search className="search-icon" aria-hidden="true" />
             <input
-              type="text"
+              type="search"
               placeholder="Search farmer, mobile, village, crop, land, employee…"
               value={search}
               onChange={(e) => {
@@ -287,6 +358,7 @@ export default function Visits() {
                 setPage(1);
               }}
               className="search-input"
+              aria-label="Search visits"
             />
             {search && (
               <button
@@ -295,35 +367,36 @@ export default function Visits() {
                   setSearch("");
                   setPage(1);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+                aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 ml-auto">
+          <div className="visits-view-toggle">
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-lg transition-all ${
-                viewMode === "grid"
-                  ? "bg-white shadow-sm text-emerald-600"
-                  : "text-gray-400 hover:text-gray-600"
+              className={`visits-view-toggle__btn ${
+                viewMode === "grid" ? "visits-view-toggle__btn--active" : ""
               }`}
               title="Grid view"
+              aria-label="Grid view"
+              aria-pressed={viewMode === "grid"}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded-lg transition-all ${
-                viewMode === "list"
-                  ? "bg-white shadow-sm text-emerald-600"
-                  : "text-gray-400 hover:text-gray-600"
+              className={`visits-view-toggle__btn ${
+                viewMode === "list" ? "visits-view-toggle__btn--active" : ""
               }`}
               title="List view"
+              aria-label="List view"
+              aria-pressed={viewMode === "list"}
             >
               <List className="w-4 h-4" />
             </button>
@@ -333,11 +406,12 @@ export default function Visits() {
             type="button"
             onClick={() => loadVisits(page)}
             className="btn btn-secondary btn-md flex-shrink-0"
+            aria-label="Refresh visits"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      </FilterBar>
+      </div>
 
       {error && (
         <ErrorRetry
@@ -348,19 +422,25 @@ export default function Visits() {
       )}
 
       {loading ? (
-        <PageLoader label="Loading submitted field visits…" />
+        viewMode === "grid" ? (
+          <VisitsGridSkeleton />
+        ) : (
+          <div className="visits-table-card">
+            <VisitsTableSkeleton />
+          </div>
+        )
       ) : filteredVisits.length === 0 ? (
-        <div className="section-card">
+        <div className="dashboard-section-card">
           <EmptyState
             icon={Calendar}
-            title={search || dateChip !== "all" ? "No visits match your filters" : "No field visits yet"}
+            title={hasActiveFilters ? "No visits match your filters" : "No field visits yet"}
             subtitle={
-              search || dateChip !== "all"
+              hasActiveFilters
                 ? "Try a different search term or date range."
                 : "Visits appear here when field agents submit them from the mobile app."
             }
             action={
-              search || dateChip !== "all" ? (
+              hasActiveFilters ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -370,7 +450,7 @@ export default function Visits() {
                   }}
                   className="btn btn-secondary btn-md"
                 >
-                  <X className="w-4 h-4" /> Clear filters
+                  <X className="w-4 h-4" aria-hidden="true" /> Clear filters
                 </button>
               ) : (
                 <button
@@ -385,28 +465,28 @@ export default function Visits() {
           />
         </div>
       ) : viewMode === "grid" ? (
-        <div className="list-grid list-grid--visits">
+        <div className="visits-grid">
           {filteredVisits.map((v) => (
             <VisitListCard key={`visit-${v.id}`} visit={v} onView={handleView} />
           ))}
         </div>
       ) : (
-        <div className="section-card">
-          <div className="table-container">
-            <table className="data-table compact-table">
+        <div className="visits-table-card">
+          <div className="visits-table-wrap">
+            <table className="data-table compact-table visits-table">
               <thead>
                 <tr>
                   <th>ID</th>
                   <th>Farmer / Mobile</th>
                   <th>Village</th>
                   <th>Crop</th>
-                  <th>{VISIT_FIELD_NOTES_LABEL}</th>
-                  <th>Problem Seen</th>
-                  <th>Action Taken</th>
-                  <th>Follow-up Date</th>
-                  <th>Land</th>
-                  <th>Employee</th>
-                  <th>Date & time</th>
+                  <th className="hidden xl:table-cell">{VISIT_FIELD_NOTES_LABEL}</th>
+                  <th className="hidden lg:table-cell">Problem</th>
+                  <th className="hidden lg:table-cell">Action</th>
+                  <th className="hidden md:table-cell">Follow-up</th>
+                  <th className="hidden lg:table-cell">Land</th>
+                  <th className="hidden md:table-cell">Employee</th>
+                  <th>Date</th>
                   <th>GPS</th>
                   <th className="w-12" />
                 </tr>
@@ -422,10 +502,10 @@ export default function Visits() {
       )}
 
       {!loading && filteredVisits.length > 0 && (
-        <div className="pagination">
+        <div className="pagination visits-pagination">
           <span className="pagination-info">
-            Showing <span className="font-semibold text-gray-700">{showingFrom}–{showingTo}</span> of{" "}
-            <span className="font-semibold text-gray-700">{total}</span> visits · Page {page} of {totalPages}
+            Showing <span className="font-semibold text-slate-700">{showingFrom}–{showingTo}</span> of{" "}
+            <span className="font-semibold text-slate-700">{total}</span> visits · Page {page} of {totalPages}
           </span>
           <div className="pagination-controls">
             <button
@@ -433,6 +513,7 @@ export default function Visits() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
               className="pagination-btn disabled:opacity-30"
+              aria-label="Previous page"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -442,6 +523,8 @@ export default function Visits() {
                 type="button"
                 onClick={() => setPage(p)}
                 className={`pagination-btn ${p === page ? "pagination-btn-active" : ""}`}
+                aria-label={`Page ${p}`}
+                aria-current={p === page ? "page" : undefined}
               >
                 {p}
               </button>
@@ -451,6 +534,7 @@ export default function Visits() {
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
               className="pagination-btn disabled:opacity-30"
+              aria-label="Next page"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

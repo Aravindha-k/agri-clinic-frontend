@@ -9,7 +9,7 @@
 import api from "./axios";
 import { unwrapSuccessEnvelope, getResponseBody } from "../utils/apiUnwrap";
 import { normalizeEmployeeRoute } from "../utils/employeeRoute";
-import { normalizeLiveEmployee, resolveLiveEmployeeList } from "../utils/dutyTracking";
+import { normalizeLiveEmployee, resolveLiveEmployeeList, dedupeLiveEmployees } from "../utils/dutyTracking";
 import { getAdminTrackingBaseURL } from "../config/api";
 
 export { getAdminTrackingBaseURL };
@@ -28,7 +28,9 @@ function logError(fn, err) {
 export async function getTrackingLive() {
   const response = await api.get("live/", trackingRequest);
   const body = unwrapSuccessEnvelope(response) ?? getResponseBody(response) ?? {};
-  const employees = resolveLiveEmployeeList(body).map(normalizeLiveEmployee);
+  const employees = dedupeLiveEmployees(
+    resolveLiveEmployeeList(body).map(normalizeLiveEmployee)
+  );
   return {
     updatedAt: body.updated_at ?? null,
     count: body.count ?? employees.length,
@@ -62,4 +64,13 @@ export async function getEmployeeDutyRoute(userId, { date, isToday = false } = {
     logError("getEmployeeDutyRoute", err);
     throw err;
   }
+}
+
+/**
+ * Admin force-end duty — POST /api/admin/tracking/employee/{user_id}/end-duty/
+ * Do not use employee self-end endpoints from the admin UI.
+ */
+export async function forceEndEmployeeDuty(userId) {
+  const response = await api.post(`employee/${userId}/end-duty/`, null, trackingRequest);
+  return unwrapSuccessEnvelope(response) ?? getResponseBody(response) ?? {};
 }

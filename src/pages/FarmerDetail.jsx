@@ -1,12 +1,12 @@
-import { useEffect, useState, useRef, useMemo, lazy, Suspense } from "react";
+import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getFarmerDetail, getFarmerFields, getFarmerVisits, uploadFarmerPhoto } from "../api/farmer.api";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import {
     ArrowLeft, User, Phone, MapPin, Sprout, LandPlot, Leaf,
-    Calendar, AlertCircle, RefreshCw, ChevronRight, Download,
+    Calendar, RefreshCw, ChevronRight, Download,
     FileText, Droplets, Layers, ClipboardList, Hash, Edit2,
-    TrendingUp,
+    TrendingUp, StickyNote, ImageIcon,
 } from "lucide-react";
 import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitFarmer";
 import RouteFallback from "../components/RouteFallback";
@@ -16,11 +16,9 @@ import { resolveVisitCropDisplay, resolveVisitFieldNotes } from "../utils/visitD
 import {
     resolveVillageLabel,
     resolveDistrictLabel,
-    resolveFarmerLabel,
-    asDisplayString,
 } from "../utils/displayValue";
-import { GpsIndicator } from "../components/ui/command";
-import { PageLoader } from "../components/ui/command";
+import { GpsIndicator, EmptyState } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -32,30 +30,72 @@ const fmt = (d) => {
 const totalAcreage = (fields) =>
     fields.reduce((s, f) => s + parseFloat(f.land_size ?? f.field_size ?? 0), 0).toFixed(1);
 
-/* --- Sub-components --- */
-const StatCard = ({ icon: Icon, label, value, color }) => (
-    <div className="list-card-surface p-3 flex items-center gap-2.5">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
-            <Icon className="w-3.5 h-3.5 text-white" strokeWidth={2} />
+/* --- Sub-components (presentational) --- */
+const KPI_ICONS = {
+    emerald: "bg-emerald-500",
+    teal: "bg-teal-500",
+    blue: "bg-blue-500",
+    cyan: "bg-cyan-600",
+};
+
+const StatCard = ({ icon: Icon, label, value, color = "emerald" }) => (
+    <div className="farmer-detail-kpi">
+        <div className={`farmer-detail-kpi__icon ${KPI_ICONS[color] || KPI_ICONS.emerald}`}>
+            <Icon className="w-4 h-4" strokeWidth={2.25} />
         </div>
         <div className="min-w-0">
-            <div className="text-base font-bold text-gray-900 leading-none tabular-nums">{value}</div>
-            <div className="text-[11px] text-gray-500 mt-0.5">{label}</div>
+            <div className="farmer-detail-kpi__value">{value}</div>
+            <div className="farmer-detail-kpi__label">{label}</div>
         </div>
     </div>
 );
 
 const InfoRow = ({ icon: Icon, label, value }) => (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
-        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <Icon className="w-4 h-4 text-emerald-600" />
+    <div className="farmer-detail-info-row">
+        <div className="farmer-detail-info-row__icon">
+            <Icon className="w-4 h-4" strokeWidth={2} />
         </div>
         <div className="flex-1 min-w-0">
-            <div className="text-xs text-gray-400 font-medium">{label}</div>
-            <div className="text-sm font-semibold text-gray-800 mt-0.5">{value || "—"}</div>
+            <div className="farmer-detail-info-row__label">{label}</div>
+            <div className="farmer-detail-info-row__value">{value || "—"}</div>
         </div>
     </div>
 );
+
+function FarmerDetailSkeleton() {
+    return (
+        <div className="farmer-detail space-y-5">
+            <div className="flex justify-between gap-3">
+                <div className="skeleton h-10 w-36 rounded-xl" />
+                <div className="flex gap-2">
+                    <div className="skeleton h-10 w-20 rounded-xl" />
+                    <div className="skeleton h-10 w-36 rounded-xl" />
+                </div>
+            </div>
+            <div className="farmer-detail-skeleton-hero">
+                <div className="flex gap-5 items-center">
+                    <div className="skeleton w-24 h-24 rounded-2xl flex-shrink-0" />
+                    <div className="flex-1 space-y-3">
+                        <div className="skeleton h-7 w-48 rounded-lg" />
+                        <div className="skeleton h-4 w-64 max-w-full rounded" />
+                        <div className="skeleton h-4 w-56 max-w-full rounded" />
+                    </div>
+                </div>
+            </div>
+            <div className="farmer-detail-kpi-grid">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="skeleton h-20 rounded-2xl" />
+                ))}
+            </div>
+            <div className="skeleton h-12 w-full sm:w-96 rounded-xl" />
+            <div className="farmer-detail-grid">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="skeleton h-56 rounded-2xl" />
+                ))}
+            </div>
+        </div>
+    );
+}
 
 /* ----------------------------------------
    PDF Generator  (jsPDF v4 + jspdf-autotable v5)
@@ -340,34 +380,35 @@ export default function FarmerDetail() {
         finally { setGenerating(null); }
     };
 
-    /* -- Loading -- */
     if (loading) {
+        return <FarmerDetailSkeleton />;
+    }
+
+    if (error && !farmer) {
         return (
-            <div className="page-container">
-                <PageLoader label="Loading farmer…" />
+            <div className="farmer-detail">
+                <ErrorRetry message={error} onRetry={fetchData} />
             </div>
         );
     }
 
-    if (error && !farmer) return (
-        <div className="flex flex-col items-center justify-center py-32 px-6">
-            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4">
-                <AlertCircle className="w-7 h-7 text-red-400" />
+    if (!farmer) {
+        return (
+            <div className="farmer-detail">
+                <EmptyState
+                    icon={User}
+                    title="Farmer not found"
+                    subtitle="This farmer record may have been removed or the link is invalid."
+                    action={
+                        <button type="button" onClick={() => navigate("/farmers")} className="btn btn-secondary btn-md">
+                            <ArrowLeft className="w-4 h-4" /> Back to Farmers
+                        </button>
+                    }
+                    className="py-20"
+                />
             </div>
-            <p className="text-gray-700 font-semibold mb-4">{error}</p>
-            <button onClick={fetchData}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition">
-                <RefreshCw className="w-4 h-4" /> Retry
-            </button>
-        </div>
-    );
-
-    if (!farmer) return (
-        <div className="flex flex-col items-center justify-center py-32 px-6">
-            <p className="text-gray-500">No farmer found.</p>
-            <button onClick={() => navigate("/farmers")} className="mt-4 text-sm text-emerald-600 hover:underline">Back to Farmers</button>
-        </div>
-    );
+        );
+    }
 
     const gpsVisits = visits.filter(visitHasGps).length;
     const acreage = totalAcreage(fields);
@@ -410,67 +451,62 @@ export default function FarmerDetail() {
     ];
 
     return (
-        <div className="bg-gray-50 pb-10">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-5">
+        <div className="farmer-detail space-y-5">
+            <div className="farmer-detail-toolbar">
+                <button type="button" onClick={() => navigate("/farmers")} className="farmer-detail-back">
+                    <ArrowLeft className="w-4 h-4" /> Back to Farmers
+                </button>
 
-                {/* -- Top bar -- */}
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <button onClick={() => navigate("/farmers")}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium shadow-sm transition-all">
-                        <ArrowLeft className="w-4 h-4" /> Back to Farmers
-                    </button>
-
-                    {/* Download dropdown */}
-                    <div className="flex items-center gap-2">
-                    <button onClick={() => navigate(`/farmers/${id}/edit`)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-semibold shadow-sm transition-all">
+                <div className="farmer-detail-actions">
+                    <button type="button" onClick={() => navigate(`/farmers/${id}/edit`)} className="btn btn-secondary btn-md">
                         <Edit2 className="w-4 h-4" /> Edit
                     </button>
-                    <div className="relative" ref={dlRef}>
+                    <div className="farmer-detail-download" ref={dlRef}>
                         <button
-                            onClick={() => setDlOpen(o => !o)}
+                            type="button"
+                            onClick={() => setDlOpen((o) => !o)}
                             disabled={!!generating}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60 select-none">
-                            {generating
-                                ? <RefreshCw className="w-4 h-4 animate-spin" />
-                                : <Download className="w-4 h-4" />}
-                            {generating ? `Generating ${generating.toUpperCase()}—` : "Download Report"}
+                            className="btn btn-primary btn-md disabled:opacity-60"
+                        >
+                            {generating ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4" />
+                            )}
+                            {generating ? `Generating ${generating.toUpperCase()}…` : "Download Report"}
                         </button>
                         {dlOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
-                                <button onClick={handlePDF}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors">
-                                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <div className="farmer-detail-download__menu enterprise-dropdown">
+                                <button type="button" onClick={handlePDF} className="farmer-detail-download__item farmer-detail-download__item--pdf">
+                                    <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
                                         <FileText className="w-4 h-4 text-red-600" />
                                     </div>
-                                    <div className="text-left">
+                                    <div>
                                         <div className="font-semibold">Download PDF</div>
-                                        <div className="text-xs text-gray-400">High-quality report</div>
+                                        <div className="text-xs text-slate-400">High-quality report</div>
                                     </div>
                                 </button>
-                                <div className="h-px bg-gray-100 mx-3" />
-                                <button onClick={handleWord}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <div className="h-px bg-slate-100 mx-3" />
+                                <button type="button" onClick={handleWord} className="farmer-detail-download__item farmer-detail-download__item--word">
+                                    <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                                         <FileText className="w-4 h-4 text-blue-600" />
                                     </div>
-                                    <div className="text-left">
+                                    <div>
                                         <div className="font-semibold">Download Word</div>
-                                        <div className="text-xs text-gray-400">.doc — opens in Word</div>
+                                        <div className="text-xs text-slate-400">.doc — opens in Word</div>
                                     </div>
                                 </button>
                             </div>
                         )}
                     </div>
-                    </div>
                 </div>
+            </div>
 
-                {/* -- Hero banner -- */}
-                <div className="relative rounded-xl overflow-hidden shadow"
-                    style={{ background: "linear-gradient(135deg,#052e16 0%,#14532d 50%,#166534 100%)" }}>
-                    <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
-                    <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
-                    <div className="relative z-10 px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="farmer-detail-hero">
+                <div className="farmer-detail-hero__glow -top-10 -right-10 w-44 h-44" aria-hidden="true" />
+                <div className="farmer-detail-hero__glow -bottom-8 -left-8 w-32 h-32" aria-hidden="true" />
+                <div className="farmer-detail-hero__inner">
+                    <div className="farmer-detail-hero__photo">
                         <ProfilePhotoUpload
                             entity={farmer}
                             displayName={farmer.name || "Farmer"}
@@ -481,229 +517,299 @@ export default function FarmerDetail() {
                                 setFarmer((f) => ({ ...f, profile_photo_url: url, ...data }))
                             }
                         />
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                <h1 className="text-lg font-semibold text-white tracking-tight leading-snug">{farmer.name || "\u2014"}</h1>
-                                {farmer.farmer_id && (
-                                    <span className="px-2 py-0.5 bg-white/10 text-emerald-200 text-xs rounded-full border border-white/20 font-mono">
-                                        #{farmer.farmer_id}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-emerald-100 mt-1">
-                                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.phone || "—"}</span>
-                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.district_name || farmer.district || "—"}</span>
-                                <span className="flex items-center gap-1.5"><Sprout className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />{farmer.village_name || resolveVillageLabel(farmer.village)}</span>
-                                {farmer.created_at && (
-                                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />Since {fmt(farmer.created_at)}</span>
-                                )}
-                            </div>
+                    </div>
+                    <div className="farmer-detail-hero__content">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="farmer-detail-hero__name">{farmer.name || "—"}</h1>
+                            {farmer.farmer_id && (
+                                <span className="farmer-detail-hero__id">#{farmer.farmer_id}</span>
+                            )}
                         </div>
-                        {/* Quick stats */}
-                        <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
-                            {[["Fields", fields.length], ["Visits", visits.length], ["Acres", acreage]].map(([lbl, val]) => (
-                                <div key={lbl} className="bg-white/10 rounded-lg px-3 py-2 text-center border border-white/10 min-w-[56px]">
-                                    <div className="text-lg font-bold text-white leading-none tabular-nums">{val}</div>
-                                    <div className="text-[10px] text-emerald-200 mt-0.5">{lbl}</div>
-                                </div>
-                            ))}
+                        <div className="farmer-detail-hero__meta">
+                            <span className="farmer-detail-hero__meta-item">
+                                <Phone className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
+                                {farmer.phone || "—"}
+                            </span>
+                            <span className="farmer-detail-hero__meta-item">
+                                <MapPin className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
+                                {farmer.district_name || farmer.district || "—"}
+                            </span>
+                            <span className="farmer-detail-hero__meta-item">
+                                <Sprout className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
+                                {farmer.village_name || resolveVillageLabel(farmer.village)}
+                            </span>
+                            {farmer.created_at && (
+                                <span className="farmer-detail-hero__meta-item">
+                                    <Calendar className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
+                                    Since {fmt(farmer.created_at)}
+                                </span>
+                            )}
                         </div>
                     </div>
-                </div>
-
-                {/* -- Stat cards -- */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <StatCard icon={LandPlot} label="Total Fields" value={fields.length} color="bg-emerald-500" />
-                    <StatCard icon={TrendingUp} label="Total Acreage" value={`${acreage} ac`} color="bg-teal-500" />
-                    <StatCard icon={ClipboardList} label="Submitted Visits" value={visits.length} color="bg-blue-500" />
-                    <StatCard icon={MapPin} label="With GPS" value={gpsVisits} color="bg-teal-600" />
-                </div>
-
-                {/* -- Tabs -- */}
-                <div className="flex gap-1 bg-white border border-gray-100 p-1 rounded-xl shadow-sm w-fit">
-                    {TABS.map((t) => (
-                        <button key={t.id} onClick={() => setTab(t.id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-                                ${tab === t.id
-                                    ? "bg-emerald-600 text-white shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}>
-                            <t.icon className="w-4 h-4" />
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* -- Overview -- */}
-                {tab === "info" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="section-card p-3.5">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Personal Details</h3>
-                            <InfoRow icon={User} label="Full Name" value={farmer.name} />
-                            <InfoRow icon={Phone} label="Phone Number" value={farmer.phone} />
-                            <InfoRow icon={Hash} label="Farmer ID" value={farmer.farmer_id} />
-                            <InfoRow icon={Calendar} label="Registered On" value={fmt(farmer.created_at)} />
-                        </div>
-                        <div className="section-card p-3.5">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Location</h3>
-                            <InfoRow icon={MapPin} label="District" value={farmer.district_name || farmer.district} />
-                            <InfoRow icon={MapPin} label="Village" value={farmer.village_name || resolveVillageLabel(farmer.village)} />
-                        </div>
-                        <div className="section-card p-3.5">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Farm Details</h3>
-                            <InfoRow icon={LandPlot} label="Total Land Area" value={farmer.total_land_area ? `${farmer.total_land_area} acres` : null} />
-                            <InfoRow icon={Layers} label="Soil Type" value={farmer.soil_type} />
-                            <InfoRow icon={Droplets} label="Irrigation Type" value={farmer.irrigation_type} />
-                        </div>
-                        <div className="section-card p-3.5">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Farmer Intelligence</h3>
-                            <InfoRow icon={ClipboardList} label="Visit count" value={String(visits.length)} />
-                            <InfoRow icon={Calendar} label="Last visit date" value={lastVisitLabel} />
-                            <InfoRow icon={User} label="Last assigned employee" value={assignedEmployee} />
-                            <InfoRow icon={Leaf} label="Last observation / field notes" value={lastFieldNotes} />
-                            <div className="mt-4">
-                                <p className="text-xs font-semibold text-gray-500 mb-2">Visit trend</p>
-                                <Suspense fallback={<RouteFallback label="Loading chart\u2026" />}>
-                                    <FarmerVisitTrendChart data={visitTrendData} />
-                                </Suspense>
+                    <div className="farmer-detail-hero__stats">
+                        {[["Fields", fields.length], ["Visits", visits.length], ["Acres", acreage]].map(([lbl, val]) => (
+                            <div key={lbl} className="farmer-detail-hero__stat">
+                                <div className="farmer-detail-hero__stat-value">{val}</div>
+                                <div className="farmer-detail-hero__stat-label">{lbl}</div>
                             </div>
-                        </div>
-                        <div className="section-card p-3.5">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Visit Summary</h3>
-                            <div className="space-y-2">
-                                {[
-                                    { label: "Submitted visits", val: visits.length, cls: "bg-gray-50 text-gray-700" },
-                                    { label: "With GPS", val: gpsVisits, cls: "bg-emerald-50 text-emerald-700" },
-                                ].map(({ label, val, cls }) => (
-                                    <div key={label} className="flex items-center justify-between rounded-xl px-4 py-2.5 bg-gray-50">
-                                        <span className="text-sm text-gray-600 font-medium">{label}</span>
-                                        <span className={`px-3 py-1 rounded-lg text-sm font-bold ${cls}`}>{val}</span>
-                                    </div>
-                                ))}
-                                {visits.length > 0 && (
-                                    <p className="pt-2 text-xs text-gray-400 px-1">
-                                        Last visit: <span className="font-semibold text-gray-600">{lastVisitLabel}</span>
-                                    </p>
-                                )}
-                            </div>
-                        </div>
+                        ))}
                     </div>
-                )}
+                </div>
+            </div>
 
-                {/* -- Fields -- */}
-                {tab === "fields" && (
-                    fields.length === 0 ? (
-                        <div className="section-card flex flex-col items-center py-20">
-                            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
-                                <LandPlot className="w-7 h-7 text-emerald-300" />
-                            </div>
-                            <p className="text-gray-600 font-semibold">No fields registered yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Fields added through visits will appear here</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {fields.map((f, i) => (
-                                <div key={f.id || i} className="section-card p-3.5 hover:shadow-md hover:border-emerald-100 transition-all">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                                <LandPlot className="w-5 h-5 text-emerald-600" />
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-gray-900 text-sm">{f.land_name || f.field_name || `Field ${i + 1}`}</div>
-                                                {f.gps_location && (
-                                                    <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                                                        <MapPin className="w-3 h-3" />{f.gps_location}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <div className="text-2xl font-black text-emerald-600">{f.land_size ?? f.field_size ?? "—"}</div>
-                                            <div className="text-xs text-gray-400">acres</div>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-50">
-                                        <div>
-                                            <div className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Layers className="w-3 h-3" />Soil Type</div>
-                                            <div className="text-sm font-semibold text-gray-700">{f.soil_type || "—"}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-400 flex items-center gap-1 mb-1"><Droplets className="w-3 h-3" />Irrigation</div>
-                                            <div className="text-sm font-semibold text-gray-700">{f.irrigation_type || "—"}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )
-                )}
+            <div className="farmer-detail-kpi-grid">
+                <StatCard icon={LandPlot} label="Total Fields" value={fields.length} color="emerald" />
+                <StatCard icon={TrendingUp} label="Total Acreage" value={`${acreage} ac`} color="teal" />
+                <StatCard icon={ClipboardList} label="Submitted Visits" value={visits.length} color="blue" />
+                <StatCard icon={MapPin} label="With GPS" value={gpsVisits} color="cyan" />
+            </div>
 
-                {/* -- Visit History -- */}
-                {tab === "visits" && (
-                    <div className="section-card overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-                            <ClipboardList className="w-4 h-4 text-emerald-600" />
-                            <h3 className="text-sm font-bold text-gray-800">Visit History</h3>
-                            <span className="ml-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-600 text-xs rounded-full font-bold">{visits.length}</span>
-                        </div>
-                        {visits.length === 0 ? (
-                            <div className="flex flex-col items-center py-20">
-                                <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
-                                    <Leaf className="w-7 h-7 text-emerald-300" />
-                                </div>
-                                <p className="text-gray-600 font-semibold">No visits recorded yet</p>
-                                <p className="text-xs text-gray-400 mt-1">Visits associated with this farmer will appear here</p>
+            <div className="farmer-detail-tabs" role="tablist" aria-label="Farmer profile sections">
+                {TABS.map((t) => (
+                    <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === t.id}
+                        onClick={() => setTab(t.id)}
+                        className={`farmer-detail-tab ${tab === t.id ? "farmer-detail-tab--active" : ""}`}
+                    >
+                        <t.icon className="w-4 h-4" aria-hidden="true" />
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {tab === "info" && (
+                <div className="farmer-detail-grid">
+                    <div className="farmer-detail-photo-card">
+                        <h3 className="farmer-detail-card__title w-full text-left flex items-center gap-2">
+                            <ImageIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                            Profile Photo
+                        </h3>
+                        <ProfilePhotoUpload
+                            entity={farmer}
+                            displayName={farmer.name || "Farmer"}
+                            size="2xl"
+                            variant="teal"
+                            onUpload={(file) => uploadFarmerPhoto(farmer.id, file)}
+                            onPhotoUpdated={(url, data) =>
+                                setFarmer((f) => ({ ...f, profile_photo_url: url, ...data }))
+                            }
+                        />
+                        <p className="farmer-detail-photo-card__hint">
+                            Tap the photo to update the farmer profile image. Used across visits and reports.
+                        </p>
+                    </div>
+
+                    <div className="farmer-detail-card">
+                        <h3 className="farmer-detail-card__title">Personal Details</h3>
+                        <InfoRow icon={User} label="Full Name" value={farmer.name} />
+                        <InfoRow icon={Phone} label="Phone Number" value={farmer.phone} />
+                        <InfoRow icon={Hash} label="Farmer ID" value={farmer.farmer_id} />
+                        <InfoRow icon={Calendar} label="Registered On" value={fmt(farmer.created_at)} />
+                    </div>
+
+                    <div className="farmer-detail-card">
+                        <h3 className="farmer-detail-card__title">Location</h3>
+                        <InfoRow icon={MapPin} label="District" value={farmer.district_name || farmer.district} />
+                        <InfoRow icon={MapPin} label="Village" value={farmer.village_name || resolveVillageLabel(farmer.village)} />
+                    </div>
+
+                    <div className="farmer-detail-card">
+                        <h3 className="farmer-detail-card__title">Farm & Land Details</h3>
+                        <InfoRow icon={LandPlot} label="Total Land Area" value={farmer.total_land_area ? `${farmer.total_land_area} acres` : null} />
+                        <InfoRow icon={Layers} label="Soil Type" value={farmer.soil_type} />
+                        <InfoRow icon={Droplets} label="Irrigation Type" value={farmer.irrigation_type} />
+                    </div>
+
+                    <div className="farmer-detail-card">
+                        <h3 className="farmer-detail-card__title">Field Intelligence</h3>
+                        <InfoRow icon={ClipboardList} label="Visit count" value={String(visits.length)} />
+                        <InfoRow icon={Calendar} label="Last visit date" value={lastVisitLabel} />
+                        <InfoRow icon={User} label="Last assigned employee" value={assignedEmployee} />
+                        {lastFieldNotes ? (
+                            <div className="farmer-detail-notes">
+                                <p className="farmer-detail-notes__label">
+                                    <StickyNote className="w-3.5 h-3.5" aria-hidden="true" />
+                                    Latest field notes
+                                </p>
+                                <p className="farmer-detail-notes__body">{lastFieldNotes}</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-gray-50">
-                                {visits.map((v, i) => (
-                                    <div key={v.id || i}
+                            <InfoRow icon={Leaf} label="Last observation" value={null} />
+                        )}
+                        <div className="farmer-detail-chart-wrap">
+                            <p className="farmer-detail-chart-wrap__label">Visit trend (last 6 periods)</p>
+                            <Suspense fallback={<RouteFallback label="Loading chart…" />}>
+                                <FarmerVisitTrendChart data={visitTrendData} />
+                            </Suspense>
+                        </div>
+                    </div>
+
+                    <div className="farmer-detail-card">
+                        <h3 className="farmer-detail-card__title">Visit Summary</h3>
+                        <div className="space-y-2">
+                            {[
+                                { label: "Submitted visits", val: visits.length, cls: "bg-slate-100 text-slate-700" },
+                                { label: "With GPS", val: gpsVisits, cls: "bg-emerald-50 text-emerald-700" },
+                            ].map(({ label, val, cls }) => (
+                                <div key={label} className="farmer-detail-summary-row">
+                                    <span className="text-sm text-slate-600 font-medium">{label}</span>
+                                    <span className={`farmer-detail-summary-row__badge ${cls}`}>{val}</span>
+                                </div>
+                            ))}
+                            {visits.length > 0 && (
+                                <p className="pt-2 text-xs text-slate-400">
+                                    Last visit: <span className="font-semibold text-slate-600">{lastVisitLabel}</span>
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {tab === "fields" && (
+                fields.length === 0 ? (
+                    <EmptyState
+                        icon={LandPlot}
+                        title="No fields registered yet"
+                        subtitle="Fields added through visits will appear here with land size, soil, and irrigation details."
+                        className="py-20 dashboard-section-card"
+                    />
+                ) : (
+                    <div className="farmer-detail-grid">
+                        {fields.map((f, i) => (
+                            <div key={f.id || i} className="farmer-detail-field-card">
+                                <div className="farmer-detail-field-card__head">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="farmer-detail-field-card__icon">
+                                            <LandPlot className="w-5 h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="farmer-detail-field-card__name">
+                                                {f.land_name || f.field_name || `Field ${i + 1}`}
+                                            </div>
+                                            {f.gps_location && (
+                                                <div className="farmer-detail-field-card__gps">
+                                                    <MapPin className="w-3 h-3" />
+                                                    {f.gps_location}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="farmer-detail-field-card__acreage">
+                                        <div className="farmer-detail-field-card__acreage-value">
+                                            {f.land_size ?? f.field_size ?? "—"}
+                                        </div>
+                                        <div className="text-xs text-slate-400">acres</div>
+                                    </div>
+                                </div>
+                                <div className="farmer-detail-field-card__meta-grid">
+                                    <div>
+                                        <div className="farmer-detail-field-card__meta-label">
+                                            <Layers className="w-3 h-3" /> Soil Type
+                                        </div>
+                                        <div className="farmer-detail-field-card__meta-value">{f.soil_type || "—"}</div>
+                                    </div>
+                                    <div>
+                                        <div className="farmer-detail-field-card__meta-label">
+                                            <Droplets className="w-3 h-3" /> Irrigation
+                                        </div>
+                                        <div className="farmer-detail-field-card__meta-value">{f.irrigation_type || "—"}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            )}
+
+            {tab === "visits" && (
+                <div className="farmer-detail-visits-card">
+                    <div className="farmer-detail-visits-card__header">
+                        <div className="flex items-center gap-2.5">
+                            <div className="icon-box">
+                                <ClipboardList className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                                <h3 className="section-title">Visit History</h3>
+                                <p className="section-subtitle">{visits.length} recorded visit{visits.length !== 1 ? "s" : ""}</p>
+                            </div>
+                        </div>
+                        <span className="command-hero-badge">{visits.length} total</span>
+                    </div>
+                    {visits.length === 0 ? (
+                        <EmptyState
+                            icon={Leaf}
+                            title="No visits recorded yet"
+                            subtitle="Visits associated with this farmer will appear here as a timeline."
+                            className="py-16"
+                        />
+                    ) : (
+                        <div className="farmer-detail-visit-timeline">
+                            {visits.map((v, i) => {
+                                const notes = resolveVisitFieldNotes(v);
+                                const clickable = Boolean(v.id);
+                                return (
+                                    <div
+                                        key={v.id || i}
                                         onClick={() => v.id && navigate(`/visits/${v.id}`)}
-                                        className={`px-6 py-4 flex items-start justify-between gap-4 transition-colors group ${v.id ? "cursor-pointer hover:bg-emerald-50/40" : ""}`}>
+                                        className={`farmer-detail-visit-item group ${clickable ? "farmer-detail-visit-item--clickable" : ""}`}
+                                    >
                                         <div className="flex items-start gap-4 flex-1 min-w-0">
-                                            {/* timeline dot */}
-                                            <div className="flex flex-col items-center flex-shrink-0 pt-1">
-                                                <div className={`w-3 h-3 rounded-full border-2 ${visitHasGps(v) ? "bg-emerald-500 border-emerald-600" : "bg-gray-300 border-gray-400"}`} />
-                                                {i < visits.length - 1 && <div className="w-px flex-1 bg-gray-100 mt-1 min-h-[28px]" />}
+                                            <div className="farmer-detail-visit-item__rail">
+                                                <div
+                                                    className={`farmer-detail-visit-item__dot ${
+                                                        visitHasGps(v)
+                                                            ? "farmer-detail-visit-item__dot--gps"
+                                                            : "farmer-detail-visit-item__dot--nogps"
+                                                    }`}
+                                                />
+                                                {i < visits.length - 1 && (
+                                                    <div className="farmer-detail-visit-item__line" aria-hidden="true" />
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                                    <span className="text-sm font-bold text-gray-900">
-                                                        {visitWhenLabel(v) !== "—" ? visitWhenLabel(v) : fmt(v.visit_date || v.created_at)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mt-1">
-                                                    <span className="flex items-center gap-1">
-                                                        <Leaf className="w-3 h-3 text-emerald-400" />
+                                                <p className="farmer-detail-visit-item__date">
+                                                    {visitWhenLabel(v) !== "—"
+                                                        ? visitWhenLabel(v)
+                                                        : fmt(v.visit_date || v.created_at)}
+                                                </p>
+                                                <div className="farmer-detail-visit-item__meta">
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <Leaf className="w-3 h-3 text-emerald-500" />
                                                         {resolveVisitCropDisplay(v)}
                                                     </span>
                                                     {(v.village_name || resolveVillageLabel(v?.village, "")) && (
-                                                        <span className="flex items-center gap-1">
-                                                            <MapPin className="w-3 h-3 text-gray-400" />
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <MapPin className="w-3 h-3" />
                                                             {v.village_name || resolveVillageLabel(v?.village)}
                                                         </span>
                                                     )}
                                                     {visitEmployeeLabel(v) !== "—" && (
-                                                        <span className="flex items-center gap-1">
-                                                            <User className="w-3 h-3 text-gray-400" />
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <User className="w-3 h-3" />
                                                             {visitEmployeeLabel(v)}
                                                         </span>
                                                     )}
                                                     <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
                                                 </div>
-                                                <p className="mt-1.5 text-xs text-gray-500 line-clamp-2">
-                                                    {resolveVisitFieldNotes(v)}
-                                                </p>
+                                                {notes && notes !== "Not added by employee" && (
+                                                    <p className="farmer-detail-visit-item__notes">{notes}</p>
+                                                )}
                                             </div>
                                         </div>
-                                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-500 transition-colors flex-shrink-0 mt-1" />
+                                        {clickable && (
+                                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 transition-colors flex-shrink-0 mt-1" />
+                                        )}
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

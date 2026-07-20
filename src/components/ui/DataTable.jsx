@@ -2,11 +2,8 @@ import CanonicalEmptyState from "./command/EmptyState";
 
 export function Badge({ active, label }) {
     return (
-        <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${active ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
-                }`}
-        >
-            <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-gray-400"}`} />
+        <span className={`badge ${active ? "badge-success" : "badge-gray"}`}>
+            <span className={`status-pill__dot ${active ? "bg-emerald-500" : "bg-gray-400"}`} />
             {label || (active ? "Active" : "Disabled")}
         </span>
     );
@@ -14,11 +11,16 @@ export function Badge({ active, label }) {
 
 export function TableSkeleton({ rows = 5, cols = 5 }) {
     return (
-        <div className="animate-pulse">
+        <div className="section-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex gap-3">
+                {Array.from({ length: cols }).map((_, i) => (
+                    <div key={i} className="skeleton h-3 flex-1 rounded" />
+                ))}
+            </div>
             {Array.from({ length: rows }).map((_, r) => (
-                <div key={r} className="flex gap-3 py-2 px-3 border-b border-gray-50">
+                <div key={r} className="flex gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0">
                     {Array.from({ length: cols }).map((_, c) => (
-                        <div key={c} className="h-3.5 bg-gray-200 rounded flex-1" />
+                        <div key={c} className="skeleton h-3.5 flex-1 rounded" />
                     ))}
                 </div>
             ))}
@@ -38,30 +40,35 @@ export function Pagination({ page, totalPages, onPageChange }) {
     for (let i = start; i <= end; i++) pages.push(i);
 
     return (
-        <div className="flex items-center justify-center gap-1 mt-4">
+        <div className="pagination-controls mt-4 justify-center">
             <button
+                type="button"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1.5 text-sm rounded-lg disabled:opacity-30 hover:bg-gray-100"
+                className="pagination-btn"
+                aria-label="Previous page"
             >
                 ←
             </button>
-            {start > 1 && <span className="px-2 text-gray-400 text-sm">…</span>}
+            {start > 1 && <span className="pagination-info px-1">…</span>}
             {pages.map((p) => (
                 <button
                     key={p}
+                    type="button"
                     onClick={() => onPageChange(p)}
-                    className={`px-3 py-1.5 text-sm rounded-lg font-medium ${p === page ? "bg-emerald-600 text-white" : "hover:bg-gray-100 text-gray-600"
-                        }`}
+                    className={`pagination-btn ${p === page ? "pagination-btn-active" : ""}`}
+                    aria-current={p === page ? "page" : undefined}
                 >
                     {p}
                 </button>
             ))}
-            {end < totalPages && <span className="px-2 text-gray-400 text-sm">…</span>}
+            {end < totalPages && <span className="pagination-info px-1">…</span>}
             <button
+                type="button"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1.5 text-sm rounded-lg disabled:opacity-30 hover:bg-gray-100"
+                className="pagination-btn"
+                aria-label="Next page"
             >
                 →
             </button>

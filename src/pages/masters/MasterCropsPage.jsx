@@ -4,16 +4,12 @@ import { fetchAllMasterCrops, createCrop, updateCrop, deleteCrop } from "../../a
 import { logApiDiagnostics } from "../../utils/apiDiagnostics";
 import {
     Wheat, Search, X, RefreshCw, Edit3, Trash2, Plus, AlertCircle,
-    ChevronLeft, ChevronRight, Loader2, Leaf,
+    Loader2, Leaf,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
-const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
-
-const inputClass = "w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
+const inputClass = "masters-admin-field";
 
 function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
     const [form, setForm] = useState({
@@ -27,56 +23,51 @@ function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
     return (
-        <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="space-y-5">
-            <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Crop Name (English) *</label>
+        <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="masters-admin-form">
+            <div className={inputClass}>
+                <label>Crop Name (English) *</label>
                 <input type="text" required value={form.name_en} onChange={(e) => set("name_en", e.target.value)}
-                    placeholder="e.g. Paddy" className={inputClass} />
+                    placeholder="e.g. Paddy" />
             </div>
-            <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Crop Name (Tamil)</label>
+            <div className={inputClass}>
+                <label>Crop Name (Tamil)</label>
                 <input type="text" value={form.name_ta} onChange={(e) => set("name_ta", e.target.value)}
-                    placeholder="e.g. நெல்" className={inputClass} />
+                    placeholder="e.g. நெல்" />
             </div>
-            <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Scientific Name</label>
+            <div className={inputClass}>
+                <label>Scientific Name</label>
                 <input type="text" value={form.scientific_name} onChange={(e) => set("scientific_name", e.target.value)}
-                    placeholder="e.g. Oryza sativa" className={inputClass} />
+                    placeholder="e.g. Oryza sativa" />
             </div>
-            <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
-                <select value={form.crop_category} onChange={(e) => set("crop_category", e.target.value)} className={inputClass + " appearance-none"}>
+            <div className={inputClass}>
+                <label>Category</label>
+                <select value={form.crop_category} onChange={(e) => set("crop_category", e.target.value)}>
                     <option value="">Select Category</option>
                     {["cereal", "vegetable", "fruit", "pulse", "oilseed", "spice", "other"].map((s) => (
                         <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                     ))}
                 </select>
             </div>
-            <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Typical Season</label>
-                <select value={form.typical_season} onChange={(e) => set("typical_season", e.target.value)} className={inputClass + " appearance-none"}>
+            <div className={inputClass}>
+                <label>Typical Season</label>
+                <select value={form.typical_season} onChange={(e) => set("typical_season", e.target.value)}>
                     <option value="">Select Season</option>
                     {["kharif", "rabi", "zaid", "all_season"].map((s) => (
                         <option key={s} value={s}>{s.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
                     ))}
                 </select>
             </div>
-            <div className="flex items-center gap-2">
-                <input type="checkbox" id="crop-active" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-                <label htmlFor="crop-active" className="text-sm text-gray-700">Active</label>
-            </div>
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <button type="submit" disabled={loading || !form.name_en.trim()}
-                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm disabled:opacity-50">
-                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <label className="masters-admin-check">
+                <input type="checkbox" id="crop-active" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} />
+                Active
+            </label>
+            <div className="masters-admin-form__foot">
+                <button type="submit" disabled={loading || !form.name_en.trim()} className="btn btn-primary btn-md">
+                    {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                     {initial.id ? "Update" : "Create"} Crop
                 </button>
                 {onCancel && (
-                    <button type="button" onClick={onCancel}
-                        className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
-                        Cancel
-                    </button>
+                    <button type="button" onClick={onCancel} className="btn btn-secondary btn-md">Cancel</button>
                 )}
             </div>
         </form>
@@ -176,107 +167,130 @@ export default function MasterCropsPage() {
     }, [totalCount, crops.length, filtered.length, search]);
 
     return (
-        <div className="page-container">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-lime-100 flex items-center justify-center text-lime-600">
-                            <Wheat className="w-5 h-5" />
+        <div className="masters-admin page-container">
+            <header className="masters-admin-header">
+                <div className="masters-admin-header__inner">
+                    <div className="masters-admin-header__brand">
+                        <div className="masters-admin-header__icon" aria-hidden="true">
+                            <Wheat className="w-6 h-6" />
                         </div>
-                        Master Crops
-                    </h1>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                        Manage crop database for dropdown selection
-                        {!loading && <span className="ml-2 font-semibold text-emerald-700">{totalCount} total</span>}
-                    </p>
+                        <div className="min-w-0">
+                            <span className="masters-admin-header__badge">
+                                <Wheat className="w-3 h-3" aria-hidden="true" />
+                                Crops
+                            </span>
+                            <h1 className="masters-admin-header__title">Master Crops</h1>
+                            <p className="masters-admin-header__subtitle">
+                                Manage crop database for dropdown selection
+                                {!loading && <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="masters-admin-header__actions">
+                        <button type="button" onClick={openCreate} className="btn btn-primary btn-md">
+                            <Plus className="w-4 h-4" aria-hidden="true" /> Add crop
+                        </button>
+                        <button type="button" onClick={fetchCrops} className="btn btn-secondary btn-md">
+                            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm">
-                        <Plus className="w-4 h-4" /> Add Crop
-                    </button>
-                    <button onClick={fetchCrops} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all">
-                        <RefreshCw className="w-4 h-4" /> Refresh
-                    </button>
-                </div>
-            </div>
+            </header>
 
-            {/* Search */}
-            <div className="filters-bar" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        <input type="text" placeholder="Search crop name or variety…" value={search} onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+            <section className="masters-admin-filters" aria-label="Search crops">
+                <div className="masters-admin-filters__row">
+                    <div className="masters-admin-search">
+                        <Search className="search-icon" aria-hidden="true" />
+                        <input
+                            type="search"
+                            placeholder="Search crop name or variety…"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="search-input"
+                            aria-label="Search crops"
+                        />
                     </div>
                     {search && (
-                        <button onClick={() => setSearch("")} className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-gray-500 hover:text-red-600 bg-gray-100 hover:bg-red-50 rounded-xl transition-all">
-                            <X className="w-3.5 h-3.5" /> Clear
+                        <button type="button" onClick={() => setSearch("")} className="btn btn-ghost btn-sm">
+                            <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
                         </button>
                     )}
+                    <p className="masters-admin-filters__meta lg:ml-auto">{filtered.length} crops shown</p>
                 </div>
-            </div>
+            </section>
 
             {error && (
-                <div className="flex items-center gap-3 px-5 py-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-                    <button onClick={fetchCrops} className="ml-auto font-semibold hover:underline">Retry</button>
+                <div className="masters-admin-alert masters-admin-alert--error">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                    <span>{error}</span>
+                    <button type="button" onClick={fetchCrops} className="ml-auto font-semibold hover:underline">Retry</button>
                 </div>
             )}
 
-            {/* Table */}
             {loading ? (
                 <PageLoader label="Loading crops…" />
             ) : filtered.length === 0 ? (
-                <div className="bg-white rounded-xl p-10 text-center" style={{ boxShadow: SHADOW }}>
-                    <div className="w-12 h-12 rounded-xl bg-lime-50 flex items-center justify-center mx-auto mb-5"><Wheat className="w-9 h-9 text-lime-300" /></div>
-                    <p className="text-base font-semibold text-gray-500">No crops found</p>
+                <div className="masters-admin-empty">
+                    <div className="masters-admin-empty__icon">
+                        <Wheat className="w-7 h-7" aria-hidden="true" />
+                    </div>
+                    <p className="text-base font-semibold text-slate-600">No crops found</p>
                 </div>
             ) : (
-                <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                <div className="masters-admin-table-card">
+                    <div className="masters-admin-table-wrap">
+                        <table className="data-table compact-table masters-admin-table w-full">
                             <thead>
-                                <tr className="bg-gray-50/80">
-                                    {["Crop Name", "Category", "Season", "Status", ""].map((h, i) => (
-                                        <th key={i} className="px-5 py-3.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-left">{h}</th>
-                                    ))}
+                                <tr>
+                                    <th>Crop name</th>
+                                    <th>Category</th>
+                                    <th>Season</th>
+                                    <th>Status</th>
+                                    <th className="w-28 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filtered.map((c, idx) => (
-                                    <tr key={c.id || idx} className={`border-b border-gray-50 hover:bg-lime-50/40 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-8 h-8 rounded-full bg-lime-100 flex items-center justify-center text-lime-600 flex-shrink-0">
-                                                    <Leaf className="w-3.5 h-3.5" />
+                                    <tr key={c.id || idx}>
+                                        <td>
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="masters-admin-row-icon">
+                                                    <Leaf className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">{c.name_en || "\u2014"}</p>
-                                                    {c.name_ta && <p className="text-xs text-gray-400">{c.name_ta}</p>}
+                                                <div className="min-w-0">
+                                                    <p className="masters-admin-row-name">{c.name_en || "\u2014"}</p>
+                                                    {c.name_ta && <p className="masters-admin-row-sub">{c.name_ta}</p>}
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-600">{c.crop_category || "\u2014"}</td>
-                                        <td className="px-5 py-3.5">
+                                        <td>
+                                            {c.crop_category ? (
+                                                <span className="masters-admin-chip masters-admin-chip--category">{c.crop_category}</span>
+                                            ) : (
+                                                <span className="text-sm text-slate-400">{"\u2014"}</span>
+                                            )}
+                                        </td>
+                                        <td>
                                             {c.typical_season ? (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                                <span className="masters-admin-chip masters-admin-chip--season">
                                                     {c.typical_season.replace("_", " ").replace(/\b\w/g, ch => ch.toUpperCase())}
                                                 </span>
-                                            ) : <span className="text-sm text-gray-400">{"\u2014"}</span>}
+                                            ) : (
+                                                <span className="text-sm text-slate-400">{"\u2014"}</span>
+                                            )}
                                         </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${c.is_active !== false ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${c.is_active !== false ? "bg-emerald-500" : "bg-gray-400"}`} />
+                                        <td>
+                                            <span className={`masters-admin-status ${c.is_active !== false ? "masters-admin-status--active" : "masters-admin-status--inactive"}`}>
+                                                <span className="masters-admin-status__dot" aria-hidden="true" />
                                                 {c.is_active !== false ? "Active" : "Inactive"}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => openEdit(c)} title="Edit" className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                                        <td>
+                                            <div className="masters-admin-actions">
+                                                <button type="button" onClick={() => openEdit(c)} title="Edit" className="masters-admin-action-btn masters-admin-action-btn--edit" aria-label="Edit">
                                                     <Edit3 className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => setDeleteTarget(c)} title="Delete" className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                                                <button type="button" onClick={() => setDeleteTarget(c)} title="Delete" className="masters-admin-action-btn masters-admin-action-btn--delete" aria-label="Delete">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -289,19 +303,26 @@ export default function MasterCropsPage() {
                 </div>
             )}
 
-            {/* Form Panel */}
-            <SlidePanel open={formOpen} onClose={() => { setFormOpen(false); setEditTarget(null); setSaveError(null); }}
-                title={editTarget ? "Edit Crop" : "Add Crop"}>
+            <SlidePanel
+                tone="masters"
+                open={formOpen}
+                onClose={() => { setFormOpen(false); setEditTarget(null); setSaveError(null); }}
+                title={editTarget ? "Edit Crop" : "Add Crop"}
+            >
                 {saveError && (
-                    <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                        {saveError}
+                    <div className="masters-admin-alert masters-admin-alert--error mb-4">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                        <span>{saveError}</span>
                     </div>
                 )}
-                <CropForm initial={editTarget || {}} onSubmit={handleSave}
-                    onCancel={() => { setFormOpen(false); setEditTarget(null); setSaveError(null); }} loading={saving} />
+                <CropForm
+                    initial={editTarget || {}}
+                    onSubmit={handleSave}
+                    onCancel={() => { setFormOpen(false); setEditTarget(null); setSaveError(null); }}
+                    loading={saving}
+                />
             </SlidePanel>
 
-            {/* Delete Confirm */}
             <ConfirmDialog
                 open={!!deleteTarget}
                 title="Delete Crop"

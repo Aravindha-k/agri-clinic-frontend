@@ -8,16 +8,14 @@ import {
   hasAnyDeviceFields,
 } from "../../utils/deviceStatus";
 
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
 function InfoRow({ label, value, children }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
+      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
         {label}
       </span>
       {children ?? (
-        <span className="text-sm font-medium text-gray-800 break-words">{value}</span>
+        <span className="text-sm font-semibold text-slate-800 break-words">{value}</span>
       )}
     </div>
   );
@@ -42,21 +40,18 @@ export default function EmployeeDeviceInfoSection({ employee, summary }) {
   ];
 
   return (
-    <div
-      className="bg-white rounded-xl p-4 border border-gray-100 space-y-4"
-      style={{ boxShadow: SHADOW }}
-    >
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-        <Smartphone className="w-3.5 h-3.5 text-indigo-500" />
-        Device Information
+    <div className="tracking-drawer-device">
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+        <Smartphone className="w-3.5 h-3.5 text-indigo-500" aria-hidden="true" />
+        Device information
       </p>
 
-      <InfoRow label="Device Status">
+      <InfoRow label="Device status">
         <span
-          className={`inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+          className={`inline-flex w-fit items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${
             active
-              ? "bg-emerald-100 text-emerald-800"
-              : "bg-gray-100 text-gray-600"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+              : "bg-slate-100 text-slate-600 border-slate-200"
           }`}
         >
           {deviceStatusLabel(active)}
@@ -70,7 +65,7 @@ export default function EmployeeDeviceInfoSection({ employee, summary }) {
       </div>
 
       {!hasAnyDeviceFields(device) ? (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 leading-relaxed">
           Device name and app details appear after the employee signs in on the mobile app with
           the latest version. GPS updates can still show without a device session.
         </p>

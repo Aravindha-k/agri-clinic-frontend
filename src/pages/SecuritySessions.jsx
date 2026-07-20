@@ -16,7 +16,6 @@ import {
 import { getAdminSecurity } from "../api/security.api";
 import { getAuditLogs } from "../api/audit.api";
 import {
-  PageHeader,
   PageLoader,
   EmptyState,
   ErrorRetry,
@@ -28,44 +27,35 @@ import {
 } from "../utils/adminSecurity";
 import { BRAND } from "../theme/brand";
 
-const BADGE_STYLES = {
-  danger: "bg-red-50 text-red-700 border-red-200",
-  warning: "bg-amber-50 text-amber-800 border-amber-200",
-  success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  muted: "bg-slate-50 text-slate-600 border-slate-200",
+const BADGE_CLASS = {
+  danger: "security-suite-badge--danger",
+  warning: "security-suite-badge--warning",
+  success: "security-suite-badge--success",
+  muted: "security-suite-badge--muted",
 };
 
 function PolicyCard({ icon: Icon, label, value, hint, accent }) {
   return (
-    <div
-      className="mini-kpi-card cursor-default"
-      style={{
-        background: "linear-gradient(135deg,#fff 0%,#f8fafc 100%)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)",
-      }}
-    >
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-        style={{ background: accent }}
-      />
-      <div className="mini-kpi-icon" style={{ background: `${accent}18`, color: accent }}>
-        <Icon className="w-4 h-4" />
+    <div className="security-suite-policy">
+      <div className="security-suite-policy__accent" style={{ background: accent }} aria-hidden="true" />
+      <div className="security-suite-policy__head">
+        <div className="security-suite-policy__icon" style={{ background: `${accent}18`, color: accent }}>
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="security-suite-policy__value">{value}</p>
+        </div>
       </div>
-      <p className="mini-kpi-value">{value}</p>
-      <p className="mini-kpi-label">{label}</p>
-      {hint && <p className="text-[10px] text-gray-500 mt-0.5">{hint}</p>}
+      <p className="security-suite-policy__label">{label}</p>
+      {hint && <p className="security-suite-policy__hint">{hint}</p>}
     </div>
   );
 }
 
 function SecurityBadge({ badge }) {
   if (!badge) return null;
-  const cls = BADGE_STYLES[badge.tone] ?? BADGE_STYLES.muted;
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
-      {badge.label}
-    </span>
-  );
+  const cls = BADGE_CLASS[badge.tone] ?? BADGE_CLASS.muted;
+  return <span className={`security-suite-badge ${cls}`}>{badge.label}</span>;
 }
 
 function getAuditAction(log) {
@@ -83,6 +73,65 @@ function getAuditDescription(log) {
 
 function getAuditTimestamp(log) {
   return log?.timestamp || log?.created_at || log?.date || null;
+}
+
+function SessionCard({ row }) {
+  const initial = (row.name || row.username || "A")[0].toUpperCase();
+  return (
+    <article className={`security-suite-session-card ${row.isLocked ? "security-suite-session-card--locked" : ""}`}>
+      <div className="security-suite-session-card__head">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="security-suite-session-card__avatar" aria-hidden="true">{initial}</div>
+          <div className="min-w-0">
+            <p className="security-suite-session-card__name">{row.name}</p>
+            <p className="security-suite-session-card__user">{row.username}</p>
+          </div>
+        </div>
+        {row.isLocked && (
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-red-700">
+            <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" /> Locked
+          </span>
+        )}
+      </div>
+      <div className="security-suite-session-card__grid">
+        <div className="security-suite-session-card__metric">
+          <p className="security-suite-session-card__metric-label">Last login</p>
+          <p className="security-suite-session-card__metric-value">{formatSecurityDateTime(row.lastLogin)}</p>
+        </div>
+        <div className="security-suite-session-card__metric">
+          <p className="security-suite-session-card__metric-label">Last activity</p>
+          <p className="security-suite-session-card__metric-value">{formatSecurityDateTime(row.lastActivity)}</p>
+        </div>
+        <div className="security-suite-session-card__metric">
+          <p className="security-suite-session-card__metric-label">Last IP</p>
+          <p className="security-suite-session-card__metric-value font-mono">{row.lastIp || "—"}</p>
+        </div>
+        <div className="security-suite-session-card__metric">
+          <p className="security-suite-session-card__metric-label">Active sessions</p>
+          <p className="security-suite-session-card__metric-value">{row.activeSessions}</p>
+        </div>
+        <div className="security-suite-session-card__metric">
+          <p className="security-suite-session-card__metric-label">Failed attempts</p>
+          <p className={`security-suite-session-card__metric-value ${row.failedAttempts > 0 ? "text-amber-700" : ""}`}>
+            {row.failedAttempts}
+          </p>
+        </div>
+        <div className="security-suite-session-card__metric">
+          <p className="security-suite-session-card__metric-label">Lockout</p>
+          <p className="security-suite-session-card__metric-value">
+            {row.isLocked ? "Active" : "—"}
+          </p>
+        </div>
+      </div>
+      {(row.badges ?? []).length > 0 && (
+        <div className="security-suite-session-card__badges">
+          {row.badges.map((badge) => (
+            <SecurityBadge key={badge.key} badge={badge} />
+          ))}
+        </div>
+      )}
+    </article>
+  );
 }
 
 export default function SecuritySessions() {
@@ -158,219 +207,180 @@ export default function SecuritySessions() {
 
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="security-suite page-container">
         <PageLoader label="Loading security monitoring…" />
       </div>
     );
   }
 
   return (
-    <div className="page-container space-y-4">
-      <PageHeader
-        title="Security & Sessions"
-        subtitle="Admin inactivity timeout, login lockouts, active sessions, and security audit activity"
-        badge={
-          <span className="command-hero-badge">
-            <LockKeyhole className="w-3 h-3" /> Administration
-          </span>
-        }
-        actions={
-          <button type="button" onClick={load} className="btn btn-primary btn-md">
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </button>
-        }
-      />
+    <div className="security-suite page-container">
+      <header className="security-suite-header">
+        <div className="security-suite-header__inner">
+          <div className="security-suite-header__brand">
+            <div className="security-suite-header__icon" aria-hidden="true">
+              <LockKeyhole className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <span className="security-suite-header__badge">
+                <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+                Administration
+              </span>
+              <h1 className="security-suite-header__title">Security &amp; Sessions</h1>
+              <p className="security-suite-header__subtitle">
+                Admin inactivity timeout, login lockouts, active sessions, and security audit activity
+              </p>
+            </div>
+          </div>
+          <div className="security-suite-header__actions">
+            <button type="button" onClick={load} className="btn btn-primary btn-md">
+              <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+            </button>
+          </div>
+        </div>
+      </header>
 
       {error && (
-        <ErrorRetry
-          compact
-          message={error}
-          onRetry={load}
-        />
+        <ErrorRetry compact message={error} onRetry={load} />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="security-suite-policy-grid">
         <PolicyCard
           icon={Timer}
-          label="Session Timeout"
+          label="Session timeout"
           value={`${policies.sessionTimeoutMinutes ?? 30} mins`}
           hint="Admin inactivity auto-logout"
           accent={BRAND.primary}
         />
         <PolicyCard
           icon={ShieldAlert}
-          label="Failed Attempt Limit"
+          label="Failed attempt limit"
           value={policies.failedAttemptLimit ?? 5}
           hint="Before temporary lockout"
           accent={BRAND.warning}
         />
         <PolicyCard
           icon={Clock}
-          label="Lockout Duration"
+          label="Lockout duration"
           value={`${policies.lockoutDurationMinutes ?? 15} mins`}
           hint="After failed login threshold"
           accent={BRAND.danger}
         />
         <PolicyCard
           icon={Globe}
-          label="IP Whitelist"
+          label="IP whitelist"
           value={policies.ipWhitelistEnabled ? "Enabled" : policies.ipWhitelistStatus ?? "Not configured"}
           hint={policies.ipWhitelistEnabled ? "Restricted admin access" : "Open network access"}
           accent={BRAND.info}
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-[var(--border-card)] bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--brand-primary-dark)] tabular-nums">{summary.total}</p>
-          <p className="text-xs text-gray-500 mt-1">Admin users</p>
-        </div>
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-800 tabular-nums">{summary.activeSessions}</p>
-          <p className="text-xs text-emerald-700 mt-1">Active sessions</p>
-        </div>
-        <div className="rounded-xl border border-red-100 bg-red-50/60 p-4 text-center">
-          <p className="text-2xl font-bold text-red-800 tabular-nums">{summary.locked}</p>
-          <p className="text-xs text-red-700 mt-1">Locked accounts</p>
-        </div>
-        <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-center">
-          <p className="text-2xl font-bold text-amber-800 tabular-nums">{summary.withFailures}</p>
-          <p className="text-xs text-amber-700 mt-1">With failed attempts</p>
-        </div>
-      </div>
-
-      <div className="section-card overflow-hidden">
-        <div className="section-card-header">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="icon-box icon-box--brand">
-              <ShieldCheck className="w-4 h-4" />
+      <section className="security-suite-status-strip" aria-label="Security status summary">
+        <div className="security-suite-status-strip__inner">
+          <p className="security-suite-status-strip__label">Live security status</p>
+          <div className="security-suite-status-strip__grid">
+            <div className="security-suite-status-cell">
+              <p className="security-suite-status-cell__value">{summary.total}</p>
+              <p className="security-suite-status-cell__label">Admin users</p>
             </div>
-            <div className="min-w-0">
-              <h3 className="section-title">Admin Security Monitor</h3>
-              <p className="section-subtitle">Login activity, lockouts, and session status</p>
+            <div className="security-suite-status-cell">
+              <p className="security-suite-status-cell__value">{summary.activeSessions}</p>
+              <p className="security-suite-status-cell__label">Active sessions</p>
+            </div>
+            <div className="security-suite-status-cell">
+              <p className="security-suite-status-cell__value">{summary.locked}</p>
+              <p className="security-suite-status-cell__label">Locked accounts</p>
+            </div>
+            <div className="security-suite-status-cell">
+              <p className="security-suite-status-cell__value">{summary.withFailures}</p>
+              <p className="security-suite-status-cell__label">With failed attempts</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+        </div>
+      </section>
+
+      <div className="security-suite-panel">
+        <div className="security-suite-panel__head">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="list-meta-icon list-meta-icon--crop">
+              <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="security-suite-panel__title">Admin security monitor</h3>
+              <p className="security-suite-panel__subtitle">Login activity, lockouts, and session status</p>
+            </div>
+          </div>
+          <div className="security-suite-tabs">
             <button
               type="button"
               onClick={() => setTab("users")}
-              className={`btn btn-sm ${tab === "users" ? "btn-primary" : "btn-secondary"}`}
+              className={`security-suite-tab ${tab === "users" ? "security-suite-tab--active" : "security-suite-tab--idle"}`}
             >
-              <Users className="w-3.5 h-3.5" /> Admin Users
+              <Users className="w-3.5 h-3.5" aria-hidden="true" /> Admin users
             </button>
             <button
               type="button"
               onClick={() => setTab("audit")}
-              className={`btn btn-sm ${tab === "audit" ? "btn-primary" : "btn-secondary"}`}
+              className={`security-suite-tab ${tab === "audit" ? "security-suite-tab--active" : "security-suite-tab--idle"}`}
             >
-              <FileText className="w-3.5 h-3.5" /> Audit Activity
+              <FileText className="w-3.5 h-3.5" aria-hidden="true" /> Audit activity
             </button>
           </div>
         </div>
 
-        <div className="px-6 py-3 border-b border-gray-50">
-          <div className="relative max-w-md">
+        <div className="security-suite-filters">
+          <div className="security-suite-search">
+            <Search className="search-icon" aria-hidden="true" />
             <input
-              type="text"
+              type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={tab === "users" ? "Search admin users…" : "Search audit events…"}
-              className="search-input w-full"
-              style={{ paddingLeft: "2.25rem" }}
+              className="search-input"
+              aria-label={tab === "users" ? "Search admin users" : "Search audit events"}
             />
-            <Search className="search-icon w-4 h-4" />
           </div>
         </div>
 
         {tab === "users" ? (
           filteredAdmins.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="No admin users found"
-              subtitle="Admin security records appear when backend security monitoring is enabled."
-              className="py-12"
-            />
+            <div className="security-suite-empty">
+              <EmptyState
+                icon={Users}
+                title="No admin users found"
+                subtitle="Admin security records appear when backend security monitoring is enabled."
+              />
+            </div>
           ) : (
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Admin User</th>
-                    <th>Last Login</th>
-                    <th>Last Activity</th>
-                    <th>Last IP</th>
-                    <th>Failed Attempts</th>
-                    <th>Lockout</th>
-                    <th>Sessions</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAdmins.map((row) => (
-                    <tr key={row.id ?? row.username}>
-                      <td>
-                        <div>
-                          <p className="font-medium text-gray-900">{row.name}</p>
-                          <p className="text-xs text-gray-500">{row.username}</p>
-                        </div>
-                      </td>
-                      <td className="text-xs text-gray-600 tabular-nums">{formatSecurityDateTime(row.lastLogin)}</td>
-                      <td className="text-xs text-gray-600 tabular-nums">{formatSecurityDateTime(row.lastActivity)}</td>
-                      <td className="text-xs font-mono text-gray-600">{row.lastIp || "—"}</td>
-                      <td>
-                        <span
-                          className={`text-sm font-semibold tabular-nums ${
-                            row.failedAttempts > 0 ? "text-amber-700" : "text-gray-700"
-                          }`}
-                        >
-                          {row.failedAttempts}
-                        </span>
-                      </td>
-                      <td>
-                        {row.isLocked ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700">
-                            <AlertTriangle className="w-3.5 h-3.5" /> Locked
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-500">—</span>
-                        )}
-                      </td>
-                      <td className="text-sm font-semibold text-gray-800 tabular-nums">{row.activeSessions}</td>
-                      <td>
-                        <div className="flex flex-wrap gap-1">
-                          {(row.badges ?? []).map((badge) => (
-                            <SecurityBadge key={badge.key} badge={badge} />
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="security-suite-session-grid">
+              {filteredAdmins.map((row) => (
+                <SessionCard key={row.id ?? row.username} row={row} />
+              ))}
             </div>
           )
         ) : filteredAudit.length === 0 ? (
-          <EmptyState
-            icon={Activity}
-            title="No security audit events"
-            subtitle="Login, logout, password, and admin action logs will appear here."
-            className="py-12"
-          />
+          <div className="security-suite-empty">
+            <EmptyState
+              icon={Activity}
+              title="No security audit events"
+              subtitle="Login, logout, password, and admin action logs will appear here."
+            />
+          </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="security-suite-activity">
             {filteredAudit.slice(0, 100).map((log, index) => (
-              <div key={log.id ?? `${getAuditAction(log)}-${index}`} className="px-6 py-4 flex gap-4">
-                <div className="w-9 h-9 rounded-xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary-dark)] flex items-center justify-center flex-shrink-0">
+              <div key={log.id ?? `${getAuditAction(log)}-${index}`} className="security-suite-activity__item">
+                <div className="security-suite-activity__icon" aria-hidden="true">
                   <Activity className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900">{getAuditAction(log)}</p>
-                    <span className="text-xs text-gray-400">•</span>
-                    <p className="text-xs text-gray-500">{getAuditUser(log)}</p>
+                    <p className="security-suite-activity__action">{getAuditAction(log)}</p>
+                    <span className="text-xs text-slate-300" aria-hidden="true">•</span>
+                    <p className="security-suite-activity__user">{getAuditUser(log)}</p>
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{getAuditDescription(log)}</p>
-                  <p className="text-[11px] text-gray-400 mt-1 tabular-nums">
+                  <p className="security-suite-activity__desc">{getAuditDescription(log)}</p>
+                  <p className="security-suite-activity__time">
                     {formatSecurityDateTime(getAuditTimestamp(log))}
                   </p>
                 </div>

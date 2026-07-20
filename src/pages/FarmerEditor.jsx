@@ -1,10 +1,11 @@
-import { PageLoader } from "../components/ui/command";
+import { PageLoader, PageHeader } from "../components/ui/command";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import FarmerForm from "./FarmerForm";
 import { getFarmerDetail } from "../api/farmer.api";
 import { createFarmer as createMasterFarmer, updateFarmer as updateMasterFarmer } from "../api/master.api";
+import { normalizeFarmerFormError } from "../utils/apiErrorNormalize";
 
 const resolveObject = (payload) => {
     const raw = payload?.data ?? payload;
@@ -25,6 +26,7 @@ export default function FarmerEditor({ mode = "create" }) {
     const [loading, setLoading] = useState(isEdit);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
 
     useEffect(() => {
         if (!isEdit || !id) return;
@@ -47,13 +49,18 @@ export default function FarmerEditor({ mode = "create" }) {
     const handleSubmit = async (payload) => {
         setSaving(true);
         setError("");
+        setFieldErrors({});
         try {
             const saved = isEdit ? await updateMasterFarmer(id, payload) : await createMasterFarmer(payload);
             const farmer = resolveObject(saved);
             navigate(`/farmers/${farmer?.id ?? farmer?.phone ?? id ?? ""}`.replace(/\/$/, ""));
         } catch (err) {
-            const detail = err?.response?.data?.detail || err?.response?.data?.message;
-            setError(detail || `Failed to ${isEdit ? "update" : "create"} farmer.`);
+            const normalized = normalizeFarmerFormError(
+                err,
+                `Failed to ${isEdit ? "update" : "create"} farmer.`
+            );
+            setError(normalized.formError);
+            setFieldErrors(normalized.fieldErrors);
         } finally {
             setSaving(false);
         }
@@ -75,15 +82,15 @@ export default function FarmerEditor({ mode = "create" }) {
 
     return (
         <div className="page-container max-w-3xl">
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">{isEdit ? "Edit Farmer" : "Add Farmer"}</h1>
-                    <p className="page-subtitle">{isEdit ? "Update farmer profile and location" : "Create a farmer profile for visit tracking"}</p>
-                </div>
-                <button onClick={() => navigate(-1)} className="btn btn-secondary btn-md">
-                    <ArrowLeft className="w-4 h-4" /> Back
-                </button>
-            </div>
+            <PageHeader
+                title={isEdit ? "Edit Farmer" : "Add Farmer"}
+                subtitle={isEdit ? "Update farmer profile and location" : "Create a farmer profile for visit tracking"}
+                actions={
+                    <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-md">
+                        <ArrowLeft className="w-4 h-4" /> Back
+                    </button>
+                }
+            />
 
             {error && (
                 <div className="alert-error">
@@ -99,6 +106,7 @@ export default function FarmerEditor({ mode = "create" }) {
                     onSubmit={handleSubmit}
                     onCancel={() => navigate(-1)}
                     loading={saving}
+                    fieldErrors={fieldErrors}
                 />
             </div>
         </div>

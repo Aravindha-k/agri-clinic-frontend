@@ -1,4 +1,4 @@
-import { PageLoader } from "../components/ui/command";
+import { PageLoader, PageHeader, EmptyState } from "../components/ui/command";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { addRecommendation, fetchAllIssues } from "../api/issue.api";
@@ -16,8 +16,6 @@ import {
     TrendingUp, Flame, Leaf, Calendar, User, ClipboardCheck, Send, CheckCircle2,
     Eye, LandPlot, MapPin,
 } from "lucide-react";
-
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
 const fmt = (d) => {
     if (!d) return "\u2014";
@@ -90,18 +88,6 @@ const getAgentName = (issue) =>
 
 const safeStr = (v) => asDisplayString(v);
 
-const Bone = ({ className = "" }) => <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />;
-const TableSkeleton = () => (
-    <div className="section-card overflow-hidden" style={{ boxShadow: SHADOW }}>
-        <div className="px-3 py-2 border-b border-gray-100"><Bone className="w-40 h-5" /></div>
-        {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-50">
-                <Bone className="w-8 h-8 !rounded-full" /><Bone className="w-28 h-4" /><Bone className="w-20 h-4" /><Bone className="w-16 h-4" /><Bone className="w-20 h-6 rounded-full" />
-            </div>
-        ))}
-    </div>
-);
-
 const useCountUp = (target, dur = 900) => {
     const [val, setVal] = useState(0);
     const prev = useRef(0);
@@ -124,9 +110,9 @@ const useCountUp = (target, dur = 900) => {
 const KpiCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
     const animVal = useCountUp(value);
     return (
-        <div className="mini-kpi-card group cursor-default" style={{ background: gradient, boxShadow: SHADOW }}>
-            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-            <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: accent }} />
+        <div className="enterprise-kpi-card" style={{ background: gradient }}>
+            <div className="enterprise-kpi-card__accent" style={{ background: accent }} aria-hidden="true" />
+            <div className="enterprise-kpi-card__glow" style={{ background: accent }} aria-hidden="true" />
             <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
                 <Icon className="w-4 h-4" />
             </div>
@@ -142,16 +128,10 @@ KpiCard.displayName = "KpiCard";
 
 const SeverityBadge = ({ severity }) => {
     const s = (severity || "").toLowerCase();
-    const cfg = {
-        high: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500" },
-        critical: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dot: "bg-red-500" },
-        medium: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500" },
-        low: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", dot: "bg-green-500" },
-    };
-    const c = cfg[s] || cfg.low;
+    const tone = s === "high" || s === "critical" ? "danger" : s === "medium" ? "warning" : "success";
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />{severity || "Low"}
+        <span className={`status-pill status-pill--${tone}`}>
+            <span className="status-pill__dot" />{severity || "Low"}
         </span>
     );
 };
@@ -159,17 +139,17 @@ const SeverityBadge = ({ severity }) => {
 const StatusBadge = ({ status }) => {
     const norm = (status || "open").toLowerCase().replace(/[\s-]/g, "_");
     const map = {
-        resolved: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", label: "Resolved" },
-        closed: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", label: "Closed" },
-        open: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500", label: "Open" },
-        pending: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500", label: "Pending" },
-        under_review: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", dot: "bg-blue-500", label: "Under Review" },
-        in_progress: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", dot: "bg-blue-500", label: "In Progress" },
+        resolved: { tone: "success", label: "Resolved" },
+        closed: { tone: "success", label: "Closed" },
+        open: { tone: "warning", label: "Open" },
+        pending: { tone: "warning", label: "Pending" },
+        under_review: { tone: "warning", label: "Under Review" },
+        in_progress: { tone: "warning", label: "In Progress" },
     };
     const c = map[norm] || map.open;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />{c.label}
+        <span className={`status-pill status-pill--${c.tone}`}>
+            <span className="status-pill__dot" />{c.label}
         </span>
     );
 };
@@ -269,15 +249,15 @@ export default function Issues() {
     return (
         <div className="page-container">
             {/* ── Header ── */}
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Crop Issues</h1>
-                    <p className="page-subtitle">Track crop problems and add recommendations</p>
-                </div>
-                <button onClick={fetchIssues} className="btn btn-primary btn-md">
-                    <RefreshCw className="w-4 h-4" /> Refresh
-                </button>
-            </div>
+            <PageHeader
+                title="Crop Issues"
+                subtitle="Track crop problems and add recommendations"
+                actions={
+                    <button type="button" onClick={fetchIssues} className="btn btn-primary btn-md">
+                        <RefreshCw className="w-4 h-4" /> Refresh
+                    </button>
+                }
+            />
 
             {/* KPI */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -319,13 +299,11 @@ export default function Issues() {
             {/* ── Table ── */}
             {loading ? <PageLoader label="Loading issues…" /> : filteredIssues.length === 0 ? (
                 <div className="section-card">
-                    <div className="empty-state">
-                        <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center mb-4">
-                            <AlertTriangle className="w-8 h-8 text-red-300" />
-                        </div>
-                        <p className="text-gray-600 font-semibold">No issues found</p>
-                        <p className="text-sm text-gray-400 mt-1">Try adjusting your search.</p>
-                    </div>
+                    <EmptyState
+                        icon={AlertTriangle}
+                        title="No issues found"
+                        subtitle="Try adjusting your search."
+                    />
                 </div>
             ) : (
                 <div className="section-card">
@@ -378,15 +356,17 @@ export default function Issues() {
                                             <td>
                                                 <div className="flex items-center gap-1.5">
                                                     <button
+                                                        type="button"
                                                         onClick={() => visitId && navigate(`/visits/${visitId}`)}
                                                         disabled={!visitId}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all"
+                                                        className="table-action-btn table-action-btn--primary"
                                                     >
                                                         <Eye className="w-3.5 h-3.5" /> View
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         onClick={() => openRecommendation(v)}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all"
+                                                        className="table-action-btn table-action-btn--info"
                                                     >
                                                         <Send className="w-3.5 h-3.5" /> Rec
                                                     </button>
@@ -422,43 +402,43 @@ export default function Issues() {
             <SlidePanel open={recPanelOpen} onClose={() => { setRecPanelOpen(false); setRecTarget(null); }} title="Add Recommendation">
                 <div className="space-y-5 p-1">
                     {recTarget && (
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-1">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Issue</p>
+                        <div className="form-section">
+                            <p className="form-section__title">Issue</p>
                             <p className="text-sm font-semibold text-gray-800">{getIssueCategory(recTarget) || "Issue"}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 mt-1">
                                 {getFarmerName(recTarget) || ""} {getCropName(recTarget) !== "\u2014" ? `• ${getCropName(recTarget)}` : ""}
                                 {getSeverity(recTarget) ? ` • ${getSeverity(recTarget)}` : ""}
                             </p>
                         </div>
                     )}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Fertilizer</label>
+                        <label className="form-label">Fertilizer</label>
                         <input type="text" value={recForm.fertilizer} onChange={(e) => setRecForm({ ...recForm, fertilizer: e.target.value })}
-                            placeholder="e.g. NPK 19:19:19" className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                            placeholder="e.g. NPK 19:19:19" className="input" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Pesticide</label>
+                        <label className="form-label">Pesticide</label>
                         <input type="text" value={recForm.pesticide} onChange={(e) => setRecForm({ ...recForm, pesticide: e.target.value })}
-                            placeholder="e.g. Neem Oil" className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                            placeholder="e.g. Neem Oil" className="input" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Dosage</label>
+                        <label className="form-label">Dosage</label>
                         <input type="text" value={recForm.dosage} onChange={(e) => setRecForm({ ...recForm, dosage: e.target.value })}
-                            placeholder="e.g. 5ml per litre" className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                            placeholder="e.g. 5ml per litre" className="input" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                        <label className="form-label">Notes</label>
                         <textarea value={recForm.notes} onChange={(e) => setRecForm({ ...recForm, notes: e.target.value })}
                             placeholder="Additional notes or instructions…" rows={3}
-                            className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all resize-none" />
+                            className="input resize-none" />
                     </div>
                     <div className="flex items-center gap-3 pt-2">
-                        <button onClick={submitRecommendation} disabled={recSaving}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition-all shadow-sm">
+                        <button type="button" onClick={submitRecommendation} disabled={recSaving}
+                            className="btn btn-primary btn-md flex-1">
                             <Send className="w-4 h-4" /> {recSaving ? "Saving…" : "Submit & Resolve"}
                         </button>
-                        <button onClick={() => { setRecPanelOpen(false); setRecTarget(null); }}
-                            className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                        <button type="button" onClick={() => { setRecPanelOpen(false); setRecTarget(null); }}
+                            className="btn btn-secondary btn-md">
                             Cancel
                         </button>
                     </div>

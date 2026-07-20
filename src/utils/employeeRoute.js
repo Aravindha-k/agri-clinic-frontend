@@ -1,9 +1,13 @@
 /**
  * Admin employee daily route — response extraction, normalization, errors.
+ * Day map is marker-only (Start / submitted Visits / End) — no GPS polyline.
  */
 
 import { unwrapSuccessEnvelope, getResponseBody } from "./apiUnwrap";
 import { isUnreachableError, backendUnavailableMessage } from "./apiBackoff";
+import { todayIsoDate as businessTodayIsoDate, formatBusinessDateTime } from "./businessDate";
+
+export { businessTodayIsoDate as todayIsoDate };
 
 const ROUTE_LIST_KEYS = ["route", "points", "locations"];
 
@@ -135,71 +139,179 @@ export function normalizeEmployeeRoute(payload) {
         .filter(Boolean)
     : [];
 
+  const startTime =
+    meta.duty_started_at ??
+    meta.start_time ??
+    meta.workday_start_time ??
+    null;
+  const endTime =
+    meta.duty_ended_at ??
+    meta.end_time ??
+    meta.workday_end_time ??
+    null;
+  const endReason =
+    meta.end_reason ??
+    meta.duty_end_reason ??
+    meta.ended_reason ??
+    null;
+  const stops = Array.isArray(meta.stops) ? meta.stops : [];
+  const markers = extractDayMapMarkers({
+    stops,
+    points,
+    startTime,
+    endTime,
+    meta,
+  });
+
   return {
     userId: meta.user_id ?? meta.userId ?? null,
     employeeId: meta.employee_id ?? null,
     date: meta.date ?? null,
-    dutySessionId: meta.duty_session_id ?? null,
+    dutySessionId: meta.duty_session_id ?? meta.dutySessionId ?? null,
     totalPoints,
     totalDistanceKm: meta.total_distance_km ?? meta.distance_km ?? null,
     durationSeconds: meta.duration_seconds ?? null,
     duration: meta.duration ?? null,
-    startTime:
-      meta.duty_started_at ??
-      meta.start_time ??
-      meta.workday_start_time ??
-      null,
-    endTime:
-      meta.duty_ended_at ??
-      meta.end_time ??
-      meta.workday_end_time ??
-      null,
+    startTime,
+    endTime,
+    endReason,
     latestUpdate:
       meta.latest_update ??
       (points.length ? points[points.length - 1]?.captured_at : null),
     polyline,
-    stops: Array.isArray(meta.stops) ? meta.stops : [],
+    stops,
+    markers,
     points,
   };
 }
 
-export function todayIsoDate() {
-  const d = new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
+export function formatRouteTimestamp(value) {
+  return formatBusinessDateTime(value);
 }
 
-export function formatRouteTimestamp(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/**
+ * Build Start / Visit / End markers for admin day map (matches mobile Day map).
+ * End marker only when backend provides real end coordinates.
+ */
+export function extractDayMapMarkers({
+  stops = [],
+  points = [],
+  startTime = null,
+  endTime = null,
+  meta = {},
+} = {}) {
+  const markers = [];
+  const seenVisitKeys = new Set();
+
+  const pushMarker = (type, lat, lng, extra = {}) => {
+    if (!isValidRouteCoordinate(lat, lng)) return;
+    if (type === "visit") {
+      const key = `${extra.visitId ?? extra.id ?? ""}:${lat.toFixed(5)},${lng.toFixed(5)}`;
+      if (seenVisitKeys.has(key)) return;
+      seenVisitKeys.add(key);
+    }
+    markers.push({
+      type,
+      latitude: lat,
+      longitude: lng,
+      lat,
+      lng,
+      ...extra,
+    });
+  };
+
+  const typedStops = Array.isArray(stops) ? stops : [];
+  for (const stop of typedStops) {
+    if (!stop || typeof stop !== "object") continue;
+    const kind = String(stop.type ?? stop.marker_type ?? stop.kind ?? stop.stop_type ?? "")
+      .trim()
+      .toLowerCase();
+    const lat = parseCoord(stop.latitude ?? stop.lat);
+    const lng = parseCoord(stop.longitude ?? stop.lng);
+    if (kind === "start" || kind === "duty_start" || kind === "workday_start") {
+      pushMarker("start", lat, lng, {
+        label: "Start",
+        captured_at: stop.captured_at ?? stop.timestamp ?? startTime,
+      });
+    } else if (kind === "end" || kind === "duty_end" || kind === "workday_end") {
+      pushMarker("end", lat, lng, {
+        label: "End",
+        captured_at: stop.captured_at ?? stop.timestamp ?? endTime,
+        endReason: stop.end_reason ?? meta.end_reason ?? null,
+      });
+    } else if (
+      kind === "visit" ||
+      kind === "submitted_visit" ||
+      stop.visit_id != null ||
+      stop.local_sync_id != null
+    ) {
+      pushMarker("visit", lat, lng, {
+        label: stop.label ?? stop.farmer_name ?? "Visit",
+        visitId: stop.visit_id ?? stop.id ?? null,
+        localSyncId: stop.local_sync_id ?? null,
+        captured_at: stop.captured_at ?? stop.submitted_at ?? stop.timestamp ?? null,
+      });
+    }
+  }
+
+  if (!markers.some((m) => m.type === "start")) {
+    const startLat = parseCoord(
+      meta.start_latitude ?? meta.duty_start_latitude ?? meta.start_lat
+    );
+    const startLng = parseCoord(
+      meta.start_longitude ?? meta.duty_start_longitude ?? meta.start_lng
+    );
+    if (isValidRouteCoordinate(startLat, startLng)) {
+      pushMarker("start", startLat, startLng, {
+        label: "Start",
+        captured_at: startTime,
+      });
+    } else if (points.length > 0 && startTime) {
+      pushMarker("start", points[0].latitude, points[0].longitude, {
+        label: "Start",
+        captured_at: startTime,
+      });
+    }
+  }
+
+  if (!markers.some((m) => m.type === "end") && endTime) {
+    const endLat = parseCoord(
+      meta.end_latitude ?? meta.duty_end_latitude ?? meta.end_lat
+    );
+    const endLng = parseCoord(
+      meta.end_longitude ?? meta.duty_end_longitude ?? meta.end_lng
+    );
+    if (isValidRouteCoordinate(endLat, endLng)) {
+      pushMarker("end", endLat, endLng, {
+        label: "End",
+        captured_at: endTime,
+        endReason: meta.end_reason ?? meta.duty_end_reason ?? null,
+      });
+    }
+  }
+
+  return markers;
 }
 
 export const ROUTE_EMPTY_MESSAGE =
-  "No GPS points received for this date.";
+  "No start, visit, or end markers for this date.";
 
 export const ROUTE_SINGLE_POINT_MESSAGE =
-  "Only one GPS point received. Route cannot be drawn yet.";
+  "Only the start marker is available for this day so far.";
 
-/** User-facing empty state for route map based on point count. */
+/** User-facing empty state for marker-only day map. */
 export function resolveRouteEmptyState(routeData) {
-  const total = Number(routeData?.totalPoints ?? routeData?.points?.length ?? 0);
-  if (total <= 0) {
+  const markers = routeData?.markers ?? [];
+  const markerCount = markers.length;
+  if (markerCount <= 0) {
     return {
-      title: "No GPS points received",
+      title: "No day markers yet",
       subtitle: ROUTE_EMPTY_MESSAGE,
     };
   }
-  if (total === 1) {
+  if (markerCount === 1 && markers[0]?.type === "start") {
     return {
-      title: "Insufficient route data",
+      title: "Workday started",
       subtitle: ROUTE_SINGLE_POINT_MESSAGE,
     };
   }
@@ -245,42 +357,38 @@ export function resolveRouteFetchError(err) {
   return detail || `Could not load route (HTTP ${status}).`;
 }
 
-/** Route summary stats for admin route view. */
+/** Route summary stats for admin day map (marker-focused). */
 export function computeRouteSummary(routeData, employee = null) {
-  const points = routeData?.points ?? [];
-  const first = points[0];
-  const last = points[points.length - 1];
-  const startTime = first?.captured_at ?? first?.created_at ?? null;
-  const endTime = last?.captured_at ?? last?.created_at ?? null;
+  const markers = routeData?.markers ?? [];
+  const startMarker = markers.find((m) => m.type === "start");
+  const endMarker = markers.find((m) => m.type === "end");
+  const visitCount = markers.filter((m) => m.type === "visit").length;
+
+  const apiStart = routeData?.startTime ?? startMarker?.captured_at ?? null;
+  const apiEnd = routeData?.endTime ?? endMarker?.captured_at ?? null;
 
   let durationMinutes = null;
   if (routeData?.durationSeconds != null && Number.isFinite(Number(routeData.durationSeconds))) {
     durationMinutes = Math.round(Number(routeData.durationSeconds) / 60);
-  } else if (startTime && endTime) {
-    const ms = new Date(endTime).getTime() - new Date(startTime).getTime();
+  } else if (apiStart && apiEnd) {
+    const ms = new Date(apiEnd).getTime() - new Date(apiStart).getTime();
     if (Number.isFinite(ms) && ms > 0) {
       durationMinutes = Math.round(ms / 60000);
     }
   }
 
-  const apiStart = routeData?.startTime ?? null;
-  const apiEnd = routeData?.endTime ?? null;
-
-  const currentLat =
-    parseCoord(employee?.latitude ?? employee?.last_latitude) ??
-    (last ? last.latitude : null);
-  const currentLng =
-    parseCoord(employee?.longitude ?? employee?.last_longitude) ??
-    (last ? last.longitude : null);
-
   return {
     distanceKm: routeData?.totalDistanceKm ?? null,
     durationMinutes,
-    startTime: apiStart ?? startTime,
-    endTime: apiEnd ?? endTime,
-    totalPoints: routeData?.totalPoints ?? points.length,
-    currentLat,
-    currentLng,
+    startTime: apiStart,
+    endTime: apiEnd,
+    endReason: routeData?.endReason ?? endMarker?.endReason ?? null,
+    totalPoints: markers.length,
+    visitCount,
+    markerCount: markers.length,
+    currentLat: null,
+    currentLng: null,
+    employeeName: employee?.employee_name ?? employee?.username ?? null,
   };
 }
 

@@ -59,11 +59,15 @@ export default function PremiumKpiCard({
 
   if (loading) {
     return (
-      <div className={`premium-kpi premium-kpi--loading ${className}`} style={{ background: gradient }} aria-busy="true">
-        <div className="premium-kpi__icon-wrap skeleton !rounded-2xl" />
+      <div className={`premium-kpi premium-kpi--loading ${className}`} style={{ background: gradient }} aria-busy="true" aria-label={`Loading ${label}`}>
+        <div className="premium-kpi__top">
+          <div className="premium-kpi__icon-wrap skeleton !rounded-2xl" />
+          <div className="skeleton h-5 w-14 rounded-full" />
+        </div>
         <div className="premium-kpi__content space-y-2">
-          <div className="skeleton h-7 w-16 rounded-lg" />
+          <div className="skeleton h-8 w-16 rounded-lg" />
           <div className="skeleton h-3 w-24 rounded" />
+          {subValue && <div className="skeleton h-2.5 w-20 rounded" />}
         </div>
       </div>
     );

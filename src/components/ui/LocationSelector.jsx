@@ -65,13 +65,13 @@ export default function LocationSelector({ value = {}, onChange, className = "" 
         });
     };
 
-    const selectClass = "w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all appearance-none";
+    const selectClass = "select";
 
     return (
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${className}`}>
             {/* District */}
             <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1">
+                <label className="form-label flex items-center gap-1">
                     <MapPin className="w-3 h-3" /> District
                 </label>
                 <div className="relative">
@@ -85,7 +85,7 @@ export default function LocationSelector({ value = {}, onChange, className = "" 
 
             {/* Village */}
             <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1">
+                <label className="form-label flex items-center gap-1">
                     <MapPin className="w-3 h-3" /> Village
                 </label>
                 <div className="relative">

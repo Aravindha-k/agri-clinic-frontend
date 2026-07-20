@@ -1,7 +1,7 @@
-import { PageLoader, EmptyState } from "../components/ui/command";
+import { EmptyState } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
-import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
+import { BRAND } from "../theme/brand";
 function resolveList(res) {
   const raw = res?.data?.data ?? res?.data ?? res;
   if (Array.isArray(raw)) return raw;
@@ -30,7 +30,7 @@ import { getEmployeeStats, getEmployeeSummary, getEmployeeActivity } from "../ap
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import {
   Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
-  RefreshCw, Eye, EyeOff, ChevronRight, Filter, AlertCircle, UserCheck, Signal, Timer,
+  RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
   Calendar, Shield, Building2, Briefcase, PlayCircle, StopCircle, Radio, Heart,
   Navigation, ToggleLeft, ToggleRight, Loader2, Plus, UserPlus, Hash,
   Edit2, Key, Info, CheckCircle, Save, Copy, Route,
@@ -95,9 +95,47 @@ const fmtRel = (d) => {
 };
 const empName = (e) =>
   e?.first_name ? `${e.first_name} ${e.last_name || ""}`.trim() : e?.username || "\u2014";
-const empInitial = (e) =>
-  (e?.first_name?.[0] || e?.username?.[0] || "E").toUpperCase();
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
+
+function resolveAssignedVillages(profile, summary) {
+  const sources = [
+    profile?.assigned_villages,
+    profile?.villages,
+    summary?.assigned_villages,
+    summary?.villages,
+    profile?.village_names,
+    summary?.village_names,
+  ];
+  for (const src of sources) {
+    if (Array.isArray(src) && src.length) {
+      return src
+        .map((v) =>
+          typeof v === "object" ? v.name ?? v.village_name ?? v.label : String(v)
+        )
+        .filter(Boolean);
+    }
+    if (typeof src === "string" && src.trim()) {
+      return src.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+const HrSection = ({ icon: Icon, title, subtitle, children }) => (
+  <section className="employees-hr-section">
+    <div className="employees-hr-section__head">
+      {Icon ? (
+        <div className="list-meta-icon list-meta-icon--crop">
+          <Icon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+        </div>
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+        {subtitle ? <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p> : null}
+      </div>
+    </div>
+    <div className="employees-hr-section__body">{children}</div>
+  </section>
+);
 
 /* ================================================================
    SKELETON PRIMITIVES
@@ -107,12 +145,12 @@ const Bone = ({ className = "" }) => (
 );
 
 const KpiSkeleton = () => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+  <div className="employees-hr-stats">
     {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="rounded-xl p-3.5 bg-white" style={{ boxShadow: SHADOW }}>
-        <Bone className="w-10 h-10 rounded-xl mb-3" />
-        <Bone className="w-16 h-7 mb-2" />
-        <Bone className="w-24 h-4" />
+      <div key={i} className="employees-hr-skeleton-card">
+        <div className="skeleton w-9 h-9 rounded-xl" />
+        <div className="skeleton h-8 w-16 mt-3 rounded" />
+        <div className="skeleton h-3 w-24 mt-2 rounded" />
       </div>
     ))}
   </div>
@@ -123,19 +161,20 @@ const KpiSkeleton = () => (
    ================================================================ */
 
 /* --- KPI Card --- */
-const KpiCard = memo(({ icon: Icon, label, value, gradient, iconBg, iconColor }) => {
+const KpiCard = memo(({ icon: Icon, label, value, iconBg, iconColor }) => {
   const animVal = useCountUp(value);
   return (
-    <div
-      className="mini-kpi-card group cursor-default"
-      style={{ background: gradient, boxShadow: SHADOW }}
-    >
-      <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full opacity-[0.07]" style={{ background: iconColor }} />
-      <div className="mini-kpi-icon" style={{ background: iconBg, color: iconColor }}>
-        <Icon className="w-4 h-4" />
+    <div className="employees-hr-stat">
+      <div className="employees-hr-stat__accent" style={{ background: iconColor }} aria-hidden="true" />
+      <div className="flex items-start gap-3">
+        <div className="employees-hr-stat__icon" style={{ background: iconBg, color: iconColor }}>
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="employees-hr-stat__value">{animVal}</p>
+          <p className="employees-hr-stat__label">{label}</p>
+        </div>
       </div>
-      <p className="mini-kpi-value">{animVal}</p>
-      <p className="mini-kpi-label">{label}</p>
     </div>
   );
 });
@@ -152,113 +191,155 @@ const EmployeeStats = memo(({ stats, loading: isLoading, error: statsErr, onRetr
     </div>
   );
 
-  // Map API response fields to UI fields
   const s = stats || {};
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      <KpiCard icon={Users} label="Total Employees" value={s.total ?? 0}
-        gradient={BRAND_GRADIENTS.cardGreen} iconBg="#dcfce7" iconColor={BRAND.primary} />
-      <KpiCard icon={Activity} label="Active Now" value={s.online ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #f0fdfa 100%)" iconBg="#ccfbf1" iconColor={BRAND.info} />
-      <KpiCard icon={MapPin} label="On Field" value={s.on_field ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #eff6ff 100%)" iconBg={BRAND.infoLight} iconColor={BRAND.info} />
-      <KpiCard icon={WifiOff} label="Offline" value={s.offline ?? 0}
-        gradient="linear-gradient(135deg, #fff 0%, #fef2f2 100%)" iconBg={BRAND.dangerLight} iconColor={BRAND.danger} />
-      <KpiCard icon={Timer} label="Avg Hours Today" value={s.avg_hours_today ?? 0}
-        gradient={BRAND_GRADIENTS.cardAccent} iconBg={BRAND.warningLight} iconColor={BRAND.warning} />
+    <div className="employees-hr-stats">
+      <KpiCard icon={Users} label="Total employees" value={s.total ?? 0} iconBg="#dbeafe" iconColor="#2563eb" />
+      <KpiCard icon={Activity} label="Active now" value={s.online ?? 0} iconBg="#ccfbf1" iconColor={BRAND.info} />
+      <KpiCard icon={MapPin} label="On field" value={s.on_field ?? 0} iconBg={BRAND.infoLight} iconColor={BRAND.info} />
+      <KpiCard icon={WifiOff} label="Offline" value={s.offline ?? 0} iconBg={BRAND.dangerLight} iconColor={BRAND.danger} />
+      <KpiCard icon={Timer} label="Avg hours today" value={s.avg_hours_today ?? 0} iconBg={BRAND.warningLight} iconColor={BRAND.warning} />
     </div>
   );
 });
 EmployeeStats.displayName = "EmployeeStats";
 
-/* --- Online Badge --- */
+const WorkforceStrip = memo(({ stats, loading: isLoading }) => {
+  const cells = [
+    { label: "Total staff", value: stats?.total ?? 0 },
+    { label: "Active now", value: stats?.online ?? 0 },
+    { label: "On field", value: stats?.on_field ?? 0 },
+    { label: "Offline", value: stats?.offline ?? 0 },
+    { label: "Avg hours", value: stats?.avg_hours_today ?? 0 },
+  ];
+
+  return (
+    <div className="employees-hr-workforce-strip" aria-busy={isLoading}>
+      <div className="employees-hr-workforce-strip__inner">
+        <p className="employees-hr-workforce-strip__label">Workforce snapshot</p>
+        <div className="employees-hr-workforce-strip__grid">
+          {cells.map((c) => (
+            <div key={c.label} className="employees-hr-workforce-cell">
+              <p className="employees-hr-workforce-cell__label">{c.label}</p>
+              {isLoading ? (
+                <div className="skeleton h-4 w-10 rounded mt-2 bg-white/20" />
+              ) : (
+                <p className="employees-hr-workforce-cell__value">{c.value}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+WorkforceStrip.displayName = "WorkforceStrip";
+
 const Badge = memo(({ online }) => (
-  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${online ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-gray-50 text-gray-500 border-gray-200"
-    }`}>
-    <span className={`w-1.5 h-1.5 rounded-full ${online ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
+  <span className={`employees-hr-status ${online ? "employees-hr-status--online" : "employees-hr-status--offline"}`}>
+    <span className="employees-hr-status__dot" aria-hidden="true" />
     {online ? "Online" : "Offline"}
   </span>
 ));
-Badge.displayName = "Badge";
 
-/* --- Role Badge --- */
-const ROLE_STYLES = {
-  admin: "bg-violet-50 text-violet-700 border-violet-100",
-  supervisor: "bg-sky-50 text-sky-700 border-sky-100",
-  field_officer: "bg-amber-50 text-amber-700 border-amber-100",
-  manager: "bg-blue-50 text-blue-700 border-blue-100",
+const ROLE_CLASS = {
+  admin: "employees-hr-role--admin",
+  supervisor: "employees-hr-role--supervisor",
+  field_officer: "employees-hr-role--field_officer",
+  manager: "employees-hr-role--manager",
 };
 const RoleBadge = memo(({ role }) => {
   if (!role) return null;
-  const cls = ROLE_STYLES[role] ?? "bg-gray-50 text-gray-600 border-gray-200";
+  const cls = ROLE_CLASS[role] ?? "employees-hr-role--default";
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize ${cls}`}>
-      <Shield className="w-2.5 h-2.5" />{role.replace(/_/g, " ")}
+    <span className={`employees-hr-role ${cls}`}>
+      <Shield className="w-2.5 h-2.5" aria-hidden="true" />
+      {role.replace(/_/g, " ")}
     </span>
   );
 });
 RoleBadge.displayName = "RoleBadge";
 
-/* --- Section Header --- */
-const SectionHead = ({ icon: Icon, title, subtitle, right }) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      {Icon && <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600"><Icon className="w-4 h-4" /></div>}
-      <div>
-        <h3 className="text-[15px] font-semibold text-gray-900">{title}</h3>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-    {right}
-  </div>
-);
+Badge.displayName = "Badge";
 
-/* --- Employee Filters --- */
 const EmployeeFilters = memo(({ searchTerm, setSearchTerm, statusFilter, setStatusFilter, roleFilter, setRoleFilter, viewMode, setViewMode, total, shown }) => (
-  <div className="list-card-surface p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
-    style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.04)" }}>
-    <div className="relative flex-1 min-w-0">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-      <input type="text" placeholder="Search name, username, phone, ID\u2026" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+  <div className="employees-hr-filters">
+    <div className="employees-hr-filters__search">
+      <Search className="search-icon" aria-hidden="true" />
+      <input
+        type="search"
+        placeholder="Search name, username, phone, ID…"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="search-input"
+        aria-label="Search employees"
+      />
     </div>
-    <div className="flex items-center gap-2 flex-wrap">
-      <Filter className="w-4 h-4 text-gray-400 hidden sm:block" />
-      <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-        className="px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all appearance-none cursor-pointer">
-        <option value="all">All Status</option>
+    <div className="employees-hr-filters__controls">
+      <select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+        className="employees-hr-filters__select"
+        aria-label="Filter by status"
+      >
+        <option value="all">All status</option>
         <option value="online">Online</option>
         <option value="offline">Offline</option>
       </select>
-      <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}
-        className="px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all appearance-none cursor-pointer">
-        <option value="all">All Roles</option>
+      <select
+        value={roleFilter}
+        onChange={(e) => setRoleFilter(e.target.value)}
+        className="employees-hr-filters__select"
+        aria-label="Filter by role"
+      >
+        <option value="all">All roles</option>
         <option value="admin">Admin</option>
         <option value="supervisor">Supervisor</option>
-        <option value="field_officer">Field Officer</option>
+        <option value="field_officer">Field officer</option>
         <option value="manager">Manager</option>
       </select>
+      <div className="employees-hr-view-toggle">
+        <button
+          type="button"
+          onClick={() => setViewMode("grid")}
+          className={`employees-hr-view-toggle__btn ${viewMode === "grid" ? "employees-hr-view-toggle__btn--active" : ""}`}
+          aria-label="Grid view"
+          aria-pressed={viewMode === "grid"}
+        >
+          <LayoutGrid className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("table")}
+          className={`employees-hr-view-toggle__btn ${viewMode === "table" ? "employees-hr-view-toggle__btn--active" : ""}`}
+          aria-label="Table view"
+          aria-pressed={viewMode === "table"}
+        >
+          <List className="w-4 h-4" />
+        </button>
+      </div>
+      <span className="employees-hr-count">{shown} of {total}</span>
     </div>
-    <div className="hidden sm:block w-px h-8 bg-gray-200" />
-    <div className="flex items-center bg-gray-100 rounded-lg p-1">
-      <button onClick={() => setViewMode("grid")} className={`p-2 rounded-md transition-all duration-200 ${viewMode === "grid" ? "bg-white shadow-sm text-emerald-600" : "text-gray-400 hover:text-gray-600"}`}>
-        <LayoutGrid className="w-4 h-4" />
-      </button>
-      <button onClick={() => setViewMode("table")} className={`p-2 rounded-md transition-all duration-200 ${viewMode === "table" ? "bg-white shadow-sm text-emerald-600" : "text-gray-400 hover:text-gray-600"}`}>
-        <List className="w-4 h-4" />
-      </button>
-    </div>
-    <span className="text-xs text-gray-400 font-medium whitespace-nowrap">{shown} of {total}</span>
   </div>
 ));
 EmployeeFilters.displayName = "EmployeeFilters";
 
 /* --- Employee Card (Grid) --- */
 const EmployeeCard = memo(({ emp, onOpen }) => (
-  <div className="list-card-surface group card-hover cursor-pointer" onClick={() => onOpen(emp)}>
-    <div className="h-0.5" style={{ background: emp.is_online ? "linear-gradient(90deg, #10b981, #14b8a6)" : "linear-gradient(90deg, #d1d5db, #e5e7eb)" }} />
-    <div className="p-3.5">
-      <div className="flex items-start gap-2.5 mb-2">
+  <article
+    className={`employees-hr-card group ${emp.is_online ? "employees-hr-card--online" : ""}`}
+    onClick={() => onOpen(emp)}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onOpen(emp);
+      }
+    }}
+  >
+    <div className="employees-hr-card__body">
+      <div className="employees-hr-card__head">
         <ProfileAvatar
           entity={emp}
           name={empName(emp)}
@@ -267,47 +348,69 @@ const EmployeeCard = memo(({ emp, onOpen }) => (
           online={emp.is_online}
         />
         <div className="flex-1 min-w-0">
-          <p className="list-card-title">{empName(emp)}</p>
-          {emp.phone && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5"><Phone className="w-3 h-3" />{emp.phone}</p>}
+          <p className="employees-hr-card__name group-hover:text-blue-700 transition-colors">{empName(emp)}</p>
+          {emp.phone && (
+            <p className="employees-hr-card__sub">
+              <Phone className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {emp.phone}
+            </p>
+          )}
           {emp.employee_id && (
-            <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
-              <Hash className="w-2.5 h-2.5" />{emp.employee_id}
+            <p className="employees-hr-card__sub">
+              <Hash className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {emp.employee_id}
             </p>
           )}
         </div>
         <Badge online={emp.is_online} />
       </div>
-      {/* Role + District row */}
-      <div className="flex items-center gap-2 flex-wrap mb-2">
+      <div className="employees-hr-card__meta">
         <RoleBadge role={emp.role} />
         {emp.district_name && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 font-medium">
-            <Building2 className="w-2.5 h-2.5" />{emp.district_name}
+          <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-semibold uppercase tracking-wide">
+            <Building2 className="w-2.5 h-2.5" aria-hidden="true" />
+            {emp.district_name}
           </span>
         )}
       </div>
-      {/* Last seen */}
-      <p className="text-[11px] text-gray-400 mb-2 flex items-center gap-1.5">
-        <Clock className="w-3 h-3" />
+      <p className="employees-hr-card__seen">
+        <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
         {emp.last_seen || emp.last_heartbeat
-          ? <>Last seen <span className="font-medium text-gray-600">{fmtRel(emp.last_seen ?? emp.last_heartbeat)}</span></>
-          : "Last seen: �"}
+          ? <>Last seen <span className="font-semibold text-slate-600">{fmtRel(emp.last_seen ?? emp.last_heartbeat)}</span></>
+          : "Last seen: —"}
       </p>
-      <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all duration-200 active:scale-[0.97]">
-        <Eye className="w-3.5 h-3.5" /> View Details <ChevronRight className="w-3.5 h-3.5 ml-auto" />
-      </button>
+      <div className="employees-hr-card__cta">
+        <button type="button" className="btn btn-primary btn-sm w-full">
+          <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+          View profile
+        </button>
+      </div>
     </div>
-  </div>
+  </article>
 ));
 EmployeeCard.displayName = "EmployeeCard";
 
-/* --- Employee Grid --- */
 const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOpen, onAddEmployee }) => {
   if (isLoading) {
-    return <PageLoader label="Loading employees…" />;
+    return (
+      <div className="employees-hr-skeleton-grid" aria-busy="true" aria-label="Loading employees">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="employees-hr-skeleton-card">
+            <div className="flex gap-3">
+              <div className="skeleton w-10 h-10 rounded-full shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="skeleton h-4 w-3/4 rounded" />
+                <div className="skeleton h-3 w-1/2 rounded" />
+              </div>
+            </div>
+            <div className="skeleton h-8 w-full rounded-lg mt-2" />
+          </div>
+        ))}
+      </div>
+    );
   }
   if (emps.length === 0) return (
-    <div className="section-card">
+    <div className="dashboard-section-card">
       <EmptyState
         icon={Users}
         title="No employees found"
@@ -315,7 +418,7 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
         action={
           onAddEmployee ? (
             <button type="button" onClick={onAddEmployee} className="btn btn-primary btn-md">
-              <UserPlus className="w-4 h-4" /> Add employee
+              <UserPlus className="w-4 h-4" aria-hidden="true" /> Add employee
             </button>
           ) : null
         }
@@ -325,47 +428,52 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
 
   if (viewMode === "grid") {
     return (
-      <div className="list-grid">
+      <div className="employees-hr-grid">
         {emps.map((emp) => <EmployeeCard key={emp.id} emp={emp} onOpen={onOpen} />)}
       </div>
     );
   }
 
   return (
-    <div className="section-card overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.04)" }}>
-      <div className="overflow-x-auto">
-        <table className="w-full">
+    <div className="employees-hr-table-card">
+      <div className="employees-hr-table-wrap">
+        <table className="data-table compact-table employees-hr-table w-full">
           <thead>
-            <tr className="bg-gray-50/60">
-              <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
-              <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
-              <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">District</th>
-              <th className="px-6 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3" />
+            <tr>
+              <th>Employee</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>District</th>
+              <th>Status</th>
+              <th className="w-24" />
             </tr>
           </thead>
           <tbody>
-            {emps.map((emp, idx) => (
-              <tr key={emp.id} className={`transition-colors duration-150 hover:bg-emerald-50/30 cursor-pointer ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`} onClick={() => onOpen(emp)}>
-                <td className="px-6 py-3.5 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
+            {emps.map((emp) => (
+              <tr key={emp.id} className="cursor-pointer group" onClick={() => onOpen(emp)}>
+                <td>
+                  <div className="flex items-center gap-3 min-w-0">
                     <ProfileAvatar
                       entity={emp}
                       name={empName(emp)}
                       size="sm"
                       variant={emp.is_online ? "emerald" : "neutral"}
                     />
-                    <span className="text-sm font-medium text-gray-900">{empName(emp)}</span>
+                    <span className="text-sm font-semibold text-slate-900 truncate">{empName(emp)}</span>
                   </div>
                 </td>
-                <td className="px-6 py-3.5 text-sm text-gray-500">{emp.phone || "\u2014"}</td>
-                <td className="px-6 py-3.5"><RoleBadge role={emp.role} /></td>
-                <td className="px-6 py-3.5 text-sm text-gray-500">{emp.district_name || "\u2014"}</td>
-                <td className="px-6 py-3.5"><Badge online={emp.is_online} /></td>
-                <td className="px-6 py-3.5 text-right">
-                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all duration-200 active:scale-95">
-                    <Eye className="w-3.5 h-3.5" /> View
+                <td className="text-sm text-slate-500 font-mono tabular-nums">{emp.phone || "\u2014"}</td>
+                <td><RoleBadge role={emp.role} /></td>
+                <td className="text-sm text-slate-500">{emp.district_name || "\u2014"}</td>
+                <td><Badge online={emp.is_online} /></td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => { e.stopPropagation(); onOpen(emp); }}
+                  >
+                    <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                    View
                   </button>
                 </td>
               </tr>
@@ -394,18 +502,13 @@ const ActivityEvent = memo(({ event }) => {
   const cfg = ACTIVITY_ICONS[t] || ACTIVITY_ICONS.default;
   const Ic = cfg.icon;
   return (
-    <div className="flex gap-3">
-      <div className="flex flex-col items-center">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${cfg.bg} ${cfg.border}`}>
-          <Ic className={`w-3.5 h-3.5 ${cfg.color}`} />
-        </div>
-        <div className="w-px flex-1 bg-gray-100 mt-1" />
+    <div className="employees-hr-timeline__item">
+      <div className={`employees-hr-timeline__dot ${cfg.bg} ${cfg.border}`}>
+        <Ic className={`w-3.5 h-3.5 ${cfg.color}`} aria-hidden="true" />
       </div>
-      <div className="pb-4 flex-1 min-w-0">
-        <p className="text-xs font-semibold text-gray-800 capitalize">{(t || "").replace(/_/g, " ")}</p>
-        {event.description && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{event.description}</p>}
-        <p className="text-[10px] text-gray-400 mt-1">{fmtDateTime(event.timestamp || event.created_at)}</p>
-      </div>
+      <p className="employees-hr-timeline__label">{(t || "").replace(/_/g, " ")}</p>
+      {event.description && <p className="employees-hr-timeline__desc">{event.description}</p>}
+      <p className="employees-hr-timeline__time">{fmtDateTime(event.timestamp || event.created_at)}</p>
     </div>
   );
 });
@@ -425,10 +528,10 @@ const EmployeeActivityTimeline = memo(({ activities, loading: isLoading }) => {
   );
 
   const items = Array.isArray(activities) ? activities : activities?.results || [];
-  if (items.length === 0) return <p className="text-xs text-gray-400 text-center py-6">No activity recorded today.</p>;
+  if (items.length === 0) return <p className="text-xs text-slate-400 text-center py-6">No activity recorded today.</p>;
 
   return (
-    <div className="max-h-[360px] overflow-y-auto pr-1" style={{ scrollbarWidth: "thin" }}>
+    <div className="employees-hr-timeline max-h-[360px] overflow-y-auto pr-1" style={{ scrollbarWidth: "thin" }}>
       {items.map((ev, i) => <ActivityEvent key={ev.id || i} event={ev} />)}
     </div>
   );
@@ -439,7 +542,7 @@ EmployeeActivityTimeline.displayName = "EmployeeActivityTimeline";
 const EmployeeProfile = memo(({ profile, loading: isLoading, onPhotoUpdated }) => {
   if (isLoading || !profile) return null;
   return (
-    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+    <div className="employees-hr-profile">
       <ProfilePhotoUpload
         entity={profile}
         displayName={empName(profile)}
@@ -458,15 +561,16 @@ const EmployeeProfile = memo(({ profile, loading: isLoading, onPhotoUpdated }) =
           })
         }
       />
-      <div className="flex-1 min-w-0 text-center sm:text-left">
-        <p className="text-lg font-bold text-gray-900">{empName(profile)}</p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {profile.role && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 capitalize">
-              <Shield className="w-2.5 h-2.5" />{profile.role}
+      <div className="employees-hr-profile__info">
+        <p className="employees-hr-profile__name">{empName(profile)}</p>
+        <div className="flex items-center gap-2 mt-1 flex-wrap justify-center sm:justify-start">
+          <RoleBadge role={profile.role} />
+          {profile.phone && (
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <Phone className="w-3 h-3" aria-hidden="true" />
+              {profile.phone}
             </span>
           )}
-          {profile.phone && <span className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" />{profile.phone}</span>}
         </div>
       </div>
     </div>
@@ -498,14 +602,16 @@ const EmployeeSummary = memo(({ summary, profile, loading: isLoading }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="employees-hr-kv-grid">
       {items.map((item) => (
-        <div key={item.label} className="bg-gray-50 rounded-xl p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <item.icon className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-[11px] text-gray-400 font-medium">{item.label}</span>
+        <div key={item.label} className="employees-hr-kv">
+          <div className="employees-hr-kv__label">
+            <item.icon className="w-3 h-3" aria-hidden="true" />
+            {item.label}
           </div>
-          <p className={`text-sm font-semibold ${item.highlight ? "text-emerald-600" : "text-gray-900"}`}>{item.value || "\u2014"}</p>
+          <p className={`employees-hr-kv__value ${item.highlight ? "employees-hr-kv__value--highlight" : ""}`}>
+            {item.value || "\u2014"}
+          </p>
         </div>
       ))}
     </div>
@@ -525,20 +631,58 @@ const EmployeePerformanceSummary = memo(({ summary, profile }) => {
     { label: "Last seen", value: fmtRel(s.last_seen || p.last_seen) },
   ];
   return (
-    <div>
-      <SectionHead icon={Briefcase} title="Activity Summary" subtitle="Today\u2019s field performance" />
-      <div className="mt-3 grid grid-cols-2 gap-3">
+    <HrSection icon={Briefcase} title="Performance" subtitle="Today\u2019s field performance">
+      <div className="employees-hr-performance">
         {items.map((item) => (
-          <div key={item.label} className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[11px] text-gray-400 font-medium">{item.label}</p>
-            <p className="text-sm font-semibold text-gray-900 mt-0.5">{item.value}</p>
+          <div key={item.label} className="employees-hr-performance__card">
+            <p className="employees-hr-performance__label">{item.label}</p>
+            <p className="employees-hr-performance__value">{item.value}</p>
           </div>
         ))}
       </div>
-    </div>
+    </HrSection>
   );
 });
 EmployeePerformanceSummary.displayName = "EmployeePerformanceSummary";
+
+const AssignedVillagesSection = memo(({ profile, summary, loading: isLoading }) => {
+  if (isLoading) {
+    return (
+      <HrSection icon={MapPin} title="Assigned villages" subtitle="Territory coverage">
+        <div className="employees-hr-villages animate-pulse">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Bone key={i} className="!rounded-lg w-20 h-7" />
+          ))}
+        </div>
+      </HrSection>
+    );
+  }
+
+  const villages = resolveAssignedVillages(profile, summary);
+  const district =
+    profile?.district_name ||
+    (typeof profile?.district === "object" ? profile?.district?.name : profile?.district);
+
+  return (
+    <HrSection icon={MapPin} title="Assigned villages" subtitle="Territory coverage">
+      {villages.length > 0 ? (
+        <div className="employees-hr-villages">
+          {villages.map((v, i) => (
+            <span key={`${v}-${i}`} className="employees-hr-village-chip">
+              <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {v}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500">
+          {district ? `No villages listed for ${district} district.` : "No villages assigned yet."}
+        </p>
+      )}
+    </HrSection>
+  );
+});
+AssignedVillagesSection.displayName = "AssignedVillagesSection";
 
 /* --- Admin Reset Section (inside Password tab) --- */
 const AdminResetSection = memo(({ empId }) => {
@@ -576,70 +720,70 @@ const AdminResetSection = memo(({ empId }) => {
     });
   };
 
-  const inputCls = "w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
+    <div className="employees-hr-form">
       <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
         <div>
           <p className="text-sm font-semibold text-blue-800">Admin Password Override</p>
-          <p className="text-xs text-blue-600 mt-0.5">Set a new password directly � no existing password required.</p>
+          <p className="text-xs text-blue-600 mt-0.5">Set a new password directly — no existing password required.</p>
         </div>
       </div>
 
-      {/* Option 1: Set new password */}
       <form onSubmit={handleReset} className="space-y-3">
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-          New Password <span className="text-red-500">*</span>
-        </label>
-        {error && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700">
-            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /> {error}
+        <div className="employees-hr-field">
+          <label>
+            New Password <span className="text-red-500">*</span>
+          </label>
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 mb-2">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" /> {error}
+            </div>
+          )}
+          <div className="relative">
+            <input type={showPass ? "text" : "password"} required
+              placeholder="Min 8 characters" value={newPass}
+              onChange={e => { setNewPass(e.target.value); setLastSetPass(null); }} minLength={8} />
+            <button type="button" onClick={() => setShowPass(s => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              aria-label={showPass ? "Hide password" : "Show password"}>
+              {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
-        )}
-        <div className="relative">
-          <input type={showPass ? "text" : "password"} required className={inputCls + " pr-10"}
-            placeholder="Min 8 characters" value={newPass}
-            onChange={e => { setNewPass(e.target.value); setLastSetPass(null); }} minLength={8} />
-          <button type="button" onClick={() => setShowPass(s => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
         </div>
-        <button type="submit" disabled={saving}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all disabled:opacity-60 active:scale-[0.98]">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-          {saving ? "Setting\u2026" : "Set Password"}
+        <button type="submit" disabled={saving} className="btn btn-primary btn-md w-full">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Key className="w-4 h-4" aria-hidden="true" />}
+          {saving ? "Setting…" : "Set Password"}
         </button>
       </form>
 
-      {/* Option 2: Show set password to give to employee */}
       {lastSetPass && (
-        <div className="pt-4 border-t border-gray-100 space-y-3">
+        <div className="pt-4 border-t border-slate-100 space-y-3">
           <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
-            <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <p className="text-sm font-semibold text-emerald-800">Password Set Successfully</p>
               <p className="text-xs text-emerald-600 mt-0.5">Share the password below with the employee.</p>
             </div>
           </div>
-          <label className="block text-xs font-semibold text-gray-600">Employee's New Password</label>
-          <div className="relative">
-            <input readOnly type={showLastPass ? "text" : "password"}
-              value={lastSetPass}
-              className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-xl pr-20 font-mono tracking-wide" />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-              <button type="button" onClick={() => setShowLastPass(s => !s)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                title={showLastPass ? "Hide password" : "Show password"}>
-                {showLastPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-              <button type="button" onClick={handleCopy}
-                className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
-                title="Copy password">
-                {copied ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-              </button>
+          <div className="employees-hr-field">
+            <label>Employee&apos;s New Password</label>
+            <div className="relative">
+              <input readOnly type={showLastPass ? "text" : "password"}
+                value={lastSetPass}
+                className="font-mono tracking-wide pr-20" />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                <button type="button" onClick={() => setShowLastPass(s => !s)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                  title={showLastPass ? "Hide password" : "Show password"}>
+                  {showLastPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button type="button" onClick={handleCopy}
+                  className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
+                  title="Copy password">
+                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
           {copied && (
@@ -807,8 +951,6 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   if (!open) return null;
 
   const profile = selectedEmp;
-  const inputCls = "w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
-  const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
   const TABS = [
     { id: "details", label: "Details", icon: Info },
     { id: "edit", label: "Edit", icon: Edit2 },
@@ -817,164 +959,172 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
 
   return createPortal(
     <>
-      <div className="fixed inset-0 bg-black/40 z-[9998] transition-opacity" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full w-full sm:w-[500px] bg-white z-[9999] shadow-2xl flex flex-col animate-slide-in">
+      <div className="employees-hr-drawer-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className="employees-hr-drawer" role="dialog" aria-modal="true" aria-label={`Employee profile: ${empName(profile)}`}>
 
-        {/* -- Drawer Header -- */}
-        <div className="flex-shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between"
-          style={{ background: "linear-gradient(135deg, #f8faf9, #ffffff)" }}>
-          <div className="flex items-center gap-3">
-            <ProfileAvatar
-              entity={profile}
-              name={empName(profile)}
-              size="lg"
-              variant={profile?.is_online ? "emerald" : "neutral"}
-            />
-            <div>
-              <p className="text-sm font-bold text-gray-900">{empName(profile)}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <RoleBadge role={profile?.role} />
-                {profile?.employee_id && (
-                  <span className="text-[10px] text-gray-400 font-medium flex items-center gap-0.5">
-                    <Hash className="w-2.5 h-2.5" />{profile.employee_id}
-                  </span>
-                )}
+        <div className="employees-hr-drawer-hero">
+          <div className="employees-hr-drawer-hero__glow w-40 h-40 -top-10 -right-10" aria-hidden="true" />
+          <div className="employees-hr-drawer-hero__glow w-28 h-28 bottom-0 left-1/3 opacity-60" aria-hidden="true" />
+          <div className="relative z-10 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <ProfileAvatar
+                entity={profile}
+                name={empName(profile)}
+                size="lg"
+                variant={profile?.is_online ? "emerald" : "neutral"}
+                online={profile?.is_online}
+              />
+              <div className="min-w-0">
+                <p className="text-base font-bold truncate">{empName(profile)}</p>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <Badge online={profile?.is_online} />
+                  <RoleBadge role={profile?.role} />
+                  {profile?.employee_id && (
+                    <span className="text-[10px] text-blue-100/90 font-medium flex items-center gap-0.5">
+                      <Hash className="w-2.5 h-2.5" aria-hidden="true" />
+                      {profile.employee_id}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+            <button type="button" onClick={onClose} className="p-2 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 transition-all" aria-label="Close drawer">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* -- Tabs -- */}
-        <div className="flex-shrink-0 flex border-b border-gray-100 bg-gray-50/50">
+        <div className="employees-hr-drawer-tabs">
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-all border-b-2 ${tab === t.id ? "border-emerald-500 text-emerald-700 bg-white" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
-              <t.icon className="w-3.5 h-3.5" />{t.label}
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`employees-hr-drawer-tab ${tab === t.id ? "employees-hr-drawer-tab--active" : "employees-hr-drawer-tab--idle"}`}
+            >
+              <t.icon className="w-3.5 h-3.5" aria-hidden="true" />
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* -- Scrollable content -- */}
-        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+        <div className="employees-hr-drawer-body">
 
-          {/* DETAILS TAB */}
           {tab === "details" && (
-            <div className="p-6 space-y-6">
-              <EmployeeProfile profile={profile} loading={false} onPhotoUpdated={onUpdated} />
-              <div>
-                <SectionHead icon={Signal} title="Tracking Summary" subtitle="Real-time status" />
-                <div className="mt-3">
-                  <EmployeeSummary summary={summary} profile={profile} loading={loadingSummary} />
+            <>
+              <div className="employees-hr-section">
+                <div className="employees-hr-section__body">
+                  <EmployeeProfile profile={profile} loading={false} onPhotoUpdated={onUpdated} />
                 </div>
+              </div>
+
+              <HrSection icon={Signal} title="Tracking summary" subtitle="Real-time status">
+                <EmployeeSummary summary={summary} profile={profile} loading={loadingSummary} />
                 {(profile?.user_id ?? profile?.user ?? profile?.id) && (
                   <Link
                     to={`/tracking/routes?userId=${profile?.user_id ?? profile?.user ?? profile?.id}`}
-                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-100 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    className="mt-3 inline-flex items-center gap-2 btn btn-secondary btn-sm"
                   >
-                    <Route className="w-4 h-4" />
-                    View Route History
-                    <ChevronRight className="w-4 h-4 ml-auto" />
+                    <Route className="w-4 h-4" aria-hidden="true" />
+                    View route history
+                    <ChevronRight className="w-4 h-4 ml-auto" aria-hidden="true" />
                   </Link>
                 )}
-              </div>
-              <div>
+              </HrSection>
+
+              <AssignedVillagesSection profile={profile} summary={summary} loading={loadingSummary} />
+
+              <HrSection icon={Radio} title="Device & connectivity" subtitle="Field app status">
                 <EmployeeDeviceInfoSection employee={profile} summary={summary} />
-              </div>
+              </HrSection>
+
               <EmployeePerformanceSummary summary={summary} profile={profile} />
-              <div>
-                <SectionHead icon={Activity} title="Activity Timeline" subtitle="Today's events" />
-                <div className="mt-3">
-                  <EmployeeActivityTimeline activities={activities} loading={loadingActivity} />
-                </div>
-              </div>
-            </div>
+
+              <HrSection icon={Activity} title="Activity timeline" subtitle="Today\u2019s events">
+                <EmployeeActivityTimeline activities={activities} loading={loadingActivity} />
+              </HrSection>
+            </>
           )}
 
-          {/* EDIT TAB */}
           {tab === "edit" && (
-            <form onSubmit={handleSave} className="p-6 space-y-5">
+            <form onSubmit={handleSave} className="employees-hr-form !p-0 space-y-4">
               {saveSuccess && (
                 <div className="flex items-center gap-2.5 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700">
-                  <CheckCircle className="w-4 h-4 flex-shrink-0" /> Employee updated successfully.
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                  Employee updated successfully.
                 </div>
               )}
               {saveError && (
                 <div className="flex items-start gap-2.5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{saveError}</span>
                 </div>
               )}
 
-              {/* Username � read-only identifier */}
-              <div>
-                <label className={labelCls}>Username</label>
-                <input readOnly className={inputCls + " bg-gray-100 text-gray-500 cursor-default"}
-                  value={selectedEmp?.username || selectedEmp?.employee_id || ""} />
+              <div className="employees-hr-field">
+                <label>Username</label>
+                <input readOnly value={selectedEmp?.username || selectedEmp?.employee_id || ""} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>First Name</label>
-                  <input className={inputCls} placeholder="First name"
+                <div className="employees-hr-field">
+                  <label>First name</label>
+                  <input placeholder="First name"
                     value={editForm.first_name || ""} onChange={e => setEF("first_name", e.target.value)} />
                 </div>
-                <div>
-                  <label className={labelCls}>Last Name</label>
-                  <input className={inputCls} placeholder="Last name"
+                <div className="employees-hr-field">
+                  <label>Last name</label>
+                  <input placeholder="Last name"
                     value={editForm.last_name || ""} onChange={e => setEF("last_name", e.target.value)} />
                 </div>
               </div>
-              <div>
-                <label className={labelCls}>Phone</label>
-                <input className={inputCls} placeholder="9876543210"
+
+              <div className="employees-hr-field">
+                <label>Phone</label>
+                <input placeholder="9876543210"
                   value={editForm.phone || ""} onChange={e => setEF("phone", e.target.value)} maxLength={15} />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Role</label>
-                  <select className={inputCls} value={editForm.role || ""} onChange={e => setEF("role", e.target.value)}>
+                <div className="employees-hr-field">
+                  <label>Role</label>
+                  <select value={editForm.role || ""} onChange={e => setEF("role", e.target.value)}>
                     <option value="field_officer">Field Officer</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>District</label>
-                  <select className={inputCls} value={editForm.district || ""} onChange={e => setEF("district", e.target.value)}>
+                <div className="employees-hr-field">
+                  <label>District</label>
+                  <select value={editForm.district || ""} onChange={e => setEF("district", e.target.value)}>
                     <option value="">Select district</option>
                     {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
               </div>
 
-              {/* Active / Inactive toggle */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="employees-hr-toggle-card">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">Account Status</p>
+                  <p className="text-sm font-semibold text-slate-900">Account status</p>
                   <p className={`text-xs mt-0.5 font-medium ${editForm.is_active ? "text-emerald-600" : "text-red-500"}`}>
-                    {editForm.is_active ? "Active � employee can log in" : "Inactive � login disabled"}
+                    {editForm.is_active ? "Active — employee can log in" : "Inactive — login disabled"}
                   </p>
                 </div>
                 <button type="button" onClick={handleToggle} disabled={toggling}
                   aria-label="Toggle active status"
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1 ${editForm.is_active ? "bg-emerald-500" : "bg-gray-300"} ${toggling ? "opacity-60 cursor-not-allowed" : ""}`}>
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 ${editForm.is_active ? "bg-emerald-500" : "bg-slate-300"} ${toggling ? "opacity-60 cursor-not-allowed" : ""}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${editForm.is_active ? "translate-x-6" : "translate-x-1"}`} />
                 </button>
               </div>
 
-              <button type="submit" disabled={saving}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all disabled:opacity-60 active:scale-[0.98]">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {saving ? "Saving\u2026" : "Save Changes"}
+              <button type="submit" disabled={saving} className="btn btn-primary btn-md w-full">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
+                {saving ? "Saving\u2026" : "Save changes"}
               </button>
             </form>
           )}
 
-          {/* PASSWORD TAB */}
           {tab === "password" && (
             <AdminResetSection empId={selectedEmp?.employee_id ?? selectedEmp?.username} />
           )}
@@ -1023,75 +1173,68 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
 
   if (!open) return null;
 
-  const inputCls = "w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all";
-  const labelCls = "block text-xs font-semibold text-gray-600 mb-1.5";
-
   return createPortal(
     <>
-      <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={onClose} />
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
-          onClick={(e) => e.stopPropagation()}>
-          {/* Modal header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100"
-            style={{ background: "linear-gradient(135deg, #f0fdf4, #ffffff)" }}>
+      <div className="employees-hr-modal-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+        <div className="employees-hr-modal pointer-events-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="add-employee-title">
+          <div className="employees-hr-modal__head">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-emerald-700" />
+              <div className="employees-hr-header__icon !p-2.5 !rounded-xl">
+                <UserPlus className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Add Employee</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Create a new field team member</p>
+                <h3 id="add-employee-title" className="text-base font-bold text-slate-900">Add employee</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Create a new field team member</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
+            <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all" aria-label="Close">
               <X className="w-5 h-5" />
             </button>
           </div>
-          {/* Form */}
           <form onSubmit={handleSubmit}>
-            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="employees-hr-modal__body">
               {error && (
                 <div className="flex items-start gap-2.5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{typeof error === "string" ? error : JSON.stringify(error)}</span>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>First Name</label>
-                  <input className={inputCls} placeholder="Ravi" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
+                <div className="employees-hr-field">
+                  <label>First name</label>
+                  <input placeholder="Ravi" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
                 </div>
-                <div>
-                  <label className={labelCls}>Last Name</label>
-                  <input className={inputCls} placeholder="Kumar" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
+                <div className="employees-hr-field">
+                  <label>Last name</label>
+                  <input placeholder="Kumar" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
                 </div>
               </div>
-              <div>
-                <label className={labelCls}>Username <span className="text-red-500">*</span></label>
-                <input required className={inputCls} placeholder="emp001" value={form.username} onChange={(e) => set("username", e.target.value)} />
+              <div className="employees-hr-field">
+                <label>Username <span className="text-red-500">*</span></label>
+                <input required placeholder="emp001" value={form.username} onChange={(e) => set("username", e.target.value)} />
               </div>
-              <div>
-                <label className={labelCls}>Password <span className="text-red-500">*</span></label>
-                <input required type="password" className={inputCls} placeholder="Min 8 characters" value={form.password} onChange={(e) => set("password", e.target.value)} minLength={8} />
+              <div className="employees-hr-field">
+                <label>Password <span className="text-red-500">*</span></label>
+                <input required type="password" placeholder="Min 8 characters" value={form.password} onChange={(e) => set("password", e.target.value)} minLength={8} />
               </div>
-              <div>
-                <label className={labelCls}>Phone</label>
-                <input className={inputCls} placeholder="9876543210" value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={15} />
+              <div className="employees-hr-field">
+                <label>Phone</label>
+                <input placeholder="9876543210" value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={15} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Role <span className="text-red-500">*</span></label>
-                  <select required className={inputCls} value={form.role} onChange={(e) => set("role", e.target.value)}>
+                <div className="employees-hr-field">
+                  <label>Role <span className="text-red-500">*</span></label>
+                  <select required value={form.role} onChange={(e) => set("role", e.target.value)}>
                     <option value="field_officer">Field Officer</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>District</label>
-                  <select className={inputCls} value={form.district} onChange={(e) => set("district", e.target.value)}>
+                <div className="employees-hr-field">
+                  <label>District</label>
+                  <select value={form.district} onChange={(e) => set("district", e.target.value)}>
                     <option value="">Select district</option>
                     {districts.map((d) => (
                       <option key={d.id} value={d.id}>{d.name}</option>
@@ -1100,16 +1243,13 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
                 </div>
               </div>
             </div>
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/60 flex items-center justify-end gap-3">
-              <button type="button" onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+            <div className="employees-hr-modal__foot">
+              <button type="button" onClick={onClose} className="btn btn-secondary btn-md">
                 Cancel
               </button>
-              <button type="submit" disabled={saving}
-                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all disabled:opacity-60 active:scale-[0.97]">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                {saving ? "Creating�" : "Create Employee"}
+              <button type="submit" disabled={saving} className="btn btn-primary btn-md">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <UserPlus className="w-4 h-4" aria-hidden="true" />}
+                {saving ? "Creating\u2026" : "Create employee"}
               </button>
             </div>
           </form>
@@ -1236,31 +1376,41 @@ export default function Employees() {
   }, []);
 
   return (
-    <div className="page-container">
+    <div className="employees-hr page-container">
 
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Employees</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Manage and monitor your field team &middot; {employees.length} total</p>
+      <header className="employees-hr-header">
+        <div className="employees-hr-header__inner">
+          <div className="employees-hr-header__brand">
+            <div className="employees-hr-header__icon" aria-hidden="true">
+              <Users className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <span className="employees-hr-header__badge">
+                <Briefcase className="w-3 h-3" aria-hidden="true" />
+                Human resources
+              </span>
+              <h1 className="employees-hr-header__title">Employees</h1>
+              <p className="employees-hr-header__subtitle">
+                Manage and monitor your field team &middot; {employees.length} total
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button type="button" onClick={handleRefresh} disabled={refreshing} className="btn btn-secondary btn-md disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+              {refreshing ? "Refreshing\u2026" : "Refresh"}
+            </button>
+            <button type="button" onClick={() => setAddOpen(true)} className="btn btn-primary btn-md">
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add employee
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handleRefresh} disabled={refreshing}
-            className="btn btn-secondary btn-md disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "Refreshing\u2026" : "Refresh"}
-          </button>
-          <button onClick={() => setAddOpen(true)}
-            className="btn btn-primary btn-md">
-            <Plus className="w-4 h-4" /> Add Employee
-          </button>
-        </div>
-      </div>
+      </header>
 
-      {/* KPI Stats */}
+      <WorkforceStrip stats={stats} loading={loadingStats} />
+
       <EmployeeStats stats={stats} loading={loadingStats} error={statsError} onRetry={() => loadStats()} />
 
-      {/* Filters */}
       <EmployeeFilters
         searchTerm={searchTerm} setSearchTerm={setSearchTerm}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
@@ -1269,7 +1419,6 @@ export default function Employees() {
         total={employees.length} shown={filtered.length}
       />
 
-      {/* List error */}
       {listError && (
         <ErrorRetry
           compact
@@ -1278,7 +1427,6 @@ export default function Employees() {
         />
       )}
 
-      {/* Employee Grid / Table */}
       <EmployeeGrid
         employees={filtered}
         loading={loadingList}
@@ -1287,17 +1435,9 @@ export default function Employees() {
         onAddEmployee={() => setAddOpen(true)}
       />
 
-      {/* Detail Drawer */}
       <EmployeeDrawer emp={drawerEmp} open={drawerOpen} onClose={closeDrawer} onUpdated={handleUpdated} districts={districts} />
 
-      {/* Add Employee Modal */}
       <AddEmployeeModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={handleCreated} districts={districts} />
-
-      {/* Animations */}
-      <style>{`
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
-      `}</style>
     </div>
   );
 }

@@ -62,7 +62,7 @@ export default function StatCard({
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
-      className={`kpi-card group ${onClick ? "cursor-pointer" : "cursor-default"} ${className}`}
+      className={`kpi-card group ${onClick ? "kpi-card--clickable premium-kpi--clickable" : "cursor-default"} ${className}`}
       style={{ background: gradient }}
     >
       <div

@@ -7,8 +7,7 @@ import { getVisitDetail, updateVisit } from "../api/visit.api";
 import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
 import VisitLocationDisplay from "../components/visits/VisitLocationDisplay";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
-import { GpsIndicator } from "../components/ui/command";
-import { PageLoader } from "../components/ui/command";
+import ErrorRetry from "../components/ui/ErrorRetry";
 import { resolveVisitFarmer, visitLandLabel, resolveVisitEmployeePhoto } from "../utils/visitFarmer";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { asDisplayString, resolveLandLabel } from "../utils/displayValue";
@@ -28,7 +27,6 @@ import {
     MapPin,
     Leaf,
     Calendar,
-    LandPlot,
     FileText,
     Phone,
     Briefcase,
@@ -36,6 +34,11 @@ import {
     Clock,
     AlertCircle,
     Paperclip,
+    AlertTriangle,
+    Stethoscope,
+    Pencil,
+    ShieldCheck,
+    Image as ImageIcon,
 } from "lucide-react";
 
 const visitMarkerIcon = L.divIcon({
@@ -68,65 +71,114 @@ const parseCoord = (value) => {
     return Number.isFinite(n) ? n : null;
 };
 
-const Card = ({ title, icon: Icon, children, className = "" }) => (
-    <div
-        className={`section-card overflow-hidden ${className}`}
-    >
-        <div className="px-4 py-2.5 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white flex items-center gap-2">
-            {Icon && (
-                <div className="list-meta-icon list-meta-icon--crop">
-                    <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+function ReportSection({ number, title, subtitle, icon: Icon, children }) {
+    return (
+        <section className="visit-report-section">
+            <div className="visit-report-section__head">
+                <span className="visit-report-section__number" aria-hidden="true">
+                    {number}
+                </span>
+                <div className="visit-report-section__title-wrap">
+                    <h2 className="visit-report-section__title">{title}</h2>
+                    {subtitle ? (
+                        <p className="visit-report-section__subtitle">{subtitle}</p>
+                    ) : null}
                 </div>
-            )}
-            <h2 className="text-xs font-semibold text-gray-800">{title}</h2>
-        </div>
-        <div className="panel-body">{children}</div>
-    </div>
-);
+                {Icon ? (
+                    <div className="visit-report-section__icon" aria-hidden="true">
+                        <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+                    </div>
+                ) : null}
+            </div>
+            <div className="visit-report-section__body">{children}</div>
+        </section>
+    );
+}
 
-const InfoItem = ({ label, value, muted }) => (
-    <div>
-        <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">{label}</p>
-        <p
-            className={`mt-1 text-sm font-medium break-words whitespace-pre-wrap ${
-                muted ? "text-gray-400 italic" : "text-gray-900"
-            }`}
-        >
-            {asDisplayString(value, VISIT_NOT_ADDED)}
-        </p>
-    </div>
-);
+function ReportKv({ label, value, muted }) {
+    return (
+        <div className="visit-report-kv">
+            <p className="visit-report-kv__label">{label}</p>
+            <p className={`visit-report-kv__value ${muted ? "visit-report-kv__value--muted" : ""}`}>
+                {asDisplayString(value, VISIT_NOT_ADDED)}
+            </p>
+        </div>
+    );
+}
+
+function RecommendationCard({ label, value, tone, icon: Icon, muted }) {
+    return (
+        <div className={`visit-report-rec visit-report-rec--${tone}`}>
+            <p className="visit-report-rec__label">
+                {Icon ? <Icon className="w-3.5 h-3.5" aria-hidden="true" /> : null}
+                {label}
+            </p>
+            <p className={`visit-report-rec__body ${muted ? "visit-report-rec__body--muted" : ""}`}>
+                {asDisplayString(value, VISIT_NOT_ADDED)}
+            </p>
+        </div>
+    );
+}
+
+function VisitDetailSkeleton() {
+    return (
+        <div className="visit-report" aria-busy="true" aria-label="Loading visit report">
+            <div className="visit-report-header p-5 space-y-3">
+                <div className="skeleton h-5 w-40 rounded-md" />
+                <div className="skeleton h-8 w-56 rounded-lg" />
+                <div className="skeleton h-4 w-32 rounded" />
+            </div>
+            <div className="visit-report-skeleton-summary" />
+            <div className="visit-report-layout">
+                <div className="visit-report-main space-y-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="visit-report-section p-5 space-y-3">
+                            <div className="skeleton h-4 w-48 rounded" />
+                            <div className="skeleton h-20 w-full rounded-xl" />
+                        </div>
+                    ))}
+                </div>
+                <div className="visit-report-sidebar">
+                    <div className="visit-report-section p-5 space-y-3">
+                        <div className="skeleton h-4 w-28 rounded" />
+                        <div className="skeleton h-32 w-full rounded-xl" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 const Field = ({ label, value, editable, onChange, name, type = "text" }) => (
-    <div>
-        <label className="text-xs text-gray-400">{label}</label>
+    <div className="visit-report-field">
+        <label htmlFor={editable ? name : undefined}>{label}</label>
         {editable ? (
             type === "textarea" ? (
                 <textarea
+                    id={name}
                     name={name}
                     value={value || ""}
                     onChange={onChange}
-                    rows={3}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    rows={4}
                 />
             ) : (
                 <input
+                    id={name}
                     type={type}
                     name={name}
                     value={value || ""}
                     onChange={onChange}
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
             )
         ) : (
-            <p className="mt-1 text-sm font-medium text-gray-800">{value || "—"}</p>
+            <p className="mt-1.5 text-sm font-semibold text-slate-900">{value || "—"}</p>
         )}
     </div>
 );
 
 function VisitLocationMap({ lat, lng }) {
     return (
-        <div className="rounded-xl overflow-hidden border border-emerald-100" style={{ height: 200 }}>
+        <div className="visit-report-map visit-report-map--lg">
             <MapContainer
                 center={[lat, lng]}
                 zoom={15}
@@ -228,6 +280,35 @@ function getVisitNotesBlock(v) {
     };
 }
 
+function ReportActionButtons({ mode, id, saving, onSave, onCancel, onEdit }) {
+    if (mode === "view") {
+        return (
+            <div className="visit-report-actions">
+                <button type="button" onClick={onEdit} className="btn btn-primary btn-md">
+                    <Pencil className="w-4 h-4" aria-hidden="true" />
+                    Edit report
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="visit-report-actions visit-report-actions--edit">
+            <button type="button" onClick={onCancel} className="btn btn-secondary btn-md">
+                Cancel
+            </button>
+            <button
+                type="button"
+                onClick={onSave}
+                disabled={saving}
+                className="btn btn-primary btn-md disabled:opacity-60"
+            >
+                {saving ? "Saving…" : "Save changes"}
+            </button>
+        </div>
+    );
+}
+
 export default function VisitDetail(props) {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -310,147 +391,374 @@ export default function VisitDetail(props) {
     const headerAttachmentCount =
         evidenceCount ?? resolveVisitAttachmentCount(data);
 
+    const visitDateLabel = fmtDate(v?.visit_date ?? v?.created_at);
+    const visitTimeLabel = v?.visit_time ? fmtTime(v.visit_time) : null;
+
     if (loading) {
-        return (
-            <div className="page-container">
-                <PageLoader label="Loading visit…" />
-            </div>
-        );
+        return <VisitDetailSkeleton />;
     }
 
     if (error && !data) {
         return (
-            <div className="p-8 text-center">
-                <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-                <p className="text-red-600 font-medium">{error}</p>
-                <button
-                    onClick={() => navigate("/visits")}
-                    className="mt-4 text-sm text-emerald-700 font-semibold hover:underline"
-                >
-                    Back to visits
-                </button>
+            <div className="visit-report space-y-4">
+                <ErrorRetry message={error} onRetry={() => navigate(0)} />
+                <div className="text-center">
+                    <button
+                        type="button"
+                        onClick={() => navigate("/visits")}
+                        className="btn btn-secondary btn-md"
+                    >
+                        Back to visits
+                    </button>
+                </div>
             </div>
         );
     }
 
     if (!data || Object.keys(data).length === 0) {
         return (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-slate-500">
                 No visit data found.
             </div>
         );
     }
 
     return (
-        <div className="page-container space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-start gap-3">
-                    <button
-                        type="button"
-                        onClick={() => navigate("/visits")}
-                        className="p-2.5 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-                        aria-label="Back"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-xl font-bold text-gray-900">
-                                Visit #{v?.id ?? id}
-                            </h1>
-                            {hasGps && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    GPS on file
-                                </span>
-                            )}
-                            {headerAttachmentCount != null && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                                    <Paperclip className="w-3 h-3" />
-                                    {headerAttachmentCount}{" "}
-                                    {headerAttachmentCount === 1 ? "attachment" : "attachments"}
-                                </span>
-                            )}
+        <div className="visit-report">
+            <header className="visit-report-header">
+                <div className="visit-report-header__top">
+                    <div className="visit-report-header__nav">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/visits")}
+                            className="visits-detail-back"
+                            aria-label="Back to visits"
+                        >
+                            <ArrowLeft className="w-5 h-5 text-slate-600" />
+                        </button>
+                        <div className="min-w-0">
+                            <span className="visit-report-header__badge">
+                                <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+                                Field inspection report
+                            </span>
+                            <h1 className="visit-report-header__title">Visit #{v?.id ?? id}</h1>
+                            <p className="visit-report-header__meta">
+                                <Calendar className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                                {visitDateLabel}
+                                {visitTimeLabel ? ` · ${visitTimeLabel}` : ""}
+                                {v?.created_at ? ` · Recorded ${fmtDate(v.created_at)}` : ""}
+                            </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {fmtDate(v?.visit_date ?? v?.created_at)}
-                            {v?.visit_time ? ` · ${fmtTime(v.visit_time)}` : ""}
-                        </p>
                     </div>
+
+                    <ReportActionButtons
+                        mode={mode}
+                        id={id}
+                        saving={saving}
+                        onSave={handleSave}
+                        onCancel={() => navigate(`/visits/${id}`)}
+                        onEdit={() => navigate(`/visits/${id}/edit`)}
+                    />
                 </div>
 
-                {mode === "view" ? (
-                    <button
-                        type="button"
-                        onClick={() => navigate(`/visits/${id}/edit`)}
-                        className="btn btn-primary btn-md self-start"
-                    >
-                        Edit visit
-                    </button>
-                ) : (
-                    <div className="flex gap-2 self-start">
-                        <button
-                            type="button"
-                            onClick={() => navigate(`/visits/${id}`)}
-                            className="btn btn-secondary btn-md"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="btn btn-primary btn-md disabled:opacity-60"
-                        >
-                            {saving ? "Saving…" : "Save"}
-                        </button>
-                    </div>
-                )}
-            </div>
+                <div className="visit-report-header__chips">
+                    {hasGps ? (
+                        <span className="visits-status-chip visits-status-chip--gps">
+                            <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                            GPS verified
+                        </span>
+                    ) : (
+                        <span className="visits-status-chip visits-status-chip--nogps">
+                            <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                            No GPS on file
+                        </span>
+                    )}
+                    {headerAttachmentCount != null && headerAttachmentCount > 0 && (
+                        <span className="visits-status-chip visits-status-chip--evidence">
+                            <Paperclip className="w-3 h-3" aria-hidden="true" />
+                            {headerAttachmentCount}{" "}
+                            {headerAttachmentCount === 1 ? "attachment" : "attachments"}
+                        </span>
+                    )}
+                    {visitNotes.followUpDate !== VISIT_NOT_ADDED && (
+                        <span className="visits-status-chip visits-status-chip--followup">
+                            <Calendar className="w-3 h-3" aria-hidden="true" />
+                            Follow-up {visitNotes.followUpDate}
+                        </span>
+                    )}
+                    {v?.follow_up_required && (
+                        <span className="visits-status-chip visits-status-chip--followup">
+                            <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+                            Follow-up required
+                        </span>
+                    )}
+                </div>
+            </header>
 
             {error && (
                 <div className="alert-error flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                     {error}
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Main column */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card title="Employee Information" icon={Briefcase}>
-                        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
-                            <ProfileAvatar entity={employee.entity} src={employee.photoUrl} name={employee.name} size="lg" />
-                            <div>
-                                <p className="text-sm font-semibold text-gray-900">{employee.name}</p>
-                                {employee.role && <p className="text-xs text-gray-500">{employee.role}</p>}
-                            </div>
+            <section className="visit-report-summary" aria-label="Visit summary">
+                <div className="visit-report-summary__glow -top-8 -right-8 w-40 h-40" aria-hidden="true" />
+                <div className="visit-report-summary__inner">
+                    <p className="visit-report-summary__label">Inspection summary</p>
+                    <div className="visit-report-summary__grid">
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Inspector</p>
+                            <p className="visit-report-summary__cell-value">{employee.name}</p>
                         </div>
-                        {mode === "edit" ? (
-                            <p className="text-sm text-gray-500">
-                                Assigned agent: {employee.name}
-                                {employee.employeeId ? ` (${employee.employeeId})` : ""}
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Farmer</p>
+                            <p className="visit-report-summary__cell-value">{farmer.name}</p>
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Crop</p>
+                            <p className="visit-report-summary__cell-value">{crop.name}</p>
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Land</p>
+                            <p className="visit-report-summary__cell-value">{field.landName}</p>
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">GPS</p>
+                            <p className="visit-report-summary__cell-value">
+                                {hasGps ? "Verified" : "Missing"}
                             </p>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <InfoItem label="Name" value={employee.name} />
-                                <InfoItem
-                                    label="Employee ID"
-                                    value={employee.employeeId}
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Evidence</p>
+                            <p className="visit-report-summary__cell-value">
+                                {headerAttachmentCount ?? 0} file
+                                {(headerAttachmentCount ?? 0) === 1 ? "" : "s"}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="visit-report-layout">
+                <main className="visit-report-main">
+                    <ReportSection
+                        number="01"
+                        title="Farmer & site"
+                        subtitle="Subject profile, land parcel, and crop details"
+                        icon={User}
+                    >
+                        <div className="visit-report-farmer">
+                            <div className="visit-report-farmer__profile">
+                                <ProfileAvatar
+                                    entity={farmer.entity}
+                                    src={farmer.photoUrl}
+                                    name={farmer.name}
+                                    size="lg"
+                                    variant="teal"
                                 />
-                                <InfoItem label="Role" value={employee.role} />
-                                {employee.phone && employee.phone !== "—" && (
-                                    <InfoItem label="Phone" value={employee.phone} />
+                                <div className="min-w-0 mt-3">
+                                    <p className="visit-report-farmer__name">{farmer.name}</p>
+                                    {farmer.phone && farmer.phone !== "—" && (
+                                        <p className="visit-report-farmer__phone">
+                                            <Phone className="w-3 h-3" aria-hidden="true" />
+                                            {farmer.phone}
+                                        </p>
+                                    )}
+                                    {farmer.code && mode === "view" && (
+                                        <span className="visit-report-farmer__code">
+                                            {farmer.code}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="visit-report-farmer__details">
+                                {mode === "edit" ? (
+                                    <div className="visit-report-kv-grid">
+                                        <Field
+                                            label="Farmer name"
+                                            name="farmer_name"
+                                            value={farmer.name}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="Phone"
+                                            name="farmer_phone"
+                                            value={farmer.phone}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="Village"
+                                            name="village_name"
+                                            value={farmer.village}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="District"
+                                            name="district_name"
+                                            value={farmer.district}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="Land name"
+                                            name="land_name"
+                                            value={field.landName}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="Area (acres)"
+                                            name="land_area"
+                                            value={field.landArea}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="Crop"
+                                            name="crop_name"
+                                            value={v?.crop_name ?? ""}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                        <Field
+                                            label="Crop stage"
+                                            name="crop_stage"
+                                            value={crop.stage ?? ""}
+                                            editable
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="visit-report-kv-grid">
+                                        <ReportKv label="Village" value={farmer.village} />
+                                        <ReportKv label="District" value={farmer.district} />
+                                        <ReportKv label="Land parcel" value={field.landName} />
+                                        <ReportKv label="Area (acres)" value={field.landArea} />
+                                        <ReportKv
+                                            label="Crop"
+                                            value={crop.name}
+                                            muted={crop.name === VISIT_NOT_ADDED}
+                                        />
+                                        <ReportKv label="Crop stage" value={crop.stage} />
+                                        {crop.health && (
+                                            <ReportKv label="Crop health" value={crop.health} />
+                                        )}
+                                        {field.gps && (
+                                            <ReportKv label="Field GPS" value={field.gps} />
+                                        )}
+                                    </div>
                                 )}
                             </div>
-                        )}
-                    </Card>
+                        </div>
+                    </ReportSection>
 
-                    <Card title="Visit Location" icon={MapPin}>
+                    <ReportSection
+                        number="02"
+                        title="Field notes"
+                        subtitle="Observations recorded during the visit"
+                        icon={FileText}
+                    >
                         {mode === "edit" ? (
-                            <div className="grid grid-cols-2 gap-4">
+                            <Field
+                                label={VISIT_FIELD_NOTES_LABEL}
+                                name="field_notes"
+                                value={v?.field_notes ?? v?.observation ?? ""}
+                                editable
+                                onChange={handleChange}
+                                type="textarea"
+                            />
+                        ) : (
+                            <div className="visit-report-notes">
+                                <p className="visit-report-notes__label">
+                                    <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                                    {VISIT_FIELD_NOTES_LABEL}
+                                </p>
+                                <p
+                                    className={`visit-report-notes__body ${
+                                        visitNotes.fieldNotes === VISIT_NOT_ADDED
+                                            ? "visit-report-notes__body--muted"
+                                            : ""
+                                    }`}
+                                >
+                                    {asDisplayString(visitNotes.fieldNotes, VISIT_NOT_ADDED)}
+                                </p>
+                            </div>
+                        )}
+                    </ReportSection>
+
+                    <ReportSection
+                        number="03"
+                        title="Recommendations"
+                        subtitle="Problem identified, action taken, and follow-up plan"
+                        icon={Stethoscope}
+                    >
+                        {mode === "edit" ? (
+                            <div className="space-y-4">
+                                <Field
+                                    label="Problem seen"
+                                    name="problem_seen"
+                                    value={v?.problem_seen ?? ""}
+                                    editable
+                                    onChange={handleChange}
+                                    type="textarea"
+                                />
+                                <Field
+                                    label="Action taken"
+                                    name="action_taken"
+                                    value={v?.action_taken ?? ""}
+                                    editable
+                                    onChange={handleChange}
+                                    type="textarea"
+                                />
+                                <Field
+                                    label="Follow-up date"
+                                    name="next_visit_date"
+                                    value={v?.next_visit_date ?? v?.follow_up_date ?? ""}
+                                    editable
+                                    onChange={handleChange}
+                                    type="date"
+                                />
+                            </div>
+                        ) : (
+                            <div className="visit-report-recommendations">
+                                <RecommendationCard
+                                    label="Problem seen"
+                                    value={visitNotes.problemSeen}
+                                    tone="problem"
+                                    icon={AlertTriangle}
+                                    muted={visitNotes.problemSeen === VISIT_NOT_ADDED}
+                                />
+                                <RecommendationCard
+                                    label="Action taken"
+                                    value={visitNotes.actionTaken}
+                                    tone="action"
+                                    icon={CheckCircle2}
+                                    muted={visitNotes.actionTaken === VISIT_NOT_ADDED}
+                                />
+                                <RecommendationCard
+                                    label="Follow-up date"
+                                    value={visitNotes.followUpDate}
+                                    tone="followup"
+                                    icon={Calendar}
+                                    muted={visitNotes.followUpDate === VISIT_NOT_ADDED}
+                                />
+                            </div>
+                        )}
+                    </ReportSection>
+
+                    <ReportSection
+                        number="04"
+                        title="Location verification"
+                        subtitle="GPS coordinates and map proof of field presence"
+                        icon={MapPin}
+                    >
+                        {mode === "edit" ? (
+                            <div className="visit-report-kv-grid">
                                 <Field
                                     label="Latitude"
                                     name="latitude"
@@ -466,259 +774,198 @@ export default function VisitDetail(props) {
                                     onChange={handleChange}
                                 />
                             </div>
+                        ) : hasGps ? (
+                            <div className="visit-report-gps">
+                                <VisitLocationDisplay
+                                    visit={v}
+                                    coords={coords}
+                                    mapsUrl={mapsUrl}
+                                    mapSlot={
+                                        <VisitLocationMap lat={coords.lat} lng={coords.lng} />
+                                    }
+                                />
+                            </div>
                         ) : (
-                            <div className="space-y-4">
-                                {hasGps ? (
-                                    <VisitLocationDisplay
-                                        visit={v}
-                                        coords={coords}
-                                        mapsUrl={mapsUrl}
-                                        mapSlot={<VisitLocationMap lat={coords.lat} lng={coords.lng} />}
-                                    />
-                                ) : (
-                                    <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3 flex items-start gap-3">
-                                        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium text-amber-900">
-                                                No GPS coordinates recorded
-                                            </p>
-                                            <p className="text-xs text-amber-700 mt-1">
-                                                This visit has no latitude/longitude on file. Mobile visits normally capture GPS at create or completion.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
+                            <div className="visits-detail-alert visits-detail-alert--warning">
+                                <AlertCircle
+                                    className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
+                                    aria-hidden="true"
+                                />
+                                <div>
+                                    <p className="text-sm font-semibold text-amber-900">
+                                        No GPS coordinates recorded
+                                    </p>
+                                    <p className="text-xs text-amber-700 mt-1">
+                                        This visit has no latitude/longitude on file. Mobile visits
+                                        normally capture GPS at create or completion.
+                                    </p>
+                                </div>
                             </div>
                         )}
-                    </Card>
-
-                    <Card title="Farmer" icon={User}>
-                        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
-                            <ProfileAvatar entity={farmer.entity} src={farmer.photoUrl} name={farmer.name} size="lg" variant="teal" />
-                            <div>
-                                <p className="text-sm font-semibold text-gray-900">{farmer.name}</p>
-                                {farmer.phone && farmer.phone !== "—" && (
-                                    <p className="text-xs text-gray-500">{farmer.phone}</p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field
-                                label="Name"
-                                name="farmer_name"
-                                value={farmer.name}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            <Field
-                                label="Phone"
-                                name="farmer_phone"
-                                value={farmer.phone}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            <Field
-                                label="Village"
-                                name="village_name"
-                                value={farmer.village}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            <Field
-                                label="District"
-                                name="district_name"
-                                value={farmer.district}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            {farmer.code && mode === "view" && (
-                                <InfoItem label="Farmer code" value={farmer.code} />
-                            )}
-                        </div>
-                    </Card>
-
-                    <Card title="Field / Land" icon={LandPlot}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field
-                                label="Land name"
-                                name="land_name"
-                                value={field.landName}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            <Field
-                                label="Area (acres)"
-                                name="land_area"
-                                value={field.landArea}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            {field.gps && mode === "view" && (
-                                <InfoItem label="Field GPS" value={field.gps} />
-                            )}
-                        </div>
-                    </Card>
-
-                    <Card title="Crop" icon={Leaf}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {mode === "edit" ? (
-                                <Field
-                                    label="Crop"
-                                    name="crop_name"
-                                    value={v?.crop_name ?? ""}
-                                    editable
-                                    onChange={handleChange}
-                                />
-                            ) : (
-                                <InfoItem
-                                    label="Crop"
-                                    value={crop.name}
-                                    muted={crop.name === VISIT_NOT_ADDED}
-                                />
-                            )}
-                            <Field
-                                label="Stage"
-                                name="crop_stage"
-                                value={crop.stage ?? ""}
-                                editable={mode === "edit"}
-                                onChange={handleChange}
-                            />
-                            {crop.health && mode === "view" && (
-                                <InfoItem label="Crop health" value={crop.health} />
-                            )}
-                        </div>
-                    </Card>
-
-                    <Card title={VISIT_FIELD_NOTES_LABEL} icon={FileText}>
-                        <div className="grid grid-cols-1 gap-4">
-                            {mode === "edit" ? (
-                                <>
-                                    <Field
-                                        label={VISIT_FIELD_NOTES_LABEL}
-                                        name="field_notes"
-                                        value={v?.field_notes ?? v?.observation ?? ""}
-                                        editable
-                                        onChange={handleChange}
-                                        type="textarea"
-                                    />
-                                    <Field
-                                        label="Problem Seen"
-                                        name="problem_seen"
-                                        value={v?.problem_seen ?? ""}
-                                        editable
-                                        onChange={handleChange}
-                                        type="textarea"
-                                    />
-                                    <Field
-                                        label="Action Taken"
-                                        name="action_taken"
-                                        value={v?.action_taken ?? ""}
-                                        editable
-                                        onChange={handleChange}
-                                        type="textarea"
-                                    />
-                                    <Field
-                                        label="Follow-up Date"
-                                        name="next_visit_date"
-                                        value={v?.next_visit_date ?? v?.follow_up_date ?? ""}
-                                        editable
-                                        onChange={handleChange}
-                                        type="date"
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    <InfoItem
-                                        label={VISIT_FIELD_NOTES_LABEL}
-                                        value={visitNotes.fieldNotes}
-                                        muted={visitNotes.fieldNotes === VISIT_NOT_ADDED}
-                                    />
-                                    <InfoItem
-                                        label="Problem Seen"
-                                        value={visitNotes.problemSeen}
-                                        muted={visitNotes.problemSeen === VISIT_NOT_ADDED}
-                                    />
-                                    <InfoItem
-                                        label="Action Taken"
-                                        value={visitNotes.actionTaken}
-                                        muted={visitNotes.actionTaken === VISIT_NOT_ADDED}
-                                    />
-                                    <InfoItem
-                                        label="Follow-up Date"
-                                        value={visitNotes.followUpDate}
-                                        muted={visitNotes.followUpDate === VISIT_NOT_ADDED}
-                                    />
-                                </>
-                            )}
-                        </div>
-                    </Card>
+                    </ReportSection>
 
                     {id && (
-                        <VisitEvidenceSection
-                            visitId={id}
-                            onCountChange={setEvidenceCount}
-                        />
+                        <ReportSection
+                            number="05"
+                            title="Photos & attachments"
+                            subtitle="Photographic evidence and supporting documents"
+                            icon={ImageIcon}
+                        >
+                            <VisitEvidenceSection
+                                visitId={id}
+                                onCountChange={setEvidenceCount}
+                                variant="report"
+                            />
+                        </ReportSection>
                     )}
-                </div>
+                </main>
 
-                {/* Sidebar: timeline */}
-                <div className="ops-page">
-                    <Card title="Visit timeline" icon={Clock}>
-                        <div className="space-y-4">
-                            <ul className="space-y-3 border-l-2 border-emerald-100 pl-4 ml-1">
-                                <li className="relative">
-                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-                                    <p className="text-xs text-gray-400">Visit date</p>
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {fmtDate(v?.visit_date ?? v?.created_at)}
-                                        {v?.visit_time ? ` at ${fmtTime(v.visit_time)}` : ""}
+                <aside className="visit-report-sidebar">
+                    <section className="visit-report-timeline-card">
+                        <div className="visit-report-section__head">
+                            <span className="visit-report-section__number" aria-hidden="true">
+                                <Clock className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </span>
+                            <div className="visit-report-section__title-wrap">
+                                <h2 className="visit-report-section__title">Inspection timeline</h2>
+                                <p className="visit-report-section__subtitle">
+                                    Key events for this report
+                                </p>
+                            </div>
+                        </div>
+                        <div className="visit-report-section__body">
+                            <ul className="visit-report-timeline">
+                                <li className="visit-report-timeline__item">
+                                    <span
+                                        className="visit-report-timeline__dot bg-emerald-500"
+                                        aria-hidden="true"
+                                    />
+                                    <p className="visit-report-timeline__label">Visit conducted</p>
+                                    <p className="visit-report-timeline__value">
+                                        {visitDateLabel}
+                                        {visitTimeLabel ? ` at ${visitTimeLabel}` : ""}
                                     </p>
                                 </li>
                                 {v?.created_at && (
-                                    <li className="relative">
-                                        <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-gray-300 ring-2 ring-white" />
-                                        <p className="text-xs text-gray-400">Recorded</p>
-                                        <p className="text-sm font-medium text-gray-900">
+                                    <li className="visit-report-timeline__item">
+                                        <span
+                                            className="visit-report-timeline__dot bg-slate-300"
+                                            aria-hidden="true"
+                                        />
+                                        <p className="visit-report-timeline__label">Report recorded</p>
+                                        <p className="visit-report-timeline__value">
                                             {fmtDate(v.created_at)}
                                         </p>
                                     </li>
                                 )}
                                 {visitNotes.followUpDate !== VISIT_NOT_ADDED && (
-                                    <li className="relative">
-                                        <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-violet-400 ring-2 ring-white" />
-                                        <p className="text-xs text-gray-400">Follow-up Date</p>
-                                        <p className="text-sm font-medium text-gray-900">
+                                    <li className="visit-report-timeline__item">
+                                        <span
+                                            className="visit-report-timeline__dot bg-violet-400"
+                                            aria-hidden="true"
+                                        />
+                                        <p className="visit-report-timeline__label">Follow-up due</p>
+                                        <p className="visit-report-timeline__value">
                                             {visitNotes.followUpDate}
                                         </p>
                                     </li>
                                 )}
                                 {hasGps && (
-                                    <li className="relative">
-                                        <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
-                                        <p className="text-xs text-gray-400">Location proof</p>
-                                        <p className="text-sm font-medium text-gray-900 font-mono">
+                                    <li className="visit-report-timeline__item">
+                                        <span
+                                            className="visit-report-timeline__dot bg-emerald-400"
+                                            aria-hidden="true"
+                                        />
+                                        <p className="visit-report-timeline__label">GPS captured</p>
+                                        <p className="visit-report-timeline__value font-mono text-xs">
                                             {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
                                         </p>
                                     </li>
                                 )}
                             </ul>
+                        </div>
+                    </section>
 
-                            {v?.follow_up_required && (
-                                <p className="text-xs font-medium text-violet-700 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
-                                    Follow-up required
-                                </p>
+                    <section className="visit-report-section">
+                        <div className="visit-report-section__head">
+                            <span className="visit-report-section__number" aria-hidden="true">
+                                <Briefcase className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </span>
+                            <div className="visit-report-section__title-wrap">
+                                <h2 className="visit-report-section__title">Conducted by</h2>
+                            </div>
+                        </div>
+                        <div className="visit-report-section__body">
+                            <div className="visit-report-inspector">
+                                <ProfileAvatar
+                                    entity={employee.entity}
+                                    src={employee.photoUrl}
+                                    name={employee.name}
+                                    size="md"
+                                />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-900 truncate">
+                                        {employee.name}
+                                    </p>
+                                    {employee.role && (
+                                        <p className="text-xs text-slate-500">{employee.role}</p>
+                                    )}
+                                    {employee.employeeId && (
+                                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                            ID {employee.employeeId}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            {employee.phone && employee.phone !== "—" && (
+                                <div className="visit-report-meta-list mt-4">
+                                    <div className="visit-report-meta-row">
+                                        <span className="visit-report-meta-row__label">Phone</span>
+                                        <span className="visit-report-meta-row__value font-mono">
+                                            {employee.phone}
+                                        </span>
+                                    </div>
+                                </div>
                             )}
                         </div>
-                    </Card>
+                    </section>
 
-                    {employee.phone && employee.phone !== "—" && (
-                        <Card title="Contact" icon={Phone}>
-                            <InfoItem label="Agent phone" value={employee.phone} />
-                        </Card>
-                    )}
-                </div>
+                    <section className="visit-report-section">
+                        <div className="visit-report-section__head">
+                            <span className="visit-report-section__number" aria-hidden="true">
+                                <Leaf className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            </span>
+                            <div className="visit-report-section__title-wrap">
+                                <h2 className="visit-report-section__title">Report metadata</h2>
+                            </div>
+                        </div>
+                        <div className="visit-report-section__body">
+                            <dl className="visit-report-meta-list">
+                                <div className="visit-report-meta-row">
+                                    <dt className="visit-report-meta-row__label">Report ID</dt>
+                                    <dd className="visit-report-meta-row__value font-mono">
+                                        #{v?.id ?? id}
+                                    </dd>
+                                </div>
+                                <div className="visit-report-meta-row">
+                                    <dt className="visit-report-meta-row__label">Village</dt>
+                                    <dd className="visit-report-meta-row__value">{farmer.village}</dd>
+                                </div>
+                                <div className="visit-report-meta-row">
+                                    <dt className="visit-report-meta-row__label">Land area</dt>
+                                    <dd className="visit-report-meta-row__value">{field.landArea}</dd>
+                                </div>
+                                <div className="visit-report-meta-row">
+                                    <dt className="visit-report-meta-row__label">Attachments</dt>
+                                    <dd className="visit-report-meta-row__value">
+                                        {headerAttachmentCount ?? 0}
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </section>
+                </aside>
             </div>
         </div>
     );
 }
-

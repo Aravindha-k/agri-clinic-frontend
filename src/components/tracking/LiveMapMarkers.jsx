@@ -28,19 +28,24 @@ const createColoredIcon = (color, pulse = false) =>
   L.divIcon({
     className: "",
     html: `
-      <div style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
-        ${pulse ? `<div style="position:absolute;width:32px;height:32px;border-radius:50%;background:${color};opacity:0.25;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>` : ""}
+      <div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+        ${pulse ? `<div style="position:absolute;width:30px;height:30px;border-radius:50%;background:${color};opacity:0.22;animation:tracking-ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>` : ""}
         <div style="
-          width:14px;height:14px;border-radius:50%;
+          width:18px;height:18px;border-radius:50% 50% 50% 0;
+          transform:rotate(-45deg);
           background:${color};
-          border:3px solid #fff;
-          box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 2px 8px rgba(0,0,0,0.45);
+          border:2.5px solid #fff;
+          box-shadow:0 0 0 1px rgba(15,23,42,0.3),0 3px 10px rgba(0,0,0,0.4);
           position:relative;z-index:1;
+        "></div>
+        <div style="
+          position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+          width:6px;height:6px;border-radius:50%;background:#fff;opacity:0.9;z-index:2;
         "></div>
       </div>
     `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [36, 36],
+    iconAnchor: [18, 30],
   });
 
 const iconCache = new Map();

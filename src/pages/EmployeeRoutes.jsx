@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Route, Users } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import RouteFallback from "../components/RouteFallback";
 import ErrorRetry from "../components/ui/ErrorRetry";
-import { EmptyState } from "../components/ui/command";
+import { EmptyState, PageHeader } from "../components/ui/command";
 import EmployeeRouteMapView from "../components/tracking/EmployeeRouteMapView";
-import { getAdminStatus, getEmployeeRoute, fetchAllWorkdayLocations } from "../api/tracking.api";
+import { getAdminStatus } from "../api/tracking.api";
+import { getEmployeeDutyRoute } from "../api/adminTracking.api";
 import {
   normalizeTrackingEmployee,
   resolveTrackingEmployeeList,
@@ -15,8 +16,6 @@ import {
   resolveRouteFetchError,
 } from "../utils/employeeRoute";
 import { empName } from "../utils/trackingDisplay";
-
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
 export default function EmployeeRoutes() {
   const [searchParams] = useSearchParams();
@@ -29,6 +28,7 @@ export default function EmployeeRoutes() {
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState("");
+  const inFlightRef = useRef(false);
 
   const loadEmployees = useCallback(async () => {
     setListLoading(true);
@@ -66,37 +66,27 @@ export default function EmployeeRoutes() {
 
   const loadRoute = useCallback(async () => {
     if (!selectedUserId) return;
+    if (inFlightRef.current) return;
 
+    inFlightRef.current = true;
     setRouteLoading(true);
     setRouteError("");
     setRouteData(null);
 
     try {
-      let data = await getEmployeeRoute(selectedUserId, { date: routeDate });
-      const workdayId = selectedEmployee?.workday_id;
-
-      if (!data.points.length && routeDate === todayIsoDate() && workdayId) {
-        try {
-          const fallbackPoints = await fetchAllWorkdayLocations(workdayId);
-          if (fallbackPoints.length) {
-            data = {
-              ...data,
-              points: fallbackPoints,
-              totalPoints: fallbackPoints.length,
-            };
-          }
-        } catch {
-          /* optional */
-        }
-      }
-
+      const isToday = routeDate === todayIsoDate();
+      const data = await getEmployeeDutyRoute(selectedUserId, {
+        date: routeDate,
+        isToday,
+      });
       setRouteData(data);
     } catch (err) {
       setRouteError(resolveRouteFetchError(err));
     } finally {
+      inFlightRef.current = false;
       setRouteLoading(false);
     }
-  }, [selectedUserId, routeDate, selectedEmployee?.workday_id]);
+  }, [selectedUserId, routeDate]);
 
   useEffect(() => {
     if (selectedUserId) loadRoute();
@@ -108,24 +98,16 @@ export default function EmployeeRoutes() {
 
   return (
     <div className="page-container space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg">
-            <Route className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Employee Route History</h1>
-            <p className="text-sm text-gray-500">Full daily GPS trail with route summary</p>
-          </div>
-        </div>
-        <Link
-          to="/tracking"
-          className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Live Tracking
-        </Link>
-      </div>
+      <PageHeader
+        title="Employee Route History"
+        subtitle="Day markers for Start, submitted visits, and End — matched to mobile Day map"
+        actions={
+          <Link to="/tracking" className="enterprise-link-back">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Live Tracking
+          </Link>
+        }
+      />
 
       {listError ? (
         <ErrorRetry message={listError} onRetry={loadEmployees} />
@@ -146,19 +128,16 @@ export default function EmployeeRoutes() {
         </div>
       ) : null}
 
-      <div
-        className="section-card p-4 flex flex-col sm:flex-row gap-4 sm:items-end"
-        style={{ boxShadow: SHADOW }}
-      >
+      <div className="section-card p-4 flex flex-col sm:flex-row gap-4 sm:items-end">
         <div className="flex-1 min-w-[200px]">
-          <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
+          <label className="form-label flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5" />
             Employee
           </label>
           <select
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 text-gray-800 bg-white"
+            className="select"
           >
             {employees.map((emp) => (
               <option key={emp.user_id ?? emp.id} value={String(emp.user_id ?? emp.id)}>

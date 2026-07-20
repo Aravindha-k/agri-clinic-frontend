@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 
-export default function SlidePanel({ open, onClose, title, wide, children }) {
+export default function SlidePanel({ open, onClose, title, wide, children, tone }) {
     useEffect(() => {
         if (!open) return undefined;
         const onKey = (e) => {
@@ -14,23 +14,36 @@ export default function SlidePanel({ open, onClose, title, wide, children }) {
 
     if (!open) return null;
     return createPortal(
-        <div className="fixed inset-0 z-[9997] flex justify-end" data-overlay="slide-panel">
+        <div
+            className="fixed inset-0 z-[9997] flex justify-end"
+            data-overlay="slide-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="slide-panel-title"
+        >
             <div
-                className="absolute inset-0 bg-black/40"
+                className="enterprise-backdrop"
                 onClick={onClose}
                 aria-hidden="true"
                 data-overlay="slide-panel-backdrop"
             />
             <div
-                className={`relative bg-white shadow-2xl h-full overflow-y-auto ${wide ? "w-full max-w-2xl" : "w-full max-w-lg"}`}
+                className={`enterprise-drawer ${wide ? "w-full max-w-2xl" : "w-full max-w-lg"}${tone === "masters" ? " masters-admin-drawer" : ""}`}
             >
-                <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-6 py-4 border-b">
-                    <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 transition">
-                        <X className="w-5 h-5 text-gray-400" />
+                <div className="enterprise-drawer__header">
+                    <h2 id="slide-panel-title" className="enterprise-drawer__title">
+                        {title}
+                    </h2>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="enterprise-drawer__close"
+                        aria-label="Close panel"
+                    >
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="p-6">{children}</div>
+                <div className="enterprise-drawer__body">{children}</div>
             </div>
         </div>,
         document.body

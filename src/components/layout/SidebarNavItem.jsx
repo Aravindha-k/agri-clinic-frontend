@@ -66,24 +66,9 @@ export default function SidebarNavItem({ item, onClose }) {
         to={path}
         onClick={onClose}
         className={({ isActive }) =>
-          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group
+          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group border border-transparent
           ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90"}`
         }
-        style={({ isActive }) =>
-          isActive
-            ? undefined
-            : { border: "1px solid transparent" }
-        }
-        onMouseEnter={(e) => {
-          if (!e.currentTarget.getAttribute("aria-current")) {
-            e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!e.currentTarget.getAttribute("aria-current")) {
-            e.currentTarget.style.background = "";
-          }
-        }}
       >
         {({ isActive }) => (
           <>

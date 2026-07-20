@@ -7,38 +7,26 @@ import { ClipboardCheck, FileText, Calendar } from "lucide-react";
 
 /* ---------- UI COMPONENTS ---------- */
 
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
 const Section = ({ icon: Icon, title, accent = "emerald", children }) => (
-    <div
-        className="section-card overflow-hidden mb-6"
-        style={{ boxShadow: SHADOW, border: "1px solid rgba(0,0,0,0.04)" }}
-    >
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl bg-${accent}-50 flex items-center justify-center`}>
-                <Icon className={`w-4 h-4 text-${accent}-600`} />
+    <div className="enterprise-section">
+        <div className="enterprise-section__header">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className={`icon-box icon-box--${accent}`}>
+                    <Icon className="w-4 h-4" aria-hidden="true" />
+                </div>
+                <h2 className="section-title">{title}</h2>
             </div>
-            <h2 className="text-base font-semibold text-gray-900">{title}</h2>
         </div>
-        <div className="panel-body">{children}</div>
+        <div className="enterprise-section__body">{children}</div>
     </div>
 );
 
 const DetailItem = ({ label, children, span2 }) => (
-    <div
-        className={`bg-white rounded-xl p-4 border border-gray-100 shadow-sm ${span2 ? "col-span-2" : ""
-            }`}
-    >
-        <span className="block text-[11px] text-gray-400 font-medium uppercase mb-1">
-            {label}
-        </span>
-        {children}
+    <div className={`detail-item ${span2 ? "col-span-2" : ""}`}>
+        <span className="detail-item__label">{label}</span>
+        <div className="detail-item__value">{children}</div>
     </div>
 );
-
-const inputStyle =
-    "w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm " +
-    "focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition";
 
 /* ---------- MAIN COMPONENT ---------- */
 
@@ -186,35 +174,35 @@ export default function EditVisit() {
                     <Section icon={ClipboardCheck} title="Visit Info">
                         <div className="grid grid-cols-2 gap-4">
                             <DetailItem label="Farmer Name">
-                                <input name="farmer_name" value={formData.farmer_name} onChange={handleChange} className={inputStyle} />
+                                <input name="farmer_name" value={formData.farmer_name} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Phone">
-                                <input name="farmer_phone" value={formData.farmer_phone} onChange={handleChange} className={inputStyle} />
+                                <input name="farmer_phone" value={formData.farmer_phone} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Village">
-                                <input name="village_name" value={formData.village_name} onChange={handleChange} className={inputStyle} />
+                                <input name="village_name" value={formData.village_name} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Crop">
-                                <input name="crop_name" value={formData.crop_name} onChange={handleChange} className={inputStyle} />
+                                <input name="crop_name" value={formData.crop_name} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Crop Stage">
-                                <input name="crop_stage" value={formData.crop_stage} onChange={handleChange} className={inputStyle} />
+                                <input name="crop_stage" value={formData.crop_stage} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Field Name">
-                                <input name="land_name" value={formData.land_name} onChange={handleChange} className={inputStyle} />
+                                <input name="land_name" value={formData.land_name} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Field Area">
-                                <input name="land_area" value={formData.land_area} onChange={handleChange} className={inputStyle} />
+                                <input name="land_area" value={formData.land_area} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Notes" span2>
-                                <textarea name="notes" value={formData.notes} onChange={handleChange} className={inputStyle} rows={3} />
+                                <textarea name="notes" value={formData.notes} onChange={handleChange} className="input" rows={3} />
                             </DetailItem>
                         </div>
                     </Section>
@@ -223,31 +211,31 @@ export default function EditVisit() {
                     <Section icon={FileText} title="Observation / Field Notes" accent="violet">
                         <div className="grid grid-cols-2 gap-4">
                             <DetailItem label="Observation / Field Notes" span2>
-                                <textarea name="field_notes" value={formData.field_notes} onChange={handleChange} className={inputStyle} rows={3} />
+                                <textarea name="field_notes" value={formData.field_notes} onChange={handleChange} className="input" rows={3} />
                             </DetailItem>
 
                             <DetailItem label="Problem Seen" span2>
-                                <textarea name="problem_seen" value={formData.problem_seen} onChange={handleChange} className={inputStyle} rows={2} />
+                                <textarea name="problem_seen" value={formData.problem_seen} onChange={handleChange} className="input" rows={2} />
                             </DetailItem>
 
                             <DetailItem label="Action Taken" span2>
-                                <textarea name="action_taken" value={formData.action_taken} onChange={handleChange} className={inputStyle} rows={2} />
+                                <textarea name="action_taken" value={formData.action_taken} onChange={handleChange} className="input" rows={2} />
                             </DetailItem>
 
                             <DetailItem label="Fertilizer">
-                                <input name="fertilizer_advice" value={formData.fertilizer_advice} onChange={handleChange} className={inputStyle} />
+                                <input name="fertilizer_advice" value={formData.fertilizer_advice} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Pesticide">
-                                <input name="pesticide_advice" value={formData.pesticide_advice} onChange={handleChange} className={inputStyle} />
+                                <input name="pesticide_advice" value={formData.pesticide_advice} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="Irrigation">
-                                <input name="irrigation_advice" value={formData.irrigation_advice} onChange={handleChange} className={inputStyle} />
+                                <input name="irrigation_advice" value={formData.irrigation_advice} onChange={handleChange} className="input" />
                             </DetailItem>
 
                             <DetailItem label="General Advice" span2>
-                                <input name="general_advice" value={formData.general_advice} onChange={handleChange} className={inputStyle} />
+                                <input name="general_advice" value={formData.general_advice} onChange={handleChange} className="input" />
                             </DetailItem>
                         </div>
                     </Section>
@@ -260,7 +248,7 @@ export default function EditVisit() {
                             </DetailItem>
 
                             <DetailItem label="Next Visit">
-                                <input type="date" name="next_visit_date" value={formData.next_visit_date} onChange={handleChange} className={inputStyle} />
+                                <input type="date" name="next_visit_date" value={formData.next_visit_date} onChange={handleChange} className="input" />
                             </DetailItem>
                         </div>
                     </Section>
@@ -272,7 +260,7 @@ export default function EditVisit() {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium shadow-sm"
+                        className="btn btn-primary btn-md"
                     >
                         {saving ? "Saving..." : "Save Changes"}
                     </button>

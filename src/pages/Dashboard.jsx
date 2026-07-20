@@ -28,9 +28,10 @@ import {
 } from "../utils/visitFarmer";
 import { resolveVillageLabel } from "../utils/displayValue";
 import { resolveVisitCropDisplay } from "../utils/visitDisplay";
-import { PageHeader, PageLoader, OpsStatusBadge, GpsIndicator, EmptyState } from "../components/ui/command";
+import { PageHeader, OpsStatusBadge, GpsIndicator, EmptyState } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import WidgetSuspenseFallback from "../components/dashboard/WidgetSuspenseFallback";
+import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
 import { getVisits } from "../api/visit.api";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
 import {
@@ -64,8 +65,6 @@ import {
   RefreshCw,
   Clock,
   AlertCircle,
-  TrendingUp,
-  MapPin,
   Radio,
   Sprout,
   LandPlot,
@@ -76,7 +75,6 @@ import {
   Eye,
   Route,
   Paperclip,
-  Navigation,
 } from "lucide-react";
 
 const formatDate = (d) => {
@@ -465,11 +463,7 @@ const Dashboard = () => {
 
   /* ---- Loading state ---- */
   if (loading) {
-    return (
-      <div className="page-container page-container--dashboard">
-        <PageLoader label="Preparing your field operations dashboard…" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const pageHeader = (
@@ -514,13 +508,13 @@ const Dashboard = () => {
       <div className="dashboard-kpi-row">
         <PremiumKpiCard
           icon={Sprout}
-          label="Total Farmers"
+          label="All Farmers"
           value={stats.farmers}
           gradient={KPI_THEMES.farmers.gradient}
           iconBg={KPI_THEMES.farmers.iconBg}
           iconColor={KPI_THEMES.farmers.iconColor}
           onClick={() => navigate("/farmers")}
-          trend={{ direction: "neutral", text: "Registry" }}
+          trend={{ direction: "neutral", text: "All farmers in registry" }}
         />
         <PremiumKpiCard
           icon={LandPlot}
@@ -640,20 +634,20 @@ const Dashboard = () => {
           onClick={() => navigate("/tracking/routes")}
           className="dashboard-insight-widget group"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3.5">
             <div className="dashboard-insight-widget__icon bg-indigo-50 text-indigo-600">
               <Route className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Route Tracking Summary</p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              <p className="dashboard-insight-widget__title">Route Tracking Summary</p>
+              <p className="dashboard-insight-widget__body">
                 {stats.workingNow} employee{stats.workingNow !== 1 ? "s" : ""} working today
                 <br />
                 {stats.onlineNow} with live GPS tracking
                 <br />
                 {mappedGeoCount} shown on route map
               </p>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 mt-2">
+              <span className="dashboard-insight-widget__link text-indigo-600">
                 View route history <ChevronRight className="w-3.5 h-3.5" />
               </span>
             </div>
@@ -664,20 +658,20 @@ const Dashboard = () => {
           onClick={() => navigate("/visits")}
           className="dashboard-insight-widget group"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3.5">
             <div className="dashboard-insight-widget__icon bg-violet-50 text-violet-600">
               <Paperclip className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-800">Evidence Upload Summary</p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              <p className="dashboard-insight-widget__title">Evidence Upload Summary</p>
+              <p className="dashboard-insight-widget__body">
                 {evidenceStats.withEvidence} visits include uploaded evidence
                 <br />
                 {evidenceStats.totalAttachments} file{evidenceStats.totalAttachments !== 1 ? "s" : ""} uploaded
                 <br />
                 {formatEvidenceRateLabel(evidenceStats.rate)}
               </p>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 mt-2">
+              <span className="dashboard-insight-widget__link text-violet-600">
                 Browse visits <ChevronRight className="w-3.5 h-3.5" />
               </span>
             </div>
@@ -689,7 +683,7 @@ const Dashboard = () => {
         <LiveOperationsPanel ops={liveOps ?? {}} />
       </WidgetErrorBoundary>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="dashboard-ops-row">
         <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
           <AlertsPanel alerts={opsAlerts ?? []} />
         </WidgetErrorBoundary>
@@ -699,17 +693,17 @@ const Dashboard = () => {
       </div>
 
       {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
-        <div className="flex flex-wrap gap-3">
+        <div className="dashboard-status-strip">
           <button
             type="button"
             onClick={() => navigate("/tracking")}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-medium text-emerald-800 hover:bg-emerald-100 transition-colors"
+            className="dashboard-status-chip dashboard-status-chip--live"
           >
             <Radio className="w-4 h-4" />
             {stats.workingNow} working now · {stats.onlineNow} GPS online
           </button>
           {stats.gpsIssues > 0 && (
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 border border-red-100 text-sm font-medium text-red-700">
+            <span className="dashboard-status-chip dashboard-status-chip--alert">
               <AlertTriangle className="w-4 h-4" />
               {stats.gpsIssues} GPS issue{stats.gpsIssues !== 1 ? "s" : ""}
             </span>
@@ -737,82 +731,58 @@ const Dashboard = () => {
           </Suspense>
         </WidgetErrorBoundary>
 
-        {/* Workday Activity */}
-        <div
-          className="section-card overflow-hidden flex flex-col"
-          style={{
-            boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",
-            border: "1px solid rgba(15,118,110,0.08)",
-          }}
-        >
+        <div className="dashboard-section-card flex flex-col">
           <SectionHeader
             icon={Clock}
             title="Recent Activity Feed"
             subtitle="Workday sessions & field activity"
           />
-          <div
-            className="flex-1 overflow-y-auto px-4 py-3"
-            style={{ maxHeight: 280, scrollbarWidth: "thin" }}
-          >
+          <div className="dashboard-timeline__scroll">
             {workdays.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-12 text-gray-400">
-                <div className="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
-                  <Clock className="w-7 h-7 text-gray-300" />
-                </div>
-                <p className="text-sm font-semibold text-gray-500">
-                  No activity yet
-                </p>
-                <p className="text-xs text-gray-400 mt-1 text-center max-w-[180px]">
-                  Workday sessions will appear here once employees start tracking.
-                </p>
-              </div>
+              <EmptyState
+                icon={Clock}
+                title="No activity yet"
+                subtitle="Workday sessions will appear here once employees start tracking."
+                className="py-12"
+              />
             ) : (
-              <div className="space-y-1">
+              <div className="dashboard-timeline">
                 {workdays.slice(0, 10).map((wd, i) => {
                   const isComplete = !!wd.end_time;
                   const dotColor = wd.status === "active" || !isComplete
                     ? "bg-sky-500"
                     : "bg-emerald-500";
-                  const lineColor = i < 9 ? "border-gray-200" : "border-transparent";
+                  const employeeName =
+                    wd.employee?.first_name ||
+                    wd.employee?.username ||
+                    "Employee";
                   return (
-                    <div
-                      key={wd.id || i}
-                      className={`relative pl-7 pb-3 border-l-2 ${lineColor} ml-1`}
-                    >
-                      {/* Timeline dot */}
-                      <div
-                        className={`absolute left-[-5px] top-3 w-2.5 h-2.5 rounded-full ${dotColor}
-                          ring-[3px] ring-white shadow-sm`}
-                      />
-                      <div className="rounded-xl p-3 hover:bg-gray-50/80 transition-all duration-200 group cursor-default">
-                        <div className="flex items-center gap-2.5 mb-1.5">
-                          {/* Profile circle */}
+                    <div key={wd.id || i} className="dashboard-timeline-item">
+                      <div className={`dashboard-timeline-dot ${dotColor}`} aria-hidden="true" />
+                      <div className="dashboard-timeline-card">
+                        <div className="dashboard-timeline-card__head">
                           <ProfileAvatar entity={wd.employee} size="xs" />
-                          <p className="text-sm font-medium text-gray-900 truncate flex-1">
-                            {wd.employee?.first_name ||
-                              wd.employee?.username ||
-                              "Employee"}
-                          </p>
+                          <p className="dashboard-timeline-card__title">{employeeName}</p>
                           <OpsStatusBadge
                             status={
                               wd.status || (isComplete ? "completed" : "active")
                             }
                           />
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 pl-8">
-                          <Clock className="w-3 h-3 text-gray-400" />
+                        <div className="dashboard-timeline-card__time">
+                          <Clock className="w-3 h-3" aria-hidden="true" />
                           <span>{formatTime(wd.start_time)}</span>
                           {wd.end_time && (
                             <>
-                              <span className="text-gray-300">&rarr;</span>
+                              <span className="text-slate-300" aria-hidden="true">&rarr;</span>
                               <span>{formatTime(wd.end_time)}</span>
-                              <span className="font-semibold text-emerald-600">
+                              <span className="dashboard-timeline-card__time-strong">
                                 {formatDuration(wd.start_time, wd.end_time)}
                               </span>
                             </>
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-1 pl-8">
+                        <p className="text-[11px] text-slate-400 mt-1.5 pl-[2.375rem]">
                           {formatDate(wd.start_time)}
                         </p>
                       </div>
@@ -834,8 +804,7 @@ const Dashboard = () => {
 
 
       {/* ================== RECENT VISITS ================== */}
-      <div className="section-card overflow-hidden"
-        style={{ boxShadow: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)", border: "1px solid rgba(15,118,110,0.08)" }}>
+      <div className="dashboard-section-card overflow-hidden">
         <SectionHeader
           icon={Eye}
           title="Recent Visits"

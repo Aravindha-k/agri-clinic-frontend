@@ -3,10 +3,9 @@
  */
 export function GpsStatusMapLegend() {
   const items = [
-    { color: "#22c55e", label: "GPS Active" },
-    { color: "#f59e0b", label: "GPS Delayed" },
-    { color: "#ef4444", label: "GPS Lost" },
-    { color: "#64748b", label: "GPS Off" },
+    { color: "#22c55e", label: "GPS Online" },
+    { color: "#f59e0b", label: "Location Stale" },
+    { color: "#64748b", label: "GPS Offline" },
   ];
 
   return (
@@ -25,28 +24,23 @@ export function GpsStatusMapLegend() {
 }
 
 /**
- * Start / end / current markers for route maps.
+ * Start / visit / end markers for day maps (no route polyline).
  */
 export function RouteEndpointMapLegend() {
   const items = [
     { color: "#3b82f6", label: "Start" },
+    { color: "#059669", label: "Visit" },
     { color: "#ef4444", label: "End" },
-    { color: "#059669", label: "Latest" },
-    { color: "#22c55e", label: "Route path", line: true },
   ];
 
   return (
     <ul className="admin-map-legend__list">
       {items.map((item) => (
         <li key={item.label} className="admin-map-legend__item">
-          {item.line ? (
-            <span className="admin-map-legend__line" style={{ background: item.color }} />
-          ) : (
-            <span
-              className="admin-map-legend__dot"
-              style={{ background: item.color }}
-            />
-          )}
+          <span
+            className="admin-map-legend__dot"
+            style={{ background: item.color }}
+          />
           <span>{item.label}</span>
         </li>
       ))}

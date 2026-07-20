@@ -4,8 +4,6 @@ import {
     ChevronDown, Loader2,
 } from "lucide-react";
 
-const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
-
 const resolveList = (d) => {
     if (Array.isArray(d)) return d;
     if (d?.results) return d.results;
