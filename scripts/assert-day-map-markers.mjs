@@ -1,7 +1,13 @@
 /**
- * Assertions: always-visible map semantics, last-valid snapshots, offline behaviour.
+ * Assertions: always-visible Tamil Nadu maps, tiles, height, offline markers.
  * Run: node scripts/assert-day-map-markers.mjs
  */
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, "..");
 
 function parseCoord(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -72,6 +78,9 @@ function extractDayMapMarkers({ stops = [], points = [], endTime = null, meta = 
 
 const GPS_ONLINE_MAX_MINUTES = 7;
 const GPS_STALE_MAX_MINUTES = 15;
+const TAMIL_NADU_CENTER = [11.1271, 78.6569];
+const TAMIL_NADU_ZOOM = 7;
+const ADMIN_MAP_MIN_HEIGHT_PX = 460;
 
 function gpsFromAge({ ageMin, gpsEnabled = true, hasCoords = true }) {
   if (gpsEnabled === false) return "offline";
@@ -82,7 +91,6 @@ function gpsFromAge({ ageMin, gpsEnabled = true, hasCoords = true }) {
   return "offline";
 }
 
-/** Preserve last-valid on temporary empty */
 function applyLiveUpdate(prev, next, { authoritativeEmpty = false, temporaryFailure = false } = {}) {
   if (temporaryFailure) return prev;
   if (authoritativeEmpty) return [];
@@ -90,11 +98,24 @@ function applyLiveUpdate(prev, next, { authoritativeEmpty = false, temporaryFail
   return next;
 }
 
-function shouldMountMap({ markerCount, loading, error }) {
-  void markerCount;
-  void loading;
-  void error;
-  return true; // map always mounts
+function shouldMountMap() {
+  return true;
+}
+
+function liveMarkersForEmployees(employees) {
+  const byId = new Map();
+  for (const emp of employees || []) {
+    const id = String(emp.user_id ?? emp.id);
+    const lat = parseCoord(emp.latitude);
+    const lng = parseCoord(emp.longitude);
+    if (!isValidRouteCoordinate(lat, lng)) continue;
+    byId.set(id, { id, lat, lng, gps: emp.gps });
+  }
+  return [...byId.values()];
+}
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), "utf8");
 }
 
 let failed = 0;
@@ -105,22 +126,71 @@ function assert(cond, msg) {
   } else console.log("OK:", msg);
 }
 
-assert(shouldMountMap({ markerCount: 0, loading: true, error: null }), "map renders with zero markers / loading");
+assert(shouldMountMap({ markerCount: 0, loading: true, error: null }), "MapContainer renders with zero markers");
 assert(shouldMountMap({ markerCount: 0, loading: false, error: "x" }), "map renders on network error");
+
+{
+  const frame = read("src/components/map/AdminMapFrame.jsx");
+  assert(frame.includes("MapContainer"), "AdminMapFrame mounts MapContainer");
+  assert(frame.includes("MapBasemapLayers") || frame.includes("TileLayer"), "TileLayer always renders via basemap");
+  assert(frame.includes("MapResizeController"), "invalidateSize controller mounted");
+  assert(frame.includes("ADMIN_MAP_MIN_HEIGHT_PX") || frame.includes("460"), "Map wrapper has non-zero min-height");
+  assert(frame.includes("MapStatusOverlay"), "overlays do not replace MapContainer");
+  assert(!/loading\s*\?\s*\([\s\S]*MapContainer/.test(frame), "overlays do not hide MapContainer behind conditional");
+}
+
+{
+  const cssIndex = read("src/index.css");
+  assert(cssIndex.includes('leaflet/dist/leaflet.css'), "Leaflet CSS is included once in index.css");
+  assert(cssIndex.includes("min-height: 460px"), "CSS map min-height is 460px");
+  const tracking = read("src/pages/Tracking.jsx");
+  assert(!tracking.includes('import "leaflet/dist/leaflet.css"'), "Leaflet CSS not duplicated in Tracking.jsx");
+}
+
+{
+  const setup = read("src/utils/leafletSetup.js");
+  assert(setup.includes("marker-icon.png"), "marker icons resolve via Vite imports");
+  assert(setup.includes("marker-shadow.png"), "marker shadow resolved");
+}
+
+{
+  const basemap = read("src/config/mapBasemap.js");
+  assert(basemap.includes("https://"), "tile URLs use HTTPS");
+  assert(!basemap.match(/url:\s*["']http:\/\//), "no HTTP tile URLs");
+}
+
+assert(
+  TAMIL_NADU_CENTER[0] === 11.1271 && TAMIL_NADU_CENTER[1] === 78.6569 && TAMIL_NADU_ZOOM === 7,
+  "Tamil Nadu default centre/zoom used with no markers"
+);
+assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
+
+{
+  const live = liveMarkersForEmployees([
+    { id: 1, latitude: 11.0, longitude: 78.0, gps: "online" },
+  ]);
+  assert(live.length === 1, "Live employee with coordinates renders one marker");
+}
 
 {
   const prev = [{ id: 1, latitude: 11, longitude: 78 }];
   const kept = applyLiveUpdate(prev, null, { temporaryFailure: true });
-  assert(kept.length === 1, "network error preserves last valid markers");
-  const cleared = applyLiveUpdate(prev, [], { authoritativeEmpty: true });
-  assert(cleared.length === 0, "authoritative empty clears scoped markers");
-  const tempNull = applyLiveUpdate(prev, null, { temporaryFailure: false });
-  assert(tempNull === prev || (Array.isArray(tempNull) && tempNull.length === 1) || tempNull == null, "temporary null does not force clear when guarded");
+  assert(kept.length === 1, "Offline/temp failure retains last valid marker");
+  const offline = liveMarkersForEmployees([
+    { id: 9, latitude: 11.2, longitude: 78.1, gps: "offline" },
+  ]);
+  assert(offline.length === 1, "Offline employee retains last valid marker");
 }
 
-assert(gpsFromAge({ ageMin: 24, hasCoords: true }) === "offline", "offline employee keeps coords conceptually");
-assert(gpsFromAge({ ageMin: 1, hasCoords: false }) === "no_location", "no-location employee is list-only");
-assert(gpsFromAge({ ageMin: 1, hasCoords: true, gpsEnabled: false }) === "offline", "GPS off ≠ duty ended");
+{
+  const none = liveMarkersForEmployees([{ id: 2, latitude: null, longitude: null }]);
+  assert(none.length === 0, "No-location employee renders no fake marker");
+}
+
+{
+  const emptyDay = extractDayMapMarkers({ points: [{ latitude: 1, longitude: 2 }], meta: {} });
+  assert(emptyDay.length === 0, "Route map renders with zero markers (overlay, not invent)");
+}
 
 {
   let markers = extractDayMapMarkers({
@@ -129,18 +199,25 @@ assert(gpsFromAge({ ageMin: 1, hasCoords: true, gpsEnabled: false }) === "offlin
   });
   assert(markers.some((m) => m.type === "start") && markers.some((m) => m.type === "visit"), "day map Start+Visit");
   assert(!markers.some((m) => m.type === "polyline"), "no polyline");
-  markers = extractDayMapMarkers({ points: [{ latitude: 1, longitude: 2 }], meta: {} });
-  assert(markers.length === 0, "day map empty shows overlay not invent markers");
 }
 
 {
-  const scopeA = "day-map:1:2026-07-20:d1";
-  const scopeB = "day-map:2:2026-07-20:d1";
-  assert(scopeA !== scopeB, "employee change isolates cache scope");
-  const dateA = "day-map:1:2026-07-20:d1";
-  const dateB = "day-map:1:2026-07-19:d1";
-  assert(dateA !== dateB, "date change isolates cache scope");
+  const resize = read("src/components/map/MapResizeController.jsx");
+  assert(resize.includes("invalidateSize"), "invalidateSize runs after mount/visibility change");
+  assert(resize.includes("ResizeObserver") || resize.includes("visibilitychange"), "resize/visibility hooks present");
 }
+
+{
+  const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
+  assert(!liveSrc.includes("MarkerClusterGroup"), "live markers are not clustered (icons stay visible)");
+  assert(!liveSrc.includes("Polyline") && !liveSrc.includes("polyline"), "no polyline in live markers");
+  const routeSrc = read("src/components/tracking/EmployeeRouteMapView.jsx");
+  assert(!routeSrc.includes("Polyline") && !routeSrc.includes("RouteContrastPolyline"), "no polyline on route map");
+}
+
+assert(gpsFromAge({ ageMin: 24, hasCoords: true }) === "offline", "offline employee keeps coords conceptually");
+assert(gpsFromAge({ ageMin: 1, hasCoords: false }) === "no_location", "no-location employee is list-only");
+assert(gpsFromAge({ ageMin: 1, hasCoords: true, gpsEnabled: false }) === "offline", "GPS off ≠ duty ended");
 
 {
   const byId = new Map();

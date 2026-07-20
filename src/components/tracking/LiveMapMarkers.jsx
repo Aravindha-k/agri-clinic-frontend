@@ -1,6 +1,5 @@
 import { memo, useMemo } from "react";
 import { Marker, Popup } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
 import { empName } from "../../utils/trackingDisplay";
@@ -16,6 +15,7 @@ import {
   dedupeLiveEmployees,
 } from "../../utils/dutyTracking";
 import { BRAND } from "../../theme/brand";
+import "../../utils/leafletSetup";
 
 const markerColors = {
   green: BRAND.primaryLight,
@@ -85,8 +85,9 @@ function LiveMapMarkers({ employees, onSelect }) {
 
   if (!mappable.length) return null;
 
+  // One Marker per employee — no clustering (avoids missing cluster CSS / hidden icons).
   return (
-    <MarkerClusterGroup chunkedLoading maxClusterRadius={50} spiderfyOnMaxZoom showCoverageOnHover={false}>
+    <>
       {mappable.map((emp) => {
         const userId = emp.user_id ?? emp.id;
         const lat = Number(emp.latitude);
@@ -131,7 +132,7 @@ function LiveMapMarkers({ employees, onSelect }) {
           </Marker>
         );
       })}
-    </MarkerClusterGroup>
+    </>
   );
 }
 

@@ -10,8 +10,21 @@ export default function MapRouteViewport({ points, drawerOpen = true, fitKey = "
   const map = useMap();
   const prevSig = useRef("");
 
+  // Paint TN base map even when the day has zero markers / drawer just opened.
   useEffect(() => {
-    if (!map || !points?.length || !drawerOpen) return;
+    if (!map || !drawerOpen) return undefined;
+    const timer = window.setTimeout(() => {
+      try {
+        map.invalidateSize({ animate: false });
+      } catch {
+        /* unmounting */
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [map, drawerOpen, fitKey]);
+
+  useEffect(() => {
+    if (!map || !points?.length || !drawerOpen) return undefined;
 
     const locations = points.map((p) => ({
       lat: p.latitude ?? p.lat,
@@ -20,12 +33,12 @@ export default function MapRouteViewport({ points, drawerOpen = true, fitKey = "
 
     const coordSig = locations.map((l) => `${Number(l.lat).toFixed(5)},${Number(l.lng).toFixed(5)}`).join("|");
     const sig = fitKey ? `${fitKey}::${coordSig}` : coordSig;
-    if (sig === prevSig.current && map.getZoom() > 1) return;
+    if (sig === prevSig.current && map.getZoom() > 1) return undefined;
     prevSig.current = sig;
 
     const timer = window.setTimeout(() => {
       try {
-        map.invalidateSize();
+        map.invalidateSize({ animate: false });
         fitEmployeeBounds(map, locations);
       } catch {
         /* map may be unmounting */

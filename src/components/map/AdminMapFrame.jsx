@@ -4,8 +4,13 @@ import MapBasemapLayers from "./MapBasemapLayers";
 import MapFullscreenButton from "./MapFullscreenButton";
 import MapLegendPanel from "./MapLegendPanel";
 import MapStatusOverlay from "./MapStatusOverlay";
+import MapResizeController from "./MapResizeController";
 import { DEFAULT_ADMIN_MAP_BASEMAP } from "../../config/mapBasemap";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
+import "../../utils/leafletSetup";
+
+/** Stable floor so Leaflet never mounts at 0×0 inside % / flex parents. */
+export const ADMIN_MAP_MIN_HEIGHT_PX = 460;
 
 /**
  * Catch Leaflet/React-Leaflet render failures and offer a single remount retry.
@@ -58,7 +63,7 @@ export default function AdminMapFrame({
   center,
   zoom,
   mapKey,
-  height = "400px",
+  height = "460px",
   className = "",
   mapClassName = "",
   scrollWheelZoom = true,
@@ -97,14 +102,23 @@ export default function AdminMapFrame({
       : TAMIL_NADU_CENTER;
   const mapZoom = Number.isFinite(Number(zoom)) ? Number(zoom) : TAMIL_NADU_ZOOM;
   const leafletKey = `${mapKey ?? "admin-map"}-r${remountKey}`;
+  const resizeKey = [
+    leafletKey,
+    loading ? "1" : "0",
+    statusMessage ? "s" : "",
+    error ? "e" : "",
+    empty ? "x" : "",
+    basemapFallback ? "f" : "",
+  ].join(":");
 
   return (
     <div
       ref={containerRef}
       className={`admin-map-frame ${className}`}
-      style={{ height }}
+      style={{ height, minHeight: ADMIN_MAP_MIN_HEIGHT_PX }}
       data-basemap={mapType}
       data-basemap-fallback={basemapFallback ? "true" : "false"}
+      data-map-min-height={ADMIN_MAP_MIN_HEIGHT_PX}
     >
       <MapErrorBoundary onRetry={handleMapRetry} fallbackAction={fallbackAction}>
         <MapContainer
@@ -113,9 +127,14 @@ export default function AdminMapFrame({
           zoom={mapZoom}
           scrollWheelZoom={scrollWheelZoom}
           zoomControl={false}
-          className={`admin-map-frame__leaflet z-0 ${mapClassName}`}
-          style={{ width: "100%", height: "100%" }}
+          className={`admin-map-frame__leaflet ${mapClassName}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            minHeight: ADMIN_MAP_MIN_HEIGHT_PX,
+          }}
         >
+          <MapResizeController refreshKey={resizeKey} />
           <MapBasemapLayers
             mapType={mapType}
             onFallback={() => setBasemapFallback(true)}

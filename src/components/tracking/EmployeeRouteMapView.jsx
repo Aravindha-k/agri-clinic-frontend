@@ -6,6 +6,7 @@ import AdminMapFrame from "../map/AdminMapFrame";
 import { RouteEndpointMapLegend } from "../map/MapLegendPanel";
 import MapRouteViewport from "../map/MapRouteViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import "../../utils/leafletSetup";
 import {
   todayIsoDate,
   formatRouteTimestamp,
@@ -56,7 +57,7 @@ export default function EmployeeRouteMapView({
   routeError,
   onRetry,
   autoSyncing = false,
-  mapHeight = "400px",
+  mapHeight = "460px",
   drawerOpen = true,
   dateInputId = "route-date",
   showDutyMeta = false,

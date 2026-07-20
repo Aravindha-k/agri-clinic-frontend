@@ -21,13 +21,26 @@ export default function MapEmployeeViewport({
   const prevRosterSig = useRef("");
   const lastFitRequest = useRef(0);
 
+  // Always invalidate after mount so TN tiles paint even with zero markers.
   useEffect(() => {
-    if (!map) return;
+    if (!map) return undefined;
+    const timer = window.setTimeout(() => {
+      try {
+        map.invalidateSize({ animate: false });
+      } catch {
+        /* unmounting */
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [map]);
+
+  useEffect(() => {
+    if (!map) return undefined;
 
     if (!locations?.length) {
       didInitialFit.current = false;
       prevRosterSig.current = "";
-      return;
+      return undefined;
     }
 
     const rosterSig = locations
@@ -49,7 +62,7 @@ export default function MapEmployeeViewport({
       }
     }
 
-    if (!shouldFit) return;
+    if (!shouldFit) return undefined;
 
     prevRosterSig.current = rosterSig;
     didInitialFit.current = true;
@@ -57,7 +70,7 @@ export default function MapEmployeeViewport({
 
     const timer = window.setTimeout(() => {
       try {
-        map.invalidateSize();
+        map.invalidateSize({ animate: false });
         fitEmployeeBounds(map, locations);
       } catch {
         /* map may be unmounting */

@@ -9,7 +9,6 @@ import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import LiveMapMarkers from "../components/tracking/LiveMapMarkers";
 import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
-import "leaflet/dist/leaflet.css";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
 import useCloseOnRouteChange from "../hooks/useCloseOnRouteChange";
 import {

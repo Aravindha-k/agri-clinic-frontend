@@ -32,18 +32,20 @@ function BasemapTileLayer({ layer, fallback, onFallback }) {
   return <TileLayer key={active.url} {...tileProps} />;
 }
 
-/** Invalidate size when basemap type changes (tile swap). */
+/** Invalidate size when basemap type changes (tile swap) and after first paint. */
 function MapInvalidateOnType({ mapType }) {
   const map = useMap();
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      try {
-        map.invalidateSize();
-      } catch {
-        /* unmounting */
-      }
-    }, 60);
-    return () => window.clearTimeout(t);
+    const timers = [60, 250, 600].map((ms) =>
+      window.setTimeout(() => {
+        try {
+          map.invalidateSize({ animate: false });
+        } catch {
+          /* unmounting */
+        }
+      }, ms)
+    );
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [map, mapType]);
   return null;
 }
