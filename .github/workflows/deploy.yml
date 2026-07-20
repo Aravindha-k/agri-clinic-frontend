@@ -11,7 +11,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy Admin
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Pack source for EC2
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          printf '%s\n' "$EXPECTED_SHA" > .github-deploy-sha
+          git log -1 --oneline > .github-deploy-log
+          tar -czf agri-admin-src.tgz \
+            --exclude=./agri-admin-src.tgz \
+            --exclude=./node_modules \
+            --exclude=./dist \
+            --exclude=./.git \
+            .
+          ls -lh agri-admin-src.tgz .github-deploy-sha
+          echo "Packed SHA: $(cat .github-deploy-sha)"
+
+      - name: Upload source to EC2
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "agri-admin-src.tgz"
+          target: "/tmp/"
+          overwrite: true
+
+      - name: Build and activate on EC2
         uses: appleboy/ssh-action@v1.2.5
         env:
           EXPECTED_SHA: ${{ github.sha }}
@@ -28,7 +61,6 @@ jobs:
 
             EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
             APP_DIR="/var/www/agri-admin/agri-clinic-frontend"
-            REPO_HTTPS="https://github.com/Aravindha-k/agri-clinic-frontend.git"
             export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://13.207.17.117}"
 
             if [ -z "${EXPECTED_SHA:-}" ]; then
@@ -39,6 +71,9 @@ jobs:
             echo "==> Deploying admin frontend"
             echo "Expected SHA: ${EXPECTED_SHA}"
 
+            test -f /tmp/agri-admin-src.tgz
+
+            mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
             # Preserve untracked local env overrides (not in git)
@@ -46,18 +81,16 @@ jobs:
               cp .env.local /tmp/agri-admin-env.local.bak
             fi
 
-            # Public HTTPS remote avoids silent SSH-key fetch failures on EC2
-            git remote set-url origin "$REPO_HTTPS"
-            git fetch --prune origin
-            git fetch origin "$EXPECTED_SHA"
-            git checkout -B main "$EXPECTED_SHA"
-            git reset --hard "$EXPECTED_SHA"
+            # Replace app source with the exact GitHub SHA packed by Actions
+            find . -mindepth 1 -maxdepth 1 ! -name 'node_modules' ! -name '.env.local' -exec rm -rf {} +
+            tar -xzf /tmp/agri-admin-src.tgz -C "$APP_DIR"
 
             if [ -f /tmp/agri-admin-env.local.bak ]; then
               mv /tmp/agri-admin-env.local.bak .env.local
             fi
 
-            ACTUAL_SHA="$(git rev-parse HEAD)"
+            test -f .github-deploy-sha
+            ACTUAL_SHA="$(tr -d '[:space:]' < .github-deploy-sha)"
             if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
               echo "Commit mismatch"
               echo "Expected: $EXPECTED_SHA"
@@ -65,8 +98,10 @@ jobs:
               exit 1
             fi
 
-            git log -1 --oneline
-            git status --short
+            echo "Deployed commit:"
+            cat .github-deploy-log
+            echo "Working tree markers:"
+            ls -la .github-deploy-sha .env.production package.json package-lock.json
 
             echo "==> Clean production build"
             rm -rf dist
@@ -109,8 +144,9 @@ jobs:
             sudo systemctl is-active --quiet nginx
 
             echo "==> Verify live site serves this build"
-            curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html \
-              || curl -fsS http://127.0.0.1/ -o /tmp/live-index.html
+            if ! curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html; then
+              curl -fsS http://127.0.0.1/ -o /tmp/live-index.html
+            fi
 
             SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
             if [ -z "$SERVED_JS" ]; then
@@ -125,12 +161,16 @@ jobs:
               exit 1
             fi
 
-            HTTP_CODE="$(curl -fsS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" \
-              || curl -fsS -o /dev/null -w "%{http_code}" "http://127.0.0.1${SERVED_JS}")"
+            HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" || true)"
+            if [ "$HTTP_CODE" != "200" ]; then
+              HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1${SERVED_JS}" || true)"
+            fi
             if [ "$HTTP_CODE" != "200" ]; then
               echo "Served JS HTTP status was $HTTP_CODE (expected 200)"
               exit 1
             fi
+
+            rm -f /tmp/agri-admin-src.tgz
 
             DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
             echo ""
