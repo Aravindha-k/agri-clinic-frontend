@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
 import Logo from "../components/Logo";
-import logoSeal from "../assets/premium-kac-emblem-transparent.png";
+import logoSeal from "../assets/kavya-agri-clinic-logo.png";
 import {
   ArrowRight,
   BarChart3,
@@ -202,16 +202,30 @@ const Login = () => {
         <div className="login-aside__content">
           <div className="login-aside__stack">
             <div className="login-aside__brand">
-              <div className="login-aside__seal">
-                <img
-                  src={logoSeal}
-                  alt="Kavya Agri Clinic"
-                  className="login-aside__seal-img"
-                  width={1024}
-                  height={1024}
-                  decoding="async"
-                  draggable={false}
-                />
+              {/* Wrapper stacks: halo → particles → floating logo */}
+              <div className="login-aside__seal-wrapper">
+                {/* Ambient halo behind logo */}
+                <div className="login-seal-halo" aria-hidden="true" />
+                {/* Orbital micro-particles */}
+                <span className="login-seal-particle login-seal-particle--1" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--2" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--3" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--4" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--5" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--6" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--7" aria-hidden="true" />
+                {/* Logo — floats and has a light-sweep ::after */}
+                <div className="login-aside__seal">
+                  <img
+                    src={logoSeal}
+                    alt="Kavya Agri Clinic"
+                    className="login-aside__seal-img"
+                    width={1024}
+                    height={1024}
+                    decoding="async"
+                    draggable={false}
+                  />
+                </div>
               </div>
               <p className="login-aside__brand-name">KAVYA AGRI CLINIC</p>
               <p className="login-aside__brand-tag">Agricultural Management Platform</p>

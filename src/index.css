@@ -1790,18 +1790,102 @@ textarea.input {
     text-align: center;
 }
 
+/* ── Seal wrapper: stacks halo, particles, and the floating logo ── */
+.login-aside__seal-wrapper {
+    position: relative;
+    width: 245px;
+    height: 245px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 20px;
+    flex-shrink: 0;
+}
+
+/* ── Ambient halo — soft green radial glow, no ring, no outline ── */
+.login-seal-halo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at 50% 50%,
+        rgba(120, 255, 170, 0.22) 0%,
+        rgba(90, 220, 120, 0.10) 52%,
+        transparent 72%
+    );
+    animation: sealHaloPulse 4.5s ease-in-out infinite;
+    z-index: 0;
+}
+
+@keyframes sealHaloPulse {
+    0%,
+    100% { box-shadow: 0 0 18px rgba(90, 220, 120, 0.18); filter: blur(6px); opacity: 0.85; }
+    50% { box-shadow: 0 0 42px rgba(120, 255, 170, 0.35); filter: blur(9px); opacity: 1; }
+}
+
+/* ── Micro-particles drifting around the halo ── */
+.login-seal-particle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(140, 255, 180, 0.25);
+    pointer-events: none;
+}
+
+.login-seal-particle--1 { width: 4px; height: 4px; top: 10%;  left: 50%; animation: sealParticle1 9s ease-in-out infinite; opacity: 0.20; }
+.login-seal-particle--2 { width: 3px; height: 3px; top: 82%;  left: 35%; animation: sealParticle2 11s ease-in-out infinite; opacity: 0.18; }
+.login-seal-particle--3 { width: 5px; height: 5px; top: 50%;  left: 90%; animation: sealParticle3 13s ease-in-out infinite; opacity: 0.15; }
+.login-seal-particle--4 { width: 3px; height: 3px; top: 20%;  left: 14%; animation: sealParticle4 10s ease-in-out infinite; opacity: 0.22; }
+.login-seal-particle--5 { width: 4px; height: 4px; top: 75%;  left: 78%; animation: sealParticle5 12s ease-in-out infinite; opacity: 0.17; }
+.login-seal-particle--6 { width: 3px; height: 3px; top: 68%;  left: 12%; animation: sealParticle1 14s ease-in-out infinite -3s; opacity: 0.20; }
+.login-seal-particle--7 { width: 4px; height: 4px; top: 28%;  left: 88%; animation: sealParticle3 10s ease-in-out infinite -5s; opacity: 0.16; }
+
+@keyframes sealParticle1 { 0%, 100% { transform: translate(0, 0); opacity: 0.15; } 50% { transform: translate(-4px, -9px); opacity: 0.28; } }
+@keyframes sealParticle2 { 0%, 100% { transform: translate(0, 0); opacity: 0.18; } 50% { transform: translate(5px, -6px); opacity: 0.30; } }
+@keyframes sealParticle3 { 0%, 100% { transform: translate(0, 0); opacity: 0.15; } 50% { transform: translate(-3px, 8px); opacity: 0.25; } }
+@keyframes sealParticle4 { 0%, 100% { transform: translate(0, 0); opacity: 0.20; } 50% { transform: translate(6px, -5px); opacity: 0.28; } }
+@keyframes sealParticle5 { 0%, 100% { transform: translate(0, 0); opacity: 0.16; } 50% { transform: translate(-5px, 7px); opacity: 0.26; } }
+
+/* ── Logo seal: float + sweep ── */
 .login-aside__seal {
+    position: absolute;
     width: 205px;
     height: 205px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 0 20px;
     background: transparent;
     border: none;
     box-shadow: none;
     overflow: visible;
-    animation: adminLogoFloat 3.6s ease-in-out infinite;
+    animation: adminLogoFloat 3.8s ease-in-out infinite;
+    isolation: isolate;
+    z-index: 2;
+}
+
+/* Light sweep — diagonal highlight every ~9s */
+.login-aside__seal::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.16) 50%,
+        transparent 70%
+    );
+    background-size: 200% 100%;
+    background-position: -100% 0;
+    animation: sealLightSweep 9s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes sealLightSweep {
+    0%     { background-position: -200% 0; opacity: 0; }
+    8%     { opacity: 1; background-position: 200% 0; }
+    9%     { opacity: 0; background-position: 200% 0; }
+    100%   { background-position: 200% 0; opacity: 0; }
 }
 
 .login-aside__seal-img {
@@ -1814,10 +1898,10 @@ textarea.input {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    filter:
-        drop-shadow(0 0 5px rgba(255, 207, 88, 0.48))
-        drop-shadow(0 0 14px rgba(255, 191, 55, 0.20));
+    filter: drop-shadow(0 2px 12px rgba(30, 132, 73, 0.18));
     image-rendering: auto;
+    position: relative;
+    z-index: 0;
 }
 
 @keyframes adminLogoFloat {
@@ -2629,10 +2713,15 @@ textarea.input {
         min-width: 420px;
     }
 
+    .login-aside__seal-wrapper {
+        width: 210px;
+        height: 210px;
+        margin-bottom: 14px;
+    }
+
     .login-aside__seal {
-        width: 175px;
-        height: 175px;
-        margin-bottom: 18px;
+        width: 170px;
+        height: 170px;
     }
 
     .login-aside__headline {
@@ -2714,6 +2803,9 @@ textarea.input {
     .login-aside__copyright,
     .login-particle,
     .login-aside__seal,
+    .login-aside__seal::after,
+    .login-seal-halo,
+    .login-seal-particle,
     .login-auth-ring,
     .login-auth-glow,
     .login-auth-logo,
