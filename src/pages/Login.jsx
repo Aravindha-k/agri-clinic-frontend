@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
 import Logo from "../components/Logo";
-import logoSeal from "../assets/kavya-agri-clinic-logo.png";
+import logoSeal from "../assets/kavya-agri-clinic-logo-premium.png";
 import {
   ArrowRight,
   BarChart3,
@@ -206,7 +206,9 @@ const Login = () => {
               <div className="login-aside__seal-wrapper">
                 {/* Ambient halo behind logo */}
                 <div className="login-seal-halo" aria-hidden="true" />
-                {/* Orbital micro-particles */}
+                {/* Subtle halo lift synced to glass reflection — does not alter base halo */}
+                <div className="login-seal-halo-lift" aria-hidden="true" />
+                {/* Ambient pollen / light motes — outside logo artwork */}
                 <span className="login-seal-particle login-seal-particle--1" aria-hidden="true" />
                 <span className="login-seal-particle login-seal-particle--2" aria-hidden="true" />
                 <span className="login-seal-particle login-seal-particle--3" aria-hidden="true" />
@@ -214,14 +216,15 @@ const Login = () => {
                 <span className="login-seal-particle login-seal-particle--5" aria-hidden="true" />
                 <span className="login-seal-particle login-seal-particle--6" aria-hidden="true" />
                 <span className="login-seal-particle login-seal-particle--7" aria-hidden="true" />
+                <span className="login-seal-particle login-seal-particle--8" aria-hidden="true" />
                 {/* Logo — floats and has a light-sweep ::after */}
                 <div className="login-aside__seal">
                   <img
                     src={logoSeal}
                     alt="Kavya Agri Clinic"
                     className="login-aside__seal-img"
-                    width={1024}
-                    height={1024}
+                    width={4096}
+                    height={4096}
                     decoding="async"
                     draggable={false}
                   />
