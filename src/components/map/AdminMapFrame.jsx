@@ -1,7 +1,7 @@
-import { useRef, useState, useCallback, Component } from "react";
+import { useRef, useState, useCallback, useEffect, Component } from "react";
 import { MapContainer, ZoomControl } from "react-leaflet";
 import MapBasemapLayers from "./MapBasemapLayers";
-import MapFullscreenButton from "./MapFullscreenButton";
+import MapToolbar from "./MapToolbar";
 import MapLegendPanel from "./MapLegendPanel";
 import MapStatusOverlay from "./MapStatusOverlay";
 import MapResizeController from "./MapResizeController";
@@ -69,9 +69,14 @@ export default function AdminMapFrame({
   scrollWheelZoom = true,
   legend = null,
   legendTitle = "Legend",
+  legendClassName = "",
   showTypeToggle = false,
   showFullscreen = true,
   showZoomControl = true,
+  zoomControlPosition = "topleft",
+  onFitAll = null,
+  fitAllDisabled = false,
+  fitAllLabel = "Fit all",
   loading = false,
   loadingLabel = "Updating map…",
   error = null,
@@ -88,11 +93,20 @@ export default function AdminMapFrame({
   const mapType = DEFAULT_ADMIN_MAP_BASEMAP;
   const [basemapFallback, setBasemapFallback] = useState(false);
   const [remountKey, setRemountKey] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleMapRetry = useCallback(() => {
     setRemountKey((n) => n + 1);
     onRetry?.();
   }, [onRetry]);
+
+  useEffect(() => {
+    const onChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
 
   const mapCenter =
     Array.isArray(center) &&
@@ -109,16 +123,18 @@ export default function AdminMapFrame({
     error ? "e" : "",
     empty ? "x" : "",
     basemapFallback ? "f" : "",
+    isFullscreen ? "fs" : "embed",
   ].join(":");
 
   return (
     <div
       ref={containerRef}
-      className={`admin-map-frame ${className}`}
+      className={`admin-map-frame ${isFullscreen ? "admin-map-frame--fullscreen-active" : ""} ${className}`.trim()}
       style={{ height, minHeight: ADMIN_MAP_MIN_HEIGHT_PX }}
       data-basemap={mapType}
       data-basemap-fallback={basemapFallback ? "true" : "false"}
       data-map-min-height={ADMIN_MAP_MIN_HEIGHT_PX}
+      data-fullscreen={isFullscreen ? "true" : "false"}
     >
       <MapErrorBoundary onRetry={handleMapRetry} fallbackAction={fallbackAction}>
         <MapContainer
@@ -139,16 +155,26 @@ export default function AdminMapFrame({
             mapType={mapType}
             onFallback={() => setBasemapFallback(true)}
           />
-          {showZoomControl ? <ZoomControl position="topright" /> : null}
+          {showZoomControl ? <ZoomControl position={zoomControlPosition} /> : null}
           {children}
         </MapContainer>
       </MapErrorBoundary>
 
-      {showFullscreen ? (
-        <MapFullscreenButton containerRef={containerRef} />
+      {(showFullscreen || onFitAll) ? (
+        <MapToolbar
+          containerRef={containerRef}
+          onFitAll={onFitAll}
+          fitDisabled={fitAllDisabled}
+          fitLabel={fitAllLabel}
+          showFullscreen={showFullscreen}
+        />
       ) : null}
 
-      {legend ? <MapLegendPanel title={legendTitle}>{legend}</MapLegendPanel> : null}
+      {legend ? (
+        <MapLegendPanel title={legendTitle} className={legendClassName}>
+          {legend}
+        </MapLegendPanel>
+      ) : null}
 
       {basemapFallback ? (
         <div className="admin-map-basemap-notice" role="status">

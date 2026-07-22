@@ -23,8 +23,10 @@ assert.match(selectedSummary, /MapOpenInMapsButton/, "5. Open in Maps in selecte
 assert.match(liveMarkers, /gps_offline|MUTED_MARKER_OPACITY/, "6. offline marker styling preserved");
 assert.match(liveMarkers, /latitude != null/, "7. no fake marker without coords");
 assert.match(liveMarkers, /live-employee-tooltip-compact/, "8. compact hover tooltip");
-assert.ok(!liveMarkers.includes("<Popup"), "9. marker click does not use large popup");
+assert.match(liveMarkers, /<Popup/, "9. click popup for details");
 assert.match(liveMarkers, /onSelect\?\.\(emp\)/, "9b. click selects employee");
+assert.match(tracking, /LiveMapFullscreenController/, "9c. fullscreen camera controller");
+assert.match(tracking, /onFitAll:/, "9d. map toolbar Fit all");
 assert.match(panController, /panTo/, "10. roster selection pans without refit");
 assert.ok(!liveMarkers.includes("fitBounds") && !liveMarkers.includes("setView"), "9c. marker click does not refit");
 assert.match(tracking, /fitRequestId/, "10b. Fit all control present");

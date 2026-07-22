@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Minimize2, Maximize2 } from "lucide-react";
 
 /**
  * Toggle fullscreen on the map container (native Fullscreen API).
- * @param {{ containerRef: import('react').RefObject<HTMLElement | null> }} props
+ * @param {{ containerRef: import('react').RefObject<HTMLElement | null>, className?: string }} props
  */
-export default function MapFullscreenButton({ containerRef }) {
+export default function MapFullscreenButton({ containerRef, className = "admin-map-fullscreen-btn" }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -31,18 +31,34 @@ export default function MapFullscreenButton({ containerRef }) {
     }
   }, [containerRef]);
 
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape" && document.fullscreenElement === containerRef.current) {
+        document.exitFullscreen?.();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [containerRef]);
+
   return (
     <button
       type="button"
-      className="admin-map-fullscreen-btn"
+      className={className}
       onClick={toggle}
-      aria-label={isFullscreen ? "Exit fullscreen map" : "Fullscreen map"}
+      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen map"}
       title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
     >
       {isFullscreen ? (
-        <Minimize2 className="w-4 h-4" />
+        <>
+          <Minimize2 className="w-4 h-4" aria-hidden="true" />
+          <span className="admin-map-toolbar__label">Exit</span>
+        </>
       ) : (
-        <Maximize2 className="w-4 h-4" />
+        <>
+          <Maximize2 className="w-4 h-4" aria-hidden="true" />
+          <span className="admin-map-toolbar__label">Fullscreen</span>
+        </>
       )}
     </button>
   );

@@ -92,7 +92,8 @@ export default function MapEmployeeViewport({
     const timer = window.setTimeout(() => {
       try {
         map.invalidateSize({ animate: false });
-        // Close popup before Fit all so popup size does not inflate framing.
+        map.closePopup();
+        map.closeTooltip();
         fitEmployeeBounds(map, locations, LIVE_FIT_OPTIONS);
       } catch {
         /* map may be unmounting */

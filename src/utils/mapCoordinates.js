@@ -37,6 +37,17 @@ export const LIVE_FIT_OPTIONS = {
   animate: true,
 };
 
+/** Live fullscreen fit — larger padding for viewport controls. */
+export const LIVE_FULLSCREEN_FIT_OPTIONS = {
+  closePopup: true,
+  singleZoom: SINGLE_EMPLOYEE_ZOOM,
+  maxZoom: MULTI_EMPLOYEE_MAX_ZOOM,
+  minZoom: MULTI_EMPLOYEE_MIN_ZOOM,
+  paddingTopLeft: [80, 100],
+  paddingBottomRight: [80, 80],
+  animate: true,
+};
+
 export function parseCoordinate(value) {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);

@@ -20,7 +20,7 @@ assert.match(liveSrc, /isOnDutyWorking/, "1. Offline employee with coords still 
 assert.match(liveSrc, /MUTED_MARKER_OPACITY = 0.9/, "5. Offline styling keeps opacity >= 0.85");
 assert.ok(!/zoom\s*[<>]|bounds\.contains/.test(liveSrc), "2/3/4/11. Marker mount independent of zoom/bounds");
 assert.ok(!liveSrc.includes("transform:rotate") && !liveSrc.includes("transform: rotate"), "12. No rotate transform hides markers at zoom");
-assert.match(liveSrc, /key=\{String\(userId\)\}/, "8/9. Same marker key; no duplicates");
+assert.match(liveSrc, /key=\{markerKey\}/, "8/9. stable marker keys; no duplicates");
 assert.match(liveSrc, /Tooltip/, "10. Tooltip remains attached after zoom");
 assert.match(liveSrc, /live-employee-tooltip/, "custom tooltip class");
 assert.match(liveSrc, /employeeMarkerPane|EMPLOYEE_MARKER_PANE/, "pane assignment");

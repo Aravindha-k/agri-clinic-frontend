@@ -184,7 +184,8 @@ const coimbatore = { user_id: 3, latitude: 11.0168, longitude: 76.9558, name: "C
   assert.match(summarySrc, /MapOpenInMapsButton/, "9a. Open in Maps on selected summary");
   assert.match(summarySrc, /Coordinates available/, "9b. coordinates fallback in summary");
   assert.match(liveSrc, /live-employee-tooltip-compact/, "9c. compact hover tooltip");
-  assert.ok(!liveSrc.includes("<Popup"), "9d. no large marker popup");
+  assert.match(liveSrc, /<Popup/, "9d. click popup for fuller details");
+  assert.match(liveSrc, /LiveEmployeeMapPopup/, "9e. popup content component");
   assert.ok(!liveSrc.includes("setZoom") && !/flyTo|setView/.test(liveSrc), "9g. marker click does not zoom/refit");
 }
 
@@ -209,7 +210,7 @@ const coimbatore = { user_id: 3, latitude: 11.0168, longitude: 76.9558, name: "C
   // 12. Markers remain mounted after zoom (no zoom/bounds filter)
   const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
   assert.ok(!/zoom\s*[<>]|bounds\.contains|visibleMarkers/.test(liveSrc), "12. markers not filtered by zoom");
-  assert.match(liveSrc, /key=\{String\(userId\)\}/, "12b. stable keys");
+  assert.match(liveSrc, /key=\{markerKey\}/, "12b. stable keys with stack support");
 }
 
 {

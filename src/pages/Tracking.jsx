@@ -9,6 +9,7 @@ import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import LiveMapMarkers from "../components/tracking/LiveMapMarkers";
 import LiveTrackingSelectedSummary from "../components/tracking/LiveTrackingSelectedSummary";
 import LiveMapPanController from "../components/tracking/LiveMapPanController";
+import LiveMapFullscreenController from "../components/tracking/LiveMapFullscreenController";
 import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
@@ -868,6 +869,9 @@ export default function Tracking() {
                                     ? "Employees appear in the roster until the first GPS update arrives."
                                     : null,
                             onRetry: () => loadData(true),
+                            onFitAll: () => setFitRequestId((n) => n + 1),
+                            fitAllDisabled: validMapLocations.length === 0,
+                            zoomControlPosition: "topleft",
                             fallbackAction: (
                                 <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
                                     Open route history
@@ -881,6 +885,7 @@ export default function Tracking() {
                                     refitMode="once"
                                     fitRequestId={fitRequestId}
                                 />
+                                <LiveMapFullscreenController locations={validMapLocations} />
                                 {selectedPanTarget ? (
                                     <LiveMapPanController
                                         lat={selectedPanTarget.lat}
@@ -892,6 +897,7 @@ export default function Tracking() {
                                     employees={mapEmployees}
                                     selectedUserId={selectedUserId}
                                     onSelect={selectEmployee}
+                                    onViewEmployee={openDrawer}
                                 />
                             </>
                         }

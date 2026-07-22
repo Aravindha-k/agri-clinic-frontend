@@ -1,13 +1,15 @@
 import { memo, useMemo } from "react";
-import { Marker, Tooltip } from "react-leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import MapEmployeeMarkerPane, {
   EMPLOYEE_MARKER_PANE,
 } from "../map/MapEmployeeMarkerPane";
+import LiveEmployeeMapPopup from "../map/LiveEmployeeMapPopup";
 import { empName } from "../../utils/trackingDisplay";
 import {
   canonicalGpsLabel,
   resolveCanonicalGpsStatusKey,
+  canonicalDutyLabel,
   getDutyStatusColor,
   isOnDutyWorking,
   dedupeLiveEmployees,
@@ -19,6 +21,7 @@ import {
   buildLiveMarkerAriaLabel,
   resolveLiveLocationDisplay,
 } from "../../utils/liveEmployeeMarkerMeta";
+import { spreadStackedEmployeeMarkers } from "../../utils/liveMapCamera";
 import { BRAND } from "../../theme/brand";
 import "../../utils/leafletSetup";
 
@@ -109,9 +112,9 @@ function LiveEmployeeCompactTooltip({ name, code, locationLabel, gpsLabel, relat
 }
 
 /**
- * One latest-location marker per active employee — always mounted at every zoom.
+ * One latest-location marker per active employee — icon only; tooltip on hover; popup on click.
  */
-function LiveMapMarkers({ employees, selectedUserId = null, onSelect }) {
+function LiveMapMarkers({ employees, selectedUserId = null, onSelect, onViewEmployee }) {
   const mappable = useMemo(() => {
     const active = dedupeLiveEmployees(employees).filter(isOnDutyWorking);
     return active.filter(
@@ -123,19 +126,23 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect }) {
     );
   }, [employees]);
 
-  if (!mappable.length) return null;
+  const markerEntries = useMemo(
+    () => spreadStackedEmployeeMarkers(mappable),
+    [mappable]
+  );
+
+  if (!markerEntries.length) return null;
 
   return (
     <>
       <MapEmployeeMarkerPane />
-      {mappable.map((emp) => {
+      {markerEntries.map(({ emp, lat, lng, stacked, stackSize }) => {
         const userId = emp.user_id ?? emp.id;
-        const lat = Number(emp.latitude);
-        const lng = Number(emp.longitude);
         const name = empName(emp);
         const code = emp.employee_code ?? emp.employee_id ?? null;
         const gpsKey = resolveCanonicalGpsStatusKey(emp);
         const gpsLabel = canonicalGpsLabel(emp);
+        const dutyLabel = canonicalDutyLabel(emp);
         const locationLabel =
           getLiveEmployeeLocationLabel(emp) ||
           resolveLiveLocationDisplay(emp, lat, lng).title;
@@ -149,10 +156,13 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect }) {
           relative: relativeTime,
         });
         const isSelected = selectedUserId != null && String(selectedUserId) === String(userId);
+        const routeHref =
+          userId != null ? `/tracking/routes?userId=${encodeURIComponent(String(userId))}` : null;
+        const markerKey = stacked ? `${userId}-stack-${lat.toFixed(5)}` : String(userId);
 
         return (
           <Marker
-            key={String(userId)}
+            key={markerKey}
             position={[lat, lng]}
             icon={getMarkerIcon(emp, isSelected)}
             pane={EMPLOYEE_MARKER_PANE}
@@ -176,11 +186,39 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect }) {
               <LiveEmployeeCompactTooltip
                 name={name}
                 code={code}
-                locationLabel={locationLabel}
+                locationLabel={
+                  stacked && stackSize > 1
+                    ? `${locationLabel} (${stackSize} at this spot)`
+                    : locationLabel
+                }
                 gpsLabel={gpsLabel}
                 relativeTime={relativeTime}
               />
             </Tooltip>
+            <Popup
+              className="live-employee-popup-pane"
+              maxWidth={320}
+              minWidth={220}
+              autoPan
+              autoPanPadding={[80, 100]}
+              closeButton
+            >
+              <LiveEmployeeMapPopup
+                name={name}
+                code={code}
+                emp={emp}
+                dutyLabel={dutyLabel}
+                gpsLabel={gpsLabel}
+                gpsKey={gpsKey}
+                lastKnownNote={gpsKey === "gps_offline" || gpsKey === "gps_stale"}
+                onViewEmployee={
+                  typeof onViewEmployee === "function"
+                    ? () => onViewEmployee(emp)
+                    : undefined
+                }
+                routeHref={routeHref}
+              />
+            </Popup>
           </Marker>
         );
       })}

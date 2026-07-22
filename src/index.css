@@ -3669,8 +3669,24 @@ textarea.input {
 }
 
 .admin-map-frame:fullscreen {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    min-height: 0;
     border-radius: 0;
     z-index: 9999;
+}
+
+.admin-map-frame--fullscreen-active {
+    z-index: 9999;
+}
+
+.admin-map-frame:fullscreen .admin-map-frame__leaflet,
+.admin-map-frame:fullscreen .admin-map-frame__leaflet.leaflet-container {
+    min-height: 0;
+    height: 100%;
 }
 
 .admin-map-frame__leaflet,
@@ -3705,6 +3721,13 @@ textarea.input {
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12) !important;
     border-radius: 12px !important;
     overflow: hidden;
+    margin-top: 12px !important;
+    margin-left: 12px !important;
+}
+
+.admin-map-frame:fullscreen .leaflet-control-zoom {
+    margin-top: 20px !important;
+    margin-left: 20px !important;
 }
 
 .admin-map-frame .leaflet-control-zoom a {
@@ -4158,6 +4181,63 @@ textarea.input {
 .admin-map-fullscreen-btn:hover {
     color: #0f766e;
     background: #f8fafc;
+}
+
+.admin-map-toolbar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.admin-map-frame:fullscreen .admin-map-toolbar {
+    top: 20px;
+    right: 20px;
+}
+
+.admin-map-toolbar__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    color: #475569;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(8px);
+    font-size: 12px;
+    font-weight: 600;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.admin-map-toolbar__btn:hover:not(:disabled) {
+    color: #0f766e;
+    background: #f8fafc;
+}
+
+.admin-map-toolbar__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.admin-map-toolbar__label {
+    line-height: 1;
+}
+
+.admin-map-frame:fullscreen .admin-map-legend {
+    bottom: 20px;
+    left: 20px;
+}
+
+.admin-map-frame:fullscreen .leaflet-control-attribution {
+    margin-right: 20px !important;
+    margin-bottom: 20px !important;
 }
 
 .admin-map-legend {
