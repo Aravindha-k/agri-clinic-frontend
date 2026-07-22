@@ -53,8 +53,8 @@ export function RouteEndpointMapLegend() {
  */
 export default function MapLegendPanel({ title = "Legend", children, className = "" }) {
   return (
-    <div className={`admin-map-legend ${className}`}>
-      <p className="admin-map-legend__title">{title}</p>
+    <div className={`admin-map-legend ${className}`.trim()}>
+      {title ? <p className="admin-map-legend__title">{title}</p> : null}
       {children}
     </div>
   );

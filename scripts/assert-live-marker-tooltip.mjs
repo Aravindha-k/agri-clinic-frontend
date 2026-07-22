@@ -1,5 +1,5 @@
 /**
- * Runtime checks for zoom-stable live employee markers + premium tooltip.
+ * Runtime checks for zoom-stable live employee markers + compact tooltip.
  * Run: node scripts/assert-live-marker-tooltip.mjs
  */
 import assert from "node:assert/strict";
@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => fs.readFileSync(path.join(root, rel), "utf8");
 
 const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
-const popupSrc = read("src/components/map/LiveEmployeeMapPopup.jsx");
+const selectedSrc = read("src/components/tracking/LiveTrackingSelectedSummary.jsx");
 const metaSrc = read("src/utils/liveEmployeeMarkerMeta.js");
 const css = read("src/index.css");
 const fitSrc = read("src/utils/mapCoordinates.js");
@@ -27,8 +27,9 @@ assert.match(liveSrc, /employeeMarkerPane|EMPLOYEE_MARKER_PANE/, "pane assignmen
 assert.match(fitSrc, /fitEmployeeBounds/, "6. Fit all helper present");
 assert.ok(!fitSrc.includes("gps_offline") && !fitSrc.includes("isOnline === false"), "6. Fit all does not exclude offline");
 assert.match(liveSrc, /Number\.isFinite/, "7. No-location (non-finite) excluded without fake marker");
-assert.match(popupSrc, /View Employee/, "click popup has View Employee");
+assert.match(selectedSrc, /View employee/, "selected summary has View employee");
 assert.match(css, /\.live-employee-marker-icon/, "DivIcon robust CSS");
 assert.match(metaSrc, /dutyLabel/, "aria includes duty");
+assert.match(liveSrc, /live-employee-tooltip-compact/, "compact tooltip content");
 
 console.log("All live marker zoom/tooltip assertions passed.");

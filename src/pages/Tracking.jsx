@@ -4,10 +4,11 @@ import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import AdminMapCard from "../components/map/AdminMapCard";
-import MapOpenInMapsButton from "../components/map/MapOpenInMapsButton";
 import { GpsStatusMapLegend } from "../components/map/MapLegendPanel";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import LiveMapMarkers from "../components/tracking/LiveMapMarkers";
+import LiveTrackingSelectedSummary from "../components/tracking/LiveTrackingSelectedSummary";
+import LiveMapPanController from "../components/tracking/LiveMapPanController";
 import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
@@ -65,6 +66,7 @@ import {
     Activity,
     Square,
     Maximize2,
+    RefreshCw,
 } from "lucide-react";
 import { forceEndEmployeeDuty, getTrackingLive } from "../api/adminTracking.api";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -147,7 +149,7 @@ function TrackingSkeleton() {
     );
 }
 
-function EmployeeRosterCard({ emp, onView }) {
+function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
     const c = getDutyStatusColor(emp);
     const dotMap = {
         green: "bg-emerald-500",
@@ -163,14 +165,15 @@ function EmployeeRosterCard({ emp, onView }) {
 
     return (
         <article
-            className="tracking-emp-card group"
-            onClick={() => onView(emp)}
+            className={`tracking-emp-card group${selected ? " tracking-emp-card--selected" : ""}`}
+            onClick={() => onSelect?.(emp)}
             role="button"
             tabIndex={0}
+            aria-pressed={selected}
             onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onView(emp);
+                    onSelect?.(emp);
                 }
             }}
         >
@@ -206,10 +209,10 @@ function EmployeeRosterCard({ emp, onView }) {
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onView(emp);
+                        onOpenDrawer?.(emp);
                     }}
                     className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                    aria-label={hasLoc ? `View ${empName(emp)} on map` : `View ${empName(emp)}`}
+                    aria-label={`Open ${empName(emp)} details`}
                 >
                     <Eye className="w-4 h-4" />
                 </button>
@@ -469,7 +472,7 @@ export default function Tracking() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("all");
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [selectedEmployee, setSelectedEmployee] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
     const [routeRefreshToken, setRouteRefreshToken] = useState(0);
@@ -483,7 +486,6 @@ export default function Tracking() {
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
-        setSelectedEmployee(null);
     }, []);
     useCloseOnRouteChange(closeDrawer, drawerOpen);
 
@@ -605,19 +607,38 @@ export default function Tracking() {
         [validMapLocations]
     );
 
-    const selectedMapPoint = useMemo(() => {
-        if (!selectedEmployee) return null;
-        const lat = Number(selectedEmployee.latitude);
-        const lng = Number(selectedEmployee.longitude);
+    const mapSelectedEmployee = useMemo(() => {
+        if (!selectedUserId) return null;
+        return (
+            activeEmployees.find(
+                (e) => String(e.user_id ?? e.id) === String(selectedUserId)
+            ) ?? null
+        );
+    }, [selectedUserId, activeEmployees]);
+
+    const selectEmployee = useCallback((emp) => {
+        const id = emp?.user_id ?? emp?.id;
+        if (id == null) return;
+        setSelectedUserId(String(id));
+    }, []);
+
+    const openDrawer = useCallback((emp) => {
+        selectEmployee(emp);
+        setDrawerOpen(true);
+    }, [selectEmployee]);
+
+    const selectedPanTarget = useMemo(() => {
+        if (!mapSelectedEmployee || !hasLiveMapLocation(mapSelectedEmployee)) return null;
+        const lat = Number(mapSelectedEmployee.latitude);
+        const lng = Number(mapSelectedEmployee.longitude);
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
         if (!isValidTamilNaduCoordinate(lat, lng)) return null;
-        return { lat, lng, name: empName(selectedEmployee) };
-    }, [selectedEmployee]);
-
-    const openDrawer = (emp) => {
-        setSelectedEmployee(emp);
-        setDrawerOpen(true);
-    };
+        return {
+            lat,
+            lng,
+            userId: mapSelectedEmployee.user_id ?? mapSelectedEmployee.id,
+        };
+    }, [mapSelectedEmployee]);
 
     const handleForceEndSuccess = useCallback(
         (userId, result) => {
@@ -634,15 +655,9 @@ export default function Tracking() {
                     };
                 })
             );
-            setSelectedEmployee((prev) => {
-                if (!prev || String(prev.user_id ?? prev.id) !== String(userId)) return prev;
-                return {
-                    ...prev,
-                    is_on_duty: false,
-                    duty_status: "ADMIN_ENDED",
-                    work_status: "ADMIN_ENDED",
-                    end_reason: reason ?? "ADMIN_ENDED",
-                };
+            setSelectedUserId((prev) => {
+                if (!prev || String(prev) !== String(userId)) return prev;
+                return null;
             });
             setRouteRefreshToken((n) => n + 1);
             loadData(true);
@@ -789,11 +804,7 @@ export default function Tracking() {
                     <AdminMapCard
                         className="tracking-map-panel"
                         title="Live employee locations"
-                        subtitle={
-                            validMapLocations.length > 0
-                                ? `${validMapLocations.length} active employee${validMapLocations.length === 1 ? "" : "s"} with valid locations`
-                                : `${activeEmployees.length} active · waiting for GPS`
-                        }
+                        subtitle={`${activeEmployees.length} active employee${activeEmployees.length === 1 ? "" : "s"} · ${dutyStats.gps_active} online · ${dutyStats.gps_offline} offline`}
                         showOpenInMaps={false}
                         headerActions={
                             <>
@@ -806,45 +817,56 @@ export default function Tracking() {
                                     <Maximize2 className="w-3.5 h-3.5" aria-hidden="true" />
                                     Fit all
                                 </button>
-                                {selectedMapPoint ? (
-                                    <MapOpenInMapsButton
-                                        lat={selectedMapPoint.lat}
-                                        lng={selectedMapPoint.lng}
-                                        ariaLabel={`Open ${selectedMapPoint.name} location in Google Maps`}
-                                    />
-                                ) : null}
+                                <button
+                                    type="button"
+                                    onClick={() => loadData(true)}
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={refreshing}
+                                    aria-label="Refresh employee locations now"
+                                >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+                                    Refresh
+                                </button>
                                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                                     <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" aria-hidden="true" />
                                     60s refresh
                                 </span>
                             </>
                         }
-                        footerMessage="Markers show each active employee's latest valid location."
+                        beforeMap={
+                            mapSelectedEmployee ? (
+                                <LiveTrackingSelectedSummary
+                                    employee={mapSelectedEmployee}
+                                    onViewDetails={openDrawer}
+                                />
+                            ) : null
+                        }
+                        footerMessage="Markers show each active employee's latest valid location. Offline employees remain visible at their last known position."
+                        footerIcon={Navigation}
+                        mapSize="live"
                         mapProps={{
                             center: validMapLocations.length ? mapCenter : TAMIL_NADU_CENTER,
                             zoom: validMapLocations.length ? mapZoom : TAMIL_NADU_ZOOM,
                             mapKey: "live-tracking-active",
                             legend: <GpsStatusMapLegend />,
-                            legendTitle: "Employee GPS",
+                            legendTitle: "",
                             loading: loading && activeEmployees.length === 0,
-                            loadingLabel: "Updating live locations…",
+                            loadingLabel: "Updating employee locations…",
                             statusMessage:
                                 showingCachedLive
-                                    ? "Showing the last known location."
+                                    ? "Live updates are temporarily unavailable. Showing the last known locations."
                                     : error
-                                      ? "Live updates are temporarily unavailable."
+                                      ? "Live updates are temporarily unavailable. Showing the last known locations."
                                       : !loading && activeEmployees.length === 0
                                         ? "No employees are on an active workday."
                                         : !loading && mapEmployees.length === 0 && activeEmployees.length > 0
-                                          ? "No location has been received yet."
+                                          ? "No active employee locations have been received yet."
                                           : null,
                             statusTone: error || showingCachedLive ? "warn" : "info",
                             statusDetail:
                                 !loading && mapEmployees.length === 0 && activeEmployees.length > 0
                                     ? "Employees appear in the roster until the first GPS update arrives."
-                                    : showingCachedLive
-                                      ? "Markers will update when connectivity returns."
-                                      : null,
+                                    : null,
                             onRetry: () => loadData(true),
                             fallbackAction: (
                                 <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
@@ -854,22 +876,23 @@ export default function Tracking() {
                         }}
                         mapChildren={
                             <>
-                                <div className="tracking-map-overlay">
-                                    <span className="tracking-map-overlay__pill">
-                                        <Users className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
-                                        {mapEmployees.length} on map
-                                    </span>
-                                    <span className="tracking-map-overlay__pill">
-                                        <Activity className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
-                                        {dutyStats.gps_active} online
-                                    </span>
-                                </div>
                                 <MapEmployeeViewport
                                     locations={validMapLocations}
                                     refitMode="once"
                                     fitRequestId={fitRequestId}
                                 />
-                                <LiveMapMarkers employees={mapEmployees} onSelect={openDrawer} />
+                                {selectedPanTarget ? (
+                                    <LiveMapPanController
+                                        lat={selectedPanTarget.lat}
+                                        lng={selectedPanTarget.lng}
+                                        userId={selectedPanTarget.userId}
+                                    />
+                                ) : null}
+                                <LiveMapMarkers
+                                    employees={mapEmployees}
+                                    selectedUserId={selectedUserId}
+                                    onSelect={selectEmployee}
+                                />
                             </>
                         }
                     />
@@ -925,7 +948,9 @@ export default function Tracking() {
                                     <EmployeeRosterCard
                                         key={emp.user_id || emp.id || idx}
                                         emp={emp}
-                                        onView={openDrawer}
+                                        selected={String(selectedUserId) === String(emp.user_id ?? emp.id)}
+                                        onSelect={selectEmployee}
+                                        onOpenDrawer={openDrawer}
                                     />
                                 ))
                             ) : (
@@ -943,7 +968,7 @@ export default function Tracking() {
             </div>
 
             <EmployeeDrawer
-                employee={selectedEmployee}
+                employee={mapSelectedEmployee}
                 isOpen={drawerOpen}
                 onClose={closeDrawer}
                 onForceEndSuccess={handleForceEndSuccess}

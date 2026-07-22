@@ -1,16 +1,12 @@
 import { memo, useMemo } from "react";
-import { Marker, Popup, Tooltip } from "react-leaflet";
-import { Clock3, MapPin } from "lucide-react";
+import { Marker, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import LiveEmployeeMapPopup from "../map/LiveEmployeeMapPopup";
 import MapEmployeeMarkerPane, {
   EMPLOYEE_MARKER_PANE,
 } from "../map/MapEmployeeMarkerPane";
-import ProfileAvatar from "../ui/ProfileAvatar";
 import { empName } from "../../utils/trackingDisplay";
 import {
   canonicalGpsLabel,
-  canonicalDutyLabel,
   resolveCanonicalGpsStatusKey,
   getDutyStatusColor,
   isOnDutyWorking,
@@ -20,7 +16,6 @@ import {
   getLiveEmployeeLocationLabel,
   getLiveGpsRecordedAt,
   formatLiveRelativeTime,
-  formatLiveExactIstCompact,
   buildLiveMarkerAriaLabel,
   resolveLiveLocationDisplay,
 } from "../../utils/liveEmployeeMarkerMeta";
@@ -40,25 +35,32 @@ const markerColors = {
 
 /**
  * DivIcon pin without nested CSS transforms.
- * Leaflet positions markers with CSS transforms; a rotated child pin was causing
- * markers to vanish at some zoom levels during Leaflet zoom animations.
  */
-const createColoredIcon = (color, pulse = false, muted = false) => {
+const createColoredIcon = (color, { pulse = false, muted = false, selected = false } = {}) => {
   const opacity = muted ? MUTED_MARKER_OPACITY : 1;
   const fill = muted ? markerColors.slate : color;
   const stroke = "#ffffff";
+  const selectedClass = selected ? " live-employee-marker--selected" : "";
+  const scale = selected ? 1.1 : 1;
+  const w = Math.round(40 * scale);
+  const h = Math.round(48 * scale);
 
   return L.divIcon({
     className: "live-employee-marker-icon leaflet-interactive",
     html: `
-      <div class="live-employee-marker" style="opacity:${opacity};">
+      <div class="live-employee-marker${selectedClass}" style="opacity:${opacity};">
         <span class="live-employee-marker__hit" aria-hidden="true"></span>
         ${
           pulse
             ? `<span class="live-employee-marker__pulse" style="background:${color};" aria-hidden="true"></span>`
             : ""
         }
-        <svg class="live-employee-marker__pin" width="40" height="48" viewBox="0 0 40 48" aria-hidden="true" focusable="false">
+        ${
+          selected
+            ? `<span class="live-employee-marker__ring" aria-hidden="true"></span>`
+            : ""
+        }
+        <svg class="live-employee-marker__pin" width="${w}" height="${h}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">
           <path
             d="M20 46C20 46 6 30.5 6 18.5C6 10.5 12.3 4 20 4C27.7 4 34 10.5 34 18.5C34 30.5 20 46 20 46Z"
             fill="${fill}"
@@ -69,116 +71,47 @@ const createColoredIcon = (color, pulse = false, muted = false) => {
         </svg>
       </div>
     `,
-    iconSize: [40, 48],
-    iconAnchor: [20, 44],
-    popupAnchor: [0, -42],
-    tooltipAnchor: [0, -40],
+    iconSize: [w, h],
+    iconAnchor: [w / 2, h - 4],
+    tooltipAnchor: [0, -36],
   });
 };
 
 const iconCache = new Map();
 
-function getMarkerIcon(emp) {
+function getMarkerIcon(emp, selected = false) {
   const gps = resolveCanonicalGpsStatusKey(emp);
   const colorKey = getDutyStatusColor(emp);
   const muted = gps === "gps_stale" || gps === "gps_offline";
-  const pulse = colorKey === "green" && gps === "gps_active";
-  const cacheKey = `${colorKey}-${pulse}-${muted}-v3`;
+  const pulse = colorKey === "green" && gps === "gps_active" && !selected;
+  const cacheKey = `${colorKey}-${pulse}-${muted}-${selected ? "sel" : "base"}-v4`;
   if (!iconCache.has(cacheKey)) {
     iconCache.set(
       cacheKey,
-      createColoredIcon(markerColors[colorKey] ?? markerColors.gray, pulse, muted)
+      createColoredIcon(markerColors[colorKey] ?? markerColors.gray, { pulse, muted, selected })
     );
   }
   return iconCache.get(cacheKey);
 }
 
-function dutyChipClass(dutyLabel) {
-  const key = String(dutyLabel || "").toLowerCase();
-  if (key.includes("working") || key.includes("on duty")) return "live-employee-chip--duty-working";
-  if (key.includes("stopped") || key.includes("ended")) return "live-employee-chip--duty-muted";
-  return "live-employee-chip--duty-muted";
-}
-
-function gpsChipClass(gpsKey) {
-  switch (gpsKey) {
-    case "gps_active":
-      return "live-employee-chip--gps-online";
-    case "gps_stale":
-      return "live-employee-chip--gps-stale";
-    case "gps_offline":
-      return "live-employee-chip--gps-offline";
-    default:
-      return "live-employee-chip--gps-none";
-  }
-}
-
-function LiveEmployeeTooltipCard({
-  emp,
-  name,
-  code,
-  dutyLabel,
-  gpsLabel,
-  gpsKey,
-  locationLabel,
-  relativeTime,
-  exactTime,
-}) {
+function LiveEmployeeCompactTooltip({ name, code, locationLabel, gpsLabel, relativeTime }) {
   return (
-    <div className="live-employee-tooltip-card">
-      <div className="live-employee-tooltip-card__accent" aria-hidden="true" />
-      <div className="live-employee-tooltip-card__head">
-        <ProfileAvatar entity={emp} name={name} size="md" variant="neutral" />
-        <div className="live-employee-tooltip-card__identity min-w-0">
-          <p className="live-employee-tooltip-card__name">{name}</p>
-          {code ? <p className="live-employee-tooltip-card__code">{code}</p> : null}
-        </div>
-      </div>
-
-      <div className="live-employee-tooltip-card__chips">
-        {dutyLabel ? (
-          <span className={`live-employee-chip ${dutyChipClass(dutyLabel)}`}>
-            {String(dutyLabel).toUpperCase()}
-          </span>
-        ) : null}
-        {gpsLabel ? (
-          <span className={`live-employee-chip ${gpsChipClass(gpsKey)}`}>
-            GPS {String(gpsLabel).toUpperCase()}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="live-employee-tooltip-card__section">
-        <div className="live-employee-tooltip-card__section-label">
-          <MapPin className="live-employee-tooltip-card__icon" aria-hidden="true" />
-          Last known location
-        </div>
-        <p className="live-employee-tooltip-card__section-value">{locationLabel}</p>
-      </div>
-
-      {(relativeTime || exactTime) && (
-        <div className="live-employee-tooltip-card__section">
-          <div className="live-employee-tooltip-card__section-label">
-            <Clock3 className="live-employee-tooltip-card__icon" aria-hidden="true" />
-            Last updated
-          </div>
-          {relativeTime ? (
-            <p className="live-employee-tooltip-card__section-value">{relativeTime}</p>
-          ) : null}
-          {exactTime ? (
-            <p className="live-employee-tooltip-card__section-meta">{exactTime}</p>
-          ) : null}
-        </div>
-      )}
+    <div className="live-employee-tooltip-compact">
+      <p className="live-employee-tooltip-compact__name">{name}</p>
+      {code ? <p className="live-employee-tooltip-compact__code">{code}</p> : null}
+      <p className="live-employee-tooltip-compact__location">{locationLabel}</p>
+      <p className="live-employee-tooltip-compact__meta">
+        GPS {gpsLabel}
+        {relativeTime ? ` · ${relativeTime}` : ""}
+      </p>
     </div>
   );
 }
 
 /**
  * One latest-location marker per active employee — always mounted at every zoom.
- * Visibility depends only on active duty + valid coords (not zoom/bounds/GPS health).
  */
-function LiveMapMarkers({ employees, onSelect }) {
+function LiveMapMarkers({ employees, selectedUserId = null, onSelect }) {
   const mappable = useMemo(() => {
     const active = dedupeLiveEmployees(employees).filter(isOnDutyWorking);
     return active.filter(
@@ -203,80 +136,51 @@ function LiveMapMarkers({ employees, onSelect }) {
         const code = emp.employee_code ?? emp.employee_id ?? null;
         const gpsKey = resolveCanonicalGpsStatusKey(emp);
         const gpsLabel = canonicalGpsLabel(emp);
-        const dutyLabel = canonicalDutyLabel(emp);
         const locationLabel =
           getLiveEmployeeLocationLabel(emp) ||
           resolveLiveLocationDisplay(emp, lat, lng).title;
         const recordedAt = getLiveGpsRecordedAt(emp);
         const relativeTime = formatLiveRelativeTime(recordedAt);
-        const exactTime = formatLiveExactIstCompact(recordedAt);
         const ariaLabel = buildLiveMarkerAriaLabel({
           name,
           code,
-          dutyLabel,
+          dutyLabel: null,
           gpsLabel,
           relative: relativeTime,
         });
-        const lastKnownNote = gpsKey === "gps_offline" || gpsKey === "gps_stale";
-        const routeHref = `/tracking/routes?userId=${encodeURIComponent(String(userId))}`;
+        const isSelected = selectedUserId != null && String(selectedUserId) === String(userId);
 
         return (
           <Marker
             key={String(userId)}
             position={[lat, lng]}
-            icon={getMarkerIcon(emp)}
+            icon={getMarkerIcon(emp, isSelected)}
             pane={EMPLOYEE_MARKER_PANE}
             alt={ariaLabel}
             interactive={true}
             bubblingMouseEvents={false}
-            zIndexOffset={gpsKey === "gps_active" ? 200 : 100}
+            zIndexOffset={isSelected ? 400 : gpsKey === "gps_active" ? 200 : 100}
+            eventHandlers={{
+              click: () => onSelect?.(emp),
+            }}
           >
             <Tooltip
               direction="top"
-              offset={[0, -18]}
+              offset={[0, -14]}
               opacity={1}
               permanent={false}
               sticky={false}
-              interactive={true}
-              className="live-employee-tooltip"
+              interactive={false}
+              className="live-employee-tooltip live-employee-tooltip--compact"
             >
-              <LiveEmployeeTooltipCard
-                emp={emp}
+              <LiveEmployeeCompactTooltip
                 name={name}
                 code={code}
-                dutyLabel={dutyLabel}
-                gpsLabel={gpsLabel}
-                gpsKey={gpsKey}
                 locationLabel={locationLabel}
+                gpsLabel={gpsLabel}
                 relativeTime={relativeTime}
-                exactTime={exactTime}
               />
             </Tooltip>
-            <Popup
-              className="live-employee-popup-pane"
-              autoPan={true}
-              keepInView={true}
-              closeButton={true}
-              autoClose={true}
-              closeOnClick={false}
-              maxWidth={320}
-              minWidth={220}
-              autoPanPaddingTopLeft={[24, 120]}
-              autoPanPaddingBottomRight={[24, 24]}
-            >
-              <LiveEmployeeMapPopup
-                name={name}
-                code={code}
-                emp={emp}
-                dutyLabel={dutyLabel}
-                gpsLabel={gpsLabel}
-                gpsKey={gpsKey}
-                lastKnownNote={lastKnownNote}
-                onViewEmployee={() => onSelect?.(emp)}
-                routeHref={routeHref}
-                locationEnabled={true}
-              />
-            </Popup>
           </Marker>
         );
       })}

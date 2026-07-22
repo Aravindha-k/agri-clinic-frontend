@@ -19,7 +19,9 @@ export default function MapCanvas({
         ? "admin-map-shell--drawer"
         : size === "mini"
           ? "admin-map-shell--mini"
-          : "";
+          : size === "live"
+            ? "admin-map-shell--live"
+            : "";
 
   const shellStyle =
     height != null

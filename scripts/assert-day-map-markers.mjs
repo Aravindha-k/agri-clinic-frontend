@@ -215,16 +215,15 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   assert(!liveSrc.includes("transform:rotate") && !liveSrc.includes("transform: rotate"), "no CSS rotate on DivIcon pin (zoom-safe)");
   assert(liveSrc.includes("MUTED_MARKER_OPACITY = 0.9"), "offline styling keeps opacity >= 0.85");
   assert(liveSrc.includes("EMPLOYEE_MARKER_PANE") || liveSrc.includes("employeeMarkerPane"), "dedicated employee marker pane");
-  assert(liveSrc.includes("iconSize: [40, 48]"), "explicit DivIcon size");
-  assert(liveSrc.includes("iconAnchor: [20, 44]"), "explicit DivIcon anchor");
+  assert(liveSrc.includes("iconSize: [w, h]") || liveSrc.includes("iconSize: [40, 48]"), "explicit DivIcon size");
+  assert(liveSrc.includes("iconAnchor:"), "explicit DivIcon anchor");
   assert(liveSrc.includes("Tooltip"), "hover tooltip bound to live employee markers");
-  assert(liveSrc.includes('className="live-employee-tooltip"'), "tooltip uses custom class");
+  assert(liveSrc.includes("live-employee-tooltip"), "tooltip uses custom class");
   assert(liveSrc.includes('direction="top"'), "tooltip opens above marker");
-  assert(liveSrc.includes("offset={[0, -18]}"), "tooltip offset clears marker tip");
-  assert(liveSrc.includes("LiveEmployeeTooltipCard") || liveSrc.includes("live-employee-tooltip-card"), "tooltip content present");
-  assert(liveSrc.includes("live-employee-chip"), "duty and GPS appear as separate chips");
+  assert(liveSrc.includes("live-employee-tooltip-compact"), "compact tooltip content");
   assert(!liveSrc.includes("title={ariaLabel}"), "default browser title tooltip removed");
-  assert(liveSrc.includes("LiveEmployeeMapPopup"), "click popup uses live employee popup");
+  assert(liveSrc.includes("onSelect"), "marker click selects employee");
+  assert(!liveSrc.includes("LiveEmployeeMapPopup"), "large click popup removed from live markers");
   assert(liveSrc.includes("key={String(userId)}"), "one marker keyed by user ID");
   assert(!liveSrc.includes("fitBounds") && !liveSrc.includes("setView"), "hover/click does not refit the map");
   const routeSrc = read("src/components/tracking/EmployeeRouteMapView.jsx");
@@ -249,10 +248,11 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
     popupSrc.includes("formatLiveExactIstCompact") || popupSrc.includes("formatLiveExactIst"),
     "exact time uses Asia/Kolkata helper"
   );
+  const summarySrc = read("src/components/tracking/LiveTrackingSelectedSummary.jsx");
   assert(popupSrc.includes("View Employee"), "popup has View Employee");
   assert(popupSrc.includes("View Route History"), "popup has View Route History");
-  assert(liveSrcForPopup.includes("keepInView={true}"), "popup keepInView");
-  assert(liveSrcForPopup.includes("maxWidth={320}"), "popup maxWidth");
+  assert(summarySrc.includes("MapOpenInMapsButton"), "selected summary Open in Maps");
+  assert(summarySrc.includes("View employee"), "selected summary view employee");
 }
 
 {
@@ -269,7 +269,7 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   const css = read("src/index.css");
   assert(css.includes(".leaflet-tooltip.live-employee-tooltip"), "custom tooltip class styled");
   assert(css.includes("background: transparent !important") || css.includes("background:transparent !important"), "default Leaflet tooltip border removed");
-  assert(css.includes("live-employee-tooltip-card"), "inner tooltip card styled");
+  assert(css.includes("live-employee-tooltip-compact"), "compact tooltip styled");
   assert(css.includes(".live-employee-marker-icon"), "DivIcon CSS override present");
   assert(css.includes("overflow: visible") || css.includes("overflow:visible"), "marker overflow visible");
 }

@@ -178,15 +178,14 @@ const coimbatore = { user_id: 3, latitude: 11.0168, longitude: 76.9558, name: "C
 }
 
 {
-  // 9. Popup auto-pan below fixed map header
+  // 9. Selected summary + compact tooltip (no giant map popup)
+  const summarySrc = read("src/components/tracking/LiveTrackingSelectedSummary.jsx");
   const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
-  assert.match(liveSrc, /autoPan=\{true\}/, "9a. autoPan");
-  assert.match(liveSrc, /keepInView=\{true\}/, "9b. keepInView");
-  assert.match(liveSrc, /autoPanPaddingTopLeft=\{\[24,\s*120\]\}/, "9c. top padding 120 for header");
-  assert.match(liveSrc, /autoPanPaddingBottomRight=\{\[24,\s*24\]\}/, "9d. bottom padding");
-  assert.match(liveSrc, /maxWidth=\{320\}/, "9e. maxWidth 320");
-  assert.match(liveSrc, /closeButton=\{true\}/, "9f. closeButton");
-  assert.ok(!liveSrc.includes("setZoom") && !/flyTo|setView/.test(liveSrc), "9g. popup does not zoom/refit");
+  assert.match(summarySrc, /MapOpenInMapsButton/, "9a. Open in Maps on selected summary");
+  assert.match(summarySrc, /Coordinates available/, "9b. coordinates fallback in summary");
+  assert.match(liveSrc, /live-employee-tooltip-compact/, "9c. compact hover tooltip");
+  assert.ok(!liveSrc.includes("<Popup"), "9d. no large marker popup");
+  assert.ok(!liveSrc.includes("setZoom") && !/flyTo|setView/.test(liveSrc), "9g. marker click does not zoom/refit");
 }
 
 {

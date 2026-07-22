@@ -22,6 +22,7 @@ export default function AdminMapCard({
   mapChildren = null,
   className = "",
   headerClassName = "",
+  beforeMap = null,
 }) {
   return (
     <section className={`admin-map-card ${className}`.trim()} aria-label={title ?? "Map"}>
@@ -39,6 +40,8 @@ export default function AdminMapCard({
           className={headerClassName}
         />
       )}
+
+      {beforeMap}
 
       <MapCanvas size={mapSize} {...mapProps}>
         {mapChildren}
