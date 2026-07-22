@@ -157,15 +157,39 @@ export function liveGpsStatusToneClass(gpsKey) {
 
 /**
  * Accessible marker label.
- * @param {{ name: string, code?: string|null, gpsLabel: string, relative?: string|null }} parts
+ * @param {{ name: string, code?: string|null, dutyLabel?: string|null, gpsLabel: string, relative?: string|null }} parts
  * @returns {string}
  */
-export function buildLiveMarkerAriaLabel({ name, code, gpsLabel, relative }) {
+export function buildLiveMarkerAriaLabel({ name, code, dutyLabel, gpsLabel, relative }) {
   const bits = [name];
   if (code) bits.push(String(code));
+  if (dutyLabel) bits.push(String(dutyLabel));
   if (gpsLabel) bits.push(`GPS ${gpsLabel}`);
   if (relative) bits.push(`last updated ${relative}`);
   return bits.join(", ");
+}
+
+/**
+ * Compact exact IST for tooltip secondary line, e.g. "22 Jul 2026, 8:14 AM IST"
+ * @param {string|number|Date|null|undefined} value
+ * @returns {string|null}
+ */
+export function formatLiveExactIstCompact(value) {
+  if (value == null || value === "") return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const formatted = d.toLocaleString("en-IN", {
+    timeZone: BUSINESS_TIME_ZONE,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  return `${formatted} IST`;
 }
 
 export { LOCATION_UNAVAILABLE };

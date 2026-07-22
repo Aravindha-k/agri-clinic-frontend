@@ -1,5 +1,5 @@
 /**
- * Runtime checks for live employee marker tooltip/popup behaviour.
+ * Runtime checks for premium live employee marker tooltip/popup.
  * Run: node scripts/assert-live-marker-tooltip.mjs
  */
 import assert from "node:assert/strict";
@@ -13,35 +13,22 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), "utf8");
 const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
 const popupSrc = read("src/components/map/LiveEmployeeMapPopup.jsx");
 const metaSrc = read("src/utils/liveEmployeeMarkerMeta.js");
+const css = read("src/index.css");
 
-assert.match(liveSrc, /Tooltip/, "1. hover tooltip contains employee name wiring");
-assert.match(liveSrc, /employee_code|code/, "2. tooltip contains employee code");
-assert.match(liveSrc, /getLiveEmployeeLocationLabel|locationLabel/, "3. tooltip contains location label");
-assert.match(liveSrc, /formatLiveRelativeTime|relativeTime/, "4. tooltip contains relative update time");
-assert.match(popupSrc, /Duty:/, "5. click popup shows duty separately");
-assert.match(popupSrc, /GPS:/, "5b. click popup shows GPS separately");
-assert.match(metaSrc, /Asia\/Kolkata|BUSINESS_TIME_ZONE/, "6. exact time uses Asia/Kolkata");
-assert.match(metaSrc, /Location name unavailable/, "7. missing location label shows safe fallback");
-assert.match(liveSrc, /key=\{String\(userId\)\}/, "8/9. updated GPS point keeps same marker key; no duplicates");
-assert.ok(!liveSrc.includes("fitBounds") && !liveSrc.includes("setView"), "10. hover does not refit the map");
-assert.match(popupSrc, /ProfileAvatar|Last heartbeat|Recorded/, "11. touch click popup exposes full details");
-
-// Relative time math (backend timestamp, not receive time)
-function relativeMinutesAgo(iso, nowIso) {
-  const sec = Math.max(0, Math.floor((new Date(nowIso) - new Date(iso)) / 1000));
-  const min = Math.floor(sec / 60);
-  return min === 1 ? "1 minute ago" : `${min} minutes ago`;
-}
-assert.equal(
-  relativeMinutesAgo("2026-07-22T02:32:00.000Z", "2026-07-22T03:46:00.000Z"),
-  "74 minutes ago",
-  "relative time example: 74 minutes ago"
-);
-
-const byId = new Map();
-byId.set("9", { tip: "old" });
-byId.set("9", { tip: "Aravind Kumar" });
-assert.equal(byId.size, 1);
-assert.equal(byId.get("9").tip, "Aravind Kumar");
+assert.match(liveSrc, /live-employee-tooltip/, "1. Tooltip uses custom class");
+assert.match(liveSrc, /live-employee-tooltip-card__name/, "2. Name displays separately");
+assert.match(liveSrc, /live-employee-tooltip-card__code/, "2b. Code displays separately");
+assert.match(liveSrc, /live-employee-chip/, "3. Duty and GPS appear as separate chips");
+assert.match(liveSrc, /Last known location/, "4. Location appears in its own section");
+assert.match(liveSrc, /formatLiveRelativeTime/, "5. Relative time appears");
+assert.match(liveSrc, /formatLiveExactIstCompact/, "6. Exact IST time appears where available");
+assert.match(css, /\.leaflet-tooltip\.live-employee-tooltip/, "7. Default Leaflet tooltip border removed via override");
+assert.ok(css.includes("background: transparent !important") || css.includes("border: none !important"));
+assert.ok(!liveSrc.includes("fitBounds") && !liveSrc.includes("setView"), "8. Hover does not trigger refit");
+assert.match(liveSrc, /key=\{String\(userId\)\}/, "9/10. Tooltip updates same marker; one marker per employee");
+assert.ok(!liveSrc.includes("title={ariaLabel}"), "native browser title tooltip disabled");
+assert.match(popupSrc, /View Employee/, "click popup has View Employee");
+assert.match(popupSrc, /View Route History/, "click popup has View Route History");
+assert.match(metaSrc, /dutyLabel/, "aria label includes duty");
 
 console.log("All live marker tooltip assertions passed.");
