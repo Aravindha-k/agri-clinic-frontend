@@ -9,6 +9,7 @@ const MIN_REQUEST_INTERVAL_MS = 1100;
 const USER_AGENT = "KavyaAgriClinic/1.0 (admin-panel; contact@kavyaagri.local)";
 
 const memoryCache = new Map();
+const inflight = new Map();
 let lastRequestAt = 0;
 
 function cacheKey(lat, lng) {
@@ -101,48 +102,59 @@ export async function reverseGeocode(lat, lng) {
     return stored;
   }
 
-  const elapsed = Date.now() - lastRequestAt;
-  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
-    await new Promise((r) => setTimeout(r, MIN_REQUEST_INTERVAL_MS - elapsed));
+  if (inflight.has(key)) {
+    return inflight.get(key);
   }
-  lastRequestAt = Date.now();
 
-  const params = new URLSearchParams({
-    format: "jsonv2",
-    lat: String(la),
-    lon: String(ln),
-    addressdetails: "1",
-    "accept-language": "en",
+  const request = (async () => {
+    const elapsed = Date.now() - lastRequestAt;
+    if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+      await new Promise((r) => setTimeout(r, MIN_REQUEST_INTERVAL_MS - elapsed));
+    }
+    lastRequestAt = Date.now();
+
+    const params = new URLSearchParams({
+      format: "jsonv2",
+      lat: String(la),
+      lon: String(ln),
+      addressdetails: "1",
+      "accept-language": "en",
+    });
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
+      {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": USER_AGENT,
+        },
+      }
+    );
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const display = data?.display_name ? String(data.display_name) : "";
+    const parsed = parseNominatimAddress(data?.address || {});
+
+    if (!parsed.formatted_address && display) {
+      parsed.formatted_address = display;
+      if (!parsed.location_name) {
+        parsed.location_name = display.split(",")[0]?.trim() || "";
+      }
+    }
+
+    if (!parsed.formatted_address) return null;
+
+    memoryCache.set(key, parsed);
+    writeStorage(key, parsed);
+    return parsed;
+  })().finally(() => {
+    inflight.delete(key);
   });
 
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
-    {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": USER_AGENT,
-      },
-    }
-  );
-
-  if (!res.ok) return null;
-
-  const data = await res.json();
-  const display = data?.display_name ? String(data.display_name) : "";
-  const parsed = parseNominatimAddress(data?.address || {});
-
-  if (!parsed.formatted_address && display) {
-    parsed.formatted_address = display;
-    if (!parsed.location_name) {
-      parsed.location_name = display.split(",")[0]?.trim() || "";
-    }
-  }
-
-  if (!parsed.formatted_address) return null;
-
-  memoryCache.set(key, parsed);
-  writeStorage(key, parsed);
-  return parsed;
+  inflight.set(key, request);
+  return request;
 }
 
 /**

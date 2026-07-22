@@ -22,6 +22,7 @@ import {
   formatLiveRelativeTime,
   formatLiveExactIstCompact,
   buildLiveMarkerAriaLabel,
+  resolveLiveLocationDisplay,
 } from "../../utils/liveEmployeeMarkerMeta";
 import { BRAND } from "../../theme/brand";
 import "../../utils/leafletSetup";
@@ -203,7 +204,9 @@ function LiveMapMarkers({ employees, onSelect }) {
         const gpsKey = resolveCanonicalGpsStatusKey(emp);
         const gpsLabel = canonicalGpsLabel(emp);
         const dutyLabel = canonicalDutyLabel(emp);
-        const locationLabel = getLiveEmployeeLocationLabel(emp);
+        const locationLabel =
+          getLiveEmployeeLocationLabel(emp) ||
+          resolveLiveLocationDisplay(emp, lat, lng).title;
         const recordedAt = getLiveGpsRecordedAt(emp);
         const relativeTime = formatLiveRelativeTime(recordedAt);
         const exactTime = formatLiveExactIstCompact(recordedAt);
@@ -249,7 +252,18 @@ function LiveMapMarkers({ employees, onSelect }) {
                 exactTime={exactTime}
               />
             </Tooltip>
-            <Popup className="live-employee-popup-pane" autoPan={true}>
+            <Popup
+              className="live-employee-popup-pane"
+              autoPan={true}
+              keepInView={true}
+              closeButton={true}
+              autoClose={true}
+              closeOnClick={false}
+              maxWidth={320}
+              minWidth={220}
+              autoPanPaddingTopLeft={[16, 80]}
+              autoPanPaddingBottomRight={[16, 16]}
+            >
               <LiveEmployeeMapPopup
                 name={name}
                 code={code}
@@ -260,6 +274,7 @@ function LiveMapMarkers({ employees, onSelect }) {
                 lastKnownNote={lastKnownNote}
                 onViewEmployee={() => onSelect?.(emp)}
                 routeHref={routeHref}
+                locationEnabled={true}
               />
             </Popup>
           </Marker>

@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
-import { Clock3, MapPin, Route, UserRound } from "lucide-react";
+import { Clock3, Loader2, MapPin, Route, UserRound } from "lucide-react";
 import ProfileAvatar from "../ui/ProfileAvatar";
 import { formatCoordinates } from "../../utils/visitLocation";
+import { useLiveEmployeeLocation } from "../../hooks/useLiveEmployeeLocation";
 import {
-  getLiveEmployeeLocationLabel,
   getLiveGpsRecordedAt,
-  formatLiveExactIst,
+  formatLiveExactIstCompact,
   formatLiveRelativeTime,
-  LOCATION_UNAVAILABLE,
 } from "../../utils/liveEmployeeMarkerMeta";
 
 function dutyChipClass(dutyLabel) {
@@ -30,7 +29,7 @@ function gpsChipClass(gpsKey) {
 }
 
 /**
- * Detailed click/tap popup for live tracking markers.
+ * Responsive click/tap popup for live tracking markers.
  */
 export default function LiveEmployeeMapPopup({
   name,
@@ -42,27 +41,31 @@ export default function LiveEmployeeMapPopup({
   lastKnownNote = false,
   onViewEmployee,
   routeHref,
+  locationEnabled = true,
 }) {
-  const locationLabel = getLiveEmployeeLocationLabel(emp);
   const recordedAt = getLiveGpsRecordedAt(emp);
-  const exactTime = formatLiveExactIst(recordedAt);
+  const exactTime = formatLiveExactIstCompact(recordedAt);
   const relativeTime = formatLiveRelativeTime(recordedAt);
   const heartbeatIso = emp?.last_heartbeat_at ?? emp?.last_heartbeat ?? null;
-  const heartbeatExact = formatLiveExactIst(heartbeatIso);
+  const heartbeatExact = formatLiveExactIstCompact(heartbeatIso);
   const heartbeatRelative = formatLiveRelativeTime(heartbeatIso);
   const lat = Number(emp?.latitude);
   const lng = Number(emp?.longitude);
   const coordText =
     Number.isFinite(lat) && Number.isFinite(lng) ? formatCoordinates(lat, lng) : null;
 
+  const location = useLiveEmployeeLocation(emp, lat, lng, locationEnabled);
+
   return (
     <div className="live-employee-popup">
       <div className="live-employee-popup__accent" aria-hidden="true" />
 
       <div className="live-employee-popup__head">
-        <ProfileAvatar entity={emp} name={name} size="lg" variant="neutral" />
-        <div className="min-w-0">
-          <p className="live-employee-popup__name">{name}</p>
+        <ProfileAvatar entity={emp} name={name} size="md" variant="neutral" />
+        <div className="live-employee-popup__identity min-w-0">
+          <p className="live-employee-popup__name" title={name}>
+            {name}
+          </p>
           {code ? <p className="live-employee-popup__code">{code}</p> : null}
         </div>
       </div>
@@ -85,10 +88,17 @@ export default function LiveEmployeeMapPopup({
           <MapPin className="live-employee-popup__icon" aria-hidden="true" />
           Last known location
         </p>
-        <p className="live-employee-popup__section-value">
-          {locationLabel || LOCATION_UNAVAILABLE}
-        </p>
-        {coordText ? (
+        {location.loading ? (
+          <p className="live-employee-popup__muted live-employee-popup__resolving">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+            Resolving area name…
+          </p>
+        ) : (
+          <p className="live-employee-popup__section-value">{location.title}</p>
+        )}
+        {location.subtitle ? (
+          <p className="live-employee-popup__coords">{location.subtitle}</p>
+        ) : location.hasAreaName && coordText ? (
           <p className="live-employee-popup__coords">{coordText}</p>
         ) : null}
       </div>
@@ -99,8 +109,10 @@ export default function LiveEmployeeMapPopup({
             <Clock3 className="live-employee-popup__icon" aria-hidden="true" />
             Recorded
           </p>
-          {exactTime ? <p className="live-employee-popup__section-value">{exactTime}</p> : null}
-          {relativeTime ? <p className="live-employee-popup__muted">{relativeTime}</p> : null}
+          {relativeTime ? (
+            <p className="live-employee-popup__section-value">{relativeTime}</p>
+          ) : null}
+          {exactTime ? <p className="live-employee-popup__muted">{exactTime}</p> : null}
         </div>
       ) : null}
 
@@ -120,7 +132,11 @@ export default function LiveEmployeeMapPopup({
 
       <div className="live-employee-popup__actions">
         {typeof onViewEmployee === "function" ? (
-          <button type="button" className="live-employee-popup__btn live-employee-popup__btn--primary" onClick={onViewEmployee}>
+          <button
+            type="button"
+            className="live-employee-popup__btn live-employee-popup__btn--primary"
+            onClick={onViewEmployee}
+          >
             <UserRound className="w-3.5 h-3.5" aria-hidden="true" />
             View Employee
           </button>

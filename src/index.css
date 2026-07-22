@@ -1599,21 +1599,35 @@ textarea.input {
     margin-top: 2px;
 }
 
-/* Click popup */
+/* Click popup — responsive, stays in map viewport */
 .leaflet-popup.live-employee-popup-pane .leaflet-popup-content-wrapper {
     background: rgba(255, 255, 255, 0.98);
     border: 1px solid rgba(15, 118, 72, 0.16);
-    border-radius: 16px;
+    border-radius: 14px;
     box-shadow:
         0 16px 40px rgba(15, 40, 30, 0.18),
         0 2px 8px rgba(15, 40, 30, 0.08);
     padding: 0;
     overflow: hidden;
+    width: min(320px, calc(100vw - 48px));
+    max-width: min(320px, calc(100vw - 48px));
 }
 
 .leaflet-popup.live-employee-popup-pane .leaflet-popup-content {
     margin: 0;
-    min-width: 280px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.leaflet-popup.live-employee-popup-pane .leaflet-popup-close-button {
+    top: 8px !important;
+    right: 8px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 18px !important;
+    color: #64748b !important;
+    z-index: 2;
 }
 
 .leaflet-popup.live-employee-popup-pane .leaflet-popup-tip {
@@ -1624,12 +1638,18 @@ textarea.input {
 
 .live-employee-popup {
     position: relative;
-    padding: 16px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 14px 16px 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    min-width: 280px;
-    max-width: 320px;
+    gap: 10px;
+    max-height: min(420px, calc(100vh - 140px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .live-employee-popup__accent {
@@ -1644,15 +1664,25 @@ textarea.input {
 .live-employee-popup__head {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin-top: 2px;
+    padding-right: 24px;
+    min-width: 0;
+}
+
+.live-employee-popup__identity {
+    min-width: 0;
+    flex: 1;
 }
 
 .live-employee-popup__name {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: #10231b;
     line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .live-employee-popup__code {
@@ -1670,6 +1700,7 @@ textarea.input {
 .live-employee-popup__section {
     padding-top: 10px;
     border-top: 1px solid rgba(15, 118, 72, 0.08);
+    min-width: 0;
 }
 
 .live-employee-popup__section-label {
@@ -1695,20 +1726,32 @@ textarea.input {
     font-size: 13px;
     font-weight: 600;
     color: #10231b;
-    line-height: 1.35;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 .live-employee-popup__coords {
-    font-size: 10px;
+    font-size: 11px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     color: #94a3b8;
     margin-top: 4px;
+    word-break: break-all;
 }
 
 .live-employee-popup__muted {
     font-size: 12px;
     color: #718078;
     margin-top: 2px;
+}
+
+.live-employee-popup__resolving {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .live-employee-popup__note {
@@ -1724,7 +1767,7 @@ textarea.input {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding-top: 4px;
+    padding-top: 2px;
 }
 
 .live-employee-popup__btn {
@@ -1760,6 +1803,41 @@ textarea.input {
 
 .live-employee-popup__btn--secondary:hover {
     background: #e8f6ee;
+}
+
+@media (max-width: 768px) {
+    .leaflet-popup.live-employee-popup-pane .leaflet-popup-content-wrapper {
+        width: min(280px, calc(100vw - 32px));
+        max-width: min(280px, calc(100vw - 32px));
+    }
+
+    .live-employee-popup {
+        padding: 12px 14px;
+        gap: 10px;
+        max-height: min(380px, calc(100vh - 120px));
+    }
+
+    .live-employee-popup__name {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .leaflet-popup.live-employee-popup-pane .leaflet-popup-content-wrapper {
+        width: min(260px, calc(100vw - 24px));
+        max-width: min(260px, calc(100vw - 24px));
+        border-radius: 12px;
+    }
+
+    .live-employee-popup {
+        padding: 12px;
+        gap: 9px;
+        max-height: min(360px, calc(100vh - 110px));
+    }
+
+    .live-employee-popup__btn {
+        padding: 8px 10px;
+    }
 }
 
 /* ── Skeleton shimmer ── */

@@ -335,6 +335,13 @@ export function normalizeLiveEmployee(emp) {
   const dutyKey = resolveCanonicalDutyStatusKey(emp);
   const isOnDuty = dutyKey === "working";
 
+  const nestedLoc =
+    emp.last_location && typeof emp.last_location === "object"
+      ? emp.last_location
+      : emp.current_location && typeof emp.current_location === "object"
+        ? emp.current_location
+        : {};
+
   const normalized = {
     ...emp,
     user_id: emp.user_id ?? emp.employee_id ?? emp.id,
@@ -345,6 +352,16 @@ export function normalizeLiveEmployee(emp) {
     longitude: lng,
     last_latitude: lat,
     last_longitude: lng,
+    location_name:
+      emp.location_name ?? nestedLoc.location_name ?? nestedLoc.name ?? null,
+    area_name: emp.area_name ?? nestedLoc.area_name ?? null,
+    formatted_address:
+      emp.formatted_address ?? nestedLoc.formatted_address ?? nestedLoc.address ?? null,
+    locality: emp.locality ?? nestedLoc.locality ?? nestedLoc.city ?? null,
+    city: emp.city ?? nestedLoc.city ?? null,
+    district: emp.district ?? emp.district_name ?? nestedLoc.district ?? null,
+    state: emp.state ?? emp.state_name ?? nestedLoc.state ?? null,
+    branch_name: emp.branch_name ?? nestedLoc.branch_name ?? null,
     duty_status: dutyStatus,
     gps_status: emp.gps_status ?? null,
     gps_enabled: emp.gps_enabled,

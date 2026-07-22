@@ -1,13 +1,14 @@
 /**
  * Location label + Asia/Kolkata time helpers for live employee map markers.
- * Uses backend-provided area fields only — no reverse geocode on poll.
  */
 
 import { BUSINESS_TIME_ZONE, todayIsoDate } from "./businessDate";
 import { asDisplayString, DISPLAY_FALLBACK } from "./displayValue";
 import { getStoredMapLocationLabel } from "./mapLocationLabel";
+import { formatCoordinates } from "./visitLocation";
 
-const LOCATION_UNAVAILABLE = "Location name unavailable";
+export const LOCATION_UNAVAILABLE = "Location name unavailable";
+export const COORDINATES_AVAILABLE = "Coordinates available";
 
 function pickString(...values) {
   for (const v of values) {
@@ -18,40 +19,118 @@ function pickString(...values) {
 }
 
 /**
- * Preferred area/address label for live tracking markers.
+ * Flatten nested location bags the live API may send.
  * @param {object|null|undefined} emp
- * @returns {string}
+ * @returns {object}
+ */
+function locationFieldBag(emp) {
+  if (!emp || typeof emp !== "object") return {};
+  const nested = [
+    emp.last_location,
+    emp.current_location,
+    emp.live_location,
+    emp.location,
+    emp.geo,
+    emp.address,
+  ].filter((v) => v && typeof v === "object" && !Array.isArray(v));
+
+  return Object.assign({}, ...nested, emp);
+}
+
+/**
+ * Backend area/address label for live tracking (no reverse geocode).
+ * @param {object|null|undefined} emp
+ * @returns {string|null}
  */
 export function getLiveEmployeeLocationLabel(emp) {
-  if (!emp || typeof emp !== "object") return LOCATION_UNAVAILABLE;
+  if (!emp || typeof emp !== "object") return null;
 
-  const preferred = pickString(
-    emp.location_name,
-    emp.locationName,
-    emp.area_name,
-    emp.areaName,
-    emp.formatted_address,
-    emp.formattedAddress,
-    emp.locality,
-    emp.city,
-    emp.district,
-    emp.district_name,
-    emp.branch_name,
-    emp.branch,
-    emp.location_label,
-    emp.locationLabel
+  const bag = locationFieldBag(emp);
+
+  const primary = pickString(
+    bag.location_name,
+    bag.locationName,
+    bag.area_name,
+    bag.areaName,
+    bag.formatted_address,
+    bag.formattedAddress,
+    bag.locality,
+    bag.city,
+    bag.city_name,
+    bag.village_name,
+    bag.village,
+    bag.branch_name,
+    bag.branch,
+    bag.location_label,
+    bag.locationLabel
   );
 
-  if (preferred) {
-    const state = pickString(emp.state, emp.state_name);
-    if (state && !preferred.toLowerCase().includes(state.toLowerCase())) {
-      return `${preferred}, ${state}`;
+  const district = pickString(bag.district, bag.district_name);
+  const state = pickString(bag.state, bag.state_name);
+
+  if (primary) {
+    const parts = [primary];
+    if (state && !primary.toLowerCase().includes(state.toLowerCase())) {
+      parts.push(state);
+    } else if (
+      district &&
+      !primary.toLowerCase().includes(district.toLowerCase()) &&
+      !state
+    ) {
+      parts.push(district);
     }
-    return preferred;
+    return parts.join(", ");
   }
 
-  const stored = getStoredMapLocationLabel(emp);
-  return stored || LOCATION_UNAVAILABLE;
+  if (district) {
+    const districtLabel = /district$/i.test(district)
+      ? district
+      : `${district} District`;
+    if (state && !districtLabel.toLowerCase().includes(state.toLowerCase())) {
+      return `${districtLabel}, ${state}`;
+    }
+    return districtLabel;
+  }
+
+  if (state) return state;
+
+  const stored = getStoredMapLocationLabel(bag) || getStoredMapLocationLabel(emp);
+  return stored || null;
+}
+
+/**
+ * Display model for popup/tooltip location section.
+ * @param {object|null|undefined} emp
+ * @param {number|null|undefined} lat
+ * @param {number|null|undefined} lng
+ * @param {string|null|undefined} [resolvedAddress] — cached reverse-geocode result
+ * @returns {{ title: string, subtitle: string|null, hasAreaName: boolean }}
+ */
+export function resolveLiveLocationDisplay(emp, lat, lng, resolvedAddress = null) {
+  const backend = getLiveEmployeeLocationLabel(emp);
+  if (backend) {
+    return { title: backend, subtitle: null, hasAreaName: true };
+  }
+
+  const geocoded = pickString(resolvedAddress);
+  if (geocoded) {
+    return { title: geocoded, subtitle: null, hasAreaName: true };
+  }
+
+  const coords = formatCoordinates(lat, lng);
+  if (coords) {
+    return {
+      title: COORDINATES_AVAILABLE,
+      subtitle: coords,
+      hasAreaName: false,
+    };
+  }
+
+  return {
+    title: LOCATION_UNAVAILABLE,
+    subtitle: null,
+    hasAreaName: false,
+  };
 }
 
 /**
@@ -61,10 +140,13 @@ export function getLiveEmployeeLocationLabel(emp) {
  */
 export function getLiveGpsRecordedAt(emp) {
   if (!emp || typeof emp !== "object") return null;
+  const bag = locationFieldBag(emp);
   const iso =
     emp.location_recorded_at ??
     emp.last_gps_update ??
     emp.last_location_at ??
+    bag.recorded_at ??
+    bag.location_recorded_at ??
     emp.last_update ??
     emp.last_seen ??
     null;
@@ -75,8 +157,6 @@ export function getLiveGpsRecordedAt(emp) {
 
 /**
  * Exact time in Asia/Kolkata, e.g. "22 July 2026, 8:02 AM IST"
- * @param {string|number|Date|null|undefined} value
- * @returns {string|null}
  */
 export function formatLiveExactIst(value) {
   if (value == null || value === "") return null;
@@ -97,10 +177,28 @@ export function formatLiveExactIst(value) {
 }
 
 /**
+ * Compact exact IST, e.g. "22 Jul 2026, 8:02 AM IST"
+ */
+export function formatLiveExactIstCompact(value) {
+  if (value == null || value === "") return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const formatted = d.toLocaleString("en-IN", {
+    timeZone: BUSINESS_TIME_ZONE,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  return `${formatted} IST`;
+}
+
+/**
  * Relative time from backend timestamp.
- * @param {string|number|Date|null|undefined} value
- * @param {Date} [now]
- * @returns {string|null}
  */
 export function formatLiveRelativeTime(value, now = new Date()) {
   if (value == null || value === "") return null;
@@ -123,10 +221,7 @@ export function formatLiveRelativeTime(value, now = new Date()) {
   }
 
   const recordedDay = todayIsoDate(d);
-  const today = todayIsoDate(now);
-  const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const yesterday = todayIsoDate(yesterdayDate);
-
+  const yesterday = todayIsoDate(new Date(now.getTime() - 24 * 60 * 60 * 1000));
   if (recordedDay === yesterday) return "Yesterday";
 
   const days = Math.floor(hrs / 24);
@@ -134,14 +229,9 @@ export function formatLiveRelativeTime(value, now = new Date()) {
     return days === 1 ? "1 day ago" : `${days} days ago`;
   }
 
-  return formatLiveExactIst(d) ?? `${days} days ago`;
+  return formatLiveExactIstCompact(d) ?? `${days} days ago`;
 }
 
-/**
- * GPS status colour class for tooltip/popup.
- * @param {string} gpsKey — resolveCanonicalGpsStatusKey result
- * @returns {string}
- */
 export function liveGpsStatusToneClass(gpsKey) {
   switch (gpsKey) {
     case "gps_active":
@@ -155,11 +245,6 @@ export function liveGpsStatusToneClass(gpsKey) {
   }
 }
 
-/**
- * Accessible marker label.
- * @param {{ name: string, code?: string|null, dutyLabel?: string|null, gpsLabel: string, relative?: string|null }} parts
- * @returns {string}
- */
 export function buildLiveMarkerAriaLabel({ name, code, dutyLabel, gpsLabel, relative }) {
   const bits = [name];
   if (code) bits.push(String(code));
@@ -168,28 +253,3 @@ export function buildLiveMarkerAriaLabel({ name, code, dutyLabel, gpsLabel, rela
   if (relative) bits.push(`last updated ${relative}`);
   return bits.join(", ");
 }
-
-/**
- * Compact exact IST for tooltip secondary line, e.g. "22 Jul 2026, 8:14 AM IST"
- * @param {string|number|Date|null|undefined} value
- * @returns {string|null}
- */
-export function formatLiveExactIstCompact(value) {
-  if (value == null || value === "") return null;
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-
-  const formatted = d.toLocaleString("en-IN", {
-    timeZone: BUSINESS_TIME_ZONE,
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  return `${formatted} IST`;
-}
-
-export { LOCATION_UNAVAILABLE };

@@ -235,14 +235,24 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
 
 {
   const popupSrc = read("src/components/map/LiveEmployeeMapPopup.jsx");
+  const metaSrc = read("src/utils/liveEmployeeMarkerMeta.js");
+  const liveSrcForPopup = read("src/components/tracking/LiveMapMarkers.jsx");
   assert(popupSrc.includes("live-employee-chip"), "popup duty/GPS chips");
   assert(popupSrc.includes("Last known location"), "popup shows location section");
   assert(popupSrc.includes("Recorded"), "popup shows recorded time");
-  assert(popupSrc.includes("Location name unavailable") || popupSrc.includes("LOCATION_UNAVAILABLE"), "safe location fallback");
+  assert(
+    popupSrc.includes("useLiveEmployeeLocation") || metaSrc.includes("Coordinates available"),
+    "safe location fallback"
+  );
   assert(popupSrc.includes("ProfileAvatar"), "popup shows avatar");
-  assert(popupSrc.includes("formatLiveExactIst"), "exact time uses Asia/Kolkata helper");
+  assert(
+    popupSrc.includes("formatLiveExactIstCompact") || popupSrc.includes("formatLiveExactIst"),
+    "exact time uses Asia/Kolkata helper"
+  );
   assert(popupSrc.includes("View Employee"), "popup has View Employee");
   assert(popupSrc.includes("View Route History"), "popup has View Route History");
+  assert(liveSrcForPopup.includes("keepInView={true}"), "popup keepInView");
+  assert(liveSrcForPopup.includes("maxWidth={320}"), "popup maxWidth");
 }
 
 {
