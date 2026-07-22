@@ -230,7 +230,7 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   const routeSrc = read("src/components/tracking/EmployeeRouteMapView.jsx");
   assert(!routeSrc.includes("Polyline") && !routeSrc.includes("RouteContrastPolyline"), "no polyline on route map");
   const paneSrc = read("src/components/map/MapEmployeeMarkerPane.jsx");
-  assert(paneSrc.includes("650"), "employee marker pane z-index above tiles");
+  assert(paneSrc.includes("620"), "employee marker pane z-index above tiles");
 }
 
 {

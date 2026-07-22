@@ -48,15 +48,16 @@ const createColoredIcon = (color, pulse = false, muted = false) => {
   const stroke = "#ffffff";
 
   return L.divIcon({
-    className: "live-employee-marker-icon",
+    className: "live-employee-marker-icon leaflet-interactive",
     html: `
       <div class="live-employee-marker" style="opacity:${opacity};">
+        <span class="live-employee-marker__hit" aria-hidden="true"></span>
         ${
           pulse
             ? `<span class="live-employee-marker__pulse" style="background:${color};" aria-hidden="true"></span>`
             : ""
         }
-        <svg class="live-employee-marker__pin" width="40" height="48" viewBox="0 0 40 48" aria-hidden="true">
+        <svg class="live-employee-marker__pin" width="40" height="48" viewBox="0 0 40 48" aria-hidden="true" focusable="false">
           <path
             d="M20 46C20 46 6 30.5 6 18.5C6 10.5 12.3 4 20 4C27.7 4 34 10.5 34 18.5C34 30.5 20 46 20 46Z"
             fill="${fill}"
@@ -81,7 +82,7 @@ function getMarkerIcon(emp) {
   const colorKey = getDutyStatusColor(emp);
   const muted = gps === "gps_stale" || gps === "gps_offline";
   const pulse = colorKey === "green" && gps === "gps_active";
-  const cacheKey = `${colorKey}-${pulse}-${muted}-v2`;
+  const cacheKey = `${colorKey}-${pulse}-${muted}-v3`;
   if (!iconCache.has(cacheKey)) {
     iconCache.set(
       cacheKey,
@@ -223,17 +224,17 @@ function LiveMapMarkers({ employees, onSelect }) {
             icon={getMarkerIcon(emp)}
             pane={EMPLOYEE_MARKER_PANE}
             alt={ariaLabel}
+            interactive={true}
+            bubblingMouseEvents={false}
             zIndexOffset={gpsKey === "gps_active" ? 200 : 100}
-            eventHandlers={{
-              click: () => onSelect?.(emp),
-            }}
           >
             <Tooltip
               direction="top"
-              offset={[0, -14]}
+              offset={[0, -18]}
               opacity={1}
               permanent={false}
               sticky={false}
+              interactive={true}
               className="live-employee-tooltip"
             >
               <LiveEmployeeTooltipCard
@@ -248,7 +249,7 @@ function LiveMapMarkers({ employees, onSelect }) {
                 exactTime={exactTime}
               />
             </Tooltip>
-            <Popup className="live-employee-popup-pane">
+            <Popup className="live-employee-popup-pane" autoPan={true}>
               <LiveEmployeeMapPopup
                 name={name}
                 code={code}

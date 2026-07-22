@@ -1,17 +1,18 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { useMap } from "react-leaflet";
 
-/** Dedicated Leaflet pane above tiles, below popups/tooltips. */
+/** Above markerPane (600), below tooltipPane (650) / popupPane (700). */
 export const EMPLOYEE_MARKER_PANE = "employeeMarkerPane";
-export const EMPLOYEE_MARKER_PANE_Z_INDEX = "650";
+export const EMPLOYEE_MARKER_PANE_Z_INDEX = "620";
 
 /**
- * Ensures live employee markers render in a stable visible pane at every zoom.
+ * Create the employee marker pane synchronously before markers paint,
+ * so hover/click hit-testing works on first render.
  */
 export default function MapEmployeeMarkerPane() {
   const map = useMap();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!map) return undefined;
 
     let pane = map.getPane(EMPLOYEE_MARKER_PANE);

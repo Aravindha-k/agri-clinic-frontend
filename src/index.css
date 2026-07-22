@@ -1043,11 +1043,13 @@ textarea.input {
     }
 }
 
-/* Live employee DivIcon — no nested Leaflet-conflicting transforms on the pin */
+/* Live employee DivIcon — full hit target for hover tooltip / click popup */
 .live-employee-marker-icon {
     background: transparent !important;
     border: none !important;
     overflow: visible !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
 }
 
 .live-employee-marker {
@@ -1059,10 +1061,21 @@ textarea.input {
     /* Do not use transform here — Leaflet owns marker positioning transforms */
 }
 
+.live-employee-marker__hit {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: transparent;
+    pointer-events: auto;
+}
+
 .live-employee-marker__pin {
     display: block;
     width: 40px;
     height: 48px;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
     filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.35));
 }
 
@@ -1082,7 +1095,7 @@ textarea.input {
 }
 
 .leaflet-pane.leaflet-employeeMarkerPane-pane {
-    z-index: 650;
+    z-index: 620;
     pointer-events: auto;
 }
 
@@ -1432,8 +1445,11 @@ textarea.input {
     margin: 0;
     white-space: normal;
     color: inherit;
+    pointer-events: auto !important;
+    z-index: 650 !important;
 }
 
+.leaflet-tooltip.live-employee-tooltip.leaflet-tooltip-top:before,
 .leaflet-tooltip.live-employee-tooltip::before {
     content: "";
     position: absolute;
