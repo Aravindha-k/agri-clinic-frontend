@@ -1,19 +1,23 @@
 import { memo, useMemo } from "react";
-import { Marker, Popup } from "react-leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import LiveEmployeeMapPopup from "../map/LiveEmployeeMapPopup";
 import { empName } from "../../utils/trackingDisplay";
 import {
   canonicalGpsLabel,
   canonicalDutyLabel,
   resolveCanonicalGpsStatusKey,
   getDutyStatusColor,
-  formatLastGpsUpdate,
-  formatLastHeartbeat,
-  isGpsActiveStatus,
   isOnDutyWorking,
   dedupeLiveEmployees,
 } from "../../utils/dutyTracking";
+import {
+  getLiveEmployeeLocationLabel,
+  getLiveGpsRecordedAt,
+  formatLiveRelativeTime,
+  liveGpsStatusToneClass,
+  buildLiveMarkerAriaLabel,
+} from "../../utils/liveEmployeeMarkerMeta";
 import { BRAND } from "../../theme/brand";
 import "../../utils/leafletSetup";
 
@@ -68,8 +72,29 @@ function getMarkerIcon(emp) {
 }
 
 /**
+ * Compact hover tooltip — no reverse geocode, stored labels only.
+ */
+function LiveEmployeeTooltipContent({ name, code, locationLabel, relativeTime, gpsLabel, gpsKey }) {
+  const gpsTone = liveGpsStatusToneClass(gpsKey);
+  return (
+    <div className="live-marker-tooltip">
+      <strong className="live-marker-tooltip__name">{name}</strong>
+      {code ? <span className="live-marker-tooltip__code">{code}</span> : null}
+      <span className="live-marker-tooltip__location">{locationLabel}</span>
+      {relativeTime ? (
+        <span className="live-marker-tooltip__time">Last updated {relativeTime}</span>
+      ) : null}
+      {gpsLabel ? (
+        <span className={`live-marker-tooltip__gps ${gpsTone}`}>{gpsLabel}</span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * One latest-location marker per active employee.
  * Offline/Stale keep last known coords; no fake markers when never located.
+ * Hover → tooltip; click/tap → rich popup. Updates move the same marker.
  */
 function LiveMapMarkers({ employees, onSelect }) {
   const mappable = useMemo(() => {
@@ -85,49 +110,65 @@ function LiveMapMarkers({ employees, onSelect }) {
 
   if (!mappable.length) return null;
 
-  // One Marker per employee — no clustering (avoids missing cluster CSS / hidden icons).
   return (
     <>
       {mappable.map((emp) => {
         const userId = emp.user_id ?? emp.id;
         const lat = Number(emp.latitude);
         const lng = Number(emp.longitude);
-        const code = emp.employee_code ?? emp.employee_id;
-        const heartbeat = formatLastHeartbeat(emp);
-        const gps = resolveCanonicalGpsStatusKey(emp);
+        const name = empName(emp);
+        const code = emp.employee_code ?? emp.employee_id ?? null;
+        const gpsKey = resolveCanonicalGpsStatusKey(emp);
+        const gpsLabel = canonicalGpsLabel(emp);
+        const dutyLabel = canonicalDutyLabel(emp);
+        const locationLabel = getLiveEmployeeLocationLabel(emp);
+        const recordedAt = getLiveGpsRecordedAt(emp);
+        const relativeTime = formatLiveRelativeTime(recordedAt);
+        const ariaLabel = buildLiveMarkerAriaLabel({
+          name,
+          code,
+          gpsLabel,
+          relative: relativeTime,
+        });
+        const lastKnownNote = gpsKey === "gps_offline" || gpsKey === "gps_stale";
 
         return (
           <Marker
             key={String(userId)}
             position={[lat, lng]}
             icon={getMarkerIcon(emp)}
-            eventHandlers={{ click: () => onSelect?.(emp) }}
+            title={ariaLabel}
+            alt={ariaLabel}
+            eventHandlers={{
+              click: () => onSelect?.(emp),
+            }}
           >
+            <Tooltip
+              direction="top"
+              offset={[0, -12]}
+              opacity={1}
+              sticky={false}
+              className="live-marker-tooltip-pane"
+            >
+              <LiveEmployeeTooltipContent
+                name={name}
+                code={code}
+                locationLabel={locationLabel}
+                relativeTime={relativeTime}
+                gpsLabel={gpsLabel}
+                gpsKey={gpsKey}
+              />
+            </Tooltip>
             <Popup>
-              <EmployeeMapPopup
-                name={empName(emp)}
-                lat={lat}
-                lng={lng}
-                entity={emp}
-                statusLabel={canonicalGpsLabel(emp)}
-                statusOnline={isGpsActiveStatus(emp)}
-                workStatus={canonicalDutyLabel(emp)}
-                lastUpdated={formatLastGpsUpdate(emp)}
-              >
-                {code ? (
-                  <p className="text-[10px] text-gray-500">
-                    Code: <span className="font-medium text-gray-700">{code}</span>
-                  </p>
-                ) : null}
-                {heartbeat ? (
-                  <p className="text-[10px] text-gray-500">
-                    Heartbeat: <span className="font-medium text-gray-700">{heartbeat}</span>
-                  </p>
-                ) : null}
-                {gps === "gps_offline" || gps === "gps_stale" ? (
-                  <p className="text-[10px] text-amber-700">Showing the last known location.</p>
-                ) : null}
-              </EmployeeMapPopup>
+              <LiveEmployeeMapPopup
+                name={name}
+                code={code}
+                emp={emp}
+                dutyLabel={dutyLabel}
+                gpsLabel={gpsLabel}
+                gpsKey={gpsKey}
+                lastKnownNote={lastKnownNote}
+              />
             </Popup>
           </Marker>
         );

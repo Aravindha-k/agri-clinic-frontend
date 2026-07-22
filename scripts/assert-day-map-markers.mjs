@@ -211,8 +211,36 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
   assert(!liveSrc.includes("MarkerClusterGroup"), "live markers are not clustered (icons stay visible)");
   assert(!liveSrc.includes("Polyline") && !liveSrc.includes("polyline"), "no polyline in live markers");
+  assert(liveSrc.includes("Tooltip"), "hover tooltip bound to live employee markers");
+  assert(liveSrc.includes('direction="top"'), "tooltip opens above marker");
+  assert(liveSrc.includes("offset={[0, -12]}"), "tooltip offset clears marker tip");
+  assert(liveSrc.includes("LiveEmployeeTooltipContent") || liveSrc.includes("live-marker-tooltip"), "tooltip content present");
+  assert(liveSrc.includes("LiveEmployeeMapPopup"), "click popup uses live employee popup");
+  assert(liveSrc.includes("key={String(userId)}"), "one marker keyed by user ID");
+  assert(!liveSrc.includes("fitBounds") && !liveSrc.includes("setView"), "hover/click does not refit the map");
   const routeSrc = read("src/components/tracking/EmployeeRouteMapView.jsx");
   assert(!routeSrc.includes("Polyline") && !routeSrc.includes("RouteContrastPolyline"), "no polyline on route map");
+}
+
+{
+  const popupSrc = read("src/components/map/LiveEmployeeMapPopup.jsx");
+  assert(popupSrc.includes("Duty:"), "popup shows duty separately");
+  assert(popupSrc.includes("GPS:"), "popup shows GPS separately");
+  assert(popupSrc.includes("Last known location"), "popup shows location section");
+  assert(popupSrc.includes("Recorded"), "popup shows recorded time");
+  assert(popupSrc.includes("Location name unavailable") || popupSrc.includes("LOCATION_UNAVAILABLE"), "safe location fallback");
+  assert(popupSrc.includes("ProfileAvatar"), "popup shows avatar");
+  assert(popupSrc.includes("formatLiveExactIst"), "exact time uses Asia/Kolkata helper");
+}
+
+{
+  const metaSrc = read("src/utils/liveEmployeeMarkerMeta.js");
+  assert(metaSrc.includes("Asia/Kolkata") || metaSrc.includes("BUSINESS_TIME_ZONE"), "exact time uses Asia/Kolkata");
+  assert(metaSrc.includes("Location name unavailable"), "missing location label shows safe fallback");
+  assert(metaSrc.includes("minutes ago"), "relative update time formatting");
+  assert(metaSrc.includes("location_name"), "tooltip prefers location_name");
+  assert(metaSrc.includes("area_name"), "tooltip prefers area_name");
+  assert(!metaSrc.includes("reverseGeocode"), "no reverse geocode on live marker meta path");
 }
 
 assert(gpsFromAge({ ageMin: 24, hasCoords: true }) === "offline", "offline employee keeps coords conceptually");
