@@ -3,6 +3,9 @@ import { Marker, Popup, Tooltip } from "react-leaflet";
 import { Clock3, MapPin } from "lucide-react";
 import L from "leaflet";
 import LiveEmployeeMapPopup from "../map/LiveEmployeeMapPopup";
+import MapEmployeeMarkerPane, {
+  EMPLOYEE_MARKER_PANE,
+} from "../map/MapEmployeeMarkerPane";
 import ProfileAvatar from "../ui/ProfileAvatar";
 import { empName } from "../../utils/trackingDisplay";
 import {
@@ -23,38 +26,53 @@ import {
 import { BRAND } from "../../theme/brand";
 import "../../utils/leafletSetup";
 
+/** Offline/stale markers stay clearly visible (never fade out on zoom). */
+const MUTED_MARKER_OPACITY = 0.9;
+
 const markerColors = {
   green: BRAND.primaryLight,
   orange: "#f97316",
   red: BRAND.danger,
   gray: "#9ca3af",
-  slate: "#6b7280",
+  slate: "#64748b",
 };
 
-const createColoredIcon = (color, pulse = false, muted = false) =>
-  L.divIcon({
-    className: "",
+/**
+ * DivIcon pin without nested CSS transforms.
+ * Leaflet positions markers with CSS transforms; a rotated child pin was causing
+ * markers to vanish at some zoom levels during Leaflet zoom animations.
+ */
+const createColoredIcon = (color, pulse = false, muted = false) => {
+  const opacity = muted ? MUTED_MARKER_OPACITY : 1;
+  const fill = muted ? markerColors.slate : color;
+  const stroke = "#ffffff";
+
+  return L.divIcon({
+    className: "live-employee-marker-icon",
     html: `
-      <div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;opacity:${muted ? "0.72" : "1"};">
-        ${pulse ? `<div style="position:absolute;width:30px;height:30px;border-radius:50%;background:${color};opacity:0.22;animation:tracking-ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>` : ""}
-        <div style="
-          width:18px;height:18px;border-radius:50% 50% 50% 0;
-          transform:rotate(-45deg);
-          background:${color};
-          border:2.5px solid #fff;
-          box-shadow:0 0 0 1px rgba(15,23,42,0.3),0 3px 10px rgba(0,0,0,0.4);
-          position:relative;z-index:1;
-          filter:${muted ? "grayscale(0.35)" : "none"};
-        "></div>
-        <div style="
-          position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
-          width:6px;height:6px;border-radius:50%;background:#fff;opacity:0.9;z-index:2;
-        "></div>
+      <div class="live-employee-marker" style="opacity:${opacity};">
+        ${
+          pulse
+            ? `<span class="live-employee-marker__pulse" style="background:${color};" aria-hidden="true"></span>`
+            : ""
+        }
+        <svg class="live-employee-marker__pin" width="40" height="48" viewBox="0 0 40 48" aria-hidden="true">
+          <path
+            d="M20 46C20 46 6 30.5 6 18.5C6 10.5 12.3 4 20 4C27.7 4 34 10.5 34 18.5C34 30.5 20 46 20 46Z"
+            fill="${fill}"
+            stroke="${stroke}"
+            stroke-width="2.5"
+          />
+          <circle cx="20" cy="18.5" r="5" fill="${stroke}" opacity="0.95" />
+        </svg>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 30],
+    iconSize: [40, 48],
+    iconAnchor: [20, 44],
+    popupAnchor: [0, -42],
+    tooltipAnchor: [0, -40],
   });
+};
 
 const iconCache = new Map();
 
@@ -63,7 +81,7 @@ function getMarkerIcon(emp) {
   const colorKey = getDutyStatusColor(emp);
   const muted = gps === "gps_stale" || gps === "gps_offline";
   const pulse = colorKey === "green" && gps === "gps_active";
-  const cacheKey = `${colorKey}-${pulse}-${muted}`;
+  const cacheKey = `${colorKey}-${pulse}-${muted}-v2`;
   if (!iconCache.has(cacheKey)) {
     iconCache.set(
       cacheKey,
@@ -93,10 +111,6 @@ function gpsChipClass(gpsKey) {
   }
 }
 
-/**
- * Premium hover card — compact identity, chips, location, time.
- * No reverse geocode; no native browser title tooltip.
- */
 function LiveEmployeeTooltipCard({
   emp,
   name,
@@ -159,8 +173,8 @@ function LiveEmployeeTooltipCard({
 }
 
 /**
- * One latest-location marker per active employee.
- * Hover → premium card tooltip; click/tap → detailed popup.
+ * One latest-location marker per active employee — always mounted at every zoom.
+ * Visibility depends only on active duty + valid coords (not zoom/bounds/GPS health).
  */
 function LiveMapMarkers({ employees, onSelect }) {
   const mappable = useMemo(() => {
@@ -178,6 +192,7 @@ function LiveMapMarkers({ employees, onSelect }) {
 
   return (
     <>
+      <MapEmployeeMarkerPane />
       {mappable.map((emp) => {
         const userId = emp.user_id ?? emp.id;
         const lat = Number(emp.latitude);
@@ -206,7 +221,9 @@ function LiveMapMarkers({ employees, onSelect }) {
             key={String(userId)}
             position={[lat, lng]}
             icon={getMarkerIcon(emp)}
+            pane={EMPLOYEE_MARKER_PANE}
             alt={ariaLabel}
+            zIndexOffset={gpsKey === "gps_active" ? 200 : 100}
             eventHandlers={{
               click: () => onSelect?.(emp),
             }}

@@ -1033,10 +1033,57 @@ textarea.input {
 
 /* ── Live Tracking command center ── */
 @keyframes tracking-ping {
-    75%, 100% {
-        transform: scale(2.2);
-        opacity: 0;
+    0% {
+        opacity: 0.35;
+        transform: scale(1);
     }
+    75%, 100% {
+        opacity: 0;
+        transform: scale(2.2);
+    }
+}
+
+/* Live employee DivIcon — no nested Leaflet-conflicting transforms on the pin */
+.live-employee-marker-icon {
+    background: transparent !important;
+    border: none !important;
+    overflow: visible !important;
+}
+
+.live-employee-marker {
+    position: relative;
+    width: 40px;
+    height: 48px;
+    display: block;
+    pointer-events: auto;
+    /* Do not use transform here — Leaflet owns marker positioning transforms */
+}
+
+.live-employee-marker__pin {
+    display: block;
+    width: 40px;
+    height: 48px;
+    filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.35));
+}
+
+.live-employee-marker__pulse {
+    position: absolute;
+    left: 50%;
+    top: 14px;
+    width: 22px;
+    height: 22px;
+    margin-left: -11px;
+    margin-top: -11px;
+    border-radius: 50%;
+    opacity: 0.28;
+    animation: tracking-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.leaflet-pane.leaflet-employeeMarkerPane-pane {
+    z-index: 650;
+    pointer-events: auto;
 }
 
 .tracking-command {

@@ -211,6 +211,12 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
   assert(!liveSrc.includes("MarkerClusterGroup"), "live markers are not clustered (icons stay visible)");
   assert(!liveSrc.includes("Polyline") && !liveSrc.includes("polyline"), "no polyline in live markers");
+  assert(!/zoom\s*[<>]|bounds\.contains|visibleMarkers|filteredMarkers/.test(liveSrc), "no zoom/bounds filter hides markers");
+  assert(!liveSrc.includes("transform:rotate") && !liveSrc.includes("transform: rotate"), "no CSS rotate on DivIcon pin (zoom-safe)");
+  assert(liveSrc.includes("MUTED_MARKER_OPACITY = 0.9"), "offline styling keeps opacity >= 0.85");
+  assert(liveSrc.includes("EMPLOYEE_MARKER_PANE") || liveSrc.includes("employeeMarkerPane"), "dedicated employee marker pane");
+  assert(liveSrc.includes("iconSize: [40, 48]"), "explicit DivIcon size");
+  assert(liveSrc.includes("iconAnchor: [20, 44]"), "explicit DivIcon anchor");
   assert(liveSrc.includes("Tooltip"), "hover tooltip bound to live employee markers");
   assert(liveSrc.includes('className="live-employee-tooltip"'), "tooltip uses custom class");
   assert(liveSrc.includes('direction="top"'), "tooltip opens above marker");
@@ -223,6 +229,8 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   assert(!liveSrc.includes("fitBounds") && !liveSrc.includes("setView"), "hover/click does not refit the map");
   const routeSrc = read("src/components/tracking/EmployeeRouteMapView.jsx");
   assert(!routeSrc.includes("Polyline") && !routeSrc.includes("RouteContrastPolyline"), "no polyline on route map");
+  const paneSrc = read("src/components/map/MapEmployeeMarkerPane.jsx");
+  assert(paneSrc.includes("650"), "employee marker pane z-index above tiles");
 }
 
 {
@@ -252,6 +260,8 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   assert(css.includes(".leaflet-tooltip.live-employee-tooltip"), "custom tooltip class styled");
   assert(css.includes("background: transparent !important") || css.includes("background:transparent !important"), "default Leaflet tooltip border removed");
   assert(css.includes("live-employee-tooltip-card"), "inner tooltip card styled");
+  assert(css.includes(".live-employee-marker-icon"), "DivIcon CSS override present");
+  assert(css.includes("overflow: visible") || css.includes("overflow:visible"), "marker overflow visible");
 }
 
 assert(gpsFromAge({ ageMin: 24, hasCoords: true }) === "offline", "offline employee keeps coords conceptually");

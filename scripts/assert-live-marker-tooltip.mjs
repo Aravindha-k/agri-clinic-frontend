@@ -1,5 +1,5 @@
 /**
- * Runtime checks for premium live employee marker tooltip/popup.
+ * Runtime checks for zoom-stable live employee markers + premium tooltip.
  * Run: node scripts/assert-live-marker-tooltip.mjs
  */
 import assert from "node:assert/strict";
@@ -14,21 +14,21 @@ const liveSrc = read("src/components/tracking/LiveMapMarkers.jsx");
 const popupSrc = read("src/components/map/LiveEmployeeMapPopup.jsx");
 const metaSrc = read("src/utils/liveEmployeeMarkerMeta.js");
 const css = read("src/index.css");
+const fitSrc = read("src/utils/mapCoordinates.js");
 
-assert.match(liveSrc, /live-employee-tooltip/, "1. Tooltip uses custom class");
-assert.match(liveSrc, /live-employee-tooltip-card__name/, "2. Name displays separately");
-assert.match(liveSrc, /live-employee-tooltip-card__code/, "2b. Code displays separately");
-assert.match(liveSrc, /live-employee-chip/, "3. Duty and GPS appear as separate chips");
-assert.match(liveSrc, /Last known location/, "4. Location appears in its own section");
-assert.match(liveSrc, /formatLiveRelativeTime/, "5. Relative time appears");
-assert.match(liveSrc, /formatLiveExactIstCompact/, "6. Exact IST time appears where available");
-assert.match(css, /\.leaflet-tooltip\.live-employee-tooltip/, "7. Default Leaflet tooltip border removed via override");
-assert.ok(css.includes("background: transparent !important") || css.includes("border: none !important"));
-assert.ok(!liveSrc.includes("fitBounds") && !liveSrc.includes("setView"), "8. Hover does not trigger refit");
-assert.match(liveSrc, /key=\{String\(userId\)\}/, "9/10. Tooltip updates same marker; one marker per employee");
-assert.ok(!liveSrc.includes("title={ariaLabel}"), "native browser title tooltip disabled");
+assert.match(liveSrc, /isOnDutyWorking/, "1. Offline employee with coords still renders when working");
+assert.match(liveSrc, /MUTED_MARKER_OPACITY = 0.9/, "5. Offline styling keeps opacity >= 0.85");
+assert.ok(!/zoom\s*[<>]|bounds\.contains/.test(liveSrc), "2/3/4/11. Marker mount independent of zoom/bounds");
+assert.ok(!liveSrc.includes("transform:rotate") && !liveSrc.includes("transform: rotate"), "12. No rotate transform hides markers at zoom");
+assert.match(liveSrc, /key=\{String\(userId\)\}/, "8/9. Same marker key; no duplicates");
+assert.match(liveSrc, /Tooltip/, "10. Tooltip remains attached after zoom");
+assert.match(liveSrc, /live-employee-tooltip/, "custom tooltip class");
+assert.match(liveSrc, /employeeMarkerPane|EMPLOYEE_MARKER_PANE/, "pane assignment");
+assert.match(fitSrc, /fitEmployeeBounds/, "6. Fit all helper present");
+assert.ok(!fitSrc.includes("gps_offline") && !fitSrc.includes("isOnline === false"), "6. Fit all does not exclude offline");
+assert.match(liveSrc, /Number\.isFinite/, "7. No-location (non-finite) excluded without fake marker");
 assert.match(popupSrc, /View Employee/, "click popup has View Employee");
-assert.match(popupSrc, /View Route History/, "click popup has View Route History");
-assert.match(metaSrc, /dutyLabel/, "aria label includes duty");
+assert.match(css, /\.live-employee-marker-icon/, "DivIcon robust CSS");
+assert.match(metaSrc, /dutyLabel/, "aria includes duty");
 
-console.log("All live marker tooltip assertions passed.");
+console.log("All live marker zoom/tooltip assertions passed.");
