@@ -1,11 +1,13 @@
-import { MapContainer, Marker, Popup } from "react-leaflet";
+import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import MapBasemapLayers from "../map/MapBasemapLayers";
-import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import AdminMapCard from "../map/AdminMapCard";
 import MapEmployeeViewport from "../map/MapEmployeeViewport";
+import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import { GpsStatusMapLegend } from "../map/MapLegendPanel";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
 import { BRAND } from "../../theme/brand";
-import { Radio, MapPin } from "lucide-react";
+import { Radio } from "lucide-react";
+import "../../utils/leafletSetup";
 
 const createMarkerIcon = (isOnline) =>
   L.divIcon({
@@ -14,25 +16,6 @@ const createMarkerIcon = (isOnline) =>
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
-
-function SectionHeader({ icon: Icon, title, subtitle, right }) {
-  return (
-    <div className="section-card-header">
-      <div className="flex items-center gap-2.5 min-w-0">
-        {Icon && (
-          <div className="icon-box">
-            <Icon className="w-3.5 h-3.5" strokeWidth={2} />
-          </div>
-        )}
-        <div className="min-w-0">
-          <h3 className="section-title">{title}</h3>
-          {subtitle && <p className="section-subtitle">{subtitle}</p>}
-        </div>
-      </div>
-      {right}
-    </div>
-  );
-}
 
 export default function DashboardLiveMap({
   mapCenter,
@@ -62,47 +45,51 @@ export default function DashboardLiveMap({
     typeof formatRelative === "function" ? formatRelative : () => "\u2014";
   const mappedCount = mappedGeoCount ?? safeLocations.length;
 
+  const emptyMessage = hasTrackedEmployees
+    ? "No valid employee GPS location available yet."
+    : "No employees with valid GPS coordinates right now. Locations appear after field agents start their workday and share location.";
+
   return (
-    <div className="dashboard-section-card dashboard-section-card--map">
-      <SectionHeader
-        icon={MapPin}
-        title="Live Field Map"
-        subtitle={
-          mapStatusText ??
-          `${mappedCount} employee${mappedCount !== 1 ? "s" : ""} on map · ${workingNow ?? 0} working`
-        }
-        right={
-          <div className="flex items-center gap-3 flex-wrap justify-end">
-            <div className="dashboard-map-legend">
-              <span className="dashboard-map-legend__item">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
-                Online
-              </span>
-              <span className="dashboard-map-legend__item">
-                <span className="w-2 h-2 rounded-full bg-slate-300" aria-hidden="true" />
-                Offline
-              </span>
-            </div>
-            <div className="dashboard-map-live-badge">
-              <Radio className="w-3 h-3 text-emerald-600 animate-pulse" aria-hidden="true" />
-              <span className="dashboard-map-live-badge__text">LIVE</span>
-            </div>
+    <AdminMapCard
+      className="dashboard-section-card dashboard-section-card--map"
+      title="Live employee locations"
+      subtitle={
+        mapStatusText ??
+        `${mappedCount} employee${mappedCount !== 1 ? "s" : ""} on map · ${workingNow ?? 0} working`
+      }
+      showOpenInMaps={false}
+      headerActions={
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          <div className="dashboard-map-legend">
+            <span className="dashboard-map-legend__item">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+              Online
+            </span>
+            <span className="dashboard-map-legend__item">
+              <span className="w-2 h-2 rounded-full bg-slate-300" aria-hidden="true" />
+              Offline
+            </span>
           </div>
-        }
-      />
-      <div className="dashboard-map-frame">
-        <div
-          className="absolute top-0 left-0 right-0 h-10 z-[400] pointer-events-none"
-          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.65), transparent)" }}
-          aria-hidden="true"
-        />
-        <MapContainer
-          center={safeCenter}
-          zoom={safeZoom}
-          style={{ height: "100%", width: "100%" }}
-          scrollWheelZoom={false}
-        >
-          <MapBasemapLayers />
+          <div className="dashboard-map-live-badge">
+            <Radio className="w-3 h-3 text-emerald-600 animate-pulse" aria-hidden="true" />
+            <span className="dashboard-map-live-badge__text">LIVE</span>
+          </div>
+        </div>
+      }
+      footerMessage="Markers show each active employee's latest valid location."
+      mapSize="mini"
+      mapProps={{
+        center: safeCenter,
+        zoom: safeZoom,
+        mapKey: "dashboard-live-map",
+        scrollWheelZoom: false,
+        legend: <GpsStatusMapLegend />,
+        legendTitle: "Employee GPS",
+        showFullscreen: false,
+        statusMessage: mappedCount === 0 ? emptyMessage : null,
+      }}
+      mapChildren={
+        <>
           <MapEmployeeViewport locations={safeLocations} />
           {safeLocations.map((loc) => (
             <Marker
@@ -110,7 +97,7 @@ export default function DashboardLiveMap({
               position={[loc.lat, loc.lng]}
               icon={createMarkerIcon(loc.isOnline)}
             >
-              <Popup>
+              <Popup autoPan keepInView maxWidth={320}>
                 <EmployeeMapPopup
                   name={loc.employeeName}
                   lat={loc.lat}
@@ -123,17 +110,8 @@ export default function DashboardLiveMap({
               </Popup>
             </Marker>
           ))}
-        </MapContainer>
-        {mappedCount === 0 && (
-          <div className="dashboard-map-overlay">
-            <p className="dashboard-map-overlay__text">
-              {hasTrackedEmployees
-                ? "No valid employee GPS location available yet."
-                : "No employees with valid GPS coordinates right now. Locations appear after field agents start their workday and share location."}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }

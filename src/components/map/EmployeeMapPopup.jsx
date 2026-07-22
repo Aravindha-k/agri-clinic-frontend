@@ -1,6 +1,7 @@
-import { ExternalLink, Loader2, MapPin } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useMapLocationAddress } from "../../hooks/useMapLocationAddress";
 import { formatCoordinates } from "../../utils/visitLocation";
+import MapOpenInMapsButton from "./MapOpenInMapsButton";
 
 /**
  * Leaflet marker popup: name, status, last updated, address, coords, Maps link.
@@ -19,10 +20,7 @@ export default function EmployeeMapPopup({
 }) {
   const { addressLine, loading } = useMapLocationAddress(lat, lng, entity);
   const coordText = formatCoordinates(lat, lng);
-  const mapsUrl =
-    Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
-      ? `https://www.google.com/maps?q=${lat},${lng}`
-      : null;
+  const hasCoords = coordText != null;
 
   return (
     <div className="tracking-map-popup">
@@ -70,7 +68,7 @@ export default function EmployeeMapPopup({
             <span>{addressLine}</span>
           </p>
         ) : (
-          <p className="text-slate-500">Location name unavailable</p>
+          <p className="text-slate-500">Coordinates available</p>
         )}
         {coordText ? (
           <p className="text-[10px] text-slate-400 font-mono mt-1.5">
@@ -81,16 +79,12 @@ export default function EmployeeMapPopup({
 
       {children}
 
-      {mapsUrl ? (
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
-        >
-          Open in Maps
-          <ExternalLink className="w-3 h-3" aria-hidden="true" />
-        </a>
+      {hasCoords ? (
+        <MapOpenInMapsButton
+          lat={lat}
+          lng={lng}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 mt-2 !p-0 !border-0 !bg-transparent !shadow-none"
+        />
       ) : null}
     </div>
   );

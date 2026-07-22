@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import { RefreshCw, Radio } from "lucide-react";
-import AdminMapFrame from "../map/AdminMapFrame";
+import AdminMapCard from "../map/AdminMapCard";
 import { RouteEndpointMapLegend } from "../map/MapLegendPanel";
 import MapRouteViewport from "../map/MapRouteViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import { empName } from "../../utils/trackingDisplay";
 import "../../utils/leafletSetup";
 import {
   todayIsoDate,
@@ -14,6 +14,7 @@ import {
   computeRouteSummary,
 } from "../../utils/employeeRoute";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
+import { RefreshCw, Radio } from "lucide-react";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
@@ -97,6 +98,7 @@ export default function EmployeeRouteMapView({
   const zoom = markerCount === 1 ? 14 : markerCount > 1 ? 12 : TAMIL_NADU_ZOOM;
 
   const isDrawerVariant = variant === "tracking-drawer";
+  const employeeLabel = employee ? empName(employee) : "Employee";
 
   let statusMessage = null;
   let statusTone = "info";
@@ -105,7 +107,7 @@ export default function EmployeeRouteMapView({
   if (routeLoading && markerCount === 0) {
     statusMessage = "Updating day map…";
   } else if (routeError && markerCount > 0) {
-    statusMessage = "Unable to refresh. Showing the last available data.";
+    statusMessage = "Unable to refresh. Showing the last available map data.";
     statusTone = "warn";
   } else if (routeError && markerCount === 0) {
     statusMessage = "Unable to load day map right now.";
@@ -114,49 +116,53 @@ export default function EmployeeRouteMapView({
     statusMessage = "Showing the last available map data.";
     statusTone = "warn";
   } else if (!routeLoading && markerCount === 0) {
-    statusMessage = "No Start, Visit or End points were recorded for this day.";
+    statusMessage = "No location points were recorded.";
   } else if (markerCount === 1 && markers[0]?.type === "start") {
     statusMessage = "Only the start marker is available for this day so far.";
     statusTone = "info";
   }
 
+  const dateToolbar = (
+    <div
+      className={
+        isDrawerVariant
+          ? "tracking-drawer-route__toolbar"
+          : "flex flex-wrap items-center gap-3 bg-white rounded-xl p-3 border border-gray-100"
+      }
+      style={isDrawerVariant ? undefined : { boxShadow: SHADOW }}
+    >
+      <label className="text-xs font-medium text-gray-500" htmlFor={dateInputId}>
+        Route date
+      </label>
+      <input
+        id={dateInputId}
+        type="date"
+        value={routeDate}
+        max={todayIsoDate()}
+        disabled={routeLoading && markerCount === 0}
+        onChange={(e) => onRouteDateChange(e.target.value)}
+        className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-800 disabled:opacity-50"
+      />
+      <span className="text-xs text-gray-500 ml-auto flex items-center gap-2">
+        {autoSyncing || routeSyncing ? (
+          <span className="inline-flex items-center gap-1 text-emerald-600">
+            <Radio className={`w-3 h-3 ${routeSyncing ? "animate-pulse" : ""}`} />
+            {routeSyncing ? "Updating…" : "Live"}
+          </span>
+        ) : null}
+        {markerCount > 0
+          ? `${markerCount} marker${markerCount === 1 ? "" : "s"}`
+          : null}
+        {summary.visitCount > 0
+          ? ` · ${summary.visitCount} visit${summary.visitCount === 1 ? "" : "s"}`
+          : ""}
+      </span>
+    </div>
+  );
+
   return (
     <div className={isDrawerVariant ? "tracking-drawer-route" : "space-y-4"}>
-      <div
-        className={
-          isDrawerVariant
-            ? "tracking-drawer-route__toolbar"
-            : "flex flex-wrap items-center gap-3 bg-white rounded-xl p-3 border border-gray-100"
-        }
-        style={isDrawerVariant ? undefined : { boxShadow: SHADOW }}
-      >
-        <label className="text-xs font-medium text-gray-500" htmlFor={dateInputId}>
-          Route date
-        </label>
-        <input
-          id={dateInputId}
-          type="date"
-          value={routeDate}
-          max={todayIsoDate()}
-          disabled={routeLoading && markerCount === 0}
-          onChange={(e) => onRouteDateChange(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-gray-800 disabled:opacity-50"
-        />
-        <span className="text-xs text-gray-500 ml-auto flex items-center gap-2">
-          {autoSyncing || routeSyncing ? (
-            <span className="inline-flex items-center gap-1 text-emerald-600">
-              <Radio className={`w-3 h-3 ${routeSyncing ? "animate-pulse" : ""}`} />
-              {routeSyncing ? "Updating…" : "Live"}
-            </span>
-          ) : null}
-          {markerCount > 0
-            ? `${markerCount} marker${markerCount === 1 ? "" : "s"}`
-            : null}
-          {summary.visitCount > 0
-            ? ` · ${summary.visitCount} visit${summary.visitCount === 1 ? "" : "s"}`
-            : ""}
-        </span>
-      </div>
+      {dateToolbar}
 
       {markerCount > 0 ? (
         <div
@@ -186,56 +192,63 @@ export default function EmployeeRouteMapView({
         </div>
       ) : null}
 
-      <AdminMapFrame
-        center={center}
-        zoom={zoom}
-        mapKey={mapKey}
-        height={mapHeight}
-        className="rounded-xl border border-gray-200"
-        legend={<RouteEndpointMapLegend />}
-        legendTitle="Day markers"
-        loading={Boolean(routeLoading && markerCount === 0)}
-        loadingLabel="Updating day map…"
-        statusMessage={!routeLoading || markerCount > 0 ? statusMessage : null}
-        statusTone={statusTone}
-        statusDetail={statusDetail}
-        onRetry={onRetry}
-        fallbackAction={
-          onRetry ? (
+      <AdminMapCard
+        title="Employee route summary"
+        subtitle={`${employeeLabel} · ${routeDate ?? todayIsoDate()}`}
+        showOpenInMaps={false}
+        footerMessage="This map shows only Start, submitted Visit and End points for the selected day."
+        mapSize={isDrawerVariant ? "drawer" : "default"}
+        mapProps={{
+          center,
+          zoom,
+          mapKey,
+          height: mapHeight,
+          legend: <RouteEndpointMapLegend />,
+          legendTitle: "Day markers",
+          loading: Boolean(routeLoading && markerCount === 0),
+          loadingLabel: "Updating map…",
+          statusMessage: !routeLoading || markerCount > 0 ? statusMessage : null,
+          statusTone,
+          statusDetail,
+          onRetry,
+          fallbackAction: onRetry ? (
             <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
               <RefreshCw className="w-3.5 h-3.5" /> Refresh data
             </button>
-          ) : null
+          ) : null,
+        }}
+        mapChildren={
+          <>
+            <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
+            {markers.map((marker, idx) => (
+              <Marker
+                key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
+                position={[marker.latitude, marker.longitude]}
+                icon={routeIcon(
+                  MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
+                  marker.type === "visit" ? 16 : 18
+                )}
+              >
+                <Popup autoPan keepInView maxWidth={320}>
+                  <EmployeeMapPopup
+                    name={
+                      marker.type === "start"
+                        ? "Start"
+                        : marker.type === "end"
+                          ? "End"
+                          : marker.label || "Visit"
+                    }
+                    lat={marker.latitude}
+                    lng={marker.longitude}
+                    entity={marker}
+                    lastUpdated={formatRouteTimestamp(marker.captured_at)}
+                  />
+                </Popup>
+              </Marker>
+            ))}
+          </>
         }
-      >
-        <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
-        {markers.map((marker, idx) => (
-          <Marker
-            key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
-            position={[marker.latitude, marker.longitude]}
-            icon={routeIcon(
-              MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
-              marker.type === "visit" ? 16 : 18
-            )}
-          >
-            <Popup>
-              <EmployeeMapPopup
-                name={
-                  marker.type === "start"
-                    ? "Start"
-                    : marker.type === "end"
-                      ? "End"
-                      : marker.label || "Visit"
-                }
-                lat={marker.latitude}
-                lng={marker.longitude}
-                entity={marker}
-                lastUpdated={formatRouteTimestamp(marker.captured_at)}
-              />
-            </Popup>
-          </Marker>
-        ))}
-      </AdminMapFrame>
+      />
     </div>
   );
 }

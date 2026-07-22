@@ -9,7 +9,7 @@ import {
     TrendingUp, StickyNote, ImageIcon,
 } from "lucide-react";
 import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitFarmer";
-import RouteFallback from "../components/RouteFallback";
+import FarmerFieldLocationMap from "../components/map/FarmerFieldLocationMap";
 
 const FarmerVisitTrendChart = lazy(() => import("../components/farmers/FarmerVisitTrendChart"));
 import { resolveVisitCropDisplay, resolveVisitFieldNotes } from "../utils/visitDisplay";
@@ -719,6 +719,11 @@ export default function FarmerDetail() {
                                         <div className="farmer-detail-field-card__meta-value">{f.irrigation_type || "—"}</div>
                                     </div>
                                 </div>
+                                <FarmerFieldLocationMap
+                                    field={f}
+                                    fieldLabel={f.land_name || f.field_name || `Field ${i + 1}`}
+                                    className="mt-4"
+                                />
                             </div>
                         ))}
                     </div>

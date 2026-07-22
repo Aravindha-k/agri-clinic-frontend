@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Clock3, Loader2, MapPin, Route, UserRound } from "lucide-react";
 import ProfileAvatar from "../ui/ProfileAvatar";
+import MapOpenInMapsButton from "./MapOpenInMapsButton";
 import { formatCoordinates } from "../../utils/visitLocation";
 import { useLiveEmployeeLocation } from "../../hooks/useLiveEmployeeLocation";
 import {
@@ -128,6 +129,15 @@ export default function LiveEmployeeMapPopup({
 
       {lastKnownNote ? (
         <p className="live-employee-popup__note">Showing the last known location.</p>
+      ) : null}
+
+      {Number.isFinite(lat) && Number.isFinite(lng) ? (
+        <MapOpenInMapsButton
+          lat={lat}
+          lng={lng}
+          ariaLabel={`Open ${name} location in Google Maps`}
+          className="live-employee-popup__maps-link inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 !p-0 !border-0 !bg-transparent !shadow-none"
+        />
       ) : null}
 
       <div className="live-employee-popup__actions">

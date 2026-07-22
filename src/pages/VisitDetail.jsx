@@ -1,8 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { MapContainer, Marker } from "react-leaflet";
-import L from "leaflet";
-import MapBasemapLayers from "../components/map/MapBasemapLayers";
 import { getVisitDetail, updateVisit } from "../api/visit.api";
 import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
 import VisitLocationDisplay from "../components/visits/VisitLocationDisplay";
@@ -40,13 +37,6 @@ import {
     ShieldCheck,
     Image as ImageIcon,
 } from "lucide-react";
-
-const visitMarkerIcon = L.divIcon({
-    className: "",
-    html: `<div style="width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.4),0 2px 8px rgba(0,0,0,0.5);"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-});
 
 const fmtDate = (d) => {
     if (!d) return "—";
@@ -175,23 +165,6 @@ const Field = ({ label, value, editable, onChange, name, type = "text" }) => (
         )}
     </div>
 );
-
-function VisitLocationMap({ lat, lng }) {
-    return (
-        <div className="visit-report-map visit-report-map--lg">
-            <MapContainer
-                center={[lat, lng]}
-                zoom={15}
-                style={{ height: "100%", width: "100%" }}
-                scrollWheelZoom={false}
-                dragging={true}
-            >
-                <MapBasemapLayers />
-                <Marker position={[lat, lng]} icon={visitMarkerIcon} />
-            </MapContainer>
-        </div>
-    );
-}
 
 function resolveVisitPayload(res) {
     const raw = unwrapSuccessEnvelope(res) ?? res;
@@ -383,10 +356,6 @@ export default function VisitDetail(props) {
     const field = getFieldBlock(v);
     const crop = getCropBlock(v);
     const visitNotes = getVisitNotesBlock(v);
-
-    const mapsUrl = hasGps
-        ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
-        : null;
 
     const headerAttachmentCount =
         evidenceCount ?? resolveVisitAttachmentCount(data);
@@ -775,16 +744,7 @@ export default function VisitDetail(props) {
                                 />
                             </div>
                         ) : hasGps ? (
-                            <div className="visit-report-gps">
-                                <VisitLocationDisplay
-                                    visit={v}
-                                    coords={coords}
-                                    mapsUrl={mapsUrl}
-                                    mapSlot={
-                                        <VisitLocationMap lat={coords.lat} lng={coords.lng} />
-                                    }
-                                />
-                            </div>
+                            <VisitLocationDisplay visit={v} coords={coords} />
                         ) : (
                             <div className="visits-detail-alert visits-detail-alert--warning">
                                 <AlertCircle

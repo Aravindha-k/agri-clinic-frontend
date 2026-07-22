@@ -3,7 +3,8 @@ import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
-import AdminMapFrame from "../components/map/AdminMapFrame";
+import AdminMapCard from "../components/map/AdminMapCard";
+import MapOpenInMapsButton from "../components/map/MapOpenInMapsButton";
 import { GpsStatusMapLegend } from "../components/map/MapLegendPanel";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
 import LiveMapMarkers from "../components/tracking/LiveMapMarkers";
@@ -604,6 +605,15 @@ export default function Tracking() {
         [validMapLocations]
     );
 
+    const selectedMapPoint = useMemo(() => {
+        if (!selectedEmployee) return null;
+        const lat = Number(selectedEmployee.latitude);
+        const lng = Number(selectedEmployee.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        if (!isValidTamilNaduCoordinate(lat, lng)) return null;
+        return { lat, lng, name: empName(selectedEmployee) };
+    }, [selectedEmployee]);
+
     const openDrawer = (emp) => {
         setSelectedEmployee(emp);
         setDrawerOpen(true);
@@ -776,20 +786,17 @@ export default function Tracking() {
                 </div>
 
                 <div className="tracking-command-layout">
-                    <section className="tracking-map-panel" aria-label="Live map">
-                        <div className="tracking-map-panel__head">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="list-meta-icon list-meta-icon--crop">
-                                    <MapPin className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h2 className="text-sm font-bold text-slate-900">Live operations map</h2>
-                                    <p className="text-xs text-slate-500 truncate">
-                                        {mapEmployees.length} agents plotted · Tamil Nadu bounds
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
+                    <AdminMapCard
+                        className="tracking-map-panel"
+                        title="Live employee locations"
+                        subtitle={
+                            validMapLocations.length > 0
+                                ? `${validMapLocations.length} active employee${validMapLocations.length === 1 ? "" : "s"} with valid locations`
+                                : `${activeEmployees.length} active · waiting for GPS`
+                        }
+                        showOpenInMaps={false}
+                        headerActions={
+                            <>
                                 <button
                                     type="button"
                                     onClick={() => setFitRequestId((n) => n + 1)}
@@ -799,69 +806,73 @@ export default function Tracking() {
                                     <Maximize2 className="w-3.5 h-3.5" aria-hidden="true" />
                                     Fit all
                                 </button>
-                                <span className="inline-flex items-center gap-1.5">
+                                {selectedMapPoint ? (
+                                    <MapOpenInMapsButton
+                                        lat={selectedMapPoint.lat}
+                                        lng={selectedMapPoint.lng}
+                                        ariaLabel={`Open ${selectedMapPoint.name} location in Google Maps`}
+                                    />
+                                ) : null}
+                                <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                                     <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" aria-hidden="true" />
                                     60s refresh
                                 </span>
-                            </div>
-                        </div>
-
-                        <div className="tracking-map-panel__body">
-                            <div className="tracking-map-overlay">
-                                <span className="tracking-map-overlay__pill">
-                                    <Users className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
-                                    {mapEmployees.length} on map
-                                </span>
-                                <span className="tracking-map-overlay__pill">
-                                    <Activity className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
-                                    {dutyStats.gps_active} online
-                                </span>
-                            </div>
-
-                            <AdminMapFrame
-                                center={validMapLocations.length ? mapCenter : TAMIL_NADU_CENTER}
-                                zoom={validMapLocations.length ? mapZoom : TAMIL_NADU_ZOOM}
-                                height="100%"
-                                mapKey="live-tracking-active"
-                                legend={<GpsStatusMapLegend />}
-                                legendTitle="Employee GPS"
-                                loading={loading && activeEmployees.length === 0}
-                                loadingLabel="Updating live locations…"
-                                statusMessage={
-                                    showingCachedLive
-                                        ? "Showing the last known location."
-                                        : error
-                                          ? "Live updates are temporarily unavailable."
-                                          : !loading && activeEmployees.length === 0
-                                            ? "No employees are on an active workday."
-                                            : !loading && mapEmployees.length === 0 && activeEmployees.length > 0
-                                              ? "No location has been received yet."
-                                              : null
-                                }
-                                statusTone={error || showingCachedLive ? "warn" : "info"}
-                                statusDetail={
-                                    !loading && mapEmployees.length === 0 && activeEmployees.length > 0
-                                        ? "Employees appear in the roster until the first GPS update arrives."
-                                        : showingCachedLive
-                                          ? "Markers will update when connectivity returns."
-                                          : null
-                                }
-                                onRetry={() => loadData(true)}
-                                fallbackAction={
-                                    <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
-                                        Open route history
-                                    </Link>
-                                }
-                            >
+                            </>
+                        }
+                        footerMessage="Markers show each active employee's latest valid location."
+                        mapProps={{
+                            center: validMapLocations.length ? mapCenter : TAMIL_NADU_CENTER,
+                            zoom: validMapLocations.length ? mapZoom : TAMIL_NADU_ZOOM,
+                            mapKey: "live-tracking-active",
+                            legend: <GpsStatusMapLegend />,
+                            legendTitle: "Employee GPS",
+                            loading: loading && activeEmployees.length === 0,
+                            loadingLabel: "Updating live locations…",
+                            statusMessage:
+                                showingCachedLive
+                                    ? "Showing the last known location."
+                                    : error
+                                      ? "Live updates are temporarily unavailable."
+                                      : !loading && activeEmployees.length === 0
+                                        ? "No employees are on an active workday."
+                                        : !loading && mapEmployees.length === 0 && activeEmployees.length > 0
+                                          ? "No location has been received yet."
+                                          : null,
+                            statusTone: error || showingCachedLive ? "warn" : "info",
+                            statusDetail:
+                                !loading && mapEmployees.length === 0 && activeEmployees.length > 0
+                                    ? "Employees appear in the roster until the first GPS update arrives."
+                                    : showingCachedLive
+                                      ? "Markers will update when connectivity returns."
+                                      : null,
+                            onRetry: () => loadData(true),
+                            fallbackAction: (
+                                <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
+                                    Open route history
+                                </Link>
+                            ),
+                        }}
+                        mapChildren={
+                            <>
+                                <div className="tracking-map-overlay">
+                                    <span className="tracking-map-overlay__pill">
+                                        <Users className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                                        {mapEmployees.length} on map
+                                    </span>
+                                    <span className="tracking-map-overlay__pill">
+                                        <Activity className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
+                                        {dutyStats.gps_active} online
+                                    </span>
+                                </div>
                                 <MapEmployeeViewport
                                     locations={validMapLocations}
                                     refitMode="once"
                                     fitRequestId={fitRequestId}
                                 />
                                 <LiveMapMarkers employees={mapEmployees} onSelect={openDrawer} />
-                            </AdminMapFrame>
-                        </div>
-                    </section>
+                            </>
+                        }
+                    />
 
                     <aside className="tracking-roster-panel" aria-label="Employee roster">
                         <div className="tracking-roster-panel__head">

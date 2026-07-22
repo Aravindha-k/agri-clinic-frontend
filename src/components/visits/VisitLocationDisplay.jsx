@@ -1,72 +1,89 @@
-import { MapPin, Navigation, ExternalLink, Loader2 } from "lucide-react";
+import { Navigation } from "lucide-react";
+import { Marker, Popup } from "react-leaflet";
+import L from "leaflet";
 import { useVisitLocationAddress } from "../../hooks/useVisitLocationAddress";
-import { formatCoordinates } from "../../utils/visitLocation";
+import AdminMapCard from "../map/AdminMapCard";
+import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import { getStoredMapLocationLabel } from "../../utils/mapLocationLabel";
+import { formatRouteTimestamp } from "../../utils/employeeRoute";
+import "../../utils/leafletSetup";
+
+const visitMarkerIcon = L.divIcon({
+  className: "admin-map-single-marker",
+  html: `<div style="width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#059669;border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 3px 10px rgba(0,0,0,.35)"></div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 18],
+});
 
 /**
- * Human-readable visit location + coordinates + map link.
+ * Human-readable visit location + coordinates + shared admin map shell.
  */
 export default function VisitLocationDisplay({
   visit,
   coords,
-  mapsUrl,
   showMap = true,
-  mapSlot = null,
   proofNote = true,
 }) {
-  const { location, geocoding, geocodeFailed } = useVisitLocationAddress(visit);
-  const coordText = formatCoordinates(coords?.lat, coords?.lng);
+  const { location, geocoding } = useVisitLocationAddress(visit);
+  const storedLabel = getStoredMapLocationLabel(visit);
+  const locationLabel = location?.addressLine || storedLabel || null;
+
+  const footerMessage = proofNote
+    ? "GPS coordinates were captured for this visit and serve as field proof of location."
+    : null;
+
+  if (!coords) {
+    return <p className="text-sm text-slate-500">No coordinates on file.</p>;
+  }
+
+  const visitTitle = visit?.farmer_name
+    ? `Visit · ${visit.farmer_name}`
+    : "Visit location";
 
   return (
-    <div className="visit-report-gps">
-      {coordText ? (
-        <>
-          <div className="visit-report-gps__coords">
-            <div className="min-w-0 flex-1 space-y-2">
-              {geocoding ? (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <Loader2 className="w-4 h-4 animate-spin text-emerald-600" aria-hidden="true" />
-                  Resolving place name…
-                </div>
-              ) : location?.addressLine ? (
-                <p className="visit-report-gps__address">
-                  <MapPin className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{location.addressLine}</span>
-                </p>
-              ) : geocodeFailed ? (
-                <p className="text-sm text-slate-500 flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                  Place name unavailable for this GPS point
-                </p>
-              ) : null}
-
-              <p className="visit-report-gps__coord-text">{coordText}</p>
-            </div>
-
-            {mapsUrl && (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-secondary btn-sm shrink-0 inline-flex items-center gap-1"
-              >
-                Open in Maps
-                <ExternalLink className="w-3 h-3" aria-hidden="true" />
-              </a>
-            )}
-          </div>
-
-          {showMap && mapSlot}
-
-          {proofNote && (
-            <p className="visit-report-gps__proof">
-              <Navigation className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              GPS coordinates were captured for this visit and serve as field proof of location.
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="text-sm text-slate-500">No coordinates on file.</p>
-      )}
-    </div>
+    <AdminMapCard
+      title={visitTitle}
+      locationLabel={locationLabel ?? undefined}
+      lat={coords.lat}
+      lng={coords.lng}
+      locationLoading={geocoding}
+      mapsAriaLabel={
+        locationLabel
+          ? `Open ${locationLabel} location in Google Maps`
+          : `Open visit location at ${coords.lat}, ${coords.lng} in Google Maps`
+      }
+      footerMessage={footerMessage}
+      footerIcon={Navigation}
+      mapSize="compact"
+      mapProps={{
+        center: [coords.lat, coords.lng],
+        zoom: 14,
+        mapKey: `visit-${visit?.id ?? coords.lat}-${coords.lng}`,
+        showFullscreen: false,
+        statusMessage: !showMap ? "Map preview hidden." : null,
+      }}
+      mapChildren={
+        showMap ? (
+          <Marker position={[coords.lat, coords.lng]} icon={visitMarkerIcon}>
+            <Popup
+              autoPan
+              keepInView
+              maxWidth={320}
+              autoPanPaddingTopLeft={[24, 120]}
+              autoPanPaddingBottomRight={[24, 24]}
+            >
+              <EmployeeMapPopup
+                name={visit?.farmer_name ?? "Visit location"}
+                lat={coords.lat}
+                lng={coords.lng}
+                entity={visit}
+                workStatus={visit?.crop_name ? `Crop: ${visit.crop_name}` : null}
+                lastUpdated={formatRouteTimestamp(visit?.visit_time ?? visit?.created_at)}
+              />
+            </Popup>
+          </Marker>
+        ) : null
+      }
+    />
   );
 }
