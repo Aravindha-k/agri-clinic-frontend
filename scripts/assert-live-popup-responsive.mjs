@@ -35,6 +35,6 @@ assert.match(metaSrc, /Asia\/Kolkata|BUSINESS_TIME_ZONE/, "12. exact time uses A
 assert.match(css, /text-overflow:\s*ellipsis/, "13. long employee name ellipsis");
 assert.match(css, /overflow-x:\s*hidden/, "14. no horizontal scrolling");
 assert.match(popupSrc, /useLiveEmployeeLocation/, "popup resolves location via hook");
-assert.match(liveSrc, /autoPanPaddingTopLeft/, "top padding for header clearance");
+assert.match(liveSrc, /autoPanPaddingTopLeft=\{\[24,\s*120\]\}/, "top padding 120 for header clearance");
 
 console.log("All live popup responsive/location assertions passed.");

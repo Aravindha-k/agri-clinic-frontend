@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
-import { fitEmployeeBounds } from "../../utils/mapCoordinates";
+import {
+  applyLiveMapOperatingBounds,
+  fitEmployeeBounds,
+  LIVE_FIT_OPTIONS,
+  TAMIL_NADU_CENTER,
+  TAMIL_NADU_ZOOM,
+} from "../../utils/mapCoordinates";
 
 /**
  * Live-map camera control.
@@ -21,9 +27,9 @@ export default function MapEmployeeViewport({
   const prevRosterSig = useRef("");
   const lastFitRequest = useRef(0);
 
-  // Always invalidate after mount so TN tiles paint even with zero markers.
   useEffect(() => {
     if (!map) return undefined;
+    applyLiveMapOperatingBounds(map);
     const timer = window.setTimeout(() => {
       try {
         map.invalidateSize({ animate: false });
@@ -37,18 +43,33 @@ export default function MapEmployeeViewport({
   useEffect(() => {
     if (!map) return undefined;
 
-    if (!locations?.length) {
-      didInitialFit.current = false;
-      prevRosterSig.current = "";
-      return undefined;
-    }
-
-    const rosterSig = locations
+    const rosterSig = (locations || [])
       .map((l) => String(l.userId ?? l.employeeName ?? ""))
       .sort()
       .join("|");
 
     const manualFit = fitRequestId !== lastFitRequest.current;
+
+    if (!locations?.length) {
+      // Empty roster: TN default only (never on every poll once already shown).
+      if (manualFit || !didInitialFit.current) {
+        didInitialFit.current = true;
+        prevRosterSig.current = "";
+        lastFitRequest.current = fitRequestId;
+        const timer = window.setTimeout(() => {
+          try {
+            map.closePopup();
+            map.invalidateSize({ animate: false });
+            map.setView([...TAMIL_NADU_CENTER], TAMIL_NADU_ZOOM, { animate: false });
+          } catch {
+            /* unmounting */
+          }
+        }, 80);
+        return () => window.clearTimeout(timer);
+      }
+      return undefined;
+    }
+
     let shouldFit = manualFit;
 
     if (!shouldFit) {
@@ -57,7 +78,7 @@ export default function MapEmployeeViewport({
       } else if (refitMode === "roster") {
         shouldFit = rosterSig !== prevRosterSig.current;
       } else {
-        // once
+        // once — first successful non-empty load only; polls/GPS status must not refit
         shouldFit = !didInitialFit.current;
       }
     }
@@ -71,7 +92,8 @@ export default function MapEmployeeViewport({
     const timer = window.setTimeout(() => {
       try {
         map.invalidateSize({ animate: false });
-        fitEmployeeBounds(map, locations);
+        // Close popup before Fit all so popup size does not inflate framing.
+        fitEmployeeBounds(map, locations, LIVE_FIT_OPTIONS);
       } catch {
         /* map may be unmounting */
       }

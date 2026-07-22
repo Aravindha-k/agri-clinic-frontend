@@ -261,8 +261,8 @@ function LiveMapMarkers({ employees, onSelect }) {
               closeOnClick={false}
               maxWidth={320}
               minWidth={220}
-              autoPanPaddingTopLeft={[16, 80]}
-              autoPanPaddingBottomRight={[16, 16]}
+              autoPanPaddingTopLeft={[24, 120]}
+              autoPanPaddingBottomRight={[24, 24]}
             >
               <LiveEmployeeMapPopup
                 name={name}
