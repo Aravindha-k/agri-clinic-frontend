@@ -220,7 +220,7 @@ assert(ADMIN_MAP_MIN_HEIGHT_PX === 460, "approved min-height constant");
   assert(liveSrc.includes("Tooltip"), "hover tooltip bound to live employee markers");
   assert(liveSrc.includes('className="live-employee-tooltip"'), "tooltip uses custom class");
   assert(liveSrc.includes('direction="top"'), "tooltip opens above marker");
-  assert(liveSrc.includes("offset={[0, -14]}"), "tooltip offset clears marker tip");
+  assert(liveSrc.includes("offset={[0, -18]}"), "tooltip offset clears marker tip");
   assert(liveSrc.includes("LiveEmployeeTooltipCard") || liveSrc.includes("live-employee-tooltip-card"), "tooltip content present");
   assert(liveSrc.includes("live-employee-chip"), "duty and GPS appear as separate chips");
   assert(!liveSrc.includes("title={ariaLabel}"), "default browser title tooltip removed");
