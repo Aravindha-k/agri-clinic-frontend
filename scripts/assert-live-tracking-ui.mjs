@@ -33,10 +33,14 @@ assert.match(tracking, /fitRequestId/, "10b. Fit all control present");
 assert.match(read("src/utils/mapCoordinates.js"), /Employee-only bounds/, "11. fit excludes TN centre merge");
 assert.match(tracking, /Offline employees remain visible/, "12. footer message");
 assert.match(tracking, /Updating employee locations/, "13. loading preserves map shell");
-assert.match(tracking, /Showing the last known locations/, "13b. error message");
+assert.match(tracking, /No employees currently have an active workday/, "13b. empty duty message");
+assert.match(tracking, /No employee locations are available yet/, "13c. no coords message");
+assert.match(tracking, /Showing the last known locations/, "13d. error message");
 assert.ok(!liveMarkers.includes("Polyline"), "15. no polyline rendered");
 assert.match(tracking, /tracking-emp-card--selected/, "4. roster highlight class");
 assert.match(liveMarkers, /selectedUserId/, "4b. selected marker highlight");
 assert.match(tracking, /mapSize="live"/, "14. live map responsive size token");
+assert.match(tracking, /resolveCanonicalTrackingStatusKey|tracking_status/, "16. backend tracking status");
+assert.match(tracking, /Waiting for first GPS update/, "17. no-location copy");
 
 console.log("All live tracking UI assertions passed.");

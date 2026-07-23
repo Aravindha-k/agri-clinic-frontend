@@ -58,19 +58,28 @@ export function saveLiveTrackingSnapshot(employees) {
       latitude: Number(e.latitude),
       longitude: Number(e.longitude),
       timestamp: e.location_recorded_at ?? e.last_gps_update ?? null,
+      dutySessionId: e.duty_session_id ?? null,
       dutyStatus: e.duty_status ?? null,
+      trackingStatus: e.tracking_status ?? null,
       gpsStatus: e.gps_status ?? null,
       employeeName: e.employee_name ?? e.username ?? null,
       employeeCode: e.employee_code ?? e.employee_id ?? null,
     }))
     .filter((m) => Number.isFinite(m.latitude) && Number.isFinite(m.longitude));
 
-  if (!markers.length) return;
+  // Presentation-safe roster snapshot (no tokens). Keep full display fields for restore.
+  const safeEmployees = employees.map((e) => ({
+    ...e,
+    access_token: undefined,
+    refresh_token: undefined,
+    token: undefined,
+    authorization: undefined,
+  }));
 
   writeSession(LIVE_KEY, {
     scope: LIVE_KEY,
     markers,
-    employees,
+    employees: safeEmployees,
     fetchedAt: new Date().toISOString(),
   });
 }

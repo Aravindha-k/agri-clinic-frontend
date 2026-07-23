@@ -13,6 +13,9 @@ import {
   getDutyStatusColor,
   isOnDutyWorking,
   dedupeLiveEmployees,
+  formatLastHeartbeat,
+  formatLastGpsUpdate,
+  isNoLocationYet,
 } from "../../utils/dutyTracking";
 import {
   getLiveEmployeeLocationLabel,
@@ -26,7 +29,7 @@ import { BRAND } from "../../theme/brand";
 import "../../utils/leafletSetup";
 
 /** Offline/stale markers stay clearly visible (never fade out on zoom). */
-const MUTED_MARKER_OPACITY = 0.9;
+const MUTED_MARKER_OPACITY = 0.85;
 
 const markerColors = {
   green: BRAND.primaryLight,
@@ -97,16 +100,28 @@ function getMarkerIcon(emp, selected = false) {
   return iconCache.get(cacheKey);
 }
 
-function LiveEmployeeCompactTooltip({ name, code, locationLabel, gpsLabel, relativeTime }) {
+function LiveEmployeeCompactTooltip({
+  name,
+  code,
+  locationLabel,
+  trackingLabel,
+  heartbeatRelative,
+  locationRelative,
+}) {
   return (
     <div className="live-employee-tooltip-compact">
       <p className="live-employee-tooltip-compact__name">{name}</p>
       {code ? <p className="live-employee-tooltip-compact__code">{code}</p> : null}
-      <p className="live-employee-tooltip-compact__location">{locationLabel}</p>
-      <p className="live-employee-tooltip-compact__meta">
-        GPS {gpsLabel}
-        {relativeTime ? ` · ${relativeTime}` : ""}
-      </p>
+      <p className="live-employee-tooltip-compact__meta">{trackingLabel}</p>
+      {locationLabel ? (
+        <p className="live-employee-tooltip-compact__location">{locationLabel}</p>
+      ) : null}
+      {heartbeatRelative ? (
+        <p className="live-employee-tooltip-compact__meta">Heartbeat {heartbeatRelative}</p>
+      ) : null}
+      {locationRelative ? (
+        <p className="live-employee-tooltip-compact__meta">Location {locationRelative}</p>
+      ) : null}
     </div>
   );
 }
@@ -119,6 +134,7 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect, onViewEmpl
     const active = dedupeLiveEmployees(employees).filter(isOnDutyWorking);
     return active.filter(
       (emp) =>
+        !isNoLocationYet(emp) &&
         emp.latitude != null &&
         emp.longitude != null &&
         Number.isFinite(Number(emp.latitude)) &&
@@ -147,7 +163,11 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect, onViewEmpl
           getLiveEmployeeLocationLabel(emp) ||
           resolveLiveLocationDisplay(emp, lat, lng).title;
         const recordedAt = getLiveGpsRecordedAt(emp);
-        const relativeTime = formatLiveRelativeTime(recordedAt);
+        const relativeTime =
+          formatLiveRelativeTime(recordedAt) || formatLastGpsUpdate(emp);
+        const heartbeatRelative =
+          formatLiveRelativeTime(emp?.last_heartbeat_at ?? emp?.last_heartbeat) ||
+          formatLastHeartbeat(emp);
         const ariaLabel = buildLiveMarkerAriaLabel({
           name,
           code,
@@ -191,8 +211,9 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect, onViewEmpl
                     ? `${locationLabel} (${stackSize} at this spot)`
                     : locationLabel
                 }
-                gpsLabel={gpsLabel}
-                relativeTime={relativeTime}
+                trackingLabel={gpsLabel}
+                heartbeatRelative={heartbeatRelative}
+                locationRelative={relativeTime}
               />
             </Tooltip>
             <Popup

@@ -9,6 +9,11 @@ import {
   formatLiveExactIstCompact,
   formatLiveRelativeTime,
 } from "../../utils/liveEmployeeMarkerMeta";
+import {
+  gpsHardwareLabel,
+  permissionLabel,
+  trackingServiceLabel,
+} from "../../utils/dutyTracking";
 
 function dutyChipClass(dutyLabel) {
   const key = String(dutyLabel || "").toLowerCase();
@@ -24,6 +29,8 @@ function gpsChipClass(gpsKey) {
       return "live-employee-chip--gps-stale";
     case "gps_offline":
       return "live-employee-chip--gps-offline";
+    case "no_location":
+      return "live-employee-chip--gps-none";
     default:
       return "live-employee-chip--gps-none";
   }
@@ -54,6 +61,9 @@ export default function LiveEmployeeMapPopup({
   const lng = Number(emp?.longitude);
   const coordText =
     Number.isFinite(lat) && Number.isFinite(lng) ? formatCoordinates(lat, lng) : null;
+  const gpsHw = gpsHardwareLabel(emp);
+  const permission = permissionLabel(emp);
+  const service = trackingServiceLabel(emp);
 
   const location = useLiveEmployeeLocation(emp, lat, lng, locationEnabled);
 
@@ -79,10 +89,24 @@ export default function LiveEmployeeMapPopup({
         ) : null}
         {gpsLabel ? (
           <span className={`live-employee-chip ${gpsChipClass(gpsKey)}`}>
-            GPS {String(gpsLabel).toUpperCase()}
+            {String(gpsLabel).toUpperCase()}
           </span>
         ) : null}
       </div>
+
+      {(gpsHw || permission || service) ? (
+        <div className="live-employee-popup__section">
+          {gpsHw ? (
+            <p className="live-employee-popup__section-value">GPS {gpsHw}</p>
+          ) : null}
+          {permission ? (
+            <p className="live-employee-popup__muted">Permission {permission}</p>
+          ) : null}
+          {service ? (
+            <p className="live-employee-popup__muted">Tracking service {service}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="live-employee-popup__section">
         <p className="live-employee-popup__section-label">
@@ -101,29 +125,31 @@ export default function LiveEmployeeMapPopup({
           <p className="live-employee-popup__coords">{location.subtitle}</p>
         ) : location.hasAreaName && coordText ? (
           <p className="live-employee-popup__coords">{coordText}</p>
+        ) : coordText ? (
+          <p className="live-employee-popup__coords">{coordText}</p>
         ) : null}
       </div>
+
+      {heartbeatExact || heartbeatRelative ? (
+        <div className="live-employee-popup__section">
+          <p className="live-employee-popup__section-label">Last heartbeat</p>
+          {heartbeatRelative ? (
+            <p className="live-employee-popup__section-value">{heartbeatRelative}</p>
+          ) : null}
+          {heartbeatExact ? <p className="live-employee-popup__muted">{heartbeatExact}</p> : null}
+        </div>
+      ) : null}
 
       {exactTime || relativeTime ? (
         <div className="live-employee-popup__section">
           <p className="live-employee-popup__section-label">
             <Clock3 className="live-employee-popup__icon" aria-hidden="true" />
-            Recorded
+            Last location
           </p>
           {relativeTime ? (
             <p className="live-employee-popup__section-value">{relativeTime}</p>
           ) : null}
           {exactTime ? <p className="live-employee-popup__muted">{exactTime}</p> : null}
-        </div>
-      ) : null}
-
-      {heartbeatExact ? (
-        <div className="live-employee-popup__section">
-          <p className="live-employee-popup__section-label">Last heartbeat</p>
-          <p className="live-employee-popup__section-value">{heartbeatExact}</p>
-          {heartbeatRelative ? (
-            <p className="live-employee-popup__muted">{heartbeatRelative}</p>
-          ) : null}
         </div>
       ) : null}
 

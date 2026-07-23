@@ -17,7 +17,7 @@ const css = read("src/index.css");
 const fitSrc = read("src/utils/mapCoordinates.js");
 
 assert.match(liveSrc, /isOnDutyWorking/, "1. Offline employee with coords still renders when working");
-assert.match(liveSrc, /MUTED_MARKER_OPACITY = 0.9/, "5. Offline styling keeps opacity >= 0.85");
+assert.match(liveSrc, /MUTED_MARKER_OPACITY = 0\.85/, "5. Offline styling keeps opacity >= 0.85");
 assert.ok(!/zoom\s*[<>]|bounds\.contains/.test(liveSrc), "2/3/4/11. Marker mount independent of zoom/bounds");
 assert.ok(!liveSrc.includes("transform:rotate") && !liveSrc.includes("transform: rotate"), "12. No rotate transform hides markers at zoom");
 assert.match(liveSrc, /key=\{markerKey\}/, "8/9. stable marker keys; no duplicates");

@@ -31,6 +31,7 @@ import {
     getDutyStatusColor,
     resolveCanonicalGpsStatusKey,
     resolveCanonicalDutyStatusKey,
+    resolveCanonicalTrackingStatusKey,
     canonicalDutyLabel,
     canonicalGpsLabel,
     formatLastGpsUpdate,
@@ -39,6 +40,8 @@ import {
     isOnDutyWorking,
     hasLiveMapLocation,
     liveLocationStatusLabel,
+    mergeLiveEmployeeUpdate,
+    isNoLocationYet,
 } from "../utils/dutyTracking";
 import {
     saveLiveTrackingSnapshot,
@@ -158,11 +161,27 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
         red: "bg-red-500",
         gray: "bg-slate-400",
         slate: "bg-slate-500",
+        blue: "bg-sky-500",
     };
     const hasLoc = hasLiveMapLocation(emp);
-    const locationLabel = liveLocationStatusLabel(emp);
+    const trackingKey = resolveCanonicalTrackingStatusKey(emp);
+    const trackingLabel = liveLocationStatusLabel(emp);
+    const dutyLabel = canonicalDutyLabel(emp);
     const lastLoc = formatLastGpsUpdate(emp);
     const heartbeat = formatLastHeartbeat(emp);
+
+    let detailLine = null;
+    if (trackingKey === "no_location" || !hasLoc) {
+        detailLine = "Waiting for first GPS update";
+    } else if (heartbeat) {
+        detailLine =
+            trackingKey === "gps_offline"
+                ? `Last heartbeat ${heartbeat}`
+                : `Heartbeat ${heartbeat}`;
+        if (lastLoc) detailLine += ` · Location ${lastLoc}`;
+    } else if (lastLoc) {
+        detailLine = `Last location ${lastLoc}`;
+    }
 
     return (
         <article
@@ -195,15 +214,16 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
                     </p>
                     <div className="tracking-emp-card__badges">
                         <DutyWorkdayBadge employee={emp} />
-                        <span className="tracking-status-badge bg-slate-50 text-slate-700 border-slate-200">
-                            {locationLabel}
-                        </span>
+                        <DutyGpsStatusBadge employee={emp} />
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1.5">
-                        {!hasLoc
-                            ? "Waiting for first GPS update"
-                            : `Last updated ${lastLoc}`}
-                        {heartbeat ? ` · Heartbeat ${heartbeat}` : ""}
+                        {dutyLabel} · {trackingLabel}
+                        {detailLine ? (
+                            <>
+                                <br />
+                                {detailLine}
+                            </>
+                        ) : null}
                     </p>
                 </div>
                 <button
@@ -480,10 +500,18 @@ export default function Tracking() {
     const [fitRequestId, setFitRequestId] = useState(0);
     const [showingCachedLive, setShowingCachedLive] = useState(false);
     const employeesRef = useRef([]);
+    const liveRequestSeqRef = useRef(0);
+    const liveAbortRef = useRef(null);
 
     useEffect(() => {
         employeesRef.current = employees;
     }, [employees]);
+
+    useEffect(() => {
+        return () => {
+            liveAbortRef.current?.abort?.();
+        };
+    }, []);
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
@@ -491,17 +519,29 @@ export default function Tracking() {
     useCloseOnRouteChange(closeDrawer, drawerOpen);
 
     const loadData = useCallback(async (isRefresh = false) => {
+        const seq = ++liveRequestSeqRef.current;
+        liveAbortRef.current?.abort?.();
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        liveAbortRef.current = controller;
+
         try {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
 
             const [liveRes, statsRes] = await Promise.allSettled([
-                getTrackingLive(),
+                getTrackingLive({ signal: controller?.signal }),
                 getDashboardStats(),
             ]);
 
+            if (seq !== liveRequestSeqRef.current) {
+                return;
+            }
+
             const liveErr = liveRes.status === "rejected" ? liveRes.reason : null;
             if (liveRes.status === "rejected") {
+                if (liveErr?.name === "CanceledError" || liveErr?.code === "ERR_CANCELED" || liveErr?.name === "AbortError") {
+                    return;
+                }
                 if (isUnreachableError(liveErr)) {
                     recordApiFailure(liveErr);
                 }
@@ -522,7 +562,16 @@ export default function Tracking() {
 
             if (liveRes.status === "fulfilled") {
                 const list = dedupeLiveEmployees(liveRes.value?.employees ?? []);
-                setEmployees(list);
+                setEmployees((prev) => {
+                    const prevById = new Map(
+                        (prev || []).map((e) => [String(e.user_id ?? e.id), e])
+                    );
+                    return list.map((next) => {
+                        const id = String(next.user_id ?? next.id);
+                        const prior = prevById.get(id);
+                        return prior ? mergeLiveEmployeeUpdate(prior, next) : next;
+                    });
+                });
                 setShowingCachedLive(false);
                 if (list.some((e) => isOnDutyWorking(e))) {
                     saveLiveTrackingSnapshot(list.filter(isOnDutyWorking));
@@ -533,14 +582,20 @@ export default function Tracking() {
             }
             setLastRefresh(new Date());
         } catch (err) {
+            if (seq !== liveRequestSeqRef.current) return;
+            if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED" || err?.name === "AbortError") {
+                return;
+            }
             if (isUnreachableError(err)) {
                 recordApiFailure(err);
             }
             setError("Live updates are temporarily unavailable.");
             setShowingCachedLive(Boolean(employeesRef.current?.length));
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            if (seq === liveRequestSeqRef.current) {
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
     }, []);
 
@@ -553,15 +608,16 @@ export default function Tracking() {
 
     const dutyStats = useMemo(() => {
         const working = activeEmployees;
+        const trackingKey = (e) => resolveCanonicalTrackingStatusKey(e);
         return {
             working: working.length,
             stopped: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "stopped").length,
             auto_ended: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "auto_ended").length,
             admin_ended: employees.filter((e) => resolveCanonicalDutyStatusKey(e) === "admin_ended").length,
-            gps_active: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_active").length,
-            gps_stale: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_stale").length,
-            gps_offline: working.filter((e) => resolveCanonicalGpsStatusKey(e) === "gps_offline" && hasLiveMapLocation(e)).length,
-            no_location: working.filter((e) => !hasLiveMapLocation(e)).length,
+            gps_active: working.filter((e) => trackingKey(e) === "gps_active").length,
+            gps_stale: working.filter((e) => trackingKey(e) === "gps_stale").length,
+            gps_offline: working.filter((e) => trackingKey(e) === "gps_offline").length,
+            no_location: working.filter((e) => trackingKey(e) === "no_location").length,
         };
     }, [employees, activeEmployees]);
 
@@ -575,14 +631,14 @@ export default function Tracking() {
                 name.includes(searchTerm.toLowerCase()) ||
                 id.includes(searchTerm.toLowerCase()) ||
                 district.includes(searchTerm.toLowerCase());
-            const gps = resolveCanonicalGpsStatusKey(emp);
+            const tracking = resolveCanonicalTrackingStatusKey(emp);
             const matchFilter =
                 filterStatus === "all" ||
                 (filterStatus === "working" && true) ||
-                (filterStatus === "gps_active" && gps === "gps_active") ||
-                (filterStatus === "gps_stale" && gps === "gps_stale") ||
-                (filterStatus === "gps_offline" && gps === "gps_offline" && hasLiveMapLocation(emp)) ||
-                (filterStatus === "no_location" && !hasLiveMapLocation(emp));
+                (filterStatus === "gps_active" && tracking === "gps_active") ||
+                (filterStatus === "gps_stale" && tracking === "gps_stale") ||
+                (filterStatus === "gps_offline" && tracking === "gps_offline") ||
+                (filterStatus === "no_location" && tracking === "no_location");
             return matchSearch && matchFilter;
         });
     }, [activeEmployees, searchTerm, filterStatus]);
@@ -591,6 +647,7 @@ export default function Tracking() {
         () =>
             filteredEmployees.filter(
                 (emp) =>
+                    !isNoLocationYet(emp) &&
                     emp.latitude != null &&
                     emp.longitude != null &&
                     isValidTamilNaduCoordinate(emp.latitude, emp.longitude)
@@ -630,6 +687,7 @@ export default function Tracking() {
 
     const selectedPanTarget = useMemo(() => {
         if (!mapSelectedEmployee || !hasLiveMapLocation(mapSelectedEmployee)) return null;
+        if (isNoLocationYet(mapSelectedEmployee)) return null;
         const lat = Number(mapSelectedEmployee.latitude);
         const lng = Number(mapSelectedEmployee.longitude);
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
@@ -805,7 +863,7 @@ export default function Tracking() {
                     <AdminMapCard
                         className="tracking-map-panel"
                         title="Live employee locations"
-                        subtitle={`${activeEmployees.length} active employee${activeEmployees.length === 1 ? "" : "s"} · ${dutyStats.gps_active} online · ${dutyStats.gps_offline} offline`}
+                        subtitle={`${activeEmployees.length} active employee${activeEmployees.length === 1 ? "" : "s"} · ${dutyStats.gps_active} online · ${dutyStats.gps_stale} stale · ${dutyStats.gps_offline} offline · ${dutyStats.no_location} no location`}
                         showOpenInMaps={false}
                         headerActions={
                             <>
@@ -859,9 +917,9 @@ export default function Tracking() {
                                     : error
                                       ? "Live updates are temporarily unavailable. Showing the last known locations."
                                       : !loading && activeEmployees.length === 0
-                                        ? "No employees are on an active workday."
+                                        ? "No employees currently have an active workday."
                                         : !loading && mapEmployees.length === 0 && activeEmployees.length > 0
-                                          ? "No active employee locations have been received yet."
+                                          ? "No employee locations are available yet."
                                           : null,
                             statusTone: error || showingCachedLive ? "warn" : "info",
                             statusDetail:

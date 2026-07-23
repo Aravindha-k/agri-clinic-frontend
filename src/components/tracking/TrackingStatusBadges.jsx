@@ -89,6 +89,8 @@ const CANONICAL_GPS_CFG = {
   gps_active: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500", pulse: true, icon: MapPin },
   gps_stale: { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500", pulse: false, icon: Clock },
   gps_offline: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", dot: "bg-slate-500", pulse: false, icon: MapPinOff },
+  no_location: { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-200", dot: "bg-sky-500", pulse: false, icon: MapPinOff },
+  unknown: { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200", dot: "bg-gray-400", pulse: false, icon: AlertTriangle },
   gps_delayed: { bg: "bg-amber-50", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500", pulse: false, icon: Clock },
   gps_lost: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", dot: "bg-slate-500", pulse: false, icon: MapPinOff },
   gps_off: { bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", dot: "bg-slate-500", pulse: false, icon: MapPinOff },
@@ -108,8 +110,8 @@ const CANONICAL_DUTY_CFG = {
 
 export function DutyGpsStatusBadge({ employee }) {
   const key = resolveCanonicalGpsStatusKey(employee ?? {});
-  const c = CANONICAL_GPS_CFG[key] ?? CANONICAL_GPS_CFG.gps_offline;
-  return <Badge {...c} label={CANONICAL_GPS_LABELS[key] ?? "GPS Offline"} icon={c.icon} />;
+  const c = CANONICAL_GPS_CFG[key] ?? CANONICAL_GPS_CFG.unknown;
+  return <Badge {...c} label={CANONICAL_GPS_LABELS[key] ?? "Status unavailable"} icon={c.icon} />;
 }
 
 export function DutyWorkdayBadge({ employee }) {

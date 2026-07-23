@@ -25,8 +25,9 @@ function logError(fn, err) {
 }
 
 /** GET /api/admin/tracking/live/ — employees on duty + last known positions */
-export async function getTrackingLive() {
-  const response = await api.get("live/", trackingRequest);
+export async function getTrackingLive(options = {}) {
+  const { signal } = options;
+  const response = await api.get("live/", { ...trackingRequest, signal });
   const body = unwrapSuccessEnvelope(response) ?? getResponseBody(response) ?? {};
   const employees = dedupeLiveEmployees(
     resolveLiveEmployeeList(body).map(normalizeLiveEmployee)
