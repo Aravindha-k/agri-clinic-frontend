@@ -194,7 +194,7 @@ const EmployeeStats = memo(({ stats, loading: isLoading, error: statsErr, onRetr
   const s = stats || {};
   return (
     <div className="employees-hr-stats">
-      <KpiCard icon={Users} label="Total employees" value={s.total ?? 0} iconBg="#dbeafe" iconColor="#2563eb" />
+      <KpiCard icon={Users} label="Total employees" value={s.total ?? 0} iconBg="#dcfce7" iconColor={BRAND.primary} />
       <KpiCard icon={Activity} label="Active now" value={s.online ?? 0} iconBg="#ccfbf1" iconColor={BRAND.info} />
       <KpiCard icon={MapPin} label="On field" value={s.on_field ?? 0} iconBg={BRAND.infoLight} iconColor={BRAND.info} />
       <KpiCard icon={WifiOff} label="Offline" value={s.offline ?? 0} iconBg={BRAND.dangerLight} iconColor={BRAND.danger} />
@@ -348,7 +348,7 @@ const EmployeeCard = memo(({ emp, onOpen }) => (
           online={emp.is_online}
         />
         <div className="flex-1 min-w-0">
-          <p className="employees-hr-card__name group-hover:text-blue-700 transition-colors">{empName(emp)}</p>
+          <p className="employees-hr-card__name group-hover:text-[var(--brand-primary-dark)] transition-colors">{empName(emp)}</p>
           {emp.phone && (
             <p className="employees-hr-card__sub">
               <Phone className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -469,7 +469,7 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
                 <td>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="btn btn-ghost btn-sm text-[var(--brand-primary-dark)] opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => { e.stopPropagation(); onOpen(emp); }}
                   >
                     <Eye className="w-3.5 h-3.5" aria-hidden="true" />
@@ -491,7 +491,7 @@ const ACTIVITY_ICONS = {
   workday_start: { icon: PlayCircle, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
   workday_end: { icon: StopCircle, color: "text-red-500", bg: "bg-red-50", border: "border-red-200" },
   heartbeat: { icon: Heart, color: "text-pink-500", bg: "bg-pink-50", border: "border-pink-200" },
-  location_update: { icon: Navigation, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200" },
+  location_update: { icon: Navigation, color: "text-[var(--brand-primary)]", bg: "bg-emerald-50", border: "border-emerald-200" },
   availability_online: { icon: ToggleRight, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
   availability_offline: { icon: ToggleLeft, color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
   default: { icon: Radio, color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
@@ -722,11 +722,11 @@ const AdminResetSection = memo(({ empId }) => {
 
   return (
     <div className="employees-hr-form">
-      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+      <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+        <Shield className="w-5 h-5 text-[var(--brand-primary)] flex-shrink-0 mt-0.5" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-blue-800">Admin Password Override</p>
-          <p className="text-xs text-blue-600 mt-0.5">Set a new password directly — no existing password required.</p>
+          <p className="text-sm font-semibold text-[var(--brand-primary-dark)]">Admin Password Override</p>
+          <p className="text-xs text-[var(--brand-primary)] mt-0.5">Set a new password directly — no existing password required.</p>
         </div>
       </div>
 
@@ -980,7 +980,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                   <Badge online={profile?.is_online} />
                   <RoleBadge role={profile?.role} />
                   {profile?.employee_id && (
-                    <span className="text-[10px] text-blue-100/90 font-medium flex items-center gap-0.5">
+                    <span className="text-[10px] text-emerald-100/90 font-medium flex items-center gap-0.5">
                       <Hash className="w-2.5 h-2.5" aria-hidden="true" />
                       {profile.employee_id}
                     </span>
@@ -988,7 +988,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                 </div>
               </div>
             </div>
-            <button type="button" onClick={onClose} className="p-2 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 transition-all" aria-label="Close drawer">
+            <button type="button" onClick={onClose} className="p-2 rounded-lg text-emerald-100 hover:text-white hover:bg-white/10 transition-all" aria-label="Close drawer">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -1113,7 +1113,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                 </div>
                 <button type="button" onClick={handleToggle} disabled={toggling}
                   aria-label="Toggle active status"
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 ${editForm.is_active ? "bg-emerald-500" : "bg-slate-300"} ${toggling ? "opacity-60 cursor-not-allowed" : ""}`}>
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-light)] focus:ring-offset-1 ${editForm.is_active ? "bg-emerald-500" : "bg-slate-300"} ${toggling ? "opacity-60 cursor-not-allowed" : ""}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${editForm.is_active ? "translate-x-6" : "translate-x-1"}`} />
                 </button>
               </div>

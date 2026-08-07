@@ -6934,15 +6934,15 @@ textarea.input {
 
 .employees-hr-header__icon {
     @apply p-3 rounded-2xl text-white shrink-0;
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
-    box-shadow: 0 10px 28px rgba(37, 99, 235, 0.25);
+    background: linear-gradient(135deg, var(--brand-primary-dark) 0%, var(--brand-primary) 100%);
+    box-shadow: 0 10px 28px rgba(30, 132, 73, 0.25);
 }
 
 .employees-hr-header__badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[0.14em];
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    color: #1d4ed8;
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: var(--brand-primary-dark);
+    border: 1px solid rgba(30, 132, 73, 0.2);
 }
 
 .employees-hr-header__title {
@@ -6955,8 +6955,8 @@ textarea.input {
 
 .employees-hr-workforce-strip {
     @apply relative rounded-2xl overflow-hidden;
-    background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 48%, #2563eb 100%);
-    box-shadow: 0 14px 40px rgba(30, 58, 138, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, var(--brand-black) 0%, var(--brand-primary-dark) 48%, var(--brand-primary) 100%);
+    box-shadow: 0 14px 40px rgba(20, 90, 50, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .employees-hr-workforce-strip__inner {
@@ -6964,7 +6964,7 @@ textarea.input {
 }
 
 .employees-hr-workforce-strip__label {
-    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-blue-200 mb-3;
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200 mb-3;
 }
 
 .employees-hr-workforce-strip__grid {
@@ -6979,7 +6979,7 @@ textarea.input {
 }
 
 .employees-hr-workforce-cell__label {
-    @apply text-[10px] font-semibold uppercase tracking-wide text-blue-200/90;
+    @apply text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90;
 }
 
 .employees-hr-workforce-cell__value {
@@ -7046,7 +7046,7 @@ textarea.input {
 }
 
 .employees-hr-view-toggle__btn--active {
-    @apply bg-white text-blue-700 shadow-sm;
+    @apply bg-white text-[var(--brand-primary-dark)] shadow-sm;
 }
 
 .employees-hr-count {
@@ -7085,7 +7085,7 @@ textarea.input {
 .employees-hr-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--card-shadow-hover);
-    border-top-color: #2563eb;
+    border-top-color: var(--brand-primary);
 }
 
 .employees-hr-card--online {
@@ -7134,7 +7134,7 @@ textarea.input {
 }
 
 .employees-hr-table .data-table tbody tr:hover {
-    background: linear-gradient(90deg, rgba(239, 246, 255, 0.8) 0%, rgba(255, 255, 255, 0.95) 100%);
+    background: linear-gradient(90deg, rgba(236, 253, 245, 0.85) 0%, rgba(255, 255, 255, 0.95) 100%);
 }
 
 .employees-hr-status {
@@ -7178,7 +7178,7 @@ textarea.input {
 }
 
 .employees-hr-role--manager {
-    @apply bg-blue-50 text-blue-700 border-blue-100;
+    @apply bg-emerald-50 text-[var(--brand-primary-dark)] border-emerald-100;
 }
 
 .employees-hr-role--default {
@@ -7201,7 +7201,7 @@ textarea.input {
 
 .employees-hr-drawer-hero {
     @apply relative overflow-hidden px-5 py-5 text-white shrink-0;
-    background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 55%, #2563eb 100%);
+    background: linear-gradient(135deg, var(--brand-black) 0%, var(--brand-primary-dark) 55%, var(--brand-primary) 100%);
 }
 
 .employees-hr-drawer-hero__glow {
@@ -7218,7 +7218,7 @@ textarea.input {
 }
 
 .employees-hr-drawer-tab--active {
-    @apply border-blue-600 text-blue-700 bg-white;
+    @apply border-[var(--brand-primary)] text-[var(--brand-primary-dark)] bg-white;
 }
 
 .employees-hr-drawer-tab--idle {
@@ -7281,9 +7281,9 @@ textarea.input {
 
 .employees-hr-village-chip {
     @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border;
-    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
-    border-color: rgba(59, 130, 246, 0.15);
-    color: #1e40af;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border-color: rgba(30, 132, 73, 0.15);
+    color: var(--brand-primary-dark);
 }
 
 .employees-hr-performance {
@@ -7305,7 +7305,7 @@ textarea.input {
 }
 
 .employees-hr-timeline {
-    @apply border-l-2 border-blue-100 pl-4 ml-4 space-y-0;
+    @apply border-l-2 border-emerald-100 pl-4 ml-4 space-y-0;
 }
 
 .employees-hr-timeline__item {
@@ -7348,7 +7348,7 @@ textarea.input {
 .employees-hr-field select:focus,
 .employees-hr-field textarea:focus {
     box-shadow: var(--focus-ring);
-    border-color: rgba(59, 130, 246, 0.35);
+    border-color: rgba(30, 132, 73, 0.35);
 }
 
 .employees-hr-field input:read-only {
@@ -7370,7 +7370,7 @@ textarea.input {
 .employees-hr-modal__head {
     @apply flex items-center justify-between px-5 py-4 border-b;
     border-color: rgba(15, 23, 42, 0.06);
-    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%);
 }
 
 .employees-hr-modal__body {

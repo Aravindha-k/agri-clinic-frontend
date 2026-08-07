@@ -189,7 +189,7 @@ export default function MasterEmployees() {
                                         <td className="px-3 py-2 text-gray-500">{r.phone || "—"}</td>
                                         <td className="px-3 py-2 text-gray-500">{r.district_name || r.district || "—"}</td>
                                         <td className="px-3 py-2">
-                                            <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 capitalize">{(r.role || "—").replace("_", " ")}</span>
+                                            <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-md bg-emerald-50 text-[var(--brand-primary-dark)] capitalize">{(r.role || "—").replace("_", " ")}</span>
                                         </td>
                                         <td className="px-3 py-2"><Badge active={r.is_active !== false} /></td>
                                         <td className="px-3 py-2 text-right">
