@@ -5,7 +5,6 @@ import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Visits from "./pages/Visits";
 import Issues from "./pages/Issues";
-import Recommendations from "./pages/Recommendations";
 import Notifications from "./pages/Notifications";
 import Masters from "./pages/Masters";
 import MasterLocationsPage from "./pages/masters/MasterLocationsPage";
@@ -71,7 +70,6 @@ function App() {
           />
           <Route path="visits/:id/edit" element={<EditVisit />} />
           <Route path="crop-issues" element={<Issues />} />
-          <Route path="recommendations" element={<Recommendations />} />
           <Route
             path="tracking"
             element={

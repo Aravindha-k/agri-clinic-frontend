@@ -26,7 +26,6 @@ const PAGE_META = {
   "/audit": { name: "Audit Log", parent: null },
   "/settings/security": { name: "Security & Sessions", parent: null },
   "/crop-issues": { name: "Crop Issues", parent: null },
-  "/recommendations": { name: "Recommendations", parent: null },
 };
 
 function useClock() {

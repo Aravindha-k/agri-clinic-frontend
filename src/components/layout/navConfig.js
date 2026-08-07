@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   MapPin,
   Route,
-  ClipboardCheck,
   BarChart3,
   Bell,
   Database,
@@ -29,7 +28,6 @@ export const NAV_SECTIONS = [
     items: [
       { label: "Visits", icon: Leaf, path: "/visits" },
       { label: "Crop Issues", icon: AlertTriangle, path: "/crop-issues" },
-      { label: "Recommendations", icon: ClipboardCheck, path: "/recommendations" },
       { label: "Live Tracking", icon: MapPin, path: "/tracking" },
       { label: "Route History", icon: Route, path: "/tracking/routes" },
     ],
