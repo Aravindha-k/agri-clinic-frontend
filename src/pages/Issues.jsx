@@ -1,449 +1,244 @@
-import { PageLoader, PageHeader, EmptyState } from "../components/ui/command";
-import { useEffect, useState, useCallback, useRef, memo } from "react";
-import { useNavigate } from "react-router-dom";
-import { addRecommendation, fetchAllIssues } from "../api/issue.api";
+import { PageLoader, PageHeader } from "../components/ui/command";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
-import {
-  asDisplayString,
-  resolveCropLabel,
-  resolveVillageLabel,
-  resolveFarmerLabel,
-  resolveEmployeeLabel,
-} from "../utils/displayValue";
-import SlidePanel from "../components/ui/SlidePanel";
-import {
-    AlertTriangle, Search, X, RefreshCw, ChevronLeft, ChevronRight, AlertCircle,
-    TrendingUp, Flame, Leaf, Calendar, User, ClipboardCheck, Send, CheckCircle2,
-    Eye, LandPlot, MapPin,
-} from "lucide-react";
+import { AlertCircle, Leaf, RefreshCw, Search, Wheat, X } from "lucide-react";
 
-const fmt = (d) => {
-    if (!d) return "\u2014";
-    return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-};
+/** Prefer API name fields used by Masters → Crops. */
+function cropName(crop) {
+  return crop?.name_en || crop?.name || crop?.crop_name || "\u2014";
+}
 
-const humanizeIssueType = (value) => {
-    if (!value) return "\u2014";
-    return String(value)
-        .replace(/[_-]/g, " ")
-        .replace(/\b\w/g, (ch) => ch.toUpperCase());
-};
+/** Only show a code when the master record actually provides one. */
+function cropCode(crop) {
+  const raw = crop?.crop_code ?? crop?.code ?? null;
+  if (raw == null || raw === "") return null;
+  return String(raw);
+}
 
-const getVisitId = (issue) => {
-    if (typeof issue?.visit === "number" || typeof issue?.visit === "string") return issue.visit;
-    return issue?.visit?.id ?? issue?.visit_id ?? null;
-};
+function isActive(crop) {
+  return crop?.is_active !== false;
+}
 
-const getFarmerName = (issue) =>
-    issue?.farmer_name ||
-    resolveFarmerLabel(issue?.farmer) ||
-    issue?.visit?.farmer_name ||
-    resolveFarmerLabel(issue?.visit?.farmer) ||
-    "\u2014";
-
-const getVillageName = (issue) =>
-    issue?.village_name ||
-    resolveVillageLabel(issue?.village) ||
-    resolveVillageLabel(issue?.farmer?.village) ||
-    issue?.visit?.village_name ||
-    resolveVillageLabel(issue?.visit?.village) ||
-    resolveVillageLabel(issue?.visit?.farmer?.village) ||
-    "\u2014";
-
-const getCropName = (issue) =>
-    issue?.crop_name ||
-    resolveCropLabel(issue?.crop) ||
-    issue?.visit?.crop_name ||
-    resolveCropLabel(issue?.visit?.crop) ||
-    "\u2014";
-
-const getIssueCategory = (issue) =>
-    humanizeIssueType(
-        issue?.issue_title ||
-        issue?.problem_category ||
-        issue?.issue_type ||
-        issue?.visit?.issue_type ||
-        issue?.issue?.problem_category ||
-        issue?.issue?.issue_type ||
-        issue?.visit?.problem_category
-    );
-
-const getSeverity = (issue) =>
-    issue?.severity || issue?.issue?.severity || "low";
-
-const getStatus = (issue) =>
-    issue?.status || issue?.issue?.status || "open";
-
-const getVisitDate = (issue) =>
-    issue?.visit_date || issue?.created_at || issue?.timestamp || issue?.visit?.visit_date || issue?.visit?.timestamp || null;
-
-const getAgentName = (issue) =>
-    issue?.employee_name ||
-    resolveEmployeeLabel(issue?.employee) ||
-    issue?.reported_by?.name ||
-    issue?.reported_by?.username ||
-    resolveEmployeeLabel(issue?.reported_by) ||
-    resolveEmployeeLabel(issue?.visit?.employee) ||
-    "\u2014";
-
-const safeStr = (v) => asDisplayString(v);
-
-const useCountUp = (target, dur = 900) => {
-    const [val, setVal] = useState(0);
-    const prev = useRef(0);
-    useEffect(() => {
-        const s = prev.current, e = Number(target) || 0;
-        if (s === e) { setVal(e); return; }
-        const t0 = performance.now();
-        let raf;
-        const step = (now) => {
-            const p = Math.min((now - t0) / dur, 1);
-            setVal(Math.round(s + (e - s) * (1 - Math.pow(1 - p, 3))));
-            if (p < 1) raf = requestAnimationFrame(step); else prev.current = e;
-        };
-        raf = requestAnimationFrame(step);
-        return () => cancelAnimationFrame(raf);
-    }, [target, dur]);
-    return val;
-};
-
-const KpiCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
-    const animVal = useCountUp(value);
-    return (
-        <div className="enterprise-kpi-card" style={{ background: gradient }}>
-            <div className="enterprise-kpi-card__accent" style={{ background: accent }} aria-hidden="true" />
-            <div className="enterprise-kpi-card__glow" style={{ background: accent }} aria-hidden="true" />
-            <div className="mini-kpi-icon" style={{ background: iconBg, color: accent }}>
-                <Icon className="w-4 h-4" />
-            </div>
-            <p className="mini-kpi-value">{animVal}</p>
-            <div className="flex items-center justify-between mt-1">
-                <p className="mini-kpi-label">{label}</p>
-                <TrendingUp className="w-3 h-3 text-gray-300" />
-            </div>
-        </div>
-    );
-});
-KpiCard.displayName = "KpiCard";
-
-const SeverityBadge = ({ severity }) => {
-    const s = (severity || "").toLowerCase();
-    const tone = s === "high" || s === "critical" ? "danger" : s === "medium" ? "warning" : "success";
-    return (
-        <span className={`status-pill status-pill--${tone}`}>
-            <span className="status-pill__dot" />{severity || "Low"}
-        </span>
-    );
-};
-
-const StatusBadge = ({ status }) => {
-    const norm = (status || "open").toLowerCase().replace(/[\s-]/g, "_");
-    const map = {
-        resolved: { tone: "success", label: "Resolved" },
-        closed: { tone: "success", label: "Closed" },
-        open: { tone: "warning", label: "Open" },
-        pending: { tone: "warning", label: "Pending" },
-        under_review: { tone: "warning", label: "Under Review" },
-        in_progress: { tone: "warning", label: "In Progress" },
-    };
-    const c = map[norm] || map.open;
-    return (
-        <span className={`status-pill status-pill--${c.tone}`}>
-            <span className="status-pill__dot" />{c.label}
-        </span>
-    );
-};
-
-/* ================================================================
-   ISSUES PAGE
-   ================================================================ */
 export default function Issues() {
-    const navigate = useNavigate();
-    const [issues, setIssues] = useState([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [search, setSearch] = useState("");
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [recPanelOpen, setRecPanelOpen] = useState(false);
-    const [recTarget, setRecTarget] = useState(null);
-    const [recForm, setRecForm] = useState({ fertilizer: "", pesticide: "", dosage: "", notes: "" });
-    const [recSaving, setRecSaving] = useState(false);
-    const pageSize = 20;
+  const [crops, setCrops] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
 
-    const fetchIssues = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const merged = await fetchAllIssues();
-            const list = Array.isArray(merged?.results) ? merged.results : [];
-            setIssues(list);
-            setTotalCount(typeof merged?.count === "number" ? merged.count : list.length);
-            logApiDiagnostics({
-                label: "issues-ui",
-                url: "/api/v1/issues/",
-                apiCount: merged?.count,
-                rowsLoaded: list.length,
-                pagination: { pagesLoaded: merged?.pagesLoaded },
-            });
-        } catch (err) {
-            setError(err?.message || "Failed to load issues.");
-            setIssues([]);
-            setTotalCount(0);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  const fetchCrops = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const merged = await fetchAllMasterCrops();
+      const list = Array.isArray(merged?.results) ? merged.results : [];
+      setCrops(list);
+      setTotalCount(typeof merged?.count === "number" ? merged.count : list.length);
+      logApiDiagnostics({
+        label: "crop-issues-master-crops",
+        url: "/api/v1/masters/crops/",
+        apiCount: merged?.count,
+        rowsLoaded: list.length,
+        pagination: { pagesLoaded: merged?.pagesLoaded },
+      });
+    } catch {
+      setError("Failed to load master crops.");
+      setCrops([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    useEffect(() => { fetchIssues(); }, [fetchIssues]);
+  useEffect(() => {
+    fetchCrops();
+  }, [fetchCrops]);
 
-    const issueRows = Array.isArray(issues) ? issues : [];
-    const filteredIssues = issueRows.filter((issue) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
+  const hasAnyCode = useMemo(
+    () => crops.some((c) => cropCode(c) != null),
+    [crops]
+  );
 
-        return [
-            getFarmerName(issue),
-            getVillageName(issue),
-            getCropName(issue),
-            getIssueCategory(issue),
-            issue?.description,
-            getAgentName(issue),
-        ]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(q));
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return crops;
+    return crops.filter((c) => {
+      const name = cropName(c).toLowerCase();
+      const code = (cropCode(c) || "").toLowerCase();
+      const ta = String(c?.name_ta || "").toLowerCase();
+      return name.includes(q) || code.includes(q) || ta.includes(q);
     });
+  }, [crops, search]);
 
-    useEffect(() => {
-        setTotalPages(Math.max(1, Math.ceil(filteredIssues.length / pageSize)));
-    }, [filteredIssues.length]);
-
-    // Paginate client-side since we filter
-    const paged = filteredIssues.slice((page - 1) * pageSize, page * pageSize);
-
-    const highCount = filteredIssues.filter((i) => { const s = getSeverity(i).toLowerCase(); return s === "high" || s === "critical"; }).length;
-    const openCount = filteredIssues.filter((i) => !["resolved", "closed"].includes(getStatus(i).toLowerCase())).length;
-
-    const openRecommendation = (issue) => {
-        setRecTarget(issue);
-        setRecForm({ fertilizer: "", pesticide: "", dosage: "", notes: "" });
-        setRecPanelOpen(true);
-    };
-
-    const submitRecommendation = async () => {
-        if (!recTarget) return;
-        setRecSaving(true);
-        try {
-            await addRecommendation(recTarget.id, recForm);
-            setRecPanelOpen(false);
-            setRecTarget(null);
-            fetchIssues();
-        } catch {
-            // keep panel open on error
-        } finally {
-            setRecSaving(false);
+  return (
+    <div className="page-container crop-issues-page">
+      <PageHeader
+        title="Crop Issues"
+        subtitle="Master Crops"
+        actions={
+          <button type="button" onClick={fetchCrops} className="btn btn-primary btn-md">
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+          </button>
         }
-    };
+      />
 
-    return (
-        <div className="page-container">
-            {/* ── Header ── */}
-            <PageHeader
-                title="Crop Issues"
-                subtitle="Track crop problems and add recommendations"
-                actions={
-                    <button type="button" onClick={fetchIssues} className="btn btn-primary btn-md">
-                        <RefreshCw className="w-4 h-4" /> Refresh
-                    </button>
-                }
+      <div className="filters-bar crop-issues-filters">
+        <div className="crop-issues-filters__row">
+          <div className="search-wrapper crop-issues-filters__search">
+            <Search className="search-icon" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder={hasAnyCode ? "Search crop name or code…" : "Search crop name…"}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="search-input"
+              aria-label="Search master crops"
             />
-
-            {/* KPI */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <KpiCard icon={AlertTriangle} label="Total Issues" value={search.trim() ? filteredIssues.length : totalCount} accent="#dc2626" gradient="linear-gradient(135deg,#fff 0%,#fef2f2 100%)" iconBg="#fee2e2" />
-                <KpiCard icon={Flame} label="High Severity" value={highCount} accent="#ea580c" gradient="linear-gradient(135deg,#fff 0%,#fff7ed 100%)" iconBg="#ffedd5" />
-                <KpiCard icon={AlertCircle} label="Open Issues" value={openCount} accent="#ca8a04" gradient="linear-gradient(135deg,#fff 0%,#fefce8 100%)" iconBg="#fef9c3" />
-                <KpiCard icon={Leaf} label="Unique Crops" value={[...new Set(filteredIssues.map((i) => getCropName(i)).filter((name) => name && name !== "\u2014"))].length} accent="#16a34a" gradient="linear-gradient(135deg,#fff 0%,#f0fdf4 100%)" iconBg="#dcfce7" />
-            </div>
-
-            {/* ── Search ── */}
-            <div className="filters-bar">
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="search-wrapper">
-                        <Search className="search-icon" />
-                        <input
-                            type="text"
-                            placeholder="Search farmer, crop, problem…"
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            className="search-input"
-                        />
-                        {search && (
-                            <button onClick={() => { setSearch(""); setPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Error ── */}
-            {error && (
-                <div className="alert-error">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
-                    <button onClick={fetchIssues} className="ml-auto font-semibold hover:underline">Retry</button>
-                </div>
-            )}
-
-            {/* ── Table ── */}
-            {loading ? <PageLoader label="Loading issues…" /> : filteredIssues.length === 0 ? (
-                <div className="section-card">
-                    <EmptyState
-                        icon={AlertTriangle}
-                        title="No issues found"
-                        subtitle="Try adjusting your search."
-                    />
-                </div>
-            ) : (
-                <div className="section-card">
-                    <div className="section-card-header">
-                        <div className="flex items-center gap-3">
-                            <div className="icon-box"><AlertTriangle className="w-4 h-4 text-red-600" /></div>
-                            <div>
-                                <h3 className="section-title">Issue Records</h3>
-                                <p className="section-subtitle">{search.trim() ? `${filteredIssues.length} matching` : `${totalCount} total`} issues tracked</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="table-container">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    {["Farmer", "Village", "Crop", "Issue Category", "Severity", "Status", "Visit Date", "Agent", ""].map((h, i) => (
-                                        <th key={i}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paged.map((v, idx) => {
-                                    const farmerName = getFarmerName(v);
-                                    const visitId = getVisitId(v);
-                                    const cropName = getCropName(v);
-                                    return (
-                                        <tr key={v.id || idx}>
-                                            <td>
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-[11px] font-bold text-white">{farmerName[0]?.toUpperCase() || "F"}</span>
-                                                    </div>
-                                                    <p className="text-[13px] font-semibold text-gray-900 whitespace-nowrap">{farmerName}</p>
-                                                </div>
-                                            </td>
-                                            <td className="text-gray-500 text-xs">{safeStr(getVillageName(v))}</td>
-                                            <td>
-                                                {cropName !== "\u2014" ? (
-                                                    <span className="badge badge-success text-[11px]">
-                                                        <Leaf className="w-3 h-3" /> {safeStr(cropName)}
-                                                    </span>
-                                                ) : <span className="text-gray-300">—</span>}
-                                            </td>
-                                            <td className="text-gray-600 text-xs max-w-[180px] truncate">{getIssueCategory(v)}</td>
-                                            <td><SeverityBadge severity={getSeverity(v)} /></td>
-                                            <td><StatusBadge status={getStatus(v)} /></td>
-                                            <td className="text-gray-500 text-xs whitespace-nowrap">{fmt(getVisitDate(v))}</td>
-                                            <td className="text-gray-600 text-xs">{getAgentName(v)}</td>
-                                            <td>
-                                                <div className="flex items-center gap-1.5">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => visitId && navigate(`/visits/${visitId}`)}
-                                                        disabled={!visitId}
-                                                        className="table-action-btn table-action-btn--primary"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" /> View
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openRecommendation(v)}
-                                                        className="table-action-btn table-action-btn--info"
-                                                    >
-                                                        <Send className="w-3.5 h-3.5" /> Rec
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                    {/* ── Pagination ── */}
-                    <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-                        <p className="pagination-info">
-                            Page <span className="font-semibold text-gray-700">{page}</span> of{" "}
-                            <span className="font-semibold text-gray-700">{totalPages}</span>
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
-                                className="pagination-btn">
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-                                className="pagination-btn">
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Recommendation SlidePanel */}
-            <SlidePanel open={recPanelOpen} onClose={() => { setRecPanelOpen(false); setRecTarget(null); }} title="Add Recommendation">
-                <div className="space-y-5 p-1">
-                    {recTarget && (
-                        <div className="form-section">
-                            <p className="form-section__title">Issue</p>
-                            <p className="text-sm font-semibold text-gray-800">{getIssueCategory(recTarget) || "Issue"}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                                {getFarmerName(recTarget) || ""} {getCropName(recTarget) !== "\u2014" ? `• ${getCropName(recTarget)}` : ""}
-                                {getSeverity(recTarget) ? ` • ${getSeverity(recTarget)}` : ""}
-                            </p>
-                        </div>
-                    )}
-                    <div>
-                        <label className="form-label">Fertilizer</label>
-                        <input type="text" value={recForm.fertilizer} onChange={(e) => setRecForm({ ...recForm, fertilizer: e.target.value })}
-                            placeholder="e.g. NPK 19:19:19" className="input" />
-                    </div>
-                    <div>
-                        <label className="form-label">Pesticide</label>
-                        <input type="text" value={recForm.pesticide} onChange={(e) => setRecForm({ ...recForm, pesticide: e.target.value })}
-                            placeholder="e.g. Neem Oil" className="input" />
-                    </div>
-                    <div>
-                        <label className="form-label">Dosage</label>
-                        <input type="text" value={recForm.dosage} onChange={(e) => setRecForm({ ...recForm, dosage: e.target.value })}
-                            placeholder="e.g. 5ml per litre" className="input" />
-                    </div>
-                    <div>
-                        <label className="form-label">Notes</label>
-                        <textarea value={recForm.notes} onChange={(e) => setRecForm({ ...recForm, notes: e.target.value })}
-                            placeholder="Additional notes or instructions…" rows={3}
-                            className="input resize-none" />
-                    </div>
-                    <div className="flex items-center gap-3 pt-2">
-                        <button type="button" onClick={submitRecommendation} disabled={recSaving}
-                            className="btn btn-primary btn-md flex-1">
-                            <Send className="w-4 h-4" /> {recSaving ? "Saving…" : "Submit & Resolve"}
-                        </button>
-                        <button type="button" onClick={() => { setRecPanelOpen(false); setRecTarget(null); }}
-                            className="btn btn-secondary btn-md">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </SlidePanel>
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
+          {!loading && (
+            <p className="crop-issues-filters__meta">
+              {filtered.length}
+              {search.trim() ? ` of ${totalCount}` : ""} crops
+            </p>
+          )}
         </div>
-    );
+      </div>
+
+      {error && (
+        <div className="alert-error">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+          <button type="button" onClick={fetchCrops} className="ml-auto font-semibold hover:underline">
+            Retry
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <PageLoader label="Loading master crops…" />
+      ) : filtered.length === 0 ? (
+        <p className="crop-issues-empty">
+          {crops.length === 0
+            ? "No crops available in Master data."
+            : "No crops match your search."}
+        </p>
+      ) : (
+        <div className="section-card">
+          <div className="section-card-header">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="icon-box" aria-hidden="true">
+                <Wheat className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="section-title">Master Crops</h3>
+                <p className="section-subtitle">{filtered.length} crops from master data</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop table */}
+          <div className="table-container crop-issues-desktop">
+            <table className="data-table compact-table crop-issues-master-table w-full">
+              <thead>
+                <tr>
+                  <th>Crop Name</th>
+                  {hasAnyCode ? <th>Crop Code</th> : null}
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((crop, idx) => {
+                  const code = cropCode(crop);
+                  const active = isActive(crop);
+                  return (
+                    <tr key={crop.id ?? idx}>
+                      <td>
+                        <div className="crop-issues-crop-cell">
+                          <span className="crop-issues-crop-cell__icon" aria-hidden="true">
+                            <Leaf className="w-3.5 h-3.5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="crop-issues-crop-cell__name">{cropName(crop)}</p>
+                            {crop.name_ta ? (
+                              <p className="crop-issues-crop-cell__sub">{crop.name_ta}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      {hasAnyCode ? (
+                        <td className="crop-issues-code-cell">
+                          {code ?? "\u2014"}
+                        </td>
+                      ) : null}
+                      <td>
+                        <span
+                          className={`masters-admin-status ${
+                            active
+                              ? "masters-admin-status--active"
+                              : "masters-admin-status--inactive"
+                          }`}
+                        >
+                          <span className="masters-admin-status__dot" aria-hidden="true" />
+                          {active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="crop-issues-mobile">
+            {filtered.map((crop, idx) => {
+              const code = cropCode(crop);
+              const active = isActive(crop);
+              return (
+                <article key={crop.id ?? idx} className="crop-issues-mobile-card">
+                  <div className="crop-issues-crop-cell">
+                    <span className="crop-issues-crop-cell__icon" aria-hidden="true">
+                      <Leaf className="w-3.5 h-3.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="crop-issues-crop-cell__name">{cropName(crop)}</p>
+                      {crop.name_ta ? (
+                        <p className="crop-issues-crop-cell__sub">{crop.name_ta}</p>
+                      ) : null}
+                    </div>
+                    <span
+                      className={`masters-admin-status ${
+                        active
+                          ? "masters-admin-status--active"
+                          : "masters-admin-status--inactive"
+                      }`}
+                    >
+                      <span className="masters-admin-status__dot" aria-hidden="true" />
+                      {active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  {hasAnyCode ? (
+                    <p className="crop-issues-mobile-card__code">
+                      Code: <span>{code ?? "\u2014"}</span>
+                    </p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

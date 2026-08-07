@@ -9114,3 +9114,98 @@ textarea.input {
     border: 1px solid var(--border-card);
 }
 
+/* ── Crop Issues — Master Crops only ── */
+.crop-issues-filters__row {
+    @apply flex flex-col sm:flex-row sm:items-center gap-3;
+}
+
+.crop-issues-filters__search {
+    @apply flex-1 min-w-0;
+}
+
+.crop-issues-filters__meta {
+    @apply text-xs font-medium text-slate-500 whitespace-nowrap sm:ml-auto;
+}
+
+.crop-issues-empty {
+    @apply text-sm text-slate-500 px-1 py-3;
+}
+
+.crop-issues-crop-cell {
+    @apply flex items-center gap-2.5 min-w-0;
+}
+
+.crop-issues-crop-cell__icon {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center shrink-0;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: var(--brand-primary-dark);
+}
+
+.crop-issues-crop-cell__name {
+    @apply text-sm font-semibold text-slate-900 truncate;
+}
+
+.crop-issues-crop-cell__sub {
+    @apply text-xs text-slate-500 truncate mt-0.5;
+}
+
+.crop-issues-code-cell {
+    @apply text-sm text-slate-600 font-medium whitespace-nowrap;
+}
+
+.crop-issues-master-table {
+    table-layout: fixed;
+}
+
+.crop-issues-master-table th:first-child,
+.crop-issues-master-table td:first-child {
+    width: 55%;
+}
+
+.crop-issues-master-table th:nth-child(2),
+.crop-issues-master-table td:nth-child(2) {
+    width: 25%;
+}
+
+.crop-issues-master-table th:last-child,
+.crop-issues-master-table td:last-child {
+    width: 20%;
+}
+
+.crop-issues-desktop {
+    display: block;
+}
+
+.crop-issues-mobile {
+    display: none;
+    @apply p-3 space-y-2;
+}
+
+.crop-issues-mobile-card {
+    @apply rounded-xl border border-slate-100 bg-white p-3;
+    box-shadow: var(--shadow-xs);
+}
+
+.crop-issues-mobile-card__code {
+    @apply mt-2 pl-10 text-xs text-slate-500;
+}
+
+.crop-issues-mobile-card__code span {
+    @apply font-semibold text-slate-700;
+}
+
+@media (max-width: 767px) {
+    .crop-issues-desktop {
+        display: none;
+    }
+
+    .crop-issues-mobile {
+        display: block;
+    }
+
+    .crop-issues-master-table {
+        table-layout: auto;
+    }
+}
+
+
