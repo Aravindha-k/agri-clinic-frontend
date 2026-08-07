@@ -23,7 +23,7 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Clean production build
+      - name: Clean production build and verify dist
         env:
           VITE_API_BASE_URL: http://13.207.17.117
           EXPECTED_SHA: ${{ github.sha }}
@@ -39,15 +39,44 @@ jobs:
           npm ci
           npm run build
 
+          # Markers must not appear in the uploaded tree until live cutover succeeds.
+          rm -f dist/.deploy-sha dist/.deploy-asset
+
           test -f dist/index.html
           test -d dist/assets
 
           BUILT_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' dist/index.html)"
           if [ -z "$BUILT_JS" ]; then
-            echo "Built JS asset not found"
+            echo "Built JS asset not found in index.html"
             exit 1
           fi
           test -f "dist${BUILT_JS}"
+
+          BUILT_CSS="$(awk 'match($0, /\/assets\/index-[^\"]+\.css/) { print substr($0, RSTART, RLENGTH); exit }' dist/index.html)"
+          if [ -z "$BUILT_CSS" ]; then
+            echo "Built CSS asset not found in index.html"
+            exit 1
+          fi
+          test -f "dist${BUILT_CSS}"
+
+          EMBLEM_FILE="$(find dist/assets -maxdepth 1 -type f -name 'premium-kac-emblem-transparent-*.png' | head -n 1)"
+          if [ -z "$EMBLEM_FILE" ]; then
+            echo "Premium KAC emblem asset missing from dist/assets"
+            exit 1
+          fi
+          BUILT_EMBLEM="/assets/$(basename "$EMBLEM_FILE")"
+
+          # Inventory of every hashed file under dist/assets (required on EC2 before cutover).
+          find dist/assets -type f | sed 's|^dist||' | sort > /tmp/required-assets.txt
+          test -s /tmp/required-assets.txt
+
+          # Key lazy-loaded chunks that must exist for core admin routes.
+          for pattern in 'Tracking-*.js' 'leaflet-*.js' 'recharts-*.js'; do
+            if ! compgen -G "dist/assets/${pattern}" > /dev/null; then
+              echo "Missing required chunk pattern: ${pattern}"
+              exit 1
+            fi
+          done
 
           if ! grep -R -q "Showing the last known location" dist/assets; then
             echo "Missing required string: Showing the last known location"
@@ -58,11 +87,17 @@ jobs:
             exit 1
           fi
 
-          printf '%s\n' "$EXPECTED_SHA" > dist/.deploy-sha
-          printf '%s\n' "$BUILT_JS" > dist/.deploy-asset
-          echo "Built asset: $BUILT_JS"
-          echo "BUILT_JS=$BUILT_JS" >> "$GITHUB_ENV"
-          echo "EXPECTED_SHA=$EXPECTED_SHA" >> "$GITHUB_ENV"
+          {
+            echo "BUILT_JS=$BUILT_JS"
+            echo "BUILT_CSS=$BUILT_CSS"
+            echo "BUILT_EMBLEM=$BUILT_EMBLEM"
+            echo "EXPECTED_SHA=$EXPECTED_SHA"
+          } >> "$GITHUB_ENV"
+
+          echo "Built JS:     $BUILT_JS"
+          echo "Built CSS:    $BUILT_CSS"
+          echo "Built emblem: $BUILT_EMBLEM"
+          echo "Asset count:  $(wc -l < /tmp/required-assets.txt)"
 
       - name: Configure SSH
         env:
@@ -76,7 +111,7 @@ jobs:
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           echo "SSH configured for $EC2_HOST"
 
-      - name: Sync dist to EC2 and verify live
+      - name: Atomic sync to EC2 and verify live
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -85,82 +120,183 @@ jobs:
           set -Eeuo pipefail
           trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
 
-          EXPECTED_ROOT="/var/www/agri-admin/agri-clinic-frontend/dist"
+          PARENT="/var/www/agri-admin/agri-clinic-frontend"
+          LIVE_ROOT="${PARENT}/dist"
+          NEXT_ROOT="${PARENT}/dist-next"
+          PREV_ROOT="${PARENT}/dist-prev"
           SSH=(ssh -i ~/.ssh/ec2_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
           RSYNC=(rsync -az --delete -e "ssh -i ~/.ssh/ec2_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes")
           REMOTE="${EC2_USER}@${EC2_HOST}"
 
-          echo "==> Ensure remote dist parent exists"
-          "${SSH[@]}" "$REMOTE" "mkdir -p '$EXPECTED_ROOT'"
+          # Trailing slashes: sync contents of local dist/ into remote dist-next/.
+          echo "==> Prepare empty staging directory on EC2"
+          "${SSH[@]}" "$REMOTE" "mkdir -p '$PARENT' && rm -rf '$NEXT_ROOT' && mkdir -p '$NEXT_ROOT'"
 
-          echo "==> Sync production dist to EC2"
-          "${RSYNC[@]}" dist/ "${REMOTE}:${EXPECTED_ROOT}/"
+          echo "==> Upload complete dist to dist-next (live dist untouched)"
+          "${RSYNC[@]}" dist/ "${REMOTE}:${NEXT_ROOT}/"
 
-          echo "==> Verify Nginx root, reload, and live assets"
-          "${SSH[@]}" "$REMOTE" "EXPECTED_SHA='$EXPECTED_SHA' BUILT_JS='$BUILT_JS' EXPECTED_ROOT='$EXPECTED_ROOT' VITE_API_BASE_URL='$VITE_API_BASE_URL' bash -s" <<'REMOTE_SCRIPT'
+          echo "==> Upload required asset inventory"
+          scp -i ~/.ssh/ec2_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            /tmp/required-assets.txt "${REMOTE}:/tmp/required-assets.txt"
+
+          echo "==> Verify staging tree, ownership, atomic cutover, then markers + HTTP checks"
+          "${SSH[@]}" "$REMOTE" \
+            "EXPECTED_SHA='$EXPECTED_SHA' BUILT_JS='$BUILT_JS' BUILT_CSS='$BUILT_CSS' BUILT_EMBLEM='$BUILT_EMBLEM' \
+             PARENT='$PARENT' LIVE_ROOT='$LIVE_ROOT' NEXT_ROOT='$NEXT_ROOT' PREV_ROOT='$PREV_ROOT' \
+             VITE_API_BASE_URL='$VITE_API_BASE_URL' bash -s" <<'REMOTE_SCRIPT'
           set -Eeuo pipefail
           trap 'echo "Deployment failed at line $LINENO"; exit 1' ERR
 
-          ACTUAL_SHA="$(tr -d '[:space:]' < "$EXPECTED_ROOT/.deploy-sha")"
-          if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-            echo "Commit mismatch"
-            echo "Expected: $EXPECTED_SHA"
-            echo "Actual:   $ACTUAL_SHA"
-            exit 1
-          fi
+          http_ok() {
+            local path="$1"
+            local code
+            code="$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" -H "Cache-Control: no-cache" "http://127.0.0.1${path}" || true)"
+            if [ "$code" != "200" ]; then
+              code="$(curl -sS -o /dev/null -w "%{http_code}" -H "Cache-Control: no-cache" "http://127.0.0.1${path}" || true)"
+            fi
+            if [ "$code" != "200" ]; then
+              echo "HTTP $code for ${path} (expected 200)"
+              exit 1
+            fi
+            echo "OK ${path} ($code)"
+          }
 
-          REMOTE_BUILT_JS="$(tr -d '[:space:]' < "$EXPECTED_ROOT/.deploy-asset")"
-          if [ "$REMOTE_BUILT_JS" != "$BUILT_JS" ]; then
-            echo "Remote asset marker mismatch"
+          echo "==> Staging: index.html and assets/"
+          test -f "$NEXT_ROOT/index.html"
+          test -d "$NEXT_ROOT/assets"
+          test ! -e "$NEXT_ROOT/.deploy-sha"
+          test ! -e "$NEXT_ROOT/.deploy-asset"
+
+          echo "==> Staging: every required hashed asset present"
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            if [ ! -f "${NEXT_ROOT}${rel}" ]; then
+              echo "Missing staged asset: ${NEXT_ROOT}${rel}"
+              exit 1
+            fi
+          done < /tmp/required-assets.txt
+
+          test -f "${NEXT_ROOT}${BUILT_JS}"
+          test -f "${NEXT_ROOT}${BUILT_CSS}"
+          test -f "${NEXT_ROOT}${BUILT_EMBLEM}"
+
+          STAGED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' "$NEXT_ROOT/index.html")"
+          if [ "$STAGED_JS" != "$BUILT_JS" ]; then
+            echo "Staged index.html JS mismatch"
             echo "Expected: $BUILT_JS"
-            echo "Actual:   $REMOTE_BUILT_JS"
+            echo "Actual:   $STAGED_JS"
             exit 1
           fi
 
-          test -f "$EXPECTED_ROOT/index.html"
-          test -f "$EXPECTED_ROOT${BUILT_JS}"
-
-          if ! grep -R -q "Showing the last known location" "$EXPECTED_ROOT/assets"; then
-            echo "Missing required string on EC2 dist"
+          if ! grep -R -q "Showing the last known location" "$NEXT_ROOT/assets"; then
+            echo "Missing required string on staged dist-next"
             exit 1
           fi
+
+          echo "==> Preserve nginx-facing ownership/permissions"
+          if [ -d "$LIVE_ROOT" ]; then
+            OWNER_GROUP="$(stat -c '%U:%G' "$LIVE_ROOT")"
+          else
+            OWNER_GROUP="$(stat -c '%U:%G' "$PARENT")"
+          fi
+          sudo chown -R "$OWNER_GROUP" "$NEXT_ROOT"
+          sudo find "$NEXT_ROOT" -type d -exec chmod 755 {} +
+          sudo find "$NEXT_ROOT" -type f -exec chmod 644 {} +
 
           NGINX_DUMP="$(sudo nginx -T 2>&1)"
-          if ! printf '%s\n' "$NGINX_DUMP" | grep -F -q "$EXPECTED_ROOT"; then
-            echo "Nginx is not configured to serve $EXPECTED_ROOT"
+          if ! printf '%s\n' "$NGINX_DUMP" | grep -F -q "$LIVE_ROOT"; then
+            echo "Nginx is not configured to serve $LIVE_ROOT"
             printf '%s\n' "$NGINX_DUMP" | grep -E 'root |server_name|listen ' || true
             exit 1
           fi
-
           sudo nginx -t
+
+          rollback_live() {
+            echo "Rolling back live dist to previous tree"
+            if [ -d "$PREV_ROOT" ]; then
+              sudo rm -rf "$LIVE_ROOT"
+              sudo mv "$PREV_ROOT" "$LIVE_ROOT"
+              sudo systemctl reload nginx || true
+            fi
+          }
+
+          echo "==> Atomic cutover: dist -> dist-prev, dist-next -> dist"
+          # Live root is only replaced after the full staged tree is verified.
+          # Never write .deploy-sha until after cutover + HTTP checks succeed.
+          sudo rm -rf "$PREV_ROOT"
+          if [ -d "$LIVE_ROOT" ] || [ -L "$LIVE_ROOT" ]; then
+            sudo mv "$LIVE_ROOT" "$PREV_ROOT"
+          fi
+          sudo mv "$NEXT_ROOT" "$LIVE_ROOT"
+
+          # Ensure live ownership after rename
+          sudo chown -R "$OWNER_GROUP" "$LIVE_ROOT"
+
           sudo systemctl reload nginx
           sudo systemctl is-active --quiet nginx
 
-          if ! curl -fsS -H "Host: 13.207.17.117" http://127.0.0.1/ -o /tmp/live-index.html; then
-            curl -fsS http://127.0.0.1/ -o /tmp/live-index.html
-          fi
+          echo "==> Live HTTP verification (fail closed on any 404)"
+          if ! (
+            set -Eeuo pipefail
+            http_ok "/"
+            # Markers intentionally absent until checks pass — probe assets first.
+            if ! curl -fsS -H "Host: 13.207.17.117" -H "Cache-Control: no-cache" http://127.0.0.1/ -o /tmp/live-index.html; then
+              curl -fsS -H "Cache-Control: no-cache" http://127.0.0.1/ -o /tmp/live-index.html
+            fi
 
-          SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
-          if [ -z "$SERVED_JS" ]; then
-            echo "Served JS asset not found in live index.html"
+            SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
+            SERVED_CSS="$(awk 'match($0, /\/assets\/index-[^\"]+\.css/) { print substr($0, RSTART, RLENGTH); exit }' /tmp/live-index.html)"
+            if [ -z "$SERVED_JS" ] || [ -z "$SERVED_CSS" ]; then
+              echo "Could not parse JS/CSS from live index.html"
+              exit 1
+            fi
+            if [ "$SERVED_JS" != "$BUILT_JS" ] || [ "$SERVED_CSS" != "$BUILT_CSS" ]; then
+              echo "Live index.html does not match this build"
+              echo "JS  built=$BUILT_JS served=$SERVED_JS"
+              echo "CSS built=$BUILT_CSS served=$SERVED_CSS"
+              exit 1
+            fi
+
+            http_ok "$SERVED_JS"
+            http_ok "$SERVED_CSS"
+            http_ok "$BUILT_EMBLEM"
+
+            # Every staged hashed asset must be HTTP 200 under the live root.
+            while IFS= read -r rel; do
+              [ -n "$rel" ] || continue
+              http_ok "$rel"
+            done < /tmp/required-assets.txt
+
+            echo "==> Write deploy markers only after live assets return 200"
+            printf '%s\n' "$EXPECTED_SHA" | sudo tee "$LIVE_ROOT/.deploy-sha" > /dev/null
+            printf '%s\n' "$BUILT_JS" | sudo tee "$LIVE_ROOT/.deploy-asset" > /dev/null
+            sudo chown "$OWNER_GROUP" "$LIVE_ROOT/.deploy-sha" "$LIVE_ROOT/.deploy-asset"
+            sudo chmod 644 "$LIVE_ROOT/.deploy-sha" "$LIVE_ROOT/.deploy-asset"
+
+            http_ok "/.deploy-sha"
+            http_ok "/.deploy-asset"
+
+            ACTUAL_SHA="$(tr -d '[:space:]' < "$LIVE_ROOT/.deploy-sha")"
+            REMOTE_BUILT_JS="$(tr -d '[:space:]' < "$LIVE_ROOT/.deploy-asset")"
+            if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ] || [ "$REMOTE_BUILT_JS" != "$BUILT_JS" ]; then
+              echo "Deploy marker mismatch after write"
+              exit 1
+            fi
+
+            # Export for success summary outside subshell
+            printf '%s\n' "$SERVED_JS" > /tmp/served-js.txt
+            printf '%s\n' "$ACTUAL_SHA" > /tmp/actual-sha.txt
+          ); then
+            rollback_live
             exit 1
           fi
 
-          if [ "$SERVED_JS" != "$BUILT_JS" ]; then
-            echo "Served asset does not match the new build"
-            echo "Built:  $BUILT_JS"
-            echo "Served: $SERVED_JS"
-            exit 1
-          fi
+          SERVED_JS="$(cat /tmp/served-js.txt)"
+          ACTUAL_SHA="$(cat /tmp/actual-sha.txt)"
 
-          HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: 13.207.17.117" "http://127.0.0.1${SERVED_JS}" || true)"
-          if [ "$HTTP_CODE" != "200" ]; then
-            HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1${SERVED_JS}" || true)"
-          fi
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Served JS HTTP status was $HTTP_CODE (expected 200)"
-            exit 1
-          fi
+          # Previous tree is obsolete only after a fully verified cutover.
+          sudo rm -rf "$PREV_ROOT"
+          rm -f /tmp/required-assets.txt /tmp/live-index.html /tmp/served-js.txt /tmp/actual-sha.txt
 
           DEPLOY_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           echo ""
@@ -169,8 +305,10 @@ jobs:
           echo "EC2 SHA: $ACTUAL_SHA"
           echo "Built asset: $BUILT_JS"
           echo "Served asset: $SERVED_JS"
+          echo "Built CSS: $BUILT_CSS"
+          echo "Built emblem: $BUILT_EMBLEM"
           echo "API base URL: $VITE_API_BASE_URL"
-          echo "Nginx root: $EXPECTED_ROOT"
+          echo "Nginx root: $LIVE_ROOT"
           echo "Deployment time: $DEPLOY_TIME"
           REMOTE_SCRIPT
 
@@ -178,13 +316,42 @@ jobs:
           LIVE_HTML="$(mktemp)"
           curl -fsS -H "Cache-Control: no-cache" "http://${EC2_HOST}/" -o "$LIVE_HTML"
           SERVED_JS="$(awk 'match($0, /\/assets\/index-[^\"]+\.js/) { print substr($0, RSTART, RLENGTH); exit }' "$LIVE_HTML")"
-          echo "Public served asset: $SERVED_JS"
-          if [ "$SERVED_JS" != "$BUILT_JS" ]; then
-            echo "Public site still serving old asset"
-            echo "Built:  $BUILT_JS"
-            echo "Served: $SERVED_JS"
+          SERVED_CSS="$(awk 'match($0, /\/assets\/index-[^\"]+\.css/) { print substr($0, RSTART, RLENGTH); exit }' "$LIVE_HTML")"
+          echo "Public served JS:  $SERVED_JS"
+          echo "Public served CSS: $SERVED_CSS"
+          if [ "$SERVED_JS" != "$BUILT_JS" ] || [ "$SERVED_CSS" != "$BUILT_CSS" ]; then
+            echo "Public site still serving mismatched assets"
             exit 1
           fi
-          curl -fsS -o /dev/null "http://${EC2_HOST}${SERVED_JS}"
+
+          for path in \
+            "/" \
+            "/.deploy-sha" \
+            "/.deploy-asset" \
+            "$BUILT_JS" \
+            "$BUILT_CSS" \
+            "$BUILT_EMBLEM"
+          do
+            CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Cache-Control: no-cache" "http://${EC2_HOST}${path}" || true)"
+            if [ "$CODE" != "200" ]; then
+              echo "Public HTTP $CODE for ${path}"
+              exit 1
+            fi
+            echo "Public OK ${path}"
+          done
+
+          # Spot-check key lazy chunks publicly (names from this build inventory).
+          while IFS= read -r rel; do
+            case "$rel" in
+              /assets/Tracking-*.js|/assets/leaflet-*.js|/assets/recharts-*.js)
+                CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Cache-Control: no-cache" "http://${EC2_HOST}${rel}" || true)"
+                if [ "$CODE" != "200" ]; then
+                  echo "Public HTTP $CODE for ${rel}"
+                  exit 1
+                fi
+                echo "Public OK ${rel}"
+                ;;
+            esac
+          done < /tmp/required-assets.txt
 
           echo "Public verification passed for $EXPECTED_SHA ($BUILT_JS)"

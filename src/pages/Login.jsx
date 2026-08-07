@@ -2,7 +2,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
-import logoSeal from "../assets/kavya-agri-clinic-logo-premium.png";
+import logoSeal from "../assets/premium-kac-emblem-transparent.png";
 import {
   ArrowRight,
   BarChart3,
