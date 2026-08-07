@@ -2,7 +2,8 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
-import logoSeal from "../assets/premium-kac-emblem-transparent.png";
+import Logo from "../components/Logo";
+import companyLogo from "../assets/logo.png";
 import {
   ArrowRight,
   BarChart3,
@@ -14,40 +15,6 @@ import {
   Sprout,
   User,
 } from "lucide-react";
-
-/** Login-only brand mark — uses the approved premium seal (not shared Logo / logo.png). */
-function LoginBrandMark({ size = "md", showShadow = true, className = "" }) {
-  const sizeClass =
-    size === "xl"
-      ? "w-20 h-20"
-      : size === "sm"
-        ? "w-10 h-10"
-        : "w-12 h-12";
-  const imgClass =
-    size === "xl"
-      ? "w-16 h-16"
-      : size === "sm"
-        ? "w-8 h-8"
-        : "w-10 h-10";
-
-  return (
-    <div
-      className={`inline-flex items-center justify-center flex-shrink-0 brand-logo-box brand-logo-box--login ${sizeClass} ${
-        showShadow ? "brand-logo-shadow" : ""
-      } ${className}`.trim()}
-    >
-      <img
-        src={logoSeal}
-        alt="Kavya Agri Clinic"
-        width={256}
-        height={256}
-        className={`brand-logo-img ${imgClass}`}
-        decoding="async"
-        draggable={false}
-      />
-    </div>
-  );
-}
 
 /* ── Icon: Eye show/hide ─────────────────────────────── */
 const IconEye = ({ open }) =>
@@ -93,7 +60,7 @@ function AuthOverlay({ progress }) {
           <span className="login-auth-ring" />
           <span className="login-auth-glow" />
           <div className="login-auth-logo">
-            <LoginBrandMark size="xl" showShadow={false} />
+            <Logo size="xl" variant="login" showShadow={false} />
           </div>
         </div>
 
@@ -250,14 +217,14 @@ const Login = () => {
                 <span className="login-seal-particle login-seal-particle--6" aria-hidden="true" />
                 <span className="login-seal-particle login-seal-particle--7" aria-hidden="true" />
                 <span className="login-seal-particle login-seal-particle--8" aria-hidden="true" />
-                {/* Logo — floats and has a light-sweep ::after */}
+                {/* Logo — same official company mark as sidebar/header; floats + light-sweep ::after */}
                 <div className="login-aside__seal">
                   <img
-                    src={logoSeal}
+                    src={companyLogo}
                     alt="Kavya Agri Clinic"
                     className="login-aside__seal-img"
-                    width={4096}
-                    height={4096}
+                    width={256}
+                    height={256}
                     decoding="async"
                     draggable={false}
                   />
@@ -321,7 +288,7 @@ const Login = () => {
         </div>
 
         <header className="login-mobile-header">
-          <LoginBrandMark size="sm" />
+          <Logo size="sm" variant="login" />
           <div>
             <p className="login-mobile-header__name">Kavya Agri Clinic</p>
             <p className="login-mobile-header__tag">Agricultural Management System</p>
@@ -332,7 +299,7 @@ const Login = () => {
           <div className={`login-card ${loading ? "login-card--loading" : ""}`}>
             <div className="login-form-header">
               <div className="login-card__logo">
-                <LoginBrandMark size="md" />
+                <Logo size="md" variant="login" />
               </div>
               <div className="login-form-badge">
                 <span className="login-form-badge__dot" aria-hidden="true" />
