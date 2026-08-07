@@ -2,7 +2,6 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
-import Logo from "../components/Logo";
 import logoSeal from "../assets/kavya-agri-clinic-logo-premium.png";
 import {
   ArrowRight,
@@ -15,6 +14,40 @@ import {
   Sprout,
   User,
 } from "lucide-react";
+
+/** Login-only brand mark — uses the approved premium seal (not shared Logo / logo.png). */
+function LoginBrandMark({ size = "md", showShadow = true, className = "" }) {
+  const sizeClass =
+    size === "xl"
+      ? "w-20 h-20"
+      : size === "sm"
+        ? "w-10 h-10"
+        : "w-12 h-12";
+  const imgClass =
+    size === "xl"
+      ? "w-16 h-16"
+      : size === "sm"
+        ? "w-8 h-8"
+        : "w-10 h-10";
+
+  return (
+    <div
+      className={`inline-flex items-center justify-center flex-shrink-0 brand-logo-box brand-logo-box--login ${sizeClass} ${
+        showShadow ? "brand-logo-shadow" : ""
+      } ${className}`.trim()}
+    >
+      <img
+        src={logoSeal}
+        alt="Kavya Agri Clinic"
+        width={256}
+        height={256}
+        className={`brand-logo-img ${imgClass}`}
+        decoding="async"
+        draggable={false}
+      />
+    </div>
+  );
+}
 
 /* ── Icon: Eye show/hide ─────────────────────────────── */
 const IconEye = ({ open }) =>
@@ -60,7 +93,7 @@ function AuthOverlay({ progress }) {
           <span className="login-auth-ring" />
           <span className="login-auth-glow" />
           <div className="login-auth-logo">
-            <Logo size="xl" variant="login" showShadow={false} />
+            <LoginBrandMark size="xl" showShadow={false} />
           </div>
         </div>
 
@@ -288,7 +321,7 @@ const Login = () => {
         </div>
 
         <header className="login-mobile-header">
-          <Logo size="sm" variant="login" />
+          <LoginBrandMark size="sm" />
           <div>
             <p className="login-mobile-header__name">Kavya Agri Clinic</p>
             <p className="login-mobile-header__tag">Agricultural Management System</p>
@@ -299,7 +332,7 @@ const Login = () => {
           <div className={`login-card ${loading ? "login-card--loading" : ""}`}>
             <div className="login-form-header">
               <div className="login-card__logo">
-                <Logo size="md" variant="login" />
+                <LoginBrandMark size="md" />
               </div>
               <div className="login-form-badge">
                 <span className="login-form-badge__dot" aria-hidden="true" />
