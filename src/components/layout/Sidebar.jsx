@@ -131,10 +131,8 @@ export default function Sidebar({ isOpen, onClose }) {
           <div className="sidebar-brand">
             <div className="sidebar-brand__orbit">
               <span className="sidebar-brand__orbit-glow" aria-hidden="true" />
-              <span className="sidebar-brand__orbit-ring sidebar-brand__orbit-ring--outer" aria-hidden="true" />
-              <span className="sidebar-brand__orbit-ring sidebar-brand__orbit-ring--mid" aria-hidden="true" />
-              <span className="sidebar-brand__orbit-arc" aria-hidden="true" />
-              <div className="sidebar-brand__logo">
+              <span className="sidebar-brand__orbit-ring" aria-hidden="true" />
+              <div className="sidebar-brand__logo" aria-hidden="false">
                 <Logo size="sidebar" variant="sidebar" showShadow={false} />
               </div>
             </div>
