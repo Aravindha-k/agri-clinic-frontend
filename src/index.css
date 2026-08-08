@@ -6156,8 +6156,8 @@ textarea.input {
 }
 
 .brand-spin-stage {
-    width: 7rem; /* 112px */
-    height: 7rem;
+    width: 7.5rem; /* 120px — more visible in 260px sidebar */
+    height: 7.5rem;
     margin: 0 auto;
     flex-shrink: 0;
     perspective: 900px;
@@ -6188,21 +6188,28 @@ textarea.input {
     border-radius: 50%;
     object-fit: contain;
     object-position: center;
-    background: transparent;
+    /* Circular light disc so the seal pops on dark sidebar (not a square plate) */
+    background:
+        radial-gradient(
+            circle at 50% 42%,
+            #ffffff 0%,
+            #f4faf6 58%,
+            #e6f4ea 100%
+        );
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    /* Soft green-tinted shadow on each face — does not flatten 3D parent */
     box-shadow:
-        0 10px 22px rgba(6, 78, 59, 0.2),
-        0 3px 8px rgba(15, 23, 42, 0.1);
+        0 0 0 1px rgba(255, 255, 255, 0.22),
+        0 14px 30px rgba(0, 0, 0, 0.38),
+        0 4px 12px rgba(6, 78, 59, 0.28);
 }
 
 .brand-spin-front {
-    transform: rotateY(0deg);
+    transform: rotateY(0deg) scale(1.04);
 }
 
 .brand-spin-back {
-    transform: rotateY(180deg);
+    transform: rotateY(180deg) scale(1.04);
 }
 
 .sidebar-brand__text {
@@ -6270,14 +6277,14 @@ textarea.input {
 
 .sidebar--collapsed .brand-spin-stage,
 .sidebar-collapsed .brand-spin-stage {
-    width: 2.75rem; /* 44px */
-    height: 2.75rem;
+    width: 3rem; /* 48px */
+    height: 3rem;
 }
 
 @media (max-width: 1024px) {
     .brand-spin-stage {
-        width: 5.625rem; /* 90px */
-        height: 5.625rem;
+        width: 6rem; /* 96px */
+        height: 6rem;
     }
 
     .sidebar-brand__title {
@@ -6291,8 +6298,8 @@ textarea.input {
     }
 
     .brand-spin-stage {
-        width: 5rem; /* 80px */
-        height: 5rem;
+        width: 5.25rem; /* 84px */
+        height: 5.25rem;
     }
 
     .sidebar-brand__title {
