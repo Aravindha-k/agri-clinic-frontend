@@ -2,7 +2,7 @@
 import { LayoutDashboard, LogOut, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
-import Logo from "../Logo";
+import companyLogo from "../../assets/logo.png";
 import { NAV_SECTIONS } from "./navConfig";
 
 function resolveNavSections() {
@@ -129,14 +129,27 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
-            <div className="sidebar-brand__stage">
-              <div className="sidebar-brand__coin">
-                <div className="sidebar-brand__face sidebar-brand__face--front">
-                  <Logo size="sidebar" variant="sidebar" showShadow={false} />
-                </div>
-                <div className="sidebar-brand__face sidebar-brand__face--back" aria-hidden="true">
-                  <Logo size="sidebar" variant="sidebar" showShadow={false} alt="" />
-                </div>
+            <div className="brand-spin-stage">
+              <div className="brand-spin-coin">
+                <img
+                  className="brand-spin-face brand-spin-front"
+                  src={companyLogo}
+                  alt="Kavya Agri Clinic"
+                  width={888}
+                  height={888}
+                  decoding="async"
+                  draggable={false}
+                />
+                <img
+                  className="brand-spin-face brand-spin-back"
+                  src={companyLogo}
+                  alt=""
+                  aria-hidden="true"
+                  width={888}
+                  height={888}
+                  decoding="async"
+                  draggable={false}
+                />
               </div>
             </div>
             <div className="sidebar-brand__text">

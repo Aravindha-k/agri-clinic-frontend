@@ -263,34 +263,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.65rem;
+    gap: 0.75rem;
     flex-shrink: 0;
     min-width: 0;
 }
 
 .app-header__search {
-    width: 19.5rem; /* ~312px */
-    max-width: 21.25rem; /* 340px */
-    flex-shrink: 1;
-    min-width: 0;
+    display: none !important; /* global Search pages removed */
 }
 
-@media (min-width: 1280px) {
-    .app-header__search {
-        width: 21rem; /* ~336px */
-    }
-}
-
-@media (max-width: 1279px) and (min-width: 1024px) {
-    .app-header__search {
-        width: 17.5rem;
-    }
-}
 
 .app-header__cluster {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.7rem;
     flex-shrink: 0;
 }
 
@@ -6158,7 +6144,7 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar premium — two-sided rotating seal (same logo both faces) */
+/* Sidebar premium — two-sided rotating seal (direct imgs; no filter flatten) */
 .sidebar-brand {
     @apply relative z-10 flex flex-col items-center text-center;
     margin: 0;
@@ -6169,76 +6155,54 @@ textarea.input {
     box-shadow: none;
 }
 
-.sidebar-brand__stage {
-    width: 6.875rem; /* 110px */
-    height: 6.875rem;
+.brand-spin-stage {
+    width: 7rem; /* 112px */
+    height: 7rem;
     margin: 0 auto;
     flex-shrink: 0;
     perspective: 900px;
     perspective-origin: 50% 50%;
-    /* Soft green-tinted depth behind the coin */
-    filter: drop-shadow(0 10px 18px rgba(6, 78, 59, 0.22))
-            drop-shadow(0 3px 8px rgba(15, 23, 42, 0.12));
+    /* Soft depth WITHOUT CSS filter (filter flattens preserve-3d) */
+    box-shadow: none;
 }
 
-.sidebar-brand__coin {
+.brand-spin-coin {
     position: relative;
     width: 100%;
     height: 100%;
     transform-style: preserve-3d;
     -webkit-transform-style: preserve-3d;
     transform-origin: center center;
-    animation: sidebarCoinSpin 20s linear infinite;
+    animation: brandLogoRotate 18s linear infinite;
+    will-change: transform;
 }
 
-.sidebar-brand__face {
+.brand-spin-face {
     position: absolute;
     inset: 0;
-    border-radius: 50%;
-    overflow: hidden;
-    background: transparent;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
     border: none;
+    border-radius: 50%;
+    object-fit: contain;
+    object-position: center;
+    background: transparent;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    transform-style: preserve-3d;
-    clip-path: circle(50% at 50% 50%);
-    -webkit-clip-path: circle(50% at 50% 50%);
+    /* Soft green-tinted shadow on each face — does not flatten 3D parent */
+    box-shadow:
+        0 10px 22px rgba(6, 78, 59, 0.2),
+        0 3px 8px rgba(15, 23, 42, 0.1);
 }
 
-.sidebar-brand__face--front {
+.brand-spin-front {
     transform: rotateY(0deg);
 }
 
-/* 180deg face offset keeps seal readable (not mirrored) when coin flips */
-.sidebar-brand__face--back {
+.brand-spin-back {
     transform: rotateY(180deg);
-}
-
-.sidebar-brand__face .brand-logo-box,
-.sidebar-brand__face .brand-logo-box--sidebar {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100%;
-    max-height: 100%;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    border-radius: 50% !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    overflow: hidden !important;
-    clip-path: circle(50% at 50% 50%) !important;
-    -webkit-clip-path: circle(50% at 50% 50%) !important;
-}
-
-.sidebar-brand__face .brand-logo-img,
-.sidebar-brand__face img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-    object-position: center !important;
-    border-radius: 50% !important;
-    display: block;
 }
 
 .sidebar-brand__text {
@@ -6247,13 +6211,13 @@ textarea.input {
     align-items: center;
     width: 100%;
     min-width: 0;
-    margin-top: 0.7rem; /* ~11px */
+    margin-top: 0.7rem;
 }
 
 .sidebar-brand__title {
-    font-size: 1.125rem; /* 18px */
+    font-size: 1.125rem;
     font-weight: 700;
-    letter-spacing: 0.015em; /* ~0.2px */
+    letter-spacing: 0.015em;
     color: rgba(255, 255, 255, 0.96);
     line-height: 1.25;
     text-align: center;
@@ -6265,10 +6229,10 @@ textarea.input {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0.4rem; /* ~6–7px */
+    margin-top: 0.4rem;
     padding: 0.2rem 0.55rem;
     border-radius: 999px;
-    font-size: 0.6875rem; /* 11px */
+    font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
@@ -6279,25 +6243,18 @@ textarea.input {
     backdrop-filter: blur(6px);
 }
 
-@keyframes sidebarCoinSpin {
+@keyframes brandLogoRotate {
     from { transform: rotateY(0deg); }
     to { transform: rotateY(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sidebar-brand__coin {
-        animation: none !important;
-        transform: none !important;
+    .brand-spin-coin {
+        animation: none;
     }
 
-    .sidebar-brand__face--back {
-        display: none !important;
-    }
-
-    .sidebar-brand__face--front {
-        transform: none !important;
-        backface-visibility: visible;
-        -webkit-backface-visibility: visible;
+    .brand-spin-back {
+        display: none;
     }
 }
 
@@ -6311,20 +6268,20 @@ textarea.input {
     display: none;
 }
 
-.sidebar--collapsed .sidebar-brand__stage,
-.sidebar-collapsed .sidebar-brand__stage {
+.sidebar--collapsed .brand-spin-stage,
+.sidebar-collapsed .brand-spin-stage {
     width: 2.75rem; /* 44px */
     height: 2.75rem;
 }
 
 @media (max-width: 1024px) {
-    .sidebar-brand__stage {
+    .brand-spin-stage {
         width: 5.625rem; /* 90px */
         height: 5.625rem;
     }
 
     .sidebar-brand__title {
-        font-size: 1.0625rem; /* 17px */
+        font-size: 1.0625rem;
     }
 }
 
@@ -6333,7 +6290,7 @@ textarea.input {
         padding: 0.95rem 0.625rem 0.9rem;
     }
 
-    .sidebar-brand__stage {
+    .brand-spin-stage {
         width: 5rem; /* 80px */
         height: 5rem;
     }
