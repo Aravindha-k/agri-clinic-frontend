@@ -1,21 +1,22 @@
 import logo from "../assets/logo.png";
 
 const SIZE_MAP = {
-  xs: { box: "w-7 h-7", img: "w-5 h-5" },
-  /** Top header — ~54px box, seal fills container */
-  header: { box: "w-[54px] h-[54px]", img: "w-full h-full" },
-  sm: { box: "w-10 h-10", img: "w-8 h-8" },
-  /** Sidebar brand — ~66px box, seal fills container */
-  sidebar: { box: "w-[66px] h-[66px]", img: "w-full h-full" },
-  nav: { box: "w-11 h-11", img: "w-9 h-9" },
-  md: { box: "w-12 h-12", img: "w-10 h-10" },
-  lg: { box: "w-16 h-16", img: "w-[3.25rem] h-[3.25rem]" },
-  xl: { box: "w-20 h-20", img: "w-16 h-16" },
-  hero: { box: "w-28 h-28", img: "w-24 h-24" },
+  xs: { box: "w-7 h-7", img: "w-full h-full" },
+  /** Desktop page header — visible seal ~46–48px (50px outer / 2px inset) */
+  header: { box: "w-[50px] h-[50px]", img: "w-full h-full" },
+  sm: { box: "w-10 h-10", img: "w-full h-full" },
+  /** Sidebar brand — visible seal ~78px (80px outer / 1px inset) */
+  sidebar: { box: "w-[80px] h-[80px]", img: "w-full h-full" },
+  nav: { box: "w-11 h-11", img: "w-full h-full" },
+  md: { box: "w-12 h-12", img: "w-full h-full" },
+  lg: { box: "w-16 h-16", img: "w-full h-full" },
+  xl: { box: "w-20 h-20", img: "w-full h-full" },
+  hero: { box: "w-28 h-28", img: "w-full h-full" },
 };
 
 /**
- * Crisp Kavya logo — fixed aspect ratio, object-contain, no stretch.
+ * Official Kavya seal — one asset, object-contain, image fills the box.
+ * Sizes set the outer box; the <img> always fills it (no progressive shrink).
  */
 export default function Logo({
   size = "md",
@@ -44,8 +45,8 @@ export default function Logo({
       <img
         src={logo}
         alt={alt}
-        width={256}
-        height={256}
+        width={888}
+        height={888}
         className={`brand-logo-img ${dims.img} ${className}`}
         decoding="async"
         draggable={false}
