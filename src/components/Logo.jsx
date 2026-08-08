@@ -2,11 +2,11 @@ import logo from "../assets/logo.png";
 
 const SIZE_MAP = {
   xs: { box: "w-7 h-7", img: "w-full h-full" },
-  /** Desktop page header — visible seal ~46–48px (50px outer / 2px inset) */
+  /** Legacy header size (header no longer shows company logo) */
   header: { box: "w-[50px] h-[50px]", img: "w-full h-full" },
   sm: { box: "w-10 h-10", img: "w-full h-full" },
-  /** Sidebar brand — visible seal ~78px (80px outer / 1px inset) */
-  sidebar: { box: "w-[80px] h-[80px]", img: "w-full h-full" },
+  /** Sidebar brand — primary company seal (~86px outer / ~84px visible) */
+  sidebar: { box: "w-[86px] h-[86px]", img: "w-full h-full" },
   nav: { box: "w-11 h-11", img: "w-full h-full" },
   md: { box: "w-12 h-12", img: "w-full h-full" },
   lg: { box: "w-16 h-16", img: "w-full h-full" },

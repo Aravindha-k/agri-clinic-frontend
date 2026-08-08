@@ -3,7 +3,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Bell, RefreshCw, ChevronRight, LogOut, User, Settings } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
-import Logo from "../Logo";
 import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
 
@@ -113,25 +112,22 @@ export default function Header({ onMenuClick }) {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex header-brand-row">
-            <div className="header-brand-mark">
-              <Logo size="header" variant="header" showShadow={false} />
-            </div>
-
-            <nav className="hidden sm:flex items-center gap-1.5 min-w-0 max-w-[140px] lg:max-w-none">
-              {meta.parent && (
-                <>
-                  <span className="text-sm text-slate-400 font-medium truncate">
-                    {meta.parent}
-                  </span>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                </>
-              )}
-              <h2 className="text-sm font-semibold text-slate-900 truncate tracking-tight">
-                {meta.name}
-              </h2>
-            </nav>
-          </div>
+          <nav
+            className="hidden sm:flex items-center gap-1.5 min-w-0 max-w-[160px] lg:max-w-none"
+            aria-label="Current page"
+          >
+            {meta.parent && (
+              <>
+                <span className="text-sm text-slate-400 font-medium truncate">
+                  {meta.parent}
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+              </>
+            )}
+            <h2 className="text-sm font-semibold text-slate-900 truncate tracking-tight leading-none">
+              {meta.name}
+            </h2>
+          </nav>
         </div>
 
         <div className="hidden lg:flex flex-1 justify-center max-w-md px-2">

@@ -1897,10 +1897,11 @@ textarea.input {
 }
 
 .brand-logo-box--sidebar {
-    padding: 1px;
+    padding: 0;
     background: transparent;
     border: none;
     box-shadow: none;
+    border-radius: 0.5rem; /* 8px — soft, not a heavy white plate */
 }
 
 .brand-logo-box--header {
@@ -1920,24 +1921,6 @@ textarea.input {
 
 .brand-logo-shadow {
     box-shadow: 0 4px 14px rgba(30, 132, 73, 0.18);
-}
-
-.header-brand-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border-radius: 14px;
-    background: transparent;
-    border: none;
-    line-height: 0;
-}
-
-.header-brand-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem; /* 12px between logo and page title */
-    min-width: 0;
 }
 
 /* ── Kavya branded loader ── */
@@ -5847,14 +5830,14 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar premium — vertical centered branding */
+/* Sidebar premium — vertical centered branding (primary company identity) */
 .sidebar-brand {
     @apply relative z-10 mx-3 mt-4 mb-2 rounded-2xl flex flex-col items-center text-center;
-    padding: 15px 12px;
+    padding: 16px 12px 14px;
     gap: 0;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 }
@@ -5867,12 +5850,10 @@ textarea.input {
     padding: 0;
     line-height: 0;
     margin: 0 auto;
-    border-radius: 18px;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.86) 0%, rgba(246, 252, 248, 0.78) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.26);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    border-radius: 0.5rem; /* 8px */
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .sidebar-brand__text {
@@ -5881,13 +5862,13 @@ textarea.input {
     align-items: center;
     width: 100%;
     min-width: 0;
-    margin-top: 9px;
+    margin-top: 0.75rem; /* 12px below logo */
 }
 
 .sidebar-brand__title {
-    font-size: 0.8125rem;
+    font-size: 0.96875rem; /* ~15.5px */
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     color: #fff;
     line-height: 1.3;
     text-align: center;
@@ -5922,25 +5903,24 @@ textarea.input {
 /* Tablet drawer: keep vertical brand, slightly smaller seal */
 @media (max-width: 1024px) {
     .sidebar-brand__logo .brand-logo-box {
-        width: 72px;
-        height: 72px;
+        width: 76px;
+        height: 76px;
     }
 }
 
-/* Mobile: header compact; sidebar (drawer) still vertical */
+/* Mobile drawer: logo remains the only brand mark (header has no logo) */
 @media (max-width: 767px) {
-    .header-brand-mark .brand-logo-box {
-        width: 42px;
-        height: 42px;
-    }
-
     .sidebar-brand {
-        padding: 12px 10px;
+        padding: 14px 10px 12px;
     }
 
     .sidebar-brand__logo .brand-logo-box {
-        width: 64px;
-        height: 64px;
+        width: 72px;
+        height: 72px;
+    }
+
+    .sidebar-brand__title {
+        font-size: 0.9375rem; /* 15px */
     }
 }
 
