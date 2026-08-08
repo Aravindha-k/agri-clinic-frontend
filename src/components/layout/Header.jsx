@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, Bell, RefreshCw, LogOut, User, Settings } from "lucide-react";
+import { Menu, Bell, RefreshCw, LogOut, User, Settings, ChevronDown } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
 import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
@@ -18,7 +18,7 @@ function useClock() {
 }
 
 /**
- * Unified admin shell header — page title + utilities on one continuous surface.
+ * Premium shared admin shell header — one intentional surface for all pages.
  */
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
@@ -87,14 +87,15 @@ export default function Header({ onMenuClick }) {
         hasChrome ? " app-header--has-chrome" : ""
       }`}
     >
-      <div className="app-header__accent" />
+      <div className="app-header__edge" aria-hidden="true" />
 
       <div className="app-header__body">
-        <div className="app-header__row app-header__row--primary">
-          <div className="app-header__lead min-w-0 flex-1">
+        <div className="app-header__main">
+          <div className="app-header__lead min-w-0">
             <button
+              type="button"
               onClick={onMenuClick}
-              className="lg:hidden p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 transition-all flex-shrink-0"
+              className="app-header__menu-btn lg:hidden"
               aria-label="Toggle sidebar"
             >
               <Menu className="w-5 h-5" />
@@ -102,120 +103,127 @@ export default function Header({ onMenuClick }) {
 
             {hasChrome && (
               <div className={`app-header__chrome min-w-0 ${chrome?.className || ""}`}>
-                <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-                  <h1 className="page-title app-header__title">{title}</h1>
+                <div className="app-header__title-row">
+                  <h1 className="app-header__title">{title}</h1>
                   {badge}
                 </div>
                 {subtitle && (
-                  <p className="page-subtitle app-header__subtitle">{subtitle}</p>
+                  <p className="app-header__subtitle">{subtitle}</p>
                 )}
+                <div className="app-header__title-accent" aria-hidden="true" />
               </div>
             )}
           </div>
 
-          <div className="hidden lg:flex app-header__search flex-shrink-0 w-full max-w-[22rem] xl:max-w-md mx-2">
-            <GlobalSearch />
-          </div>
-
-          <div className="flex items-center justify-end gap-1 sm:gap-1.5 flex-shrink-0">
-            <div className="hidden md:flex flex-col items-end mr-2">
-              <span className="text-[12px] font-bold text-gray-800 leading-none tabular-nums">{timeStr}</span>
-              <span className="text-[10px] text-gray-400 mt-0.5 font-medium">{dateStr}</span>
+          <div className="app-header__tools">
+            <div className="app-header__search hidden lg:block">
+              <GlobalSearch />
             </div>
 
-            <div className="hidden md:block w-px h-6 bg-gray-200 mx-1" />
+            <div className="app-header__cluster">
+              <div className="app-header__clock hidden md:flex" aria-label="Current time">
+                <span className="app-header__clock-time">{timeStr}</span>
+                <span className="app-header__clock-date">{dateStr}</span>
+              </div>
 
-            <button
-              onClick={handleRefresh}
-              className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all"
-              aria-label="Refresh page"
-              title="Refresh page"
-            >
-              <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? "animate-spin" : ""}`} />
-            </button>
+              <div className="app-header__divider hidden md:block" aria-hidden="true" />
 
-            <button
-              onClick={() => navigate("/notifications")}
-              className="header-notify-btn"
-              aria-label="Notifications"
-              title="Notifications"
-            >
-              <Bell className="w-[18px] h-[18px]" />
-              <span className="header-notify-btn__dot" />
-            </button>
+              <div className="app-header__controls">
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  className="app-header__icon-btn"
+                  aria-label="Refresh page"
+                  title="Refresh page"
+                >
+                  <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? "animate-spin" : ""}`} />
+                </button>
 
-            <div className="hidden sm:block w-px h-7 bg-slate-200 mx-0.5" />
+                <button
+                  type="button"
+                  onClick={() => navigate("/notifications")}
+                  className="app-header__icon-btn header-notify-btn"
+                  aria-label="Notifications"
+                  title="Notifications"
+                >
+                  <Bell className="w-[18px] h-[18px]" />
+                  <span className="header-notify-btn__dot" />
+                </button>
 
-            <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen((v) => !v)}
-                className="header-profile-btn"
-              >
-                <div className="header-profile-avatar">{initials}</div>
-                <div className="hidden md:block text-left min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[120px]">
-                    {displayName}
-                  </p>
-                  <p className="text-[10px] text-slate-500 leading-tight capitalize">
-                    {user?.role || "Administrator"}
-                  </p>
+                <div className="app-header__divider hidden sm:block" aria-hidden="true" />
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    className="header-profile-btn"
+                    aria-expanded={userMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <div className="header-profile-avatar">{initials}</div>
+                    <div className="hidden md:block text-left min-w-0">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[120px]">
+                        {displayName}
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-tight capitalize">
+                        {user?.role || "Administrator"}
+                      </p>
+                    </div>
+                    <ChevronDown className="hidden md:block w-3.5 h-3.5 text-slate-400 flex-shrink-0" aria-hidden="true" />
+                  </button>
+
+                  {userMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={closeUserMenu}
+                        aria-hidden="true"
+                        data-overlay="profile-menu-backdrop"
+                      />
+                      <div className="enterprise-dropdown" role="menu">
+                        <div className="enterprise-dropdown__head">
+                          <p className="text-sm font-semibold text-slate-900">{displayName}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{user?.email || user?.username}</p>
+                        </div>
+                        <div className="py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => { setUserMenuOpen(false); }}
+                            className="enterprise-dropdown__item"
+                          >
+                            <User className="w-4 h-4 text-slate-400" /> Profile
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setUserMenuOpen(false); navigate("/masters"); }}
+                            className="enterprise-dropdown__item"
+                          >
+                            <Settings className="w-4 h-4 text-slate-400" /> Settings
+                          </button>
+                        </div>
+                        <div className="py-1.5 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => { setUserMenuOpen(false); handleLogout(); }}
+                            className="enterprise-dropdown__item enterprise-dropdown__item--danger"
+                          >
+                            <LogOut className="w-4 h-4" /> Sign out
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </button>
-
-              {userMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={closeUserMenu}
-                    aria-hidden="true"
-                    data-overlay="profile-menu-backdrop"
-                  />
-                  <div className="enterprise-dropdown">
-                    <div className="enterprise-dropdown__head">
-                      <p className="text-sm font-semibold text-slate-900">{displayName}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{user?.email || user?.username}</p>
-                    </div>
-                    <div className="py-1.5">
-                      <button
-                        type="button"
-                        onClick={() => { setUserMenuOpen(false); }}
-                        className="enterprise-dropdown__item"
-                      >
-                        <User className="w-4 h-4 text-slate-400" /> Profile
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setUserMenuOpen(false); navigate("/masters"); }}
-                        className="enterprise-dropdown__item"
-                      >
-                        <Settings className="w-4 h-4 text-slate-400" /> Settings
-                      </button>
-                    </div>
-                    <div className="py-1.5 border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={() => { setUserMenuOpen(false); handleLogout(); }}
-                        className="enterprise-dropdown__item enterprise-dropdown__item--danger"
-                      >
-                        <LogOut className="w-4 h-4" /> Sign out
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+              </div>
             </div>
           </div>
         </div>
 
         {hasChrome && actions && (
-          <div className="app-header__row app-header__row--actions">
-            <div className="app-header__actions ml-auto flex items-center gap-2 flex-wrap justify-end">
-              {actions}
-            </div>
+          <div className="app-header__actions-row">
+            <div className="app-header__actions">{actions}</div>
           </div>
         )}
-
-        {hasChrome && <div className="app-header__title-accent" aria-hidden="true" />}
       </div>
     </header>
   );

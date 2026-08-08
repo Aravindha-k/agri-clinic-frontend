@@ -5,8 +5,8 @@ const SIZE_MAP = {
   /** Legacy header size (header no longer shows company logo) */
   header: { box: "w-[50px] h-[50px]", img: "w-full h-full" },
   sm: { box: "w-10 h-10", img: "w-full h-full" },
-  /** Sidebar brand — round globe-like seal (~116px) */
-  sidebar: { box: "w-[116px] h-[116px] !rounded-full", img: "w-full h-full !rounded-full" },
+  /** Sidebar brand — seal inside orbit stage (~110px visible) */
+  sidebar: { box: "w-[110px] h-[110px] !rounded-full", img: "w-full h-full !rounded-full" },
   nav: { box: "w-11 h-11", img: "w-full h-full" },
   md: { box: "w-12 h-12", img: "w-full h-full" },
   lg: { box: "w-16 h-16", img: "w-full h-full" },
