@@ -116,7 +116,7 @@ export default function MasterProblemCategories() {
                 }
                 actions={
                     <button type="button" onClick={() => setPanel({ open: true, mode: "add", item: null })} className="btn btn-primary btn-md">
-                        <Plus className="w-4 h-4" aria-hidden="true" /> Add category
+                        <Plus className="w-4 h-4" aria-hidden="true" /> Add Category
                     </button>
                 }
             />

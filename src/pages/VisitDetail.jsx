@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { getVisitDetail, updateVisit } from "../api/visit.api";
+import { getVisitDetail, updateVisit, deleteVisit } from "../api/visit.api";
 import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
 import VisitLocationDisplay from "../components/visits/VisitLocationDisplay";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 import ErrorRetry from "../components/ui/ErrorRetry";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 import { resolveVisitFarmer, visitLandLabel, resolveVisitEmployeePhoto } from "../utils/visitFarmer";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { asDisplayString, resolveLandLabel } from "../utils/displayValue";
@@ -28,12 +30,13 @@ import {
     Phone,
     Briefcase,
     CheckCircle2,
+    Pencil,
+    Trash2,
     Clock,
     AlertCircle,
     Paperclip,
     AlertTriangle,
     Stethoscope,
-    Pencil,
     ShieldCheck,
     Image as ImageIcon,
 } from "lucide-react";
@@ -253,13 +256,23 @@ function getVisitNotesBlock(v) {
     };
 }
 
-function ReportActionButtons({ mode, id, saving, onSave, onCancel, onEdit }) {
+function ReportActionButtons({ mode, id, saving, onSave, onCancel, onEdit, onDelete }) {
     if (mode === "view") {
         return (
             <div className="visit-report-actions">
                 <button type="button" onClick={onEdit} className="btn btn-primary btn-md">
                     <Pencil className="w-4 h-4" aria-hidden="true" />
                     Edit report
+                </button>
+                <button
+                    type="button"
+                    onClick={onDelete}
+                    className="btn btn-secondary btn-md text-red-600 border-red-200 hover:bg-red-50"
+                    aria-label="Delete visit"
+                    title="Delete visit"
+                >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    Delete
                 </button>
             </div>
         );
@@ -296,6 +309,9 @@ export default function VisitDetail(props) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [evidenceCount, setEvidenceCount] = useState(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
 
     useEffect(() => {
         if (!id || id === "create") return;
@@ -427,6 +443,7 @@ export default function VisitDetail(props) {
                         onSave={handleSave}
                         onCancel={() => navigate(`/visits/${id}`)}
                         onEdit={() => navigate(`/visits/${id}/edit`)}
+                        onDelete={() => { setDeleteError(""); setDeleteOpen(true); }}
                     />
                 </div>
 
@@ -926,6 +943,36 @@ export default function VisitDetail(props) {
                     </section>
                 </aside>
             </div>
+            <ConfirmDialog
+                open={deleteOpen}
+                title="Delete visit?"
+                message={
+                    deleteError
+                        ? deleteError
+                        : `Visit #${id} will be permanently removed. This action cannot be undone.`
+                }
+                confirmLabel={deleteError ? "Retry delete" : "Delete"}
+                loading={deleting}
+                onConfirm={async () => {
+                    if (!id || deleting) return;
+                    setDeleting(true);
+                    setDeleteError("");
+                    try {
+                        await deleteVisit(id);
+                        navigate("/visits", { state: { refreshVisits: true } });
+                    } catch (err) {
+                        setDeleteError(friendlyErrorMessage(err, "Failed to delete visit."));
+                    } finally {
+                        setDeleting(false);
+                    }
+                }}
+                onCancel={() => {
+                    if (!deleting) {
+                        setDeleteOpen(false);
+                        setDeleteError("");
+                    }
+                }}
+            />
         </div>
     );
 }

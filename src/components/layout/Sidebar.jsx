@@ -4,8 +4,9 @@ import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
 import companyLogo from "../../assets/logo.png";
 import { NAV_SECTIONS } from "./navConfig";
+import { filterNavSectionsForUser } from "../../utils/roles";
 
-function resolveNavSections() {
+function resolveNavSections(user) {
   if (!Array.isArray(NAV_SECTIONS) || NAV_SECTIONS.length === 0) {
     return [
       {
@@ -14,7 +15,7 @@ function resolveNavSections() {
       },
     ];
   }
-  return NAV_SECTIONS;
+  return filterNavSectionsForUser(NAV_SECTIONS, user);
 }
 
 function SidebarUserCard({ user, loading }) {
@@ -24,11 +25,13 @@ function SidebarUserCard({ user, loading }) {
 
   const role = loading
     ? "Signing in…"
-    : user?.is_staff
-      ? "Administrator"
-      : user
-        ? "Field Agent"
-        : "Administrator";
+    : user?.is_superuser
+      ? "Owner"
+      : user?.is_staff
+        ? "Administrator"
+        : user
+          ? "Field Agent"
+          : "Administrator";
 
   const initials = (
     user?.first_name?.[0] || user?.username?.[0] || "A"
@@ -66,7 +69,7 @@ function SidebarUserCard({ user, loading }) {
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { logout, user, loading: authLoading } = useAuth();
-  const sections = resolveNavSections();
+  const sections = resolveNavSections(user);
 
   const handleLogout = async () => {
     try {

@@ -192,3 +192,22 @@ export const completeVisit = async (id, body = {}) => {
   const response = await api.post(`visits/${id}/complete/`, body);
   return unwrapSuccessEnvelope(response) ?? {};
 };
+
+/** DELETE visit — prefers admin endpoint, falls back to staff visits path. */
+export const deleteVisit = async (id) => {
+  try {
+    const response = await api.delete(`admin/visits/${id}/`);
+    return unwrapSuccessEnvelope(response) ?? {};
+  } catch (err) {
+    const status = err?.response?.status;
+    if (status === 404 || status === 405) {
+      try {
+        const response = await api.delete(`visits/${id}/`);
+        return unwrapSuccessEnvelope(response) ?? {};
+      } catch (inner) {
+        throw formatVisitError(inner, "Failed to delete visit.");
+      }
+    }
+    throw formatVisitError(err, "Failed to delete visit.");
+  }
+};

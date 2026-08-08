@@ -2,7 +2,17 @@ import { useEffect } from "react";
 import { AlertTriangle, X, Loader2 } from "lucide-react";
 import { createPortal } from "react-dom";
 
-export default function ConfirmDialog({ open, title, message, onConfirm, onCancel, loading, variant = "danger" }) {
+export default function ConfirmDialog({
+  open,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  loading,
+  variant = "danger",
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+}) {
     useEffect(() => {
         if (!open) return undefined;
         const onKey = (e) => {
@@ -55,7 +65,7 @@ export default function ConfirmDialog({ open, title, message, onConfirm, onCance
                         disabled={loading}
                         className="btn btn-secondary btn-md"
                     >
-                        Cancel
+                        {cancelLabel}
                     </button>
                     <button
                         type="button"
@@ -69,7 +79,7 @@ export default function ConfirmDialog({ open, title, message, onConfirm, onCance
                                 Confirming…
                             </>
                         ) : (
-                            "Confirm"
+                            confirmLabel
                         )}
                     </button>
                 </div>

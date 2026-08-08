@@ -185,7 +185,7 @@ export default function MasterCropsPage() {
                 actions={
                     <>
                         <button type="button" onClick={openCreate} className="btn btn-primary btn-md">
-                            <Plus className="w-4 h-4" aria-hidden="true" /> Add crop
+                            <Plus className="w-4 h-4" aria-hidden="true" /> Add Crop
                         </button>
                         <button type="button" onClick={fetchCrops} className="btn btn-secondary btn-md">
                             <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh

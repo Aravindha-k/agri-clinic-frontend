@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { getVisits } from "../api/visit.api";
+import { getVisits, deleteVisit } from "../api/visit.api";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   normalizeVisitList,
@@ -24,6 +24,7 @@ import {
   GpsIndicator,
 } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import VisitListCard from "../components/visits/VisitListCard";
 import {
@@ -32,6 +33,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Pencil,
+  Trash2,
   RefreshCw,
   X,
   LayoutGrid,
@@ -132,7 +135,7 @@ function VisitsGridSkeleton() {
   );
 }
 
-function VisitRow({ v, onView }) {
+function VisitRow({ v, onView, onEdit, onDelete }) {
   const farmer = resolveVisitFarmer(v);
   const whenLabel = visitWhenLabel(v);
   const cropName = resolveVisitCropDisplay(v);
@@ -194,18 +197,44 @@ function VisitRow({ v, onView }) {
         <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
       </td>
       <td>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onView(v.id);
-          }}
-          className="visits-action-btn"
-          title="View visit"
-          aria-label="View visit"
-        >
-          <Eye className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1 justify-end">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView(v.id);
+            }}
+            className="visits-action-btn"
+            title="View visit"
+            aria-label="View visit"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(v.id);
+            }}
+            className="visits-action-btn"
+            title="Edit visit"
+            aria-label="Edit visit"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.(v);
+            }}
+            className="visits-action-btn visits-action-btn--danger"
+            title="Delete visit"
+            aria-label="Delete visit"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -222,6 +251,9 @@ export default function Visits() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [dateChip, setDateChip] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const loadVisits = useCallback(
     async (pageNum = 1) => {
@@ -262,6 +294,25 @@ export default function Visits() {
   );
 
   const handleView = (id) => navigate(`/visits/${id}`);
+  const handleEdit = (id) => navigate(`/visits/${id}/edit`);
+  const handleAskDelete = (visit) => {
+    setDeleteError("");
+    setDeleteTarget(visit);
+  };
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget?.id || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteVisit(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadVisits(page);
+    } catch (err) {
+      setDeleteError(friendlyErrorMessage(err, "Failed to delete visit."));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -467,7 +518,13 @@ export default function Visits() {
       ) : viewMode === "grid" ? (
         <div className="visits-grid">
           {filteredVisits.map((v) => (
-            <VisitListCard key={`visit-${v.id}`} visit={v} onView={handleView} />
+            <VisitListCard
+              key={`visit-${v.id}`}
+              visit={v}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={handleAskDelete}
+            />
           ))}
         </div>
       ) : (
@@ -488,12 +545,18 @@ export default function Visits() {
                   <th className="hidden md:table-cell">Employee</th>
                   <th>Date</th>
                   <th>GPS</th>
-                  <th className="w-12" />
+                  <th className="w-28 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredVisits.map((v) => (
-                  <VisitRow key={`visit-${v.id}`} v={v} onView={handleView} />
+                  <VisitRow
+                    key={`visit-${v.id}`}
+                    v={v}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleAskDelete}
+                  />
                 ))}
               </tbody>
             </table>
@@ -541,6 +604,25 @@ export default function Visits() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete visit?"
+        message={
+          deleteError
+            ? deleteError
+            : `Visit #${deleteTarget?.id} will be permanently removed. This action cannot be undone.`
+        }
+        confirmLabel={deleteError ? "Retry delete" : "Delete"}
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!deleting) {
+            setDeleteTarget(null);
+            setDeleteError("");
+          }
+        }}
+      />
     </div>
   );
 }

@@ -5595,7 +5595,9 @@ textarea.input {
 }
 
 .farmers-action-btn {
-    @apply p-2 rounded-lg transition-all duration-150;
+    @apply inline-flex items-center justify-center rounded-lg transition-all duration-150;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
     color: var(--text-muted);
 }
 
@@ -5605,6 +5607,10 @@ textarea.input {
 
 .farmers-action-btn--primary:hover {
     @apply bg-emerald-100 text-emerald-800;
+}
+
+.farmers-action-btn--danger:hover {
+    @apply bg-red-50 text-red-600;
 }
 
 .farmers-action-btn:focus-visible {
@@ -6652,11 +6658,31 @@ textarea.input {
 }
 
 .visits-action-btn {
-    @apply p-2 rounded-lg transition-all duration-150 text-emerald-700 opacity-0 group-hover:opacity-100;
+    @apply inline-flex items-center justify-center rounded-lg transition-all duration-150 text-slate-500;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    opacity: 1;
 }
 
 .visits-action-btn:hover {
-    @apply bg-emerald-50;
+    @apply bg-emerald-50 text-emerald-700;
+}
+
+.visits-action-btn--danger:hover {
+    @apply bg-red-50 text-red-600;
+}
+
+.visits-action-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.visits-action-btn:disabled {
+    @apply opacity-40 cursor-not-allowed;
+}
+
+.visits-card__actions {
+    @apply flex items-center gap-0.5 shrink-0;
 }
 
 .visits-card {
@@ -7556,6 +7582,45 @@ textarea.input {
     @apply mt-auto pt-3;
 }
 
+.employees-hr-card__cta--actions {
+    @apply flex justify-end;
+}
+
+.employees-action-group {
+    @apply flex items-center justify-end gap-0.5;
+}
+
+.employees-action-btn {
+    @apply inline-flex items-center justify-center rounded-lg transition-all duration-150 text-slate-500;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+}
+
+.employees-action-btn:hover {
+    @apply bg-slate-100 text-slate-700;
+}
+
+.employees-action-btn--edit:hover {
+    @apply bg-emerald-50 text-emerald-700;
+}
+
+.employees-action-btn--warn:hover {
+    @apply bg-amber-50 text-amber-700;
+}
+
+.employees-action-btn--danger:hover {
+    @apply bg-red-50 text-red-600;
+}
+
+.employees-action-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.employees-action-btn:disabled {
+    @apply opacity-40 cursor-not-allowed;
+}
+
 .employees-hr-table-card {
     @apply dashboard-section-card overflow-hidden;
 }
@@ -8398,15 +8463,26 @@ textarea.input {
 }
 
 .masters-admin-action-btn {
-    @apply p-2 rounded-lg text-slate-400 transition-all;
+    @apply inline-flex items-center justify-center rounded-lg text-slate-400 transition-all;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
 }
 
 .masters-admin-action-btn--edit:hover {
-    @apply text-blue-600 bg-blue-50;
+    @apply text-emerald-700 bg-emerald-50;
 }
 
 .masters-admin-action-btn--delete:hover {
     @apply text-red-600 bg-red-50;
+}
+
+.masters-admin-action-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.masters-admin-action-btn:disabled {
+    @apply opacity-40 cursor-not-allowed;
 }
 
 .masters-admin-pagination {

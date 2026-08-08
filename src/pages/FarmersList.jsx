@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getFarmers } from "../api/farmer.api";
+import { getFarmers, deleteFarmer } from "../api/farmer.api";
 import { fetchAllVillages } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import {
@@ -14,12 +14,14 @@ import {
   Download,
   Eye,
   Pencil,
+  Trash2,
   Sprout,
   MapPin,
   Phone,
 } from "lucide-react";
 import { PageHeader, FilterBar, FilterField, EmptyState } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import {
@@ -69,7 +71,7 @@ function FarmersTableSkeleton() {
   );
 }
 
-function FarmerRowActions({ farmerId, onView, onEdit }) {
+function FarmerRowActions({ farmerId, onView, onEdit, onDelete, deleting }) {
   return (
     <div className="farmers-action-group">
       <button
@@ -90,6 +92,16 @@ function FarmerRowActions({ farmerId, onView, onEdit }) {
       >
         <Pencil className="w-4 h-4" />
       </button>
+      <button
+        type="button"
+        className="farmers-action-btn farmers-action-btn--danger"
+        onClick={() => farmerId && onDelete?.(farmerId)}
+        disabled={deleting}
+        aria-label="Delete farmer"
+        title="Delete farmer"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
     </div>
   );
 }
@@ -108,6 +120,9 @@ export default function FarmersList() {
   const [villageFilter, setVillageFilter] = useState("");
   const [page, setPage] = useState(1);
   const [villageOptions, setVillageOptions] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     fetchAllVillages()
@@ -230,6 +245,25 @@ export default function FarmersList() {
 
   const handleView = (id) => navigate(`/farmers/${id}`);
   const handleEdit = (id) => navigate(`/farmers/${id}/edit`);
+  const handleAskDelete = (id) => {
+    const farmer = farmers.find((f) => String(f.id) === String(id));
+    setDeleteError("");
+    setDeleteTarget(farmer || { id, name: `Farmer #${id}` });
+  };
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget?.id || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteFarmer(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadFarmers();
+    } catch (err) {
+      setDeleteError(friendlyErrorMessage(err, "Failed to delete farmer."));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="page-container page-container--farmers">
@@ -476,6 +510,15 @@ export default function FarmersList() {
                       >
                         <Pencil className="w-3.5 h-3.5" /> Edit
                       </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm text-red-600"
+                        onClick={() => f.id && handleAskDelete(f.id)}
+                        aria-label="Delete farmer"
+                        title="Delete farmer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </article>
                 );
@@ -528,6 +571,8 @@ export default function FarmersList() {
                             farmerId={f.id}
                             onView={handleView}
                             onEdit={handleEdit}
+                            onDelete={handleAskDelete}
+                            deleting={deleting}
                           />
                         </td>
                       </tr>
@@ -580,6 +625,25 @@ export default function FarmersList() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete farmer?"
+        message={
+          deleteError
+            ? deleteError
+            : `"${deleteTarget?.name || deleteTarget?.id || "This farmer"}" will be permanently removed. This action cannot be undone.`
+        }
+        confirmLabel={deleteError ? "Retry delete" : "Delete"}
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!deleting) {
+            setDeleteTarget(null);
+            setDeleteError("");
+          }
+        }}
+      />
     </div>
   );
 }

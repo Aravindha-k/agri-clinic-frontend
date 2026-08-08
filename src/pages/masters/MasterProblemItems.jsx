@@ -398,7 +398,7 @@ export default function MasterProblemItems() {
               onClick={() => setPanel({ open: true, mode: "add", item: null })}
               className="btn btn-primary btn-md"
             >
-              <Plus className="w-4 h-4" aria-hidden="true" /> Add item
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add Item
             </button>
           </>
         }

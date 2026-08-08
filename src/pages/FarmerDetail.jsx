@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getFarmerDetail, getFarmerFields, getFarmerVisits, uploadFarmerPhoto } from "../api/farmer.api";
+import { getFarmerDetail, getFarmerFields, getFarmerVisits, uploadFarmerPhoto, deleteFarmer } from "../api/farmer.api";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import {
     ArrowLeft, User, Phone, MapPin, Sprout, LandPlot, Leaf,
     Calendar, RefreshCw, ChevronRight, Download,
-    FileText, Droplets, Layers, ClipboardList, Hash, Edit2,
+    FileText, Droplets, Layers, ClipboardList, Hash, Edit2, Trash2,
     TrendingUp, StickyNote, ImageIcon,
 } from "lucide-react";
 import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitFarmer";
@@ -19,6 +19,8 @@ import {
 } from "../utils/displayValue";
 import { GpsIndicator, EmptyState } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { friendlyErrorMessage } from "../utils/friendlyError";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -316,6 +318,9 @@ export default function FarmerDetail() {
     const [tab, setTab] = useState("info");
     const [dlOpen, setDlOpen] = useState(false);
     const [generating, setGenerating] = useState(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
     const dlRef = useRef();
 
     const fetchData = async () => {
@@ -460,6 +465,15 @@ export default function FarmerDetail() {
                 <div className="farmer-detail-actions">
                     <button type="button" onClick={() => navigate(`/farmers/${id}/edit`)} className="btn btn-secondary btn-md">
                         <Edit2 className="w-4 h-4" /> Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setDeleteError(""); setDeleteOpen(true); }}
+                        className="btn btn-secondary btn-md text-red-600 border-red-200 hover:bg-red-50"
+                        aria-label="Delete farmer"
+                        title="Delete farmer"
+                    >
+                        <Trash2 className="w-4 h-4" /> Delete
                     </button>
                     <div className="farmer-detail-download" ref={dlRef}>
                         <button
@@ -815,6 +829,36 @@ export default function FarmerDetail() {
                     )}
                 </div>
             )}
+            <ConfirmDialog
+                open={deleteOpen}
+                title="Delete farmer?"
+                message={
+                    deleteError
+                        ? deleteError
+                        : `"${farmer?.name || id}" will be permanently removed. This action cannot be undone.`
+                }
+                confirmLabel={deleteError ? "Retry delete" : "Delete"}
+                loading={deleting}
+                onConfirm={async () => {
+                    if (!id || deleting) return;
+                    setDeleting(true);
+                    setDeleteError("");
+                    try {
+                        await deleteFarmer(id);
+                        navigate("/farmers");
+                    } catch (err) {
+                        setDeleteError(friendlyErrorMessage(err, "Failed to delete farmer."));
+                    } finally {
+                        setDeleting(false);
+                    }
+                }}
+                onCancel={() => {
+                    if (!deleting) {
+                        setDeleteOpen(false);
+                        setDeleteError("");
+                    }
+                }}
+            />
         </div>
     );
 }

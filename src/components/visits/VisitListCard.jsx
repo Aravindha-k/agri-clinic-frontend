@@ -6,7 +6,9 @@ import {
   Leaf,
   MapPin,
   Paperclip,
+  Pencil,
   Phone,
+  Trash2,
   User,
   MapPinOff,
 } from "lucide-react";
@@ -53,7 +55,7 @@ function VisitFieldCell({ label, value }) {
   );
 }
 
-export default function VisitListCard({ visit: v, onView }) {
+export default function VisitListCard({ visit: v, onView, onEdit, onDelete }) {
   const farmer = resolveVisitFarmer(v);
   const whenLabel = visitWhenLabel(v);
   const submittedAt = visitSubmittedLabel(v);
@@ -176,17 +178,35 @@ export default function VisitListCard({ visit: v, onView }) {
             {employee}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onView(v.id);
-          }}
-          className="btn btn-primary btn-sm shrink-0"
-        >
-          <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-          View
-        </button>
+        <div className="visits-card__actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => onView(v.id)}
+            className="visits-action-btn"
+            title="View visit"
+            aria-label="View visit"
+          >
+            <Eye className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit?.(v.id)}
+            className="visits-action-btn"
+            title="Edit visit"
+            aria-label="Edit visit"
+          >
+            <Pencil className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete?.(v)}
+            className="visits-action-btn visits-action-btn--danger"
+            title="Delete visit"
+            aria-label="Delete visit"
+          >
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </article>
   );

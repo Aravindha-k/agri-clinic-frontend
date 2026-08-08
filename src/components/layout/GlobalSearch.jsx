@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, CornerDownLeft, LayoutDashboard, Sprout, Leaf, Users, MapPin } from "lucide-react";
 import { NAV_SECTIONS } from "./navConfig";
+import { useAuth } from "../../context/AuthContext";
+import { filterNavSectionsForUser } from "../../utils/roles";
 
 const QUICK_LINKS = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, keywords: "home overview" },
@@ -32,13 +34,17 @@ function buildSearchIndex(sections) {
 
 export default function GlobalSearch({ className = "" }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
 
-  const searchIndex = useMemo(() => buildSearchIndex(NAV_SECTIONS), []);
+  const searchIndex = useMemo(
+    () => buildSearchIndex(filterNavSectionsForUser(NAV_SECTIONS, user)),
+    [user]
+  );
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

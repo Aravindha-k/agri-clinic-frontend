@@ -38,8 +38,8 @@ export const NAV_SECTIONS = [
       { label: "Masters", icon: Database, path: "/masters" },
       { label: "Reports", icon: BarChart3, path: "/reports" },
       { label: "Notifications", icon: Bell, path: "/notifications" },
-      { label: "Audit Log", icon: ShieldCheck, path: "/audit" },
-      { label: "Security & Sessions", icon: LockKeyhole, path: "/settings/security" },
+      { label: "Audit Log", icon: ShieldCheck, path: "/audit", ownerOnly: true },
+      { label: "Security & Sessions", icon: LockKeyhole, path: "/settings/security", ownerOnly: true },
     ],
   },
 ];

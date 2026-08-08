@@ -19,6 +19,7 @@ import {
   createEmployee,
   updateEmployee,
   patchEmployee,
+  deleteEmployee,
   changePassword,
   adminResetPassword,
   uploadEmployeePhoto,
@@ -28,12 +29,19 @@ import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import { getDistricts } from "../api/master.api";
 import { getEmployeeStats, getEmployeeSummary, getEmployeeActivity } from "../api/tracking.api";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
+import { useAuth } from "../context/AuthContext";
+import {
+  canMutateEmployeeAccount,
+  canAssignAdminRole,
+  isProtectedOwnerTarget,
+} from "../utils/roles";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import {
   Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
   RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
   Calendar, Shield, Building2, Briefcase, PlayCircle, StopCircle, Radio, Heart,
   Navigation, ToggleLeft, ToggleRight, Loader2, Plus, UserPlus, Hash,
-  Edit2, Key, Info, CheckCircle, Save, Copy, Route,
+  Edit2, Key, Info, CheckCircle, Save, Copy, Route, Trash2, Power, Pencil,
 } from "lucide-react";
 
 /* ================================================================
@@ -324,17 +332,82 @@ const EmployeeFilters = memo(({ searchTerm, setSearchTerm, statusFilter, setStat
 ));
 EmployeeFilters.displayName = "EmployeeFilters";
 
+/* --- Visible row/card CRUD actions --- */
+const EmployeeRowActions = memo(({
+  emp,
+  actor,
+  busy = false,
+  onView,
+  onEdit,
+  onToggle,
+  onDelete,
+}) => {
+  const canMutate = canMutateEmployeeAccount(actor, emp);
+  const isActive = emp?.is_active !== false;
+  const toggleLabel = isActive ? "Deactivate employee" : "Activate employee";
+
+  return (
+    <div className="employees-action-group" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="employees-action-btn"
+        title="View employee"
+        aria-label="View employee"
+        disabled={busy}
+        onClick={() => onView?.(emp)}
+      >
+        <Eye className="w-4 h-4" aria-hidden="true" />
+      </button>
+      {canMutate && (
+        <>
+          <button
+            type="button"
+            className="employees-action-btn employees-action-btn--edit"
+            title="Edit employee"
+            aria-label="Edit employee"
+            disabled={busy}
+            onClick={() => onEdit?.(emp)}
+          >
+            <Pencil className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={`employees-action-btn ${isActive ? "employees-action-btn--warn" : "employees-action-btn--edit"}`}
+            title={toggleLabel}
+            aria-label={toggleLabel}
+            disabled={busy}
+            onClick={() => onToggle?.(emp)}
+          >
+            <Power className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="employees-action-btn employees-action-btn--danger"
+            title="Delete employee"
+            aria-label="Delete employee"
+            disabled={busy}
+            onClick={() => onDelete?.(emp)}
+          >
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+});
+EmployeeRowActions.displayName = "EmployeeRowActions";
+
 /* --- Employee Card (Grid) --- */
-const EmployeeCard = memo(({ emp, onOpen }) => (
+const EmployeeCard = memo(({ emp, actor, busy, onView, onEdit, onToggle, onDelete }) => (
   <article
     className={`employees-hr-card group ${emp.is_online ? "employees-hr-card--online" : ""}`}
-    onClick={() => onOpen(emp)}
+    onClick={() => onView(emp)}
     role="button"
     tabIndex={0}
     onKeyDown={(e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onOpen(emp);
+        onView(emp);
       }
     }}
   >
@@ -379,18 +452,34 @@ const EmployeeCard = memo(({ emp, onOpen }) => (
           ? <>Last seen <span className="font-semibold text-slate-600">{fmtRel(emp.last_seen ?? emp.last_heartbeat)}</span></>
           : "Last seen: —"}
       </p>
-      <div className="employees-hr-card__cta">
-        <button type="button" className="btn btn-primary btn-sm w-full">
-          <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-          View profile
-        </button>
+      <div className="employees-hr-card__cta employees-hr-card__cta--actions">
+        <EmployeeRowActions
+          emp={emp}
+          actor={actor}
+          busy={busy}
+          onView={onView}
+          onEdit={onEdit}
+          onToggle={onToggle}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   </article>
 ));
 EmployeeCard.displayName = "EmployeeCard";
 
-const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOpen, onAddEmployee }) => {
+const EmployeeGrid = memo(({
+  employees: emps,
+  loading: isLoading,
+  viewMode,
+  actor,
+  busyId,
+  onView,
+  onEdit,
+  onToggle,
+  onDelete,
+  onAddEmployee,
+}) => {
   if (isLoading) {
     return (
       <div className="employees-hr-skeleton-grid" aria-busy="true" aria-label="Loading employees">
@@ -418,7 +507,7 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
         action={
           onAddEmployee ? (
             <button type="button" onClick={onAddEmployee} className="btn btn-primary btn-md">
-              <UserPlus className="w-4 h-4" aria-hidden="true" /> Add employee
+              <UserPlus className="w-4 h-4" aria-hidden="true" /> Add Employee
             </button>
           ) : null
         }
@@ -429,7 +518,18 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
   if (viewMode === "grid") {
     return (
       <div className="employees-hr-grid">
-        {emps.map((emp) => <EmployeeCard key={emp.id} emp={emp} onOpen={onOpen} />)}
+        {emps.map((emp) => (
+          <EmployeeCard
+            key={emp.id}
+            emp={emp}
+            actor={actor}
+            busy={busyId === emp.id}
+            onView={onView}
+            onEdit={onEdit}
+            onToggle={onToggle}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
     );
   }
@@ -445,12 +545,12 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
               <th>Role</th>
               <th>District</th>
               <th>Status</th>
-              <th className="w-24" />
+              <th className="w-36 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {emps.map((emp) => (
-              <tr key={emp.id} className="cursor-pointer group" onClick={() => onOpen(emp)}>
+              <tr key={emp.id} className="cursor-pointer group" onClick={() => onView(emp)}>
                 <td>
                   <div className="flex items-center gap-3 min-w-0">
                     <ProfileAvatar
@@ -466,15 +566,16 @@ const EmployeeGrid = memo(({ employees: emps, loading: isLoading, viewMode, onOp
                 <td><RoleBadge role={emp.role} /></td>
                 <td className="text-sm text-slate-500">{emp.district_name || "\u2014"}</td>
                 <td><Badge online={emp.is_online} /></td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm text-[var(--brand-primary-dark)] opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => { e.stopPropagation(); onOpen(emp); }}
-                  >
-                    <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-                    View
-                  </button>
+                <td className="text-right">
+                  <EmployeeRowActions
+                    emp={emp}
+                    actor={actor}
+                    busy={busyId === emp.id}
+                    onView={onView}
+                    onEdit={onEdit}
+                    onToggle={onToggle}
+                    onDelete={onDelete}
+                  />
                 </td>
               </tr>
             ))}
@@ -797,8 +898,12 @@ const AdminResetSection = memo(({ empId }) => {
 AdminResetSection.displayName = "AdminResetSection";
 
 /* --- Employee Drawer (Details / Edit / Password tabs) --- */
-const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, districts }) => {
-  const [tab, setTab] = useState("details");
+const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, districts, initialTab = "details" }) => {
+  const { user: actor } = useAuth();
+  const canMutate = canMutateEmployeeAccount(actor, selectedEmp);
+  const canPromoteAdmin = canAssignAdminRole(actor);
+  const targetIsOwner = isProtectedOwnerTarget(selectedEmp);
+  const [tab, setTab] = useState(initialTab || "details");
 
   // Tracking data
   const [summary, setSummary] = useState(null);
@@ -812,6 +917,9 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   // Password form
   const [pwForm, setPwForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
@@ -840,6 +948,13 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
       setSaveSuccess(false);
     }
   }, [selectedEmp]);
+
+  // Open on requested tab (View → details, Edit → edit)
+  useEffect(() => {
+    if (open && selectedEmp) {
+      setTab(initialTab || "details");
+    }
+  }, [open, selectedEmp?.id, initialTab]);
 
   // Reset transient state when drawer closes
   useEffect(() => {
@@ -884,9 +999,13 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
 
   const setEF = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
 
-  // Active / inactive toggle � instant PATCH
+  // Active / inactive toggle — instant PATCH
   const handleToggle = async () => {
     if (toggling) return;
+    if (!canMutate) {
+      setSaveError("You don't have permission to change this account's status.");
+      return;
+    }
     const newVal = !editForm.is_active;
     setToggling(true);
     setSaveError(null);
@@ -900,6 +1019,23 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
       setToggling(false);
     }
   };
+
+  const handleConfirmDelete = async () => {
+    if (!canMutate || !selectedEmp?.id || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteEmployee(selectedEmp.id);
+      setDeleteOpen(false);
+      onUpdated({ ...selectedEmp, __deleted: true });
+      onClose?.();
+    } catch (err) {
+      setDeleteError(friendlyErrorMessage(err, "Failed to delete employee."));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
 
   // Save profile changes � PUT
   const handleSave = async (e) => {
@@ -1088,12 +1224,17 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
               <div className="grid grid-cols-2 gap-4">
                 <div className="employees-hr-field">
                   <label>Role</label>
-                  <select value={editForm.role || ""} onChange={e => setEF("role", e.target.value)}>
+                  <select value={editForm.role || ""} onChange={e => setEF("role", e.target.value)} disabled={!canMutate}>
                     <option value="field_officer">Field Officer</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
+                    {(canPromoteAdmin || editForm.role === "admin") && (
+                      <option value="admin">Admin</option>
+                    )}
                   </select>
+                  {targetIsOwner && !canMutate && (
+                    <p className="text-xs text-amber-600 mt-1">Owner accounts can only be changed by another owner.</p>
+                  )}
                 </div>
                 <div className="employees-hr-field">
                   <label>District</label>
@@ -1111,17 +1252,31 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                     {editForm.is_active ? "Active — employee can log in" : "Inactive — login disabled"}
                   </p>
                 </div>
-                <button type="button" onClick={handleToggle} disabled={toggling}
+                <button type="button" onClick={handleToggle} disabled={toggling || !canMutate}
                   aria-label="Toggle active status"
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-light)] focus:ring-offset-1 ${editForm.is_active ? "bg-emerald-500" : "bg-slate-300"} ${toggling ? "opacity-60 cursor-not-allowed" : ""}`}>
+                  title={!canMutate ? "Cannot change owner account status" : "Activate or deactivate"}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-light)] focus:ring-offset-1 ${editForm.is_active ? "bg-emerald-500" : "bg-slate-300"} ${(toggling || !canMutate) ? "opacity-60 cursor-not-allowed" : ""}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${editForm.is_active ? "translate-x-6" : "translate-x-1"}`} />
                 </button>
               </div>
 
-              <button type="submit" disabled={saving} className="btn btn-primary btn-md w-full">
+              <button type="submit" disabled={saving || !canMutate} className="btn btn-primary btn-md w-full">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
                 {saving ? "Saving\u2026" : "Save changes"}
               </button>
+
+              {canMutate && (
+                <button
+                  type="button"
+                  onClick={() => { setDeleteError(""); setDeleteOpen(true); }}
+                  className="btn btn-secondary btn-md w-full text-red-600 border-red-200 hover:bg-red-50 mt-2"
+                  aria-label="Delete employee"
+                  title="Delete employee"
+                >
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  Delete employee
+                </button>
+              )}
             </form>
           )}
 
@@ -1130,6 +1285,19 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete employee?"
+        message={
+          deleteError
+            ? deleteError
+            : `"${selectedEmp?.first_name || selectedEmp?.username || selectedEmp?.id}" will be permanently removed. This action cannot be undone.`
+        }
+        confirmLabel={deleteError ? "Retry delete" : "Delete"}
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => { if (!deleting) { setDeleteOpen(false); setDeleteError(""); } }}
+      />
     </>,
     document.body
   );
@@ -1265,6 +1433,7 @@ AddEmployeeModal.displayName = "AddEmployeeModal";
    EMPLOYEES PAGE (MAIN)
    ================================================================ */
 export default function Employees() {
+  const { user: actor } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
@@ -1279,8 +1448,13 @@ export default function Employees() {
   const [viewMode, setViewMode] = useState("grid");
   const [drawerEmp, setDrawerEmp] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerInitialTab, setDrawerInitialTab] = useState("details");
   const [addOpen, setAddOpen] = useState(false);
   const [districts, setDistricts] = useState([]);
+  const [busyId, setBusyId] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // { type: 'delete'|'deactivate', emp }
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
   /* --- Load employee list --- */
   const loadList = useCallback(async (signal) => {
     try {
@@ -1350,14 +1524,79 @@ export default function Employees() {
   }, [employees, searchTerm, statusFilter, roleFilter]);
 
   /* --- Drawer --- */
-  const openDrawer = useCallback((emp) => {
+  const openDrawer = useCallback((emp, tab = "details") => {
     setDrawerEmp(emp);
+    setDrawerInitialTab(tab);
     setDrawerOpen(true);
   }, []);
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     setDrawerEmp(null);
+    setDrawerInitialTab("details");
   }, []);
+
+  const handleView = useCallback((emp) => openDrawer(emp, "details"), [openDrawer]);
+  const handleEdit = useCallback((emp) => openDrawer(emp, "edit"), [openDrawer]);
+
+  const handleAskToggle = useCallback((emp) => {
+    if (!canMutateEmployeeAccount(actor, emp)) return;
+    const isActive = emp?.is_active !== false;
+    if (isActive) {
+      setConfirmError("");
+      setConfirmAction({ type: "deactivate", emp });
+      return;
+    }
+    // Activate immediately (non-destructive)
+    (async () => {
+      if (busyId) return;
+      setBusyId(emp.id);
+      try {
+        await patchEmployee(emp.id, { is_active: true });
+        setEmployees((prev) => prev.map((e) => (e.id === emp.id ? { ...e, is_active: true } : e)));
+        setDrawerEmp((prev) => (prev?.id === emp.id ? { ...prev, is_active: true } : prev));
+      } catch {
+        /* keep list state; drawer can retry */
+      } finally {
+        setBusyId(null);
+      }
+    })();
+  }, [actor, busyId]);
+
+  const handleAskDelete = useCallback((emp) => {
+    if (!canMutateEmployeeAccount(actor, emp)) return;
+    setConfirmError("");
+    setConfirmAction({ type: "delete", emp });
+  }, [actor]);
+
+  const handleConfirmAction = useCallback(async () => {
+    const emp = confirmAction?.emp;
+    if (!emp?.id || !canMutateEmployeeAccount(actor, emp) || confirmBusy) return;
+    setConfirmBusy(true);
+    setConfirmError("");
+    try {
+      if (confirmAction.type === "deactivate") {
+        await patchEmployee(emp.id, { is_active: false });
+        setEmployees((prev) => prev.map((e) => (e.id === emp.id ? { ...e, is_active: false } : e)));
+        setDrawerEmp((prev) => (prev?.id === emp.id ? { ...prev, is_active: false } : prev));
+      } else if (confirmAction.type === "delete") {
+        await deleteEmployee(emp.id);
+        setEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+        if (drawerEmp?.id === emp.id) closeDrawer();
+      }
+      setConfirmAction(null);
+    } catch (err) {
+      setConfirmError(
+        friendlyErrorMessage(
+          err,
+          confirmAction.type === "deactivate"
+            ? "Failed to deactivate employee."
+            : "Failed to delete employee."
+        )
+      );
+    } finally {
+      setConfirmBusy(false);
+    }
+  }, [actor, confirmAction, confirmBusy, closeDrawer, drawerEmp?.id]);
 
   /* --- Add Employee callback --- */
   const handleCreated = useCallback((newEmp) => {
@@ -1371,9 +1610,24 @@ export default function Employees() {
 
   /* --- Update employee callback (from drawer edit/toggle) --- */
   const handleUpdated = useCallback((updatedEmp) => {
+    if (updatedEmp?.__deleted) {
+      setEmployees((prev) => prev.filter((e) => e.id !== updatedEmp.id));
+      return;
+    }
     setEmployees(prev => prev.map(e => e.id === updatedEmp.id ? { ...e, ...updatedEmp } : e));
-    setDrawerEmp(prev => prev?.id === updatedEmp.id ? { ...prev, ...updatedEmp } : prev);
+    setDrawerEmp((prev) => (prev?.id === updatedEmp.id ? { ...prev, ...updatedEmp } : prev));
   }, []);
+
+  const confirmEmpName = empName(confirmAction?.emp);
+  const confirmTitle =
+    confirmAction?.type === "deactivate"
+      ? "Deactivate employee?"
+      : "Delete employee?";
+  const confirmMessage = confirmError
+    ? confirmError
+    : confirmAction?.type === "deactivate"
+      ? `Deactivate "${confirmEmpName}"? They will not be able to log in until reactivated.`
+      : `Are you sure you want to delete "${confirmEmpName}"? This action cannot be undone.`;
 
   return (
     <div className="employees-hr page-container">
@@ -1394,7 +1648,7 @@ export default function Employees() {
               {refreshing ? "Refreshing\u2026" : "Refresh"}
             </button>
             <button type="button" onClick={() => setAddOpen(true)} className="btn btn-primary btn-md">
-              <Plus className="w-4 h-4" aria-hidden="true" /> Add employee
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add Employee
             </button>
           </>
         }
@@ -1424,13 +1678,46 @@ export default function Employees() {
         employees={filtered}
         loading={loadingList}
         viewMode={viewMode}
-        onOpen={openDrawer}
+        actor={actor}
+        busyId={busyId}
+        onView={handleView}
+        onEdit={handleEdit}
+        onToggle={handleAskToggle}
+        onDelete={handleAskDelete}
         onAddEmployee={() => setAddOpen(true)}
       />
 
-      <EmployeeDrawer emp={drawerEmp} open={drawerOpen} onClose={closeDrawer} onUpdated={handleUpdated} districts={districts} />
+      <EmployeeDrawer
+        emp={drawerEmp}
+        open={drawerOpen}
+        onClose={closeDrawer}
+        onUpdated={handleUpdated}
+        districts={districts}
+        initialTab={drawerInitialTab}
+      />
 
       <AddEmployeeModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={handleCreated} districts={districts} />
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel={
+          confirmError
+            ? "Retry"
+            : confirmAction?.type === "deactivate"
+              ? "Deactivate"
+              : "Delete"
+        }
+        loading={confirmBusy}
+        onConfirm={handleConfirmAction}
+        onCancel={() => {
+          if (!confirmBusy) {
+            setConfirmAction(null);
+            setConfirmError("");
+          }
+        }}
+      />
     </div>
   );
 }

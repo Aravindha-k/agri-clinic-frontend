@@ -12,6 +12,7 @@ import MasterCropsPage from "./pages/masters/MasterCropsPage";
 import MasterProblemCategories from "./pages/masters/MasterProblemCategories";
 import MasterProblemItems from "./pages/masters/MasterProblemItems";
 import ProtectedRoute from "./components/ProtectedRoute";
+import OwnerRoute from "./components/OwnerRoute";
 import FarmersList from "./pages/FarmersList";
 import Layout from "./components/layout/Layout";
 import CreateVisit from "./pages/CreateVisit";
@@ -98,20 +99,31 @@ function App() {
           <Route
             path="audit"
             element={
-              <LazyPage label="Loading audit log\u2026">
-                <Audit />
-              </LazyPage>
+              <OwnerRoute>
+                <LazyPage label="Loading audit log\u2026">
+                  <Audit />
+                </LazyPage>
+              </OwnerRoute>
             }
           />
           <Route
             path="settings/security"
             element={
-              <LazyPage label="Loading security monitoring\u2026">
-                <SecuritySessions />
-              </LazyPage>
+              <OwnerRoute>
+                <LazyPage label="Loading security monitoring\u2026">
+                  <SecuritySessions />
+                </LazyPage>
+              </OwnerRoute>
             }
           />
-          <Route path="admin/security" element={<Navigate to="/settings/security" replace />} />
+          <Route
+            path="admin/security"
+            element={
+              <OwnerRoute>
+                <Navigate to="/settings/security" replace />
+              </OwnerRoute>
+            }
+          />
           <Route path="masters" element={<Masters />} />
           <Route path="masters/locations" element={<MasterLocationsPage />} />
           <Route path="masters/crops" element={<MasterCropsPage />} />
