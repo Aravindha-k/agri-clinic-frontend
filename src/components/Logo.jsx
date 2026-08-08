@@ -2,8 +2,11 @@ import logo from "../assets/logo.png";
 
 const SIZE_MAP = {
   xs: { box: "w-7 h-7", img: "w-5 h-5" },
-  header: { box: "w-9 h-9", img: "w-7 h-7" },
+  /** Top header — ~54px box, seal fills container */
+  header: { box: "w-[54px] h-[54px]", img: "w-full h-full" },
   sm: { box: "w-10 h-10", img: "w-8 h-8" },
+  /** Sidebar brand — ~66px box, seal fills container */
+  sidebar: { box: "w-[66px] h-[66px]", img: "w-full h-full" },
   nav: { box: "w-11 h-11", img: "w-9 h-9" },
   md: { box: "w-12 h-12", img: "w-10 h-10" },
   lg: { box: "w-16 h-16", img: "w-[3.25rem] h-[3.25rem]" },

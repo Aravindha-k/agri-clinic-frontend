@@ -1878,6 +1878,7 @@ textarea.input {
 
 /* ── Brand logo boxes ── */
 .brand-logo-img {
+    display: block;
     object-fit: contain;
     object-position: center;
     max-width: 100%;
@@ -1886,7 +1887,8 @@ textarea.input {
 }
 
 .brand-logo-box {
-    @apply rounded-xl overflow-hidden flex items-center justify-center p-1;
+    @apply rounded-xl overflow-hidden flex items-center justify-center;
+    padding: 2px;
     background: linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%);
     border: 1px solid rgba(30, 132, 73, 0.12);
 }
@@ -1898,10 +1900,12 @@ textarea.input {
 }
 
 .brand-logo-box--header {
+    padding: 2px;
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(240, 253, 244, 0.92) 100%);
-    border: 1px solid rgba(30, 132, 73, 0.1);
+    border: 1px solid rgba(30, 132, 73, 0.12);
     box-shadow:
-        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 1px 3px rgba(15, 23, 42, 0.06),
+        0 4px 12px rgba(30, 132, 73, 0.08),
         inset 0 1px 0 rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -1917,10 +1921,10 @@ textarea.input {
 }
 
 .header-brand-mark {
-    padding: 2px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.5);
-    border: 1px solid rgba(15, 118, 110, 0.08);
+    padding: 0;
+    border-radius: 14px;
+    background: transparent;
+    border: none;
 }
 
 /* ── Kavya branded loader ── */
@@ -5832,7 +5836,7 @@ textarea.input {
 
 /* Sidebar premium */
 .sidebar-brand {
-    @apply relative z-10 mx-3 mt-4 mb-2 p-2.5 rounded-2xl flex items-center gap-2.5;
+    @apply relative z-10 mx-3 mt-4 mb-2 p-2.5 rounded-2xl flex items-center gap-3;
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -5842,13 +5846,27 @@ textarea.input {
 
 .sidebar-brand__logo {
     flex-shrink: 0;
-    padding: 4px;
-    border-radius: 12px;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 2px;
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 244, 0.92) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.35);
     box-shadow:
         0 4px 14px rgba(0, 0, 0, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+@media (max-width: 1024px) {
+    .sidebar-brand__logo .brand-logo-box {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-brand-mark .brand-logo-box {
+        width: 46px;
+        height: 46px;
+    }
 }
 
 .sidebar-brand__title {

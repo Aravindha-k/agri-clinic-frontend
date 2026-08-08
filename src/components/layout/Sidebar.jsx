@@ -130,7 +130,7 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="relative z-10 px-3 pt-2 pb-2 flex-shrink-0">
           <div className="sidebar-brand">
             <div className="sidebar-brand__logo">
-              <Logo size="sm" variant="sidebar" showShadow={false} />
+              <Logo size="sidebar" variant="sidebar" showShadow={false} />
             </div>
             <div className="min-w-0">
               <p className="sidebar-brand__title">Kavya Agri Clinic</p>
