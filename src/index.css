@@ -114,17 +114,136 @@ body {
 }
 
 .app-header {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px) saturate(1.2);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     border-bottom: 1px solid rgba(15, 23, 42, 0.06);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 4px 24px rgba(15, 23, 42, 0.04);
 }
 
+.app-header--unified {
+    /* Single continuous shell surface — no stacked white bands */
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset, 0 8px 28px rgba(15, 23, 42, 0.05);
+}
+
+.app-header__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.625rem 0.75rem 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .app-header__body {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .app-header__body {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+.app-header__row--primary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+}
+
+.app-header__lead {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.app-header__chrome {
+    min-width: 0;
+    padding-right: 0.5rem;
+}
+
+.app-header__title {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.app-header__subtitle {
+    margin: 0.2rem 0 0;
+    max-width: 42rem;
+}
+
+.app-header__search {
+    justify-content: center;
+}
+
+.app-header__row--actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 0.35rem;
+    margin-top: 0.15rem;
+}
+
+.app-header__title-accent {
+    width: 3rem;
+    height: 3px;
+    margin-top: 0.55rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand-primary), var(--brand-primary-light));
+    opacity: 0.85;
+}
+
+.app-header--has-chrome {
+    /* ~120–135px combined with accent + rows */
+    min-height: 7.5rem;
+}
+
+.app-header--has-chrome .app-header__body {
+    padding-bottom: 0.85rem;
+}
+
 .app-header__accent {
     height: 2px;
     width: 100%;
     background: linear-gradient(90deg, var(--brand-primary-dark) 0%, var(--brand-primary) 45%, var(--brand-primary-light) 75%, var(--brand-accent) 100%);
+}
+
+/* Custom in-page command headers: visually attach to shell (no second floating card band) */
+.app-shell__content .employees-hr-header,
+.app-shell__content .tracking-command-header,
+.app-shell__content .reports-bi-header,
+.app-shell__content .masters-admin-header,
+.app-shell__content .security-suite-header,
+.app-shell__content .audit-console-header {
+    margin-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.app-shell__content .employees-hr-header__inner,
+.app-shell__content .tracking-command-header__inner,
+.app-shell__content .reports-bi-header__inner,
+.app-shell__content .masters-admin-header__inner {
+    background: transparent;
+}
+
+.app-shell__content .page-enter > .employees-hr,
+.app-shell__content .page-enter > .tracking-command,
+.app-shell__content .page-enter > .reports-bi,
+.app-shell__content .page-enter > .masters-admin,
+.app-shell__content .page-enter > .security-suite,
+.app-shell__content .page-enter > .audit-console {
+    padding-top: 0;
 }
 
 ::selection {
@@ -1901,8 +2020,18 @@ textarea.input {
     background: transparent;
     border: none;
     box-shadow: none;
-    border-radius: 0;
-    overflow: visible;
+    /* Clip PNG square white corners → round seal like login hero */
+    border-radius: 50%;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+
+.brand-logo-box--sidebar .brand-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 50%;
 }
 
 .brand-logo-box--header {
@@ -5831,11 +5960,11 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar premium — open brand block (no card); login-like seal presence */
+/* Sidebar premium — open brand block; round clipped seal */
 .sidebar-brand {
     @apply relative z-10 flex flex-col items-center text-center;
     margin: 0;
-    padding: 1.375rem 0.75rem 1.375rem; /* ~22px top / 22px bottom */
+    padding: 1.25rem 0.75rem 1.25rem; /* ~20px */
     gap: 0;
     background: transparent;
     border: none;
@@ -5853,10 +5982,11 @@ textarea.input {
     padding: 0;
     line-height: 0;
     margin: 0 auto;
-    border-radius: 0;
+    border-radius: 50%;
     background: transparent;
     border: none;
     box-shadow: none;
+    overflow: hidden;
 }
 
 .sidebar-brand__text {
@@ -5887,7 +6017,7 @@ textarea.input {
     border: 1px solid rgba(72, 187, 120, 0.25);
 }
 
-/* Collapsed / narrow sidebar: logo only */
+/* Collapsed / narrow sidebar: round logo only */
 .sidebar--collapsed .sidebar-brand,
 .sidebar-collapsed .sidebar-brand {
     padding: 12px 8px;
@@ -5902,25 +6032,26 @@ textarea.input {
 .sidebar-collapsed .sidebar-brand__logo .brand-logo-box {
     width: 44px;
     height: 44px;
+    border-radius: 50%;
 }
 
 /* Tablet drawer */
 @media (max-width: 1024px) {
     .sidebar-brand__logo .brand-logo-box {
-        width: 86px;
-        height: 86px;
+        width: 92px;
+        height: 92px;
     }
 }
 
 /* Mobile drawer */
 @media (max-width: 767px) {
     .sidebar-brand {
-        padding: 1.125rem 0.625rem 1.125rem;
+        padding: 1rem 0.625rem 1.125rem;
     }
 
     .sidebar-brand__logo .brand-logo-box {
-        width: 78px;
-        height: 78px;
+        width: 82px;
+        height: 82px;
     }
 
     .sidebar-brand__title {
