@@ -129,8 +129,15 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
-            <div className="sidebar-brand__logo">
-              <Logo size="sidebar" variant="sidebar" showShadow={false} />
+            <div className="sidebar-brand__stage">
+              <div className="sidebar-brand__coin">
+                <div className="sidebar-brand__face sidebar-brand__face--front">
+                  <Logo size="sidebar" variant="sidebar" showShadow={false} />
+                </div>
+                <div className="sidebar-brand__face sidebar-brand__face--back" aria-hidden="true">
+                  <Logo size="sidebar" variant="sidebar" showShadow={false} alt="" />
+                </div>
+              </div>
             </div>
             <div className="sidebar-brand__text">
               <p className="sidebar-brand__title">Kavya Agri Clinic</p>

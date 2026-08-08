@@ -110,6 +110,7 @@ export default function Header({ onMenuClick }) {
                 {subtitle && (
                   <p className="app-header__subtitle">{subtitle}</p>
                 )}
+                <div className="app-header__title-accent" aria-hidden="true" />
               </div>
             )}
           </div>

@@ -5,7 +5,7 @@ const SIZE_MAP = {
   /** Legacy header size (header no longer shows company logo) */
   header: { box: "w-[50px] h-[50px]", img: "w-full h-full" },
   sm: { box: "w-10 h-10", img: "w-full h-full" },
-  /** Sidebar brand — front-facing circular seal (breathing, no spin) */
+  /** Sidebar brand — circular seal face (used in two-sided coin) */
   sidebar: {
     box: "w-full h-full !rounded-full !overflow-hidden",
     img: "w-full h-full !rounded-full !object-contain",

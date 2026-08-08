@@ -193,16 +193,16 @@ body {
 
 .app-header__title {
     margin: 0;
-    font-size: 1.625rem; /* 26px */
+    font-size: 1.75rem; /* 28px */
     font-weight: 700;
-    letter-spacing: -0.025em;
-    line-height: 1.2;
+    letter-spacing: -0.03em; /* ~-0.5px */
+    line-height: 1.15;
     color: #0f172a;
 }
 
 @media (min-width: 1280px) {
     .app-header__title {
-        font-size: 1.75rem; /* 28px */
+        font-size: 1.875rem; /* 30px */
     }
 }
 
@@ -213,10 +213,11 @@ body {
 }
 
 .app-header__subtitle {
-    margin: 0.25rem 0 0; /* ~4px */
+    margin: 0.3rem 0 0; /* ~5px */
     max-width: 40rem;
     font-size: 0.875rem; /* 14px */
-    line-height: 1.35;
+    font-weight: 500;
+    line-height: 1.4;
     color: #64748b;
 }
 
@@ -227,7 +228,35 @@ body {
 }
 
 .app-header__title-accent {
-    display: none;
+    width: 2.25rem;
+    height: 2px;
+    margin-top: 0.4rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand-primary), var(--brand-primary-light));
+    opacity: 0.85;
+}
+
+/* Compact status badges beside page title */
+.app-header__title-row > [class*="badge"],
+.app-header__title-row > .employees-hr-header__badge,
+.app-header__title-row > .masters-admin-header__badge,
+.app-header__title-row > .security-suite-header__badge,
+.app-header__title-row > .tracking-command-header__badge,
+.app-header__title-row > .command-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.625rem; /* 10px */
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    border-radius: 999px;
+    color: var(--brand-primary-dark, #166534);
+    background: rgba(236, 253, 245, 0.95);
+    border: 1px solid rgba(30, 132, 73, 0.18);
 }
 
 .app-header__tools {
@@ -6129,7 +6158,7 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar premium — front-facing seal with subtle breathe (no spin / orbit) */
+/* Sidebar premium — two-sided rotating seal (same logo both faces) */
 .sidebar-brand {
     @apply relative z-10 flex flex-col items-center text-center;
     margin: 0;
@@ -6140,28 +6169,53 @@ textarea.input {
     box-shadow: none;
 }
 
-.sidebar-brand__logo {
+.sidebar-brand__stage {
     width: 6.875rem; /* 110px */
     height: 6.875rem;
     margin: 0 auto;
     flex-shrink: 0;
+    perspective: 900px;
+    perspective-origin: 50% 50%;
+    /* Soft green-tinted depth behind the coin */
+    filter: drop-shadow(0 10px 18px rgba(6, 78, 59, 0.22))
+            drop-shadow(0 3px 8px rgba(15, 23, 42, 0.12));
+}
+
+.sidebar-brand__coin {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    transform-origin: center center;
+    animation: sidebarCoinSpin 20s linear infinite;
+}
+
+.sidebar-brand__face {
+    position: absolute;
+    inset: 0;
     border-radius: 50%;
     overflow: hidden;
     background: transparent;
     border: none;
-    /* Soft green-tinted depth — low opacity, no neon / halo */
-    box-shadow:
-        0 10px 26px rgba(6, 78, 59, 0.22),
-        0 4px 10px rgba(15, 23, 42, 0.12);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
     clip-path: circle(50% at 50% 50%);
     -webkit-clip-path: circle(50% at 50% 50%);
-    isolation: isolate;
-    transform-origin: center center;
-    animation: sidebarSealBreathe 5.5s ease-in-out infinite;
 }
 
-.sidebar-brand__logo .brand-logo-box,
-.sidebar-brand__logo .brand-logo-box--sidebar {
+.sidebar-brand__face--front {
+    transform: rotateY(0deg);
+}
+
+/* 180deg face offset keeps seal readable (not mirrored) when coin flips */
+.sidebar-brand__face--back {
+    transform: rotateY(180deg);
+}
+
+.sidebar-brand__face .brand-logo-box,
+.sidebar-brand__face .brand-logo-box--sidebar {
     width: 100% !important;
     height: 100% !important;
     max-width: 100%;
@@ -6177,17 +6231,14 @@ textarea.input {
     -webkit-clip-path: circle(50% at 50% 50%) !important;
 }
 
-/* contain = full seal readable; circle clip hides square PNG corners */
-.sidebar-brand__logo .brand-logo-img,
-.sidebar-brand__logo img {
+.sidebar-brand__face .brand-logo-img,
+.sidebar-brand__face img {
     width: 100% !important;
     height: 100% !important;
     object-fit: contain !important;
     object-position: center !important;
     border-radius: 50% !important;
     display: block;
-    transform: none !important;
-    animation: none !important;
 }
 
 .sidebar-brand__text {
@@ -6196,36 +6247,57 @@ textarea.input {
     align-items: center;
     width: 100%;
     min-width: 0;
-    margin-top: 0.55rem;
+    margin-top: 0.7rem; /* ~11px */
 }
 
 .sidebar-brand__title {
-    font-size: 1.03125rem;
+    font-size: 1.125rem; /* 18px */
     font-weight: 700;
-    letter-spacing: -0.015em;
-    color: #fff;
-    line-height: 1.3;
+    letter-spacing: 0.015em; /* ~0.2px */
+    color: rgba(255, 255, 255, 0.96);
+    line-height: 1.25;
     text-align: center;
     margin: 0;
     max-width: 100%;
 }
 
 .sidebar-brand__tag {
-    @apply inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider;
-    margin-top: 0.35rem;
-    background: rgba(72, 187, 120, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.4rem; /* ~6–7px */
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.6875rem; /* 11px */
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 1.2;
     color: rgba(187, 247, 208, 0.95);
-    border: 1px solid rgba(72, 187, 120, 0.25);
+    background: rgba(72, 187, 120, 0.14);
+    border: 1px solid rgba(72, 187, 120, 0.28);
+    backdrop-filter: blur(6px);
 }
 
-@keyframes sidebarSealBreathe {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.025); }
+@keyframes sidebarCoinSpin {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sidebar-brand__logo {
+    .sidebar-brand__coin {
         animation: none !important;
+        transform: none !important;
+    }
+
+    .sidebar-brand__face--back {
+        display: none !important;
+    }
+
+    .sidebar-brand__face--front {
+        transform: none !important;
+        backface-visibility: visible;
+        -webkit-backface-visibility: visible;
     }
 }
 
@@ -6239,16 +6311,20 @@ textarea.input {
     display: none;
 }
 
-.sidebar--collapsed .sidebar-brand__logo,
-.sidebar-collapsed .sidebar-brand__logo {
-    width: 2.75rem !important; /* 44px */
-    height: 2.75rem !important;
+.sidebar--collapsed .sidebar-brand__stage,
+.sidebar-collapsed .sidebar-brand__stage {
+    width: 2.75rem; /* 44px */
+    height: 2.75rem;
 }
 
 @media (max-width: 1024px) {
-    .sidebar-brand__logo {
+    .sidebar-brand__stage {
         width: 5.625rem; /* 90px */
         height: 5.625rem;
+    }
+
+    .sidebar-brand__title {
+        font-size: 1.0625rem; /* 17px */
     }
 }
 
@@ -6257,13 +6333,13 @@ textarea.input {
         padding: 0.95rem 0.625rem 0.9rem;
     }
 
-    .sidebar-brand__logo {
+    .sidebar-brand__stage {
         width: 5rem; /* 80px */
         height: 5rem;
     }
 
     .sidebar-brand__title {
-        font-size: 1rem;
+        font-size: 1.0625rem;
     }
 }
 
