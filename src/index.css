@@ -1901,7 +1901,8 @@ textarea.input {
     background: transparent;
     border: none;
     box-shadow: none;
-    border-radius: 0.5rem; /* 8px — soft, not a heavy white plate */
+    border-radius: 0;
+    overflow: visible;
 }
 
 .brand-logo-box--header {
@@ -5830,16 +5831,18 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar premium — vertical centered branding (primary company identity) */
+/* Sidebar premium — open brand block (no card); login-like seal presence */
 .sidebar-brand {
-    @apply relative z-10 mx-3 mt-4 mb-2 rounded-2xl flex flex-col items-center text-center;
-    padding: 16px 12px 14px;
+    @apply relative z-10 flex flex-col items-center text-center;
+    margin: 0;
+    padding: 1.375rem 0.75rem 1.375rem; /* ~22px top / 22px bottom */
     gap: 0;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 .sidebar-brand__logo {
@@ -5850,7 +5853,7 @@ textarea.input {
     padding: 0;
     line-height: 0;
     margin: 0 auto;
-    border-radius: 0.5rem; /* 8px */
+    border-radius: 0;
     background: transparent;
     border: none;
     box-shadow: none;
@@ -5862,11 +5865,11 @@ textarea.input {
     align-items: center;
     width: 100%;
     min-width: 0;
-    margin-top: 0.75rem; /* 12px below logo */
+    margin-top: 0.6875rem; /* ~11px below logo */
 }
 
 .sidebar-brand__title {
-    font-size: 0.96875rem; /* ~15.5px */
+    font-size: 1.03125rem; /* ~16.5px */
     font-weight: 700;
     letter-spacing: -0.015em;
     color: #fff;
@@ -5877,7 +5880,8 @@ textarea.input {
 }
 
 .sidebar-brand__tag {
-    @apply inline-flex items-center justify-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider;
+    @apply inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider;
+    margin-top: 0.4375rem; /* ~7px below company name */
     background: rgba(72, 187, 120, 0.15);
     color: rgba(187, 247, 208, 0.95);
     border: 1px solid rgba(72, 187, 120, 0.25);
@@ -5886,7 +5890,7 @@ textarea.input {
 /* Collapsed / narrow sidebar: logo only */
 .sidebar--collapsed .sidebar-brand,
 .sidebar-collapsed .sidebar-brand {
-    padding: 10px 8px;
+    padding: 12px 8px;
 }
 
 .sidebar--collapsed .sidebar-brand__text,
@@ -5900,27 +5904,27 @@ textarea.input {
     height: 44px;
 }
 
-/* Tablet drawer: keep vertical brand, slightly smaller seal */
+/* Tablet drawer */
 @media (max-width: 1024px) {
     .sidebar-brand__logo .brand-logo-box {
-        width: 76px;
-        height: 76px;
+        width: 86px;
+        height: 86px;
     }
 }
 
-/* Mobile drawer: logo remains the only brand mark (header has no logo) */
+/* Mobile drawer */
 @media (max-width: 767px) {
     .sidebar-brand {
-        padding: 14px 10px 12px;
+        padding: 1.125rem 0.625rem 1.125rem;
     }
 
     .sidebar-brand__logo .brand-logo-box {
-        width: 72px;
-        height: 72px;
+        width: 78px;
+        height: 78px;
     }
 
     .sidebar-brand__title {
-        font-size: 0.9375rem; /* 15px */
+        font-size: 1rem; /* 16px */
     }
 }
 

@@ -127,7 +127,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="relative z-10 px-3 pt-2 pb-2 flex-shrink-0">
+        <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
             <div className="sidebar-brand__logo">
               <Logo size="sidebar" variant="sidebar" showShadow={false} />

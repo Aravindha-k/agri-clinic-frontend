@@ -1,31 +1,10 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, Bell, RefreshCw, ChevronRight, LogOut, User, Settings } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Menu, Bell, RefreshCw, LogOut, User, Settings } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
 import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
-
-const PAGE_META = {
-  "/dashboard": { name: "Dashboard", parent: null },
-  "/employees": { name: "Employees", parent: null },
-  "/farmers": { name: "Farmers", parent: null },
-  "/farmers/new": { name: "Add Farmer", parent: "Farmers" },
-  "/visits": { name: "Visits", parent: null },
-  "/visits/create": { name: "Create Visit", parent: "Visits" },
-  "/tracking": { name: "Live Tracking", parent: null },
-  "/tracking/routes": { name: "Route History", parent: "Live Tracking" },
-  "/masters": { name: "Master Data", parent: null },
-  "/masters/locations": { name: "Locations", parent: "Masters" },
-  "/masters/crops": { name: "Crops", parent: "Masters" },
-  "/masters/problem-categories": { name: "Problem Categories", parent: "Masters" },
-  "/masters/problem-items": { name: "Problem Items", parent: "Masters" },
-  "/reports": { name: "Reports", parent: null },
-  "/notifications": { name: "Notifications", parent: null },
-  "/audit": { name: "Audit Log", parent: null },
-  "/settings/security": { name: "Security & Sessions", parent: null },
-  "/crop-issues": { name: "Crop Issues", parent: null },
-};
 
 function useClock() {
   const [time, setTime] = useState(new Date());
@@ -36,9 +15,11 @@ function useClock() {
   return time;
 }
 
+/**
+ * Global shell utility bar — no page title (titles live in page content only).
+ */
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
   const now = useClock();
   const [refreshing, setRefreshing] = useState(false);
@@ -60,16 +41,6 @@ export default function Header({ onMenuClick }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [userMenuOpen, closeUserMenu]);
-
-  const meta = (() => {
-    const p = location.pathname;
-    if (PAGE_META[p]) return PAGE_META[p];
-    if (/^\/farmers\/[^/]+\/edit/.test(p)) return { name: "Edit Farmer", parent: "Farmers" };
-    if (/^\/farmers\/[^/]+/.test(p)) return { name: "Farmer Detail", parent: "Farmers" };
-    if (/^\/visits\/\d+\/edit/.test(p)) return { name: "Edit Visit", parent: "Visits" };
-    if (/^\/visits\/\d+/.test(p)) return { name: "Visit Detail", parent: "Visits" };
-    return { name: "Dashboard", parent: null };
-  })();
 
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name || ""}`.trim()
@@ -102,8 +73,9 @@ export default function Header({ onMenuClick }) {
     <header className="app-header sticky top-0 z-20">
       <div className="app-header__accent" />
 
-      <div className="flex items-center justify-between min-h-[60px] h-[60px] px-3 sm:px-4 lg:px-6 gap-3">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="relative flex items-center justify-between min-h-[60px] h-[60px] px-3 sm:px-4 lg:px-6 gap-3">
+        {/* Left: mobile menu + balance spacer (no page title) */}
+        <div className="flex items-center flex-1 min-w-0">
           <button
             onClick={onMenuClick}
             className="lg:hidden p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 transition-all flex-shrink-0"
@@ -111,32 +83,17 @@ export default function Header({ onMenuClick }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-
-          <nav
-            className="hidden sm:flex items-center gap-1.5 min-w-0 max-w-[160px] lg:max-w-none"
-            aria-label="Current page"
-          >
-            {meta.parent && (
-              <>
-                <span className="text-sm text-slate-400 font-medium truncate">
-                  {meta.parent}
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-              </>
-            )}
-            <h2 className="text-sm font-semibold text-slate-900 truncate tracking-tight leading-none">
-              {meta.name}
-            </h2>
-          </nav>
         </div>
 
-        <div className="hidden lg:flex flex-1 justify-center max-w-md px-2">
-          <GlobalSearch />
+        {/* Center: search */}
+        <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-2 pointer-events-none">
+          <div className="w-full pointer-events-auto">
+            <GlobalSearch />
+          </div>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-
-          {/* Date/time */}
+        {/* Right: utilities */}
+        <div className="flex items-center justify-end gap-1 sm:gap-1.5 flex-1 flex-shrink-0">
           <div className="hidden md:flex flex-col items-end mr-2">
             <span className="text-[12px] font-bold text-gray-800 leading-none tabular-nums">{timeStr}</span>
             <span className="text-[10px] text-gray-400 mt-0.5 font-medium">{dateStr}</span>
@@ -144,7 +101,6 @@ export default function Header({ onMenuClick }) {
 
           <div className="hidden md:block w-px h-6 bg-gray-200 mx-1" />
 
-          {/* Refresh */}
           <button
             onClick={handleRefresh}
             className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all"
@@ -154,7 +110,6 @@ export default function Header({ onMenuClick }) {
             <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? "animate-spin" : ""}`} />
           </button>
 
-          {/* Notifications */}
           <button
             onClick={() => navigate("/notifications")}
             className="header-notify-btn"
@@ -183,7 +138,6 @@ export default function Header({ onMenuClick }) {
               </div>
             </button>
 
-            {/* Dropdown */}
             {userMenuOpen && (
               <>
                 <div
