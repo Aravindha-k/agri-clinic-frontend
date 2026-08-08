@@ -1,4 +1,4 @@
-import { PageLoader, EmptyState } from "../components/ui/command";
+import { PageLoader, EmptyState, PageHeader } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { useEffect, useMemo, useState } from "react";
 import { getAuditLogs } from "../api/audit.api";
@@ -112,30 +112,21 @@ export default function Audit() {
 
     return (
         <div className="audit-console page-container">
-            <header className="audit-console-header">
-                <div className="audit-console-header__inner">
-                    <div className="audit-console-header__brand">
-                        <div className="audit-console-header__icon" aria-hidden="true">
-                            <ShieldCheck className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <span className="audit-console-header__badge">
-                                <ShieldCheck className="w-3 h-3" aria-hidden="true" />
-                                Compliance
-                            </span>
-                            <h1 className="audit-console-header__title">System Audit Logs</h1>
-                            <p className="audit-console-header__subtitle">
-                                Monitor system activity and security events across the admin panel
-                            </p>
-                        </div>
-                    </div>
-                    <div className="security-suite-header__actions">
-                        <button type="button" onClick={load} className="btn btn-primary btn-md">
-                            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
-                        </button>
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                title="System Audit Logs"
+                subtitle="Monitor system activity and security events across the admin panel"
+                badge={
+                    <span className="audit-console-header__badge">
+                        <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+                        Compliance
+                    </span>
+                }
+                actions={
+                    <button type="button" onClick={load} className="btn btn-primary btn-md">
+                        <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+                    </button>
+                }
+            />
 
             {logs.length === 0 ? (
                 <div className="audit-console-timeline-card">

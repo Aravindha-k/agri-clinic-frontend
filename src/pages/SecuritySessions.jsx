@@ -19,6 +19,7 @@ import {
   PageLoader,
   EmptyState,
   ErrorRetry,
+  PageHeader,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import {
@@ -215,30 +216,21 @@ export default function SecuritySessions() {
 
   return (
     <div className="security-suite page-container">
-      <header className="security-suite-header">
-        <div className="security-suite-header__inner">
-          <div className="security-suite-header__brand">
-            <div className="security-suite-header__icon" aria-hidden="true">
-              <LockKeyhole className="w-6 h-6" />
-            </div>
-            <div className="min-w-0">
-              <span className="security-suite-header__badge">
-                <ShieldCheck className="w-3 h-3" aria-hidden="true" />
-                Administration
-              </span>
-              <h1 className="security-suite-header__title">Security &amp; Sessions</h1>
-              <p className="security-suite-header__subtitle">
-                Admin inactivity timeout, login lockouts, active sessions, and security audit activity
-              </p>
-            </div>
-          </div>
-          <div className="security-suite-header__actions">
-            <button type="button" onClick={load} className="btn btn-primary btn-md">
-              <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
-            </button>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="Security & Sessions"
+        subtitle="Admin inactivity timeout, login lockouts, active sessions, and security audit activity"
+        badge={
+          <span className="security-suite-header__badge">
+            <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+            Administration
+          </span>
+        }
+        actions={
+          <button type="button" onClick={load} className="btn btn-primary btn-md">
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+          </button>
+        }
+      />
 
       {error && (
         <ErrorRetry compact message={error} onRetry={load} />

@@ -1,4 +1,4 @@
-import { PageLoader } from "../../components/ui/command";
+import { PageLoader, PageHeader } from "../../components/ui/command";
 import { useEffect, useState, useCallback } from "react";
 import { fetchAllMasterCrops, createCrop, updateCrop, deleteCrop } from "../../api/master.api";
 import { logApiDiagnostics } from "../../utils/apiDiagnostics";
@@ -168,34 +168,31 @@ export default function MasterCropsPage() {
 
     return (
         <div className="masters-admin page-container">
-            <header className="masters-admin-header">
-                <div className="masters-admin-header__inner">
-                    <div className="masters-admin-header__brand">
-                        <div className="masters-admin-header__icon" aria-hidden="true">
-                            <Wheat className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <span className="masters-admin-header__badge">
-                                <Wheat className="w-3 h-3" aria-hidden="true" />
-                                Crops
-                            </span>
-                            <h1 className="masters-admin-header__title">Master Crops</h1>
-                            <p className="masters-admin-header__subtitle">
-                                Manage crop database for dropdown selection
-                                {!loading && <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="masters-admin-header__actions">
+            <PageHeader
+                title="Master Crops"
+                subtitle={
+                    <>
+                        Manage crop database for dropdown selection
+                        {!loading && <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>}
+                    </>
+                }
+                badge={
+                    <span className="masters-admin-header__badge">
+                        <Wheat className="w-3 h-3" aria-hidden="true" />
+                        Crops
+                    </span>
+                }
+                actions={
+                    <>
                         <button type="button" onClick={openCreate} className="btn btn-primary btn-md">
                             <Plus className="w-4 h-4" aria-hidden="true" /> Add crop
                         </button>
                         <button type="button" onClick={fetchCrops} className="btn btn-secondary btn-md">
                             <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
                         </button>
-                    </div>
-                </div>
-            </header>
+                    </>
+                }
+            />
 
             <section className="masters-admin-filters" aria-label="Search crops">
                 <div className="masters-admin-filters__row">

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { MapPin, Wheat, Tag, Bug, ChevronRight, Database } from "lucide-react";
+import { PageHeader } from "../components/ui/command";
 
 const MASTER_SECTIONS = [
     {
@@ -45,25 +46,16 @@ export default function Masters() {
 
     return (
         <div className="masters-admin page-container">
-            <header className="masters-admin-header">
-                <div className="masters-admin-header__inner">
-                    <div className="masters-admin-header__brand">
-                        <div className="masters-admin-header__icon" aria-hidden="true">
-                            <Database className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <span className="masters-admin-header__badge">
-                                <Database className="w-3 h-3" aria-hidden="true" />
-                                Reference data
-                            </span>
-                            <h1 className="masters-admin-header__title">Master Data</h1>
-                            <p className="masters-admin-header__subtitle">
-                                Manage reference data used across visits, farmers, and field operations
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                title="Master Data"
+                subtitle="Manage reference data used across visits, farmers, and field operations"
+                badge={
+                    <span className="masters-admin-header__badge">
+                        <Database className="w-3 h-3" aria-hidden="true" />
+                        Reference data
+                    </span>
+                }
+            />
 
             <div className="masters-admin-hub-grid">
                 {MASTER_SECTIONS.map((section) => (

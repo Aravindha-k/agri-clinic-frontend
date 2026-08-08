@@ -1,4 +1,4 @@
-import { PageLoader } from "../../components/ui/command";
+import { PageLoader, PageHeader } from "../../components/ui/command";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
     fetchAllDistricts, fetchAllVillages,
@@ -183,31 +183,26 @@ export default function MasterLocationsPage() {
 
     return (
         <div className="masters-admin page-container">
-            <header className="masters-admin-header">
-                <div className="masters-admin-header__inner">
-                    <div className="masters-admin-header__brand">
-                        <div className="masters-admin-header__icon" aria-hidden="true">
-                            <MapPin className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <span className="masters-admin-header__badge">
-                                <MapPin className="w-3 h-3" aria-hidden="true" />
-                                Locations
-                            </span>
-                            <h1 className="masters-admin-header__title">Master Locations</h1>
-                            <p className="masters-admin-header__subtitle">Manage districts and villages</p>
-                        </div>
-                    </div>
-                    <div className="masters-admin-header__actions">
+            <PageHeader
+                title="Master Locations"
+                subtitle="Manage districts and villages"
+                badge={
+                    <span className="masters-admin-header__badge">
+                        <MapPin className="w-3 h-3" aria-hidden="true" />
+                        Locations
+                    </span>
+                }
+                actions={
+                    <>
                         <button type="button" onClick={openCreate} className="btn btn-primary btn-md">
                             <Plus className="w-4 h-4" aria-hidden="true" /> Add {TAB_LABELS[activeTab].slice(0, -1)}
                         </button>
                         <button type="button" onClick={fetchAll} className="btn btn-secondary btn-md">
                             <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
                         </button>
-                    </div>
-                </div>
-            </header>
+                    </>
+                }
+            />
 
             <div className="masters-admin-toolbar">
                 <div className="masters-admin-tabs">

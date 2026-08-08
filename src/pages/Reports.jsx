@@ -7,6 +7,7 @@ import {
   PageLoader,
   EmptyState,
   ErrorRetry,
+  PageHeader,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import RouteFallback from "../components/RouteFallback";
@@ -134,16 +135,7 @@ function BiMetric({ value, label, hint, tone = "slate", title }) {
 function ReportsLoadingSkeleton() {
   return (
     <div className="reports-bi page-container">
-      <div className="reports-bi-header">
-        <div className="reports-bi-header__inner">
-          <div className="skeleton h-12 w-12 rounded-2xl shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="skeleton h-4 w-32 rounded" />
-            <div className="skeleton h-7 w-64 rounded" />
-            <div className="skeleton h-4 w-80 max-w-full rounded" />
-          </div>
-        </div>
-      </div>
+      <PageHeader title="Analytics & Reports" subtitle="Loading report data…" />
       <div className="reports-bi-skeleton-grid">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="reports-bi-skeleton-card">
@@ -327,30 +319,21 @@ export default function Reports() {
   }
 
   const pageHeader = (
-    <header className="reports-bi-header">
-      <div className="reports-bi-header__inner">
-        <div className="reports-bi-header__brand">
-          <div className="reports-bi-header__icon" aria-hidden="true">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <span className="reports-bi-header__badge">
-              <BarChart3 className="w-3 h-3" aria-hidden="true" />
-              Business intelligence
-            </span>
-            <h1 className="reports-bi-header__title">Analytics &amp; Reports</h1>
-            <p className="reports-bi-header__subtitle">
-              Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity
-            </p>
-          </div>
-        </div>
-        <div className="reports-bi-header__actions">
-          <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
-            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
-          </button>
-        </div>
-      </div>
-    </header>
+    <PageHeader
+      title="Analytics & Reports"
+      subtitle="Field visits, farmer coverage, GPS compliance, evidence uploads, and route activity"
+      badge={
+        <span className="reports-bi-header__badge">
+          <BarChart3 className="w-3 h-3" aria-hidden="true" />
+          Business intelligence
+        </span>
+      }
+      actions={
+        <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
+          <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+        </button>
+      }
+    />
   );
 
   return (

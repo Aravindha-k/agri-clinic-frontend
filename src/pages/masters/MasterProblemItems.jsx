@@ -11,7 +11,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
-import { PageLoader, EmptyState } from "../../components/ui/command";
+import { PageLoader, EmptyState, PageHeader } from "../../components/ui/command";
 import {
   fetchProblemCategories,
   fetchAllProblemMasters,
@@ -333,21 +333,10 @@ export default function MasterProblemItems() {
   if (apiAvailable === false) {
     return (
       <div className="masters-admin page-container max-w-3xl">
-        <header className="masters-admin-header">
-          <div className="masters-admin-header__inner">
-            <div className="masters-admin-header__brand">
-              <div className="masters-admin-header__icon" aria-hidden="true">
-                <Bug className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="masters-admin-header__title">Problem Items</h1>
-                <p className="masters-admin-header__subtitle">
-                  Manage Pest, Disease, and Nutrient Issue dropdown options for Add Visit.
-                </p>
-              </div>
-            </div>
-          </div>
-        </header>
+        <PageHeader
+          title="Problem Items"
+          subtitle="Manage Pest, Disease, and Nutrient Issue dropdown options for Add Visit."
+        />
         <div className="masters-admin-empty">
           <EmptyState
             icon={Bug}
@@ -369,27 +358,24 @@ export default function MasterProblemItems() {
         onChange={handleImportFile}
       />
 
-      <header className="masters-admin-header">
-        <div className="masters-admin-header__inner">
-          <div className="masters-admin-header__brand">
-            <div className="masters-admin-header__icon" aria-hidden="true">
-              <Bug className="w-6 h-6" />
-            </div>
-            <div className="min-w-0">
-              <span className="masters-admin-header__badge">
-                <Bug className="w-3 h-3" aria-hidden="true" />
-                Visit form options
-              </span>
-              <h1 className="masters-admin-header__title">Problem Items</h1>
-              <p className="masters-admin-header__subtitle">
-                Pest, Disease, and Nutrient Issue options for the Add Visit form
-                {!loading && (
-                  <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="masters-admin-header__actions">
+      <PageHeader
+        title="Problem Items"
+        subtitle={
+          <>
+            Pest, Disease, and Nutrient Issue options for the Add Visit form
+            {!loading && (
+              <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>
+            )}
+          </>
+        }
+        badge={
+          <span className="masters-admin-header__badge">
+            <Bug className="w-3 h-3" aria-hidden="true" />
+            Visit form options
+          </span>
+        }
+        actions={
+          <>
             <button
               type="button"
               onClick={handleImportClick}
@@ -414,9 +400,9 @@ export default function MasterProblemItems() {
             >
               <Plus className="w-4 h-4" aria-hidden="true" /> Add item
             </button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {importing && (
         <div className="masters-admin-alert masters-admin-alert--import mb-0">

@@ -213,28 +213,14 @@ body {
     background: linear-gradient(90deg, var(--brand-primary-dark) 0%, var(--brand-primary) 45%, var(--brand-primary-light) 75%, var(--brand-accent) 100%);
 }
 
-/* Custom in-page command headers: visually attach to shell (no second floating card band) */
+/* Custom in-page command headers: hide leftover title bands (shell owns title) */
 .app-shell__content .employees-hr-header,
 .app-shell__content .tracking-command-header,
 .app-shell__content .reports-bi-header,
 .app-shell__content .masters-admin-header,
 .app-shell__content .security-suite-header,
 .app-shell__content .audit-console-header {
-    margin-top: 0;
-    border-radius: 0;
-    box-shadow: none;
-    border-left: none;
-    border-right: none;
-    border-top: none;
-    background: rgba(255, 255, 255, 0.96);
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.app-shell__content .employees-hr-header__inner,
-.app-shell__content .tracking-command-header__inner,
-.app-shell__content .reports-bi-header__inner,
-.app-shell__content .masters-admin-header__inner {
-    background: transparent;
+    display: none !important;
 }
 
 .app-shell__content .page-enter > .employees-hr,
@@ -2016,22 +2002,27 @@ textarea.input {
 }
 
 .brand-logo-box--sidebar {
-    padding: 0;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    /* Clip PNG square white corners → round seal like login hero */
-    border-radius: 50%;
-    overflow: hidden;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    /* Globe / round seal — clip square PNG white corners */
+    border-radius: 50% !important;
+    overflow: hidden !important;
     aspect-ratio: 1 / 1;
+    clip-path: circle(50% at 50% 50%);
+    -webkit-clip-path: circle(50% at 50% 50%);
+    isolation: isolate;
 }
 
 .brand-logo-box--sidebar .brand-logo-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
     object-position: center;
     border-radius: 50%;
+    transform: scale(1.02);
+    transform-origin: center;
 }
 
 .brand-logo-box--header {
@@ -5982,11 +5973,15 @@ textarea.input {
     padding: 0;
     line-height: 0;
     margin: 0 auto;
+    width: 7.25rem;
+    height: 7.25rem;
     border-radius: 50%;
     background: transparent;
     border: none;
     box-shadow: none;
     overflow: hidden;
+    clip-path: circle(50% at 50% 50%);
+    -webkit-clip-path: circle(50% at 50% 50%);
 }
 
 .sidebar-brand__text {
@@ -6030,16 +6025,27 @@ textarea.input {
 
 .sidebar--collapsed .sidebar-brand__logo .brand-logo-box,
 .sidebar-collapsed .sidebar-brand__logo .brand-logo-box {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+}
+
+.sidebar--collapsed .sidebar-brand__logo,
+.sidebar-collapsed .sidebar-brand__logo {
     width: 44px;
     height: 44px;
-    border-radius: 50%;
 }
 
 /* Tablet drawer */
 @media (max-width: 1024px) {
-    .sidebar-brand__logo .brand-logo-box {
+    .sidebar-brand__logo {
         width: 92px;
         height: 92px;
+    }
+
+    .sidebar-brand__logo .brand-logo-box {
+        width: 92px !important;
+        height: 92px !important;
     }
 }
 
@@ -6049,9 +6055,14 @@ textarea.input {
         padding: 1rem 0.625rem 1.125rem;
     }
 
-    .sidebar-brand__logo .brand-logo-box {
+    .sidebar-brand__logo {
         width: 82px;
         height: 82px;
+    }
+
+    .sidebar-brand__logo .brand-logo-box {
+        width: 82px !important;
+        height: 82px !important;
     }
 
     .sidebar-brand__title {

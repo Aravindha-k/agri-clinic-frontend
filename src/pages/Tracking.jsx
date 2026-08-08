@@ -1,4 +1,4 @@
-import { EmptyState } from "../components/ui/command";
+import { EmptyState, PageHeader } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -792,32 +792,24 @@ export default function Tracking() {
     return (
         <>
             <div className="tracking-command">
-                <header className="tracking-command-header">
-                    <div className="tracking-command-header__inner">
-                        <div className="tracking-command-header__brand">
-                            <div className="tracking-command-header__icon">
-                                <Layers className="w-5 h-5" aria-hidden="true" />
-                            </div>
-                            <div className="min-w-0">
-                                <h1 className="tracking-command-header__title">Live Tracking</h1>
-                                <p className="tracking-command-header__subtitle">
-                                    Real-time GPS command center for field operations
-                                </p>
-                            </div>
+                <PageHeader
+                    title="Live Tracking"
+                    subtitle="Real-time GPS command center for field operations"
+                    badge={
+                        <div className="tracking-live-pill">
+                            <span className="tracking-live-pill__dot" aria-hidden="true" />
+                            Live
+                            <span className="text-slate-700 font-bold tabular-nums">
+                                {lastRefresh.toLocaleTimeString()}
+                            </span>
+                            <span className="text-slate-400 font-medium">· 60s sync</span>
+                            {refreshing ? (
+                                <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" aria-hidden="true" />
+                            ) : null}
                         </div>
-
-                        <div className="tracking-command-header__actions">
-                            <div className="tracking-live-pill">
-                                <span className="tracking-live-pill__dot" aria-hidden="true" />
-                                Live
-                                <span className="text-slate-700 font-bold tabular-nums">
-                                    {lastRefresh.toLocaleTimeString()}
-                                </span>
-                                <span className="text-slate-400 font-medium">· 60s sync</span>
-                                {refreshing ? (
-                                    <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" aria-hidden="true" />
-                                ) : null}
-                            </div>
+                    }
+                    actions={
+                        <>
                             <Link to="/tracking/routes" className="btn btn-secondary btn-md">
                                 <Route className="w-4 h-4" aria-hidden="true" />
                                 Route history
@@ -826,9 +818,9 @@ export default function Tracking() {
                                 <ClipboardList className="w-4 h-4" aria-hidden="true" />
                                 Reports
                             </Link>
-                        </div>
-                    </div>
-                </header>
+                        </>
+                    }
+                />
 
                 {error && (
                     <ErrorRetry

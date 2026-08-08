@@ -1,4 +1,4 @@
-import { PageLoader } from "../../components/ui/command";
+import { PageLoader, PageHeader } from "../../components/ui/command";
 import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, Pencil, Trash2, Bug, Tag, X } from "lucide-react";
 import { getProblemCategories, createProblemCategory, updateProblemCategory, deleteProblemCategory } from "../../api/master.api";
@@ -105,28 +105,21 @@ export default function MasterProblemCategories() {
 
     return (
         <div className="masters-admin page-container">
-            <header className="masters-admin-header">
-                <div className="masters-admin-header__inner">
-                    <div className="masters-admin-header__brand">
-                        <div className="masters-admin-header__icon" aria-hidden="true">
-                            <Tag className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                            <span className="masters-admin-header__badge">
-                                <Tag className="w-3 h-3" aria-hidden="true" />
-                                Problem taxonomy
-                            </span>
-                            <h1 className="masters-admin-header__title">Problem Categories</h1>
-                            <p className="masters-admin-header__subtitle">{filtered.length} records</p>
-                        </div>
-                    </div>
-                    <div className="masters-admin-header__actions">
-                        <button type="button" onClick={() => setPanel({ open: true, mode: "add", item: null })} className="btn btn-primary btn-md">
-                            <Plus className="w-4 h-4" aria-hidden="true" /> Add category
-                        </button>
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                title="Problem Categories"
+                subtitle={`${filtered.length} records`}
+                badge={
+                    <span className="masters-admin-header__badge">
+                        <Tag className="w-3 h-3" aria-hidden="true" />
+                        Problem taxonomy
+                    </span>
+                }
+                actions={
+                    <button type="button" onClick={() => setPanel({ open: true, mode: "add", item: null })} className="btn btn-primary btn-md">
+                        <Plus className="w-4 h-4" aria-hidden="true" /> Add category
+                    </button>
+                }
+            />
 
             <section className="masters-admin-filters" aria-label="Search categories">
                 <div className="masters-admin-filters__row">

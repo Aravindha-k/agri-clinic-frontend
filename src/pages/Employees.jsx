@@ -1,4 +1,4 @@
-import { EmptyState } from "../components/ui/command";
+import { EmptyState, PageHeader } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import { BRAND } from "../theme/brand";
@@ -1378,24 +1378,17 @@ export default function Employees() {
   return (
     <div className="employees-hr page-container">
 
-      <header className="employees-hr-header">
-        <div className="employees-hr-header__inner">
-          <div className="employees-hr-header__brand">
-            <div className="employees-hr-header__icon" aria-hidden="true">
-              <Users className="w-6 h-6" />
-            </div>
-            <div className="min-w-0">
-              <span className="employees-hr-header__badge">
-                <Briefcase className="w-3 h-3" aria-hidden="true" />
-                Human resources
-              </span>
-              <h1 className="employees-hr-header__title">Employees</h1>
-              <p className="employees-hr-header__subtitle">
-                Manage and monitor your field team &middot; {employees.length} total
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        title="Employees"
+        subtitle={`Manage and monitor your field team · ${employees.length} total`}
+        badge={
+          <span className="employees-hr-header__badge">
+            <Briefcase className="w-3 h-3" aria-hidden="true" />
+            Human resources
+          </span>
+        }
+        actions={
+          <>
             <button type="button" onClick={handleRefresh} disabled={refreshing} className="btn btn-secondary btn-md disabled:opacity-50">
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
               {refreshing ? "Refreshing\u2026" : "Refresh"}
@@ -1403,9 +1396,9 @@ export default function Employees() {
             <button type="button" onClick={() => setAddOpen(true)} className="btn btn-primary btn-md">
               <Plus className="w-4 h-4" aria-hidden="true" /> Add employee
             </button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <WorkforceStrip stats={stats} loading={loadingStats} />
 

@@ -1,11 +1,12 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, Bell, RefreshCw, LogOut, User, Settings } from "lucide-react";
 import GlobalSearch from "./GlobalSearch";
 import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
 import { usePageChrome } from "../../context/PageChromeContext";
+import { resolvePageShellMeta } from "./pageShellMeta";
 
 function useClock() {
   const [time, setTime] = useState(new Date());
@@ -17,13 +18,15 @@ function useClock() {
 }
 
 /**
- * Unified admin shell header — utilities + page chrome (from PageHeader) on one surface.
+ * Unified admin shell header — page title + utilities on one continuous surface.
  */
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const pageChrome = usePageChrome();
   const chrome = pageChrome?.chrome;
+  const routeMeta = resolvePageShellMeta(location.pathname);
   const now = useClock();
   const [refreshing, setRefreshing] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -72,7 +75,11 @@ export default function Header({ onMenuClick }) {
     hour: "2-digit", minute: "2-digit", hour12: true,
   });
 
-  const hasChrome = Boolean(chrome?.title);
+  const title = chrome?.title || routeMeta?.title || null;
+  const subtitle = chrome?.subtitle ?? routeMeta?.subtitle ?? null;
+  const badge = chrome?.badge ?? null;
+  const actions = chrome?.actions ?? null;
+  const hasChrome = Boolean(title);
 
   return (
     <header
@@ -94,13 +101,13 @@ export default function Header({ onMenuClick }) {
             </button>
 
             {hasChrome && (
-              <div className={`app-header__chrome min-w-0 ${chrome.className || ""}`}>
+              <div className={`app-header__chrome min-w-0 ${chrome?.className || ""}`}>
                 <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-                  <h1 className="page-title app-header__title">{chrome.title}</h1>
-                  {chrome.badge}
+                  <h1 className="page-title app-header__title">{title}</h1>
+                  {badge}
                 </div>
-                {chrome.subtitle && (
-                  <p className="page-subtitle app-header__subtitle">{chrome.subtitle}</p>
+                {subtitle && (
+                  <p className="page-subtitle app-header__subtitle">{subtitle}</p>
                 )}
               </div>
             )}
@@ -200,10 +207,10 @@ export default function Header({ onMenuClick }) {
           </div>
         </div>
 
-        {hasChrome && chrome.actions && (
+        {hasChrome && actions && (
           <div className="app-header__row app-header__row--actions">
             <div className="app-header__actions ml-auto flex items-center gap-2 flex-wrap justify-end">
-              {chrome.actions}
+              {actions}
             </div>
           </div>
         )}
