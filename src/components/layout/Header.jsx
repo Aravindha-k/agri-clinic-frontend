@@ -2,7 +2,6 @@
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, Bell, RefreshCw, LogOut, User, Settings, ChevronDown } from "lucide-react";
-import GlobalSearch from "./GlobalSearch";
 import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
 import { usePageChrome } from "../../context/PageChromeContext";
@@ -18,7 +17,7 @@ function useClock() {
 }
 
 /**
- * Premium shared admin shell header — one intentional surface for all pages.
+ * Premium shared admin shell header — title + utilities (no global search).
  */
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
@@ -116,10 +115,6 @@ export default function Header({ onMenuClick }) {
           </div>
 
           <div className="app-header__tools">
-            <div className="app-header__search hidden lg:block">
-              <GlobalSearch />
-            </div>
-
             <div className="app-header__cluster">
               <div className="app-header__clock hidden md:flex" aria-label="Current time">
                 <span className="app-header__clock-time">{timeStr}</span>

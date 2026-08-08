@@ -129,10 +129,11 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
-            <div className="sidebar-brand__orbit" aria-hidden="false">
+            <div className="sidebar-brand__orbit">
               <span className="sidebar-brand__orbit-glow" aria-hidden="true" />
-              <span className="sidebar-brand__orbit-ring sidebar-brand__orbit-ring--solid" aria-hidden="true" />
-              <span className="sidebar-brand__orbit-ring sidebar-brand__orbit-ring--dashed" aria-hidden="true" />
+              <span className="sidebar-brand__orbit-ring sidebar-brand__orbit-ring--outer" aria-hidden="true" />
+              <span className="sidebar-brand__orbit-ring sidebar-brand__orbit-ring--mid" aria-hidden="true" />
+              <span className="sidebar-brand__orbit-arc" aria-hidden="true" />
               <div className="sidebar-brand__logo">
                 <Logo size="sidebar" variant="sidebar" showShadow={false} />
               </div>
