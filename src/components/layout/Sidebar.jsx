@@ -129,19 +129,12 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
-            <div className="sidebar-brand__orbit">
-              <span className="sidebar-brand__orbit-glow" aria-hidden="true" />
-              <span className="sidebar-brand__orbit-ring" aria-hidden="true" />
-              <div className="sidebar-brand__logo" aria-hidden="false">
-                <Logo size="sidebar" variant="sidebar" showShadow={false} />
-              </div>
+            <div className="sidebar-brand__logo">
+              <Logo size="sidebar" variant="sidebar" showShadow={false} />
             </div>
             <div className="sidebar-brand__text">
               <p className="sidebar-brand__title">Kavya Agri Clinic</p>
-              <span className="sidebar-brand__tag">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
-                Admin Panel
-              </span>
+              <span className="sidebar-brand__tag">Admin Panel</span>
             </div>
           </div>
         </div>

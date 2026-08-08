@@ -6,6 +6,7 @@ import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
 import { usePageChrome } from "../../context/PageChromeContext";
 import { resolvePageShellMeta } from "./pageShellMeta";
+import GlobalSearch from "./GlobalSearch";
 
 function useClock() {
   const [time, setTime] = useState(new Date());
@@ -17,7 +18,7 @@ function useClock() {
 }
 
 /**
- * Premium shared admin shell header — title + utilities (no global search).
+ * Compact shared admin shell header — title + search + utilities in one band.
  */
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
@@ -114,6 +115,10 @@ export default function Header({ onMenuClick }) {
           </div>
 
           <div className="app-header__tools">
+            <div className="app-header__search hidden lg:block">
+              <GlobalSearch />
+            </div>
+
             <div className="app-header__cluster">
               <div className="app-header__clock hidden md:flex" aria-label="Current time">
                 <span className="app-header__clock-time">{timeStr}</span>
@@ -121,6 +126,12 @@ export default function Header({ onMenuClick }) {
               </div>
 
               <div className="app-header__divider hidden md:block" aria-hidden="true" />
+
+              {actions && (
+                <div className="app-header__page-actions">
+                  {actions}
+                </div>
+              )}
 
               <div className="app-header__controls">
                 <button
@@ -212,12 +223,6 @@ export default function Header({ onMenuClick }) {
             </div>
           </div>
         </div>
-
-        {hasChrome && actions && (
-          <div className="app-header__actions-row">
-            <div className="app-header__actions">{actions}</div>
-          </div>
-        )}
       </div>
     </header>
   );
