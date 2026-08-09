@@ -19,7 +19,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
-import { PageHeader, FilterBar, FilterField, EmptyState } from "../components/ui/command";
+import { PageHeader, FilterBar, FilterField, EmptyState, FilterToolbarRow, FilterActiveRow } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -383,40 +383,43 @@ export default function FarmersList() {
       )}
 
       <FilterBar className="farmers-filters">
-        <div className="farmers-filters__row">
-          <div className="farmers-filters__search">
-            <Search className="search-icon" />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search name, phone, village…"
-              value={searchInput}
-              onChange={handleSearchInput}
-              aria-label="Search farmers"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchInput("");
-                  setSearch("");
-                  setPage(1);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                aria-label="Clear search"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+        <FilterToolbarRow>
+          <FilterField spacer className="filter-toolbar__grow">
+            <div className="search-wrapper">
+              <Search className="search-icon" aria-hidden="true" />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search name, phone, village…"
+                value={searchInput}
+                onChange={handleSearchInput}
+                aria-label="Search farmers"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="search-clear-btn"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </FilterField>
           <FilterField label="Village" className="min-w-[10rem]">
             <select
-              className="farmers-filters__select"
+              className="select filter-toolbar__select"
               value={villageFilter}
               onChange={(e) => {
                 setVillageFilter(e.target.value);
                 setPage(1);
               }}
+              aria-label="Filter by village"
             >
               <option value="">All villages</option>
               {villageOptions.map((v) => (
@@ -427,14 +430,19 @@ export default function FarmersList() {
             </select>
           </FilterField>
           {hasActiveFilters && (
-            <button type="button" onClick={handleClearFilters} className="btn btn-ghost btn-md self-end lg:self-auto">
-              <X className="w-4 h-4" /> Clear filters
-            </button>
+            <FilterField spacer>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="btn btn-ghost btn-md filter-toolbar__clear"
+              >
+                <X className="w-4 h-4" aria-hidden="true" /> Clear filters
+              </button>
+            </FilterField>
           )}
-        </div>
-        {hasActiveFilters && (
-          <div className="farmers-active-filters">
-            <span className="farmers-active-filters__label">Active</span>
+        </FilterToolbarRow>
+        {hasActiveFilters ? (
+          <FilterActiveRow>
             {search.trim() && (
               <span className="filter-chip filter-chip--active capitalize">
                 Search: {search.trim()}
@@ -445,8 +453,8 @@ export default function FarmersList() {
                 Village: {villageFilter}
               </span>
             )}
-          </div>
-        )}
+          </FilterActiveRow>
+        ) : null}
       </FilterBar>
 
       {error && (

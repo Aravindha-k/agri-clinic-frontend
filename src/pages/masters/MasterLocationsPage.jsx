@@ -236,7 +236,7 @@ export default function MasterLocationsPage() {
                         />
                     </div>
                     {search && (
-                        <button type="button" onClick={() => setSearch("")} className="btn btn-ghost btn-sm">
+                        <button type="button" onClick={() => setSearch("")} className="btn btn-ghost btn-md filter-toolbar__clear">
                             <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
                         </button>
                     )}

@@ -133,15 +133,17 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
             <div className="brand-seal-stage">
-              <img
-                className="brand-seal-mark"
-                src={companyLogo}
-                alt="Kavya Agri-Horti Clinic"
-                width={120}
-                height={120}
-                decoding="async"
-                draggable={false}
-              />
+              <div className="brand-seal-alive">
+                <img
+                  className="brand-seal-mark"
+                  src={companyLogo}
+                  alt="Kavya Agri-Horti Clinic"
+                  width={120}
+                  height={120}
+                  decoding="async"
+                  draggable={false}
+                />
+              </div>
             </div>
             <div className="sidebar-brand__text">
               <p className="sidebar-brand__title">Kavya Agri-Horti Clinic</p>

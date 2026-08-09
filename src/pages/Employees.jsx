@@ -1,4 +1,4 @@
-import { EmptyState, PageHeader } from "../components/ui/command";
+import { EmptyState, PageHeader, FilterBar, FilterField, FilterToolbarRow } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import { BRAND } from "../theme/brand";
@@ -271,64 +271,74 @@ RoleBadge.displayName = "RoleBadge";
 Badge.displayName = "Badge";
 
 const EmployeeFilters = memo(({ searchTerm, setSearchTerm, statusFilter, setStatusFilter, roleFilter, setRoleFilter, viewMode, setViewMode, total, shown }) => (
-  <div className="employees-hr-filters">
-    <div className="employees-hr-filters__search">
-      <Search className="search-icon" aria-hidden="true" />
-      <input
-        type="search"
-        placeholder="Search name, username, phone, ID…"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="search-input"
-        aria-label="Search employees"
-      />
-    </div>
-    <div className="employees-hr-filters__controls">
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="employees-hr-filters__select"
-        aria-label="Filter by status"
-      >
-        <option value="all">All status</option>
-        <option value="online">Online</option>
-        <option value="offline">Offline</option>
-      </select>
-      <select
-        value={roleFilter}
-        onChange={(e) => setRoleFilter(e.target.value)}
-        className="employees-hr-filters__select"
-        aria-label="Filter by role"
-      >
-        <option value="all">All roles</option>
-        <option value="admin">Admin</option>
-        <option value="supervisor">Supervisor</option>
-        <option value="field_officer">Field officer</option>
-        <option value="manager">Manager</option>
-      </select>
-      <div className="employees-hr-view-toggle">
-        <button
-          type="button"
-          onClick={() => setViewMode("grid")}
-          className={`employees-hr-view-toggle__btn ${viewMode === "grid" ? "employees-hr-view-toggle__btn--active" : ""}`}
-          aria-label="Grid view"
-          aria-pressed={viewMode === "grid"}
+  <FilterBar className="employees-hr-filters">
+    <FilterToolbarRow className="employees-hr-filters__row">
+      <FilterField spacer className="filter-toolbar__grow">
+        <div className="search-wrapper">
+          <Search className="search-icon" aria-hidden="true" />
+          <input
+            type="search"
+            placeholder="Search name, username, phone, ID…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+            aria-label="Search employees"
+          />
+        </div>
+      </FilterField>
+      <FilterField label="Status" className="min-w-[9rem]">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="select filter-toolbar__select employees-hr-filters__select"
+          aria-label="Filter by status"
         >
-          <LayoutGrid className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("table")}
-          className={`employees-hr-view-toggle__btn ${viewMode === "table" ? "employees-hr-view-toggle__btn--active" : ""}`}
-          aria-label="Table view"
-          aria-pressed={viewMode === "table"}
+          <option value="all">All status</option>
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+        </select>
+      </FilterField>
+      <FilterField label="Role" className="min-w-[9rem]">
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="select filter-toolbar__select employees-hr-filters__select"
+          aria-label="Filter by role"
         >
-          <List className="w-4 h-4" />
-        </button>
-      </div>
-      <span className="employees-hr-count">{shown} of {total}</span>
-    </div>
-  </div>
+          <option value="all">All roles</option>
+          <option value="admin">Admin</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="field_officer">Field officer</option>
+          <option value="manager">Manager</option>
+        </select>
+      </FilterField>
+      <FilterField spacer>
+        <div className="employees-hr-view-toggle" role="group" aria-label="View mode">
+          <button
+            type="button"
+            onClick={() => setViewMode("grid")}
+            className={`employees-hr-view-toggle__btn ${viewMode === "grid" ? "employees-hr-view-toggle__btn--active" : ""}`}
+            aria-label="Grid view"
+            aria-pressed={viewMode === "grid"}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={`employees-hr-view-toggle__btn ${viewMode === "table" ? "employees-hr-view-toggle__btn--active" : ""}`}
+            aria-label="Table view"
+            aria-pressed={viewMode === "table"}
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+      </FilterField>
+      <FilterField spacer>
+        <span className="employees-hr-count">{shown} of {total}</span>
+      </FilterField>
+    </FilterToolbarRow>
+  </FilterBar>
 ));
 EmployeeFilters.displayName = "EmployeeFilters";
 

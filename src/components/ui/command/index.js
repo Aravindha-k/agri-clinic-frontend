@@ -2,7 +2,7 @@ export { default as PageHeader } from "./PageHeader";
 export { default as StatCard } from "./StatCard";
 export { default as ChartCard } from "./ChartCard";
 export { default as SectionCard } from "./SectionCard";
-export { default as FilterBar, FilterField } from "./FilterBar";
+export { default as FilterBar, FilterField, FilterToolbarRow, FilterActiveRow } from "./FilterBar";
 export { default as EmptyState } from "./EmptyState";
 export { default as BrandLoader, PageLoader } from "../BrandLoader";
 export { default as AgriLoader } from "./AgriLoader";

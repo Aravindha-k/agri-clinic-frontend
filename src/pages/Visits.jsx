@@ -22,6 +22,10 @@ import {
   PageHeader,
   EmptyState,
   GpsIndicator,
+  FilterBar,
+  FilterField,
+  FilterToolbarRow,
+  FilterActiveRow,
 } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -381,7 +385,7 @@ export default function Visits() {
         </div>
       )}
 
-      <div className="visits-filters">
+      <FilterBar className="visits-filters">
         <div className="visits-date-chips">
           {DATE_CHIPS.map((chip) => (
             <button
@@ -397,72 +401,109 @@ export default function Visits() {
           ))}
         </div>
 
-        <div className="visits-filters__row">
-          <div className="search-wrapper flex-1 min-w-0">
-            <Search className="search-icon" aria-hidden="true" />
-            <input
-              type="search"
-              placeholder="Search farmer, mobile, village, crop, land, employee…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="search-input"
-              aria-label="Search visits"
-            />
-            {search && (
+        <FilterToolbarRow className="visits-filters__row">
+          <FilterField spacer className="filter-toolbar__grow">
+            <div className="search-wrapper">
+              <Search className="search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                placeholder="Search farmer, mobile, village, crop, land, employee…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="search-input"
+                aria-label="Search visits"
+              />
+              {search ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="search-clear-btn"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : null}
+            </div>
+          </FilterField>
+
+          <FilterField spacer>
+            <div className="visits-view-toggle" role="group" aria-label="View mode">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`visits-view-toggle__btn ${
+                  viewMode === "grid" ? "visits-view-toggle__btn--active" : ""
+                }`}
+                title="Grid view"
+                aria-label="Grid view"
+                aria-pressed={viewMode === "grid"}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`visits-view-toggle__btn ${
+                  viewMode === "list" ? "visits-view-toggle__btn--active" : ""
+                }`}
+                title="List view"
+                aria-label="List view"
+                aria-pressed={viewMode === "list"}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </FilterField>
+
+          <FilterField spacer>
+            <button
+              type="button"
+              onClick={() => loadVisits(page)}
+              className="btn btn-secondary btn-md filter-toolbar__clear"
+              aria-label="Refresh visits"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </FilterField>
+
+          {hasActiveFilters ? (
+            <FilterField spacer>
               <button
                 type="button"
                 onClick={() => {
                   setSearch("");
+                  setDateChip("all");
                   setPage(1);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
-                aria-label="Clear search"
+                className="btn btn-ghost btn-md filter-toolbar__clear"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" /> Clear filters
               </button>
-            )}
-          </div>
+            </FilterField>
+          ) : null}
+        </FilterToolbarRow>
 
-          <div className="visits-view-toggle">
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={`visits-view-toggle__btn ${
-                viewMode === "grid" ? "visits-view-toggle__btn--active" : ""
-              }`}
-              title="Grid view"
-              aria-label="Grid view"
-              aria-pressed={viewMode === "grid"}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={`visits-view-toggle__btn ${
-                viewMode === "list" ? "visits-view-toggle__btn--active" : ""
-              }`}
-              title="List view"
-              aria-label="List view"
-              aria-pressed={viewMode === "list"}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => loadVisits(page)}
-            className="btn btn-secondary btn-md flex-shrink-0"
-            aria-label="Refresh visits"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+        {hasActiveFilters ? (
+          <FilterActiveRow>
+            {search.trim() ? (
+              <span className="filter-chip filter-chip--active capitalize">
+                Search: {search.trim()}
+              </span>
+            ) : null}
+            {dateChip !== "all" ? (
+              <span className="filter-chip filter-chip--idle">
+                Date: {DATE_CHIPS.find((c) => c.id === dateChip)?.label || dateChip}
+              </span>
+            ) : null}
+          </FilterActiveRow>
+        ) : null}
+      </FilterBar>
 
       {error && (
         <ErrorRetry

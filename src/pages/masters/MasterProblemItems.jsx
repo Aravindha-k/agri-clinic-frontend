@@ -11,7 +11,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
-import { PageLoader, EmptyState, PageHeader } from "../../components/ui/command";
+import { PageLoader, EmptyState, PageHeader, FilterField, FilterToolbarRow, FilterActiveRow } from "../../components/ui/command";
 import {
   fetchProblemCategories,
   fetchAllProblemMasters,
@@ -423,33 +423,67 @@ export default function MasterProblemItems() {
 
       <div className="masters-admin-table-card">
         <div className="masters-admin-filters border-0 rounded-none shadow-none p-4 border-b border-slate-100">
-          <div className="masters-admin-filters__row">
-            <div className="masters-admin-search max-w-md">
-              <Search className="search-icon" aria-hidden="true" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search English, Tamil, crop, category…"
-                className="search-input"
-                aria-label="Search problem items"
-              />
-            </div>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="masters-admin-filter-select"
-              aria-label="Filter by category"
-            >
-              <option value="">All categories</option>
-              {managedCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <p className="masters-admin-filters__meta lg:ml-auto">{filtered.length} items shown</p>
-          </div>
+          <FilterToolbarRow className="masters-admin-filters__row">
+            <FilterField spacer className="filter-toolbar__grow">
+              <div className="masters-admin-search max-w-md">
+                <Search className="search-icon" aria-hidden="true" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search English, Tamil, crop, category…"
+                  className="search-input"
+                  aria-label="Search problem items"
+                />
+              </div>
+            </FilterField>
+            <FilterField label="Category" className="min-w-[12rem]">
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="masters-admin-filter-select"
+                aria-label="Filter by category"
+              >
+                <option value="">All categories</option>
+                {managedCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            {(search.trim() || filterCategory) ? (
+              <FilterField spacer>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setFilterCategory("");
+                  }}
+                  className="btn btn-ghost btn-md filter-toolbar__clear"
+                >
+                  <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
+                </button>
+              </FilterField>
+            ) : null}
+            <FilterField spacer>
+              <p className="masters-admin-filters__meta">{filtered.length} items shown</p>
+            </FilterField>
+          </FilterToolbarRow>
+          {(search.trim() || filterCategory) ? (
+            <FilterActiveRow>
+              {search.trim() ? (
+                <span className="filter-chip filter-chip--active capitalize">
+                  Search: {search.trim()}
+                </span>
+              ) : null}
+              {filterCategory ? (
+                <span className="filter-chip filter-chip--idle">
+                  Category: {managedCategories.find((c) => String(c.id) === String(filterCategory))?.name || filterCategory}
+                </span>
+              ) : null}
+            </FilterActiveRow>
+          ) : null}
         </div>
 
         {loading ? (

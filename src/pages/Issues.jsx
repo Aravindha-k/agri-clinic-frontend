@@ -1,4 +1,4 @@
-import { PageLoader, PageHeader, EmptyState, ErrorRetry } from "../components/ui/command";
+import { PageLoader, PageHeader, EmptyState, ErrorRetry, FilterBar, FilterField, FilterToolbarRow, FilterActiveRow } from "../components/ui/command";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
@@ -83,37 +83,59 @@ export default function Issues() {
         }
       />
 
-      <div className="filters-bar crop-issues-filters">
-        <div className="crop-issues-filters__row">
-          <div className="search-wrapper crop-issues-filters__search">
-            <Search className="search-icon" aria-hidden="true" />
-            <input
-              type="search"
-              placeholder={hasAnyCode ? "Search crop name or code…" : "Search crop name…"}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="search-input"
-              aria-label="Search master crops"
-            />
-            {search ? (
+      <FilterBar className="crop-issues-filters">
+        <FilterToolbarRow className="crop-issues-filters__row">
+          <FilterField spacer className="filter-toolbar__grow">
+            <div className="search-wrapper crop-issues-filters__search">
+              <Search className="search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                placeholder={hasAnyCode ? "Search crop name or code…" : "Search crop name…"}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+                aria-label="Search master crops"
+              />
+              {search ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="search-clear-btn"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : null}
+            </div>
+          </FilterField>
+          {!loading ? (
+            <FilterField spacer>
+              <p className="crop-issues-filters__meta filter-toolbar__meta">
+                {filtered.length}
+                {search.trim() ? ` of ${totalCount}` : ""} crops
+              </p>
+            </FilterField>
+          ) : null}
+          {search.trim() ? (
+            <FilterField spacer>
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
-                aria-label="Clear search"
+                className="btn btn-ghost btn-md filter-toolbar__clear"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" /> Clear filters
               </button>
-            ) : null}
-          </div>
-          {!loading && (
-            <p className="crop-issues-filters__meta">
-              {filtered.length}
-              {search.trim() ? ` of ${totalCount}` : ""} crops
-            </p>
-          )}
-        </div>
-      </div>
+            </FilterField>
+          ) : null}
+        </FilterToolbarRow>
+        {search.trim() ? (
+          <FilterActiveRow>
+            <span className="filter-chip filter-chip--active capitalize">
+              Search: {search.trim()}
+            </span>
+          </FilterActiveRow>
+        ) : null}
+      </FilterBar>
 
       {error && (
         <ErrorRetry
