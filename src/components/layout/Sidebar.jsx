@@ -132,31 +132,19 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
-            <div className="brand-spin-stage">
-              <div className="brand-spin-coin">
-                <img
-                  className="brand-spin-face brand-spin-front"
-                  src={companyLogo}
-                  alt="Kavya Agri Clinic"
-                  width={888}
-                  height={888}
-                  decoding="async"
-                  draggable={false}
-                />
-                <img
-                  className="brand-spin-face brand-spin-back"
-                  src={companyLogo}
-                  alt=""
-                  aria-hidden="true"
-                  width={888}
-                  height={888}
-                  decoding="async"
-                  draggable={false}
-                />
-              </div>
+            <div className="brand-seal-stage">
+              <img
+                className="brand-seal-mark"
+                src={companyLogo}
+                alt="Kavya Agri-Horti Clinic"
+                width={120}
+                height={120}
+                decoding="async"
+                draggable={false}
+              />
             </div>
             <div className="sidebar-brand__text">
-              <p className="sidebar-brand__title">Kavya Agri Clinic</p>
+              <p className="sidebar-brand__title">Kavya Agri-Horti Clinic</p>
               <span className="sidebar-brand__tag">Admin Panel</span>
             </div>
           </div>

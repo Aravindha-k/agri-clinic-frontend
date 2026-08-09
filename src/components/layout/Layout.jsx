@@ -6,6 +6,25 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
 import { logOverlayState, startOverlayObserver } from "../../utils/overlayDebug";
 import { PageChromeProvider } from "../../context/PageChromeContext";
+import {
+  SoftRefreshProvider,
+  SoftRefreshSettleWatcher,
+  useSoftRefresh,
+} from "../../context/SoftRefreshContext";
+
+function LayoutOutlet() {
+  const location = useLocation();
+  const soft = useSoftRefresh();
+  const refreshKey = soft?.refreshKey ?? 0;
+
+  return (
+    <PageErrorBoundary resetKey={`${location.pathname}:${refreshKey}`}>
+      <div key={`${location.pathname}:${refreshKey}`} className="page-enter">
+        <Outlet />
+      </div>
+    </PageErrorBoundary>
+  );
+}
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,19 +62,21 @@ export default function Layout() {
 
   return (
     <PageChromeProvider>
-      <div className="app-shell flex h-screen overflow-hidden">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="app-shell__main flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header onMenuClick={() => setSidebarOpen((open) => !open)} />
-          <main ref={mainRef} className="app-shell__content flex-1 overflow-y-auto overflow-x-hidden">
-            <PageErrorBoundary resetKey={location.pathname}>
-              <div key={location.pathname} className="page-enter">
-                <Outlet />
-              </div>
-            </PageErrorBoundary>
-          </main>
+      <SoftRefreshProvider>
+        <div className="app-shell flex h-screen overflow-hidden">
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <div className="app-shell__main flex-1 flex flex-col min-w-0 overflow-hidden">
+            <Header onMenuClick={() => setSidebarOpen((open) => !open)} />
+            <main
+              ref={mainRef}
+              className="app-shell__content flex-1 overflow-y-auto overflow-x-hidden"
+            >
+              <SoftRefreshSettleWatcher rootRef={mainRef} />
+              <LayoutOutlet />
+            </main>
+          </div>
         </div>
-      </div>
+      </SoftRefreshProvider>
     </PageChromeProvider>
   );
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CustomDropdown from "../components/CustomDropdown";
 import VisitMediaUploadField from "../components/visits/VisitMediaUploadField";
-import { PageHeader } from "../components/ui/command";
+import { PageHeader, ErrorRetry } from "../components/ui/command";
 import { fetchAllCrops } from "../api/crop.api";
 import { fetchAllVillages, fetchProblemCategories, fetchAllProblemMasters } from "../api/master.api";
 import { fetchAllFarmers } from "../api/farmer.api";
@@ -47,51 +47,53 @@ const Field = ({
   placeholder,
   children,
 }) => (
-  <div className="mb-4">
-    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-      {label} {required && <span className="text-red-500">*</span>}
+  <div className="create-visit-field">
+    <label className="form-label" htmlFor={name || undefined}>
+      {label}
+      {required ? <span className="form-required" aria-hidden="true"> *</span> : null}
     </label>
-    {children ?? (
-      type === "textarea" ? (
+    {children ??
+      (type === "textarea" ? (
         <textarea
+          id={name}
           name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
           rows={4}
-          className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white ${
-            error ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-emerald-100"
-          } focus:outline-none focus:ring-2 focus:border-emerald-400`}
+          className={`input${error ? " input--error" : ""}`}
+          aria-invalid={Boolean(error)}
         />
       ) : (
         <input
+          id={name}
           type={type}
           name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white ${
-            error ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-emerald-100"
-          } focus:outline-none focus:ring-2 focus:border-emerald-400`}
+          className={`input${error ? " input--error" : ""}`}
+          aria-invalid={Boolean(error)}
         />
-      )
-    )}
-    {error && <p className="text-xs text-red-600 mt-1.5 font-medium">{error}</p>}
+      ))}
+    {error ? <p className="form-error">{error}</p> : null}
   </div>
 );
 
 const SectionCard = ({ title, subtitle, children }) => (
-  <section className="section-card overflow-hidden">
-    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-emerald-50/30">
-      <h2 className="text-sm font-bold text-gray-900">{title}</h2>
-      {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+  <section className="enterprise-section create-visit-section">
+    <div className="enterprise-section__header">
+      <div className="min-w-0">
+        <h2 className="section-title">{title}</h2>
+        {subtitle ? <p className="section-subtitle">{subtitle}</p> : null}
+      </div>
     </div>
-    <div className="p-5">{children}</div>
+    <div className="enterprise-section__body">{children}</div>
   </section>
 );
 
 const ModeToggle = ({ value, onChange }) => (
-  <div className="flex flex-wrap gap-2 mb-4">
+  <div className="create-visit-mode" role="group" aria-label="Farmer mode">
     {[
       { id: "existing", label: "Existing farmer" },
       { id: "new", label: "New farmer" },
@@ -100,11 +102,8 @@ const ModeToggle = ({ value, onChange }) => (
         key={opt.id}
         type="button"
         onClick={() => onChange(opt.id)}
-        className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
-          value === opt.id
-            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-            : "bg-white text-gray-600 border-gray-200 hover:border-emerald-300"
-        }`}
+        className={`create-visit-mode__btn${value === opt.id ? " create-visit-mode__btn--active" : ""}`}
+        aria-pressed={value === opt.id}
       >
         {opt.label}
       </button>
@@ -344,27 +343,28 @@ export default function CreateVisit() {
           : "Other problem";
 
   return (
-    <div className="page-container max-w-3xl">
+    <div className="page-container page-container--form max-w-5xl">
       <PageHeader
         title="Add Visit"
         subtitle="Record a field visit with farmer, crop, problem, and media"
         actions={
           <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-md">
-            <ChevronLeft className="w-4 h-4" /> Back
+            <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Back
           </button>
         }
       />
 
-      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <form onSubmit={handleSubmit} className="create-visit-form" noValidate>
         <SectionCard title="Farmer Information" subtitle="Select existing or enter new farmer details">
           <ModeToggle value={form.farmer_mode} onChange={setFarmerMode} />
 
           {isExistingFarmer && (
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Farmer <span className="text-red-500">*</span>
+            <div className="create-visit-field">
+              <label className="form-label" htmlFor="create-visit-farmer">
+                Farmer <span className="form-required" aria-hidden="true">*</span>
               </label>
               <CustomDropdown
+                id="create-visit-farmer"
                 options={farmerOptions}
                 value={form.farmer_id}
                 onChange={selectExistingFarmer}
@@ -372,18 +372,16 @@ export default function CreateVisit() {
                 placeholder={farmersLoading ? "Loading farmers…" : "Select farmer"}
                 disabled={farmersLoading || farmerOptions.length === 0}
               />
-              {errors.farmer_id && (
-                <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.farmer_id}</p>
-              )}
-              {!farmersLoading && farmerOptions.length === 0 && (
-                <p className="text-xs text-amber-700 mt-2">
+              {errors.farmer_id ? <p className="form-error">{errors.farmer_id}</p> : null}
+              {!farmersLoading && farmerOptions.length === 0 ? (
+                <p className="form-hint form-hint--warn">
                   No farmers found. Switch to <strong>New farmer</strong> to enter details.
                 </p>
-              )}
+              ) : null}
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          <div className="create-visit-grid">
             <Field
               label="Farmer Name"
               name="farmer_name"
@@ -402,11 +400,12 @@ export default function CreateVisit() {
               error={errors.farmer_phone}
               placeholder="10-digit mobile"
             />
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Village <span className="text-red-500">*</span>
+            <div className="create-visit-field">
+              <label className="form-label" htmlFor="create-visit-village">
+                Village <span className="form-required" aria-hidden="true">*</span>
               </label>
               <CustomDropdown
+                id="create-visit-village"
                 options={villages}
                 value={form.village}
                 onChange={(id) => setField("village", id)}
@@ -414,53 +413,52 @@ export default function CreateVisit() {
                 placeholder={villageLoading ? "Loading villages…" : "Select village"}
                 disabled={villageLoading || villages.length === 0}
               />
-              {errors.village && (
-                <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.village}</p>
-              )}
+              {errors.village ? <p className="form-error">{errors.village}</p> : null}
             </div>
           </div>
         </SectionCard>
 
         <SectionCard title="Crop Information" subtitle="Crop and land area">
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
-              Crop <span className="text-red-500">*</span>
-            </label>
-            <CustomDropdown
-              options={cropOptions}
-              value={form.crop}
-              onChange={(id) => {
-                setField("crop", id);
-                setField("problem_master", null);
-              }}
-              labelKey="name_en"
-              subLabelKey="name_ta"
-              placeholder={cropLoading ? "Loading crops…" : "Select crop"}
-              disabled={cropLoading || cropOptions.length === 0}
-            />
-            {errors.crop && (
-              <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.crop}</p>
-            )}
-          </div>
+          <div className="create-visit-grid">
+            <div className="create-visit-field">
+              <label className="form-label" htmlFor="create-visit-crop">
+                Crop <span className="form-required" aria-hidden="true">*</span>
+              </label>
+              <CustomDropdown
+                id="create-visit-crop"
+                options={cropOptions}
+                value={form.crop}
+                onChange={(id) => {
+                  setField("crop", id);
+                  setField("problem_master", null);
+                }}
+                labelKey="name_en"
+                subLabelKey="name_ta"
+                placeholder={cropLoading ? "Loading crops…" : "Select crop"}
+                disabled={cropLoading || cropOptions.length === 0}
+              />
+              {errors.crop ? <p className="form-error">{errors.crop}</p> : null}
+            </div>
 
-          <Field
-            label="Acreage"
-            name="land_area"
-            type="number"
-            value={form.land_area}
-            onChange={handleChange}
-            required
-            error={errors.land_area}
-            placeholder="e.g. 2.5"
-          />
+            <Field
+              label="Acreage"
+              name="land_area"
+              type="number"
+              value={form.land_area}
+              onChange={handleChange}
+              required
+              error={errors.land_area}
+              placeholder="e.g. 2.5"
+            />
+          </div>
         </SectionCard>
 
         <SectionCard title="Problem Information" subtitle="Type, sub-category, and description">
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-2">
-              Problem Type <span className="text-red-500">*</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
+          <div className="create-visit-field">
+            <span className="form-label">
+              Problem Type <span className="form-required" aria-hidden="true">*</span>
+            </span>
+            <div className="create-visit-pills" role="group" aria-label="Problem type">
               {PROBLEM_TYPE_PILLS.map((pill) => {
                 const active = form.problem_type_code === pill.code;
                 const cat = findCategoryForCode(categories, pill.code);
@@ -471,37 +469,34 @@ export default function CreateVisit() {
                     type="button"
                     disabled={disabled}
                     onClick={() => selectProblemType(pill.code)}
-                    className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
-                      active
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-emerald-300 disabled:opacity-40"
-                    }`}
+                    className={`create-visit-pill${active ? " create-visit-pill--active" : ""}`}
+                    aria-pressed={active}
                   >
                     {pill.label}
                   </button>
                 );
               })}
             </div>
-            {errors.problem_type_code && (
-              <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.problem_type_code}</p>
-            )}
-            {errors.problem_category && (
-              <p className="text-xs text-red-600 mt-1 font-medium">{errors.problem_category}</p>
-            )}
+            {errors.problem_type_code ? (
+              <p className="form-error">{errors.problem_type_code}</p>
+            ) : null}
+            {errors.problem_category ? (
+              <p className="form-error">{errors.problem_category}</p>
+            ) : null}
           </div>
 
-          {form.problem_type_code && needsMasterDropdown && (
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+          {form.problem_type_code && needsMasterDropdown ? (
+            <div className="create-visit-field">
+              <label className="form-label" htmlFor="create-visit-master">
                 {masterLabel}
-                <span className="text-red-500"> *</span>
+                <span className="form-required" aria-hidden="true"> *</span>
               </label>
               {mastersApiMissing ? (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                <p className="form-hint form-hint--warn">
                   Problem list API is not available yet. Add items under{" "}
                   <button
                     type="button"
-                    className="underline font-semibold"
+                    className="form-hint__link"
                     onClick={() => navigate("/masters/problem-items")}
                   >
                     Masters → Problem items
@@ -510,6 +505,7 @@ export default function CreateVisit() {
                 </p>
               ) : (
                 <CustomDropdown
+                  id="create-visit-master"
                   options={problemMasters}
                   value={form.problem_master}
                   onChange={(id) => setField("problem_master", id)}
@@ -524,13 +520,13 @@ export default function CreateVisit() {
                   disabled={mastersLoading || problemMasters.length === 0}
                 />
               )}
-              {errors.problem_master && (
-                <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.problem_master}</p>
-              )}
+              {errors.problem_master ? (
+                <p className="form-error">{errors.problem_master}</p>
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          {isOthers && (
+          {isOthers ? (
             <Field
               label="Other problem"
               name="problem_other"
@@ -540,7 +536,7 @@ export default function CreateVisit() {
               error={errors.problem_other}
               placeholder="Describe the problem type"
             />
-          )}
+          ) : null}
 
           <Field
             label="Problem Description"
@@ -565,20 +561,18 @@ export default function CreateVisit() {
           />
         </SectionCard>
 
-        {submitError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {submitError}
-          </div>
-        )}
+        {submitError ? (
+          <ErrorRetry compact message={submitError} className="create-visit-submit-error" />
+        ) : null}
 
-        <div className="flex flex-wrap justify-end gap-3 pt-2">
-          <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-md">
+        <div className="create-visit-footer">
+          <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-md" disabled={loading}>
             Cancel
           </button>
-          <button type="submit" disabled={loading} className="btn btn-primary btn-md">
+          <button type="submit" disabled={loading} className="btn btn-primary btn-md" aria-busy={loading}>
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Creating…
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Creating…
               </>
             ) : (
               "Create Visit"

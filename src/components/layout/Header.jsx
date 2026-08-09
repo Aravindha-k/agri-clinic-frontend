@@ -1,10 +1,11 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, Bell, RefreshCw, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { Menu, Bell, RefreshCw, LogOut, ChevronDown } from "lucide-react";
 import useCloseOnRouteChange from "../../hooks/useCloseOnRouteChange";
 import { logOverlayState } from "../../utils/overlayDebug";
 import { usePageChrome } from "../../context/PageChromeContext";
+import { useSoftRefresh } from "../../context/SoftRefreshContext";
 import { resolvePageShellMeta } from "./pageShellMeta";
 
 function useClock() {
@@ -24,11 +25,12 @@ export default function Header({ onMenuClick }) {
   const navigate = useNavigate();
   const location = useLocation();
   const pageChrome = usePageChrome();
+  const softRefresh = useSoftRefresh();
   const chrome = pageChrome?.chrome;
   const routeMeta = resolvePageShellMeta(location.pathname);
   const now = useClock();
-  const [refreshing, setRefreshing] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const refreshing = Boolean(softRefresh?.refreshing);
 
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
   useCloseOnRouteChange(closeUserMenu, userMenuOpen);
@@ -56,8 +58,8 @@ export default function Header({ onMenuClick }) {
   ).toUpperCase();
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => window.location.reload(), 100);
+    if (refreshing) return;
+    softRefresh?.softRefresh?.();
   };
 
   const handleLogout = async () => {
@@ -133,11 +135,12 @@ export default function Header({ onMenuClick }) {
                 <button
                   type="button"
                   onClick={handleRefresh}
+                  disabled={refreshing}
                   className="app-header__icon-btn"
-                  aria-label="Refresh page"
-                  title="Refresh page"
+                  aria-label="Refresh data"
+                  title="Refresh data"
                 >
-                  <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
                 </button>
 
                 <button
@@ -147,8 +150,7 @@ export default function Header({ onMenuClick }) {
                   aria-label="Notifications"
                   title="Notifications"
                 >
-                  <Bell className="w-[18px] h-[18px]" />
-                  <span className="header-notify-btn__dot" />
+                  <Bell className="w-[18px] h-[18px]" aria-hidden="true" />
                 </button>
 
                 <div className="app-header__divider hidden sm:block" aria-hidden="true" />
@@ -160,14 +162,19 @@ export default function Header({ onMenuClick }) {
                     className="header-profile-btn"
                     aria-expanded={userMenuOpen}
                     aria-haspopup="menu"
+                    aria-label="Account menu"
                   >
-                    <div className="header-profile-avatar">{initials}</div>
+                    <div className="header-profile-avatar" aria-hidden="true">{initials}</div>
                     <div className="hidden md:block text-left min-w-0">
                       <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[120px]">
                         {displayName}
                       </p>
                       <p className="text-[10px] text-slate-500 leading-tight capitalize">
-                        {user?.role || "Administrator"}
+                        {user?.is_superuser
+                          ? "Owner"
+                          : user?.is_staff
+                            ? "Administrator"
+                            : user?.role || "Administrator"}
                       </p>
                     </div>
                     <ChevronDown className="hidden md:block w-3.5 h-3.5 text-slate-400 flex-shrink-0" aria-hidden="true" />
@@ -186,29 +193,14 @@ export default function Header({ onMenuClick }) {
                           <p className="text-sm font-semibold text-slate-900">{displayName}</p>
                           <p className="text-xs text-slate-400 mt-0.5">{user?.email || user?.username}</p>
                         </div>
-                        <div className="py-1.5">
-                          <button
-                            type="button"
-                            onClick={() => { setUserMenuOpen(false); }}
-                            className="enterprise-dropdown__item"
-                          >
-                            <User className="w-4 h-4 text-slate-400" /> Profile
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setUserMenuOpen(false); navigate("/masters"); }}
-                            className="enterprise-dropdown__item"
-                          >
-                            <Settings className="w-4 h-4 text-slate-400" /> Settings
-                          </button>
-                        </div>
                         <div className="py-1.5 border-t border-slate-100">
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => { setUserMenuOpen(false); handleLogout(); }}
                             className="enterprise-dropdown__item enterprise-dropdown__item--danger"
                           >
-                            <LogOut className="w-4 h-4" /> Sign out
+                            <LogOut className="w-4 h-4" aria-hidden="true" /> Sign out
                           </button>
                         </div>
                       </div>

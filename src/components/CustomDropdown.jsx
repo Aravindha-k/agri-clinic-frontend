@@ -1,66 +1,81 @@
 import { useState, useRef, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 
 export default function CustomDropdown({
-    options = [],
-    value,
-    onChange,
-    placeholder = "Select an option",
-    disabled = false,
-    labelKey = "name_en",
-    subLabelKey = "name_ta",
-    className = "",
+  options = [],
+  value,
+  onChange,
+  placeholder = "Select an option",
+  disabled = false,
+  labelKey = "name_en",
+  subLabelKey = "name_ta",
+  className = "",
+  id,
 }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef();
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
 
-    useEffect(() => {
-        function handleClickOutside(e) {
-            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const selected = options.find((opt) => opt.id === value);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
-    return (
-        <div ref={ref} className={`relative ${className}`} style={{ position: "relative" }}>
-            <button
+  const selected = options.find((opt) => opt.id === value);
+
+  return (
+    <div ref={ref} className={`custom-dropdown relative ${className}`}>
+      <button
+        type="button"
+        id={id}
+        className={`custom-dropdown__trigger${disabled ? " is-disabled" : ""}${open ? " is-open" : ""}`}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className={`custom-dropdown__value${selected ? "" : " is-placeholder"}`}>
+          {selected
+            ? `${selected[labelKey]}${subLabelKey && selected[subLabelKey] ? ` (${selected[subLabelKey]})` : ""}`
+            : placeholder}
+        </span>
+        <ChevronDown className="custom-dropdown__chevron" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="custom-dropdown__menu" role="listbox">
+          {(options || []).length === 0 ? (
+            <div className="custom-dropdown__empty">No options</div>
+          ) : (
+            (options || []).map((opt) => (
+              <button
+                key={opt.id}
                 type="button"
-                className={`w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-left focus:ring-2 focus:ring-green-500 transition ${disabled ? "opacity-60 cursor-not-allowed" : "hover:border-green-400"}`}
-                onClick={() => !disabled && setOpen((o) => !o)}
-                disabled={disabled}
-            >
-                {selected
-                    ? (
-                        <span>
-                            {selected[labelKey]}{subLabelKey && selected[subLabelKey] ? ` (${selected[subLabelKey]})` : ""}
-                        </span>
-                    )
-                    : <span className="text-gray-400">{placeholder}</span>
-                }
-                <span className="float-right text-gray-400 ml-2">▼</span>
-            </button>
-            {open && (
-                <div className="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-56 overflow-y-auto animate-fade-in">
-                    {(options || []).length === 0 ? (
-                        <div className="px-4 py-3 text-gray-400 text-sm">No options</div>
-                    ) : (
-                        (options || []).map((opt) => (
-                            <div
-                                key={opt.id}
-                                className={`px-4 py-2 cursor-pointer transition hover:bg-green-50 ${value === opt.id ? "bg-green-100 font-semibold" : ""}`}
-                                onClick={() => {
-                                    onChange(opt.id);
-                                    setOpen(false);
-                                }}
-                            >
-                                {opt[labelKey]}{subLabelKey && opt[subLabelKey] ? ` (${opt[subLabelKey]})` : ""}
-                            </div>
-                        ))
-                    )}
-                </div>
-            )}
+                role="option"
+                aria-selected={value === opt.id}
+                className={`custom-dropdown__option${value === opt.id ? " is-selected" : ""}`}
+                onClick={() => {
+                  onChange(opt.id);
+                  setOpen(false);
+                }}
+              >
+                {opt[labelKey]}
+                {subLabelKey && opt[subLabelKey] ? ` (${opt[subLabelKey]})` : ""}
+              </button>
+            ))
+          )}
         </div>
-    );
+      )}
+    </div>
+  );
 }

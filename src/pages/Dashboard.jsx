@@ -28,7 +28,7 @@ import {
 } from "../utils/visitFarmer";
 import { resolveVillageLabel } from "../utils/displayValue";
 import { resolveVisitCropDisplay } from "../utils/visitDisplay";
-import { PageHeader, OpsStatusBadge, GpsIndicator, EmptyState } from "../components/ui/command";
+import { PageHeader, OpsStatusBadge, GpsIndicator, EmptyState, ErrorRetry } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import WidgetSuspenseFallback from "../components/dashboard/WidgetSuspenseFallback";
 import DashboardSkeleton from "../components/dashboard/DashboardSkeleton";
@@ -64,7 +64,6 @@ import {
   Calendar,
   RefreshCw,
   Clock,
-  AlertCircle,
   Radio,
   Sprout,
   LandPlot,
@@ -490,18 +489,13 @@ const Dashboard = () => {
     <div className="page-container page-container--dashboard">
       {pageHeader}
 
-      {/* Error banner */}
       {error && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span className="font-medium">{error}</span>
-          <button
-            onClick={() => loadDashboard(true)}
-            className="ml-auto font-semibold text-red-600 hover:underline"
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorRetry
+          compact
+          message={error}
+          onRetry={() => loadDashboard(true)}
+          className="mb-4"
+        />
       )}
 
       <div className="dashboard-bento">
@@ -635,7 +629,7 @@ const Dashboard = () => {
           className="dashboard-insight-widget group"
         >
           <div className="flex items-start gap-3.5">
-            <div className="dashboard-insight-widget__icon bg-indigo-50 text-indigo-600">
+            <div className="dashboard-insight-widget__icon bg-emerald-50 text-emerald-700">
               <Route className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -647,7 +641,7 @@ const Dashboard = () => {
                 <br />
                 {mappedGeoCount} shown on route map
               </p>
-              <span className="dashboard-insight-widget__link text-indigo-600">
+              <span className="dashboard-insight-widget__link text-emerald-700">
                 View route history <ChevronRight className="w-3.5 h-3.5" />
               </span>
             </div>
@@ -659,7 +653,7 @@ const Dashboard = () => {
           className="dashboard-insight-widget group"
         >
           <div className="flex items-start gap-3.5">
-            <div className="dashboard-insight-widget__icon bg-violet-50 text-violet-600">
+            <div className="dashboard-insight-widget__icon bg-teal-50 text-teal-700">
               <Paperclip className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -671,7 +665,7 @@ const Dashboard = () => {
                 <br />
                 {formatEvidenceRateLabel(evidenceStats.rate)}
               </p>
-              <span className="dashboard-insight-widget__link text-violet-600">
+              <span className="dashboard-insight-widget__link text-teal-700">
                 Browse visits <ChevronRight className="w-3.5 h-3.5" />
               </span>
             </div>

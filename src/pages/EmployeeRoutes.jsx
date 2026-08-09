@@ -159,7 +159,7 @@ export default function EmployeeRoutes() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container page-container--ops route-history-page">
       <PageHeader
         title="Employee Route History"
         subtitle="Day markers for Start, submitted visits, and End — matched to mobile Day map"
@@ -190,13 +190,15 @@ export default function EmployeeRoutes() {
         </div>
       ) : null}
 
-      <div className="section-card p-4 flex flex-col sm:flex-row gap-4 sm:items-end">
+      {employees.length > 0 ? (
+      <div className="section-card p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-end route-history-filters">
         <div className="flex-1 min-w-[200px]">
-          <label className="form-label flex items-center gap-1.5">
+          <label className="form-label flex items-center gap-1.5" htmlFor="page-route-employee">
             <Users className="w-3.5 h-3.5" />
             Employee
           </label>
           <select
+            id="page-route-employee"
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
             className="select"
@@ -210,6 +212,7 @@ export default function EmployeeRoutes() {
           </select>
         </div>
       </div>
+      ) : null}
 
       <EmployeeRouteMapView
         userId={selectedUserId}

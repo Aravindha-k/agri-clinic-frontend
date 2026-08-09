@@ -13,7 +13,7 @@ import {
   LockKeyhole,
 } from "lucide-react";
 
-/** Static nav — shared by Sidebar and GlobalSearch (keeps Fast Refresh stable). */
+/** Static nav — shared by Sidebar (keeps Fast Refresh stable). */
 export const NAV_SECTIONS = [
   {
     label: "Core",

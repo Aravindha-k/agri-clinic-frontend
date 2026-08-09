@@ -49,23 +49,16 @@ function AuthOverlay({ progress }) {
   return (
     <div className="login-auth-overlay" role="status" aria-live="polite" aria-busy="true">
       <div className="login-auth-overlay__mesh" aria-hidden="true" />
-      <div className="login-auth-overlay__particles" aria-hidden="true">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <span key={i} className={`login-auth-particle login-auth-particle--${i + 1}`} />
-        ))}
-      </div>
 
       <div className="login-auth-overlay__content">
         <div className="login-auth-stage" aria-hidden="true">
-          <span className="login-auth-ring" />
-          <span className="login-auth-glow" />
           <div className="login-auth-logo">
             <Logo size="xl" variant="login" showShadow={false} />
           </div>
         </div>
 
-        <p className="login-auth-title">Authenticating Secure Session…</p>
-        <p className="login-auth-subtitle">Please wait while we prepare your dashboard.</p>
+        <p className="login-auth-title">Signing you in…</p>
+        <p className="login-auth-subtitle">Preparing your operations dashboard.</p>
 
         <div className="login-auth-progress" aria-hidden="true">
           <div className="login-auth-progress__track">
@@ -183,7 +176,7 @@ const Login = () => {
       <aside className="login-aside" aria-label="Kavya Agri Clinic branding">
         <div className="login-aside__mesh" aria-hidden="true" />
         <div className="login-aside__particles" aria-hidden="true">
-          {Array.from({ length: 14 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <span key={i} className={`login-particle login-particle--${i + 1}`} />
           ))}
         </div>
@@ -202,22 +195,8 @@ const Login = () => {
         <div className="login-aside__content">
           <div className="login-aside__stack">
             <div className="login-aside__brand">
-              {/* Wrapper stacks: halo → particles → floating logo */}
               <div className="login-aside__seal-wrapper">
-                {/* Ambient halo behind logo */}
                 <div className="login-seal-halo" aria-hidden="true" />
-                {/* Subtle halo lift synced to glass reflection — does not alter base halo */}
-                <div className="login-seal-halo-lift" aria-hidden="true" />
-                {/* Ambient pollen / light motes — outside logo artwork */}
-                <span className="login-seal-particle login-seal-particle--1" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--2" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--3" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--4" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--5" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--6" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--7" aria-hidden="true" />
-                <span className="login-seal-particle login-seal-particle--8" aria-hidden="true" />
-                {/* Logo — same official company mark as sidebar/header; floats + light-sweep ::after */}
                 <div className="login-aside__seal">
                   <img
                     src={companyLogo}
@@ -230,7 +209,7 @@ const Login = () => {
                   />
                 </div>
               </div>
-              <p className="login-aside__brand-name">KAVYA AGRI CLINIC</p>
+              <p className="login-aside__brand-name">KAVYA AGRI-HORTI CLINIC</p>
               <p className="login-aside__brand-tag">Agricultural Management Platform</p>
             </div>
 

@@ -1,8 +1,8 @@
-import { PageLoader, PageHeader } from "../components/ui/command";
+import { PageLoader, PageHeader, EmptyState, ErrorRetry } from "../components/ui/command";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
-import { AlertCircle, Leaf, RefreshCw, Search, Wheat, X } from "lucide-react";
+import { Leaf, RefreshCw, Search, Wheat, X } from "lucide-react";
 
 /** Prefer API name fields used by Masters → Crops. */
 function cropName(crop) {
@@ -75,7 +75,7 @@ export default function Issues() {
     <div className="page-container crop-issues-page">
       <PageHeader
         title="Crop Issues"
-        subtitle="Master Crops"
+        subtitle="Manage the crop directory used when recording field visits and crop issues."
         actions={
           <button type="button" onClick={fetchCrops} className="btn btn-primary btn-md">
             <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
@@ -116,23 +116,35 @@ export default function Issues() {
       </div>
 
       {error && (
-        <div className="alert-error">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-          <span>{error}</span>
-          <button type="button" onClick={fetchCrops} className="ml-auto font-semibold hover:underline">
-            Retry
-          </button>
-        </div>
+        <ErrorRetry
+          compact
+          message={error}
+          onRetry={fetchCrops}
+          className="mb-4"
+        />
       )}
 
       {loading ? (
         <PageLoader label="Loading master crops…" />
       ) : filtered.length === 0 ? (
-        <p className="crop-issues-empty">
-          {crops.length === 0
-            ? "No crops available in Master data."
-            : "No crops match your search."}
-        </p>
+        <div className="section-card">
+          <EmptyState
+            icon={Wheat}
+            title={crops.length === 0 ? "No crops in master data" : "No crops match your search"}
+            subtitle={
+              crops.length === 0
+                ? "Add crops under Masters → Crops so field visits and crop issues can reference them."
+                : "Try a different name or clear the search filter."
+            }
+            action={
+              search.trim() ? (
+                <button type="button" onClick={() => setSearch("")} className="btn btn-secondary btn-md">
+                  Clear search
+                </button>
+              ) : null
+            }
+          />
+        </div>
       ) : (
         <div className="section-card">
           <div className="section-card-header">

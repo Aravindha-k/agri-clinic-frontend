@@ -66,8 +66,8 @@ export default function SidebarNavItem({ item, onClose }) {
         to={path}
         onClick={onClose}
         className={({ isActive }) =>
-          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group border border-transparent
-          ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90"}`
+          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 group border border-transparent
+          ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90 hover:bg-white/[0.04]"}`
         }
       >
         {({ isActive }) => (

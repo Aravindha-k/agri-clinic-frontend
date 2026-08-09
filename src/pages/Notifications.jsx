@@ -1,13 +1,13 @@
-import { PageLoader, PageHeader } from "../components/ui/command";
+import { PageLoader, PageHeader, EmptyState, ErrorRetry } from "../components/ui/command";
 import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   CheckCircle2,
   RefreshCw,
-  AlertCircle,
   Info,
   AlertTriangle,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import api from "../api/axios";
 
@@ -146,40 +146,23 @@ export default function Notifications() {
       )}
 
       {!showInitialLoader && error && (
-        <div className="notifications-shell-card notifications-shell-card--error" role="alert">
-          <div className="notifications-error">
-            <div className="notifications-error__icon" aria-hidden="true">
-              <AlertCircle className="w-7 h-7" />
-            </div>
-            <h2 className="notifications-error__title">Unable to load notifications</h2>
-            <p className="notifications-error__desc">Please try again.</p>
-            {typeof error === "string" && error !== "Unable to load notifications" && (
-              <p className="notifications-error__detail">{error}</p>
-            )}
-            <button
-              type="button"
-              onClick={() => fetchNotifications({ soft: false })}
-              disabled={busy}
-              className="btn btn-primary btn-md mt-5"
-            >
-              <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} aria-hidden="true" />
-              Retry
-            </button>
-          </div>
-        </div>
+        <ErrorRetry
+          message={
+            typeof error === "string" && error !== "Unable to load notifications"
+              ? error
+              : "Unable to load notifications. Please try again."
+          }
+          onRetry={() => fetchNotifications({ soft: false })}
+        />
       )}
 
       {showEmpty && (
-        <div className="notifications-shell-card">
-          <div className="notifications-empty">
-            <div className="notifications-empty__icon" aria-hidden="true">
-              <Bell className="w-8 h-8" />
-            </div>
-            <h2 className="notifications-empty__title">No notifications yet</h2>
-            <p className="notifications-empty__desc">
-              You&apos;re all caught up. New alerts from field operations will appear here.
-            </p>
-          </div>
+        <div className="section-card">
+          <EmptyState
+            icon={Bell}
+            title="No notifications yet"
+            subtitle="You're all caught up. New alerts from field operations will appear here."
+          />
         </div>
       )}
 
