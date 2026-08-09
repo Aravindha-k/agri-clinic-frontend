@@ -25,13 +25,17 @@ const ICON_COLORS = {
 export function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([]);
 
-    const addToast = useCallback((message, type = "success", duration = 3500) => {
-        const id = Date.now() + Math.random();
-        setToasts((prev) => [...prev, { id, message, type, duration }]);
-    }, []);
-
     const removeToast = useCallback((id) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, []);
+
+    const addToast = useCallback((message, type = "success", duration = 3500, options = {}) => {
+        const toastKey = options?.id ? String(options.id) : null;
+        const id = toastKey || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        setToasts((prev) => {
+            const next = toastKey ? prev.filter((t) => t.id !== toastKey) : prev;
+            return [...next, { id, message, type, duration }];
+        });
     }, []);
 
     return (

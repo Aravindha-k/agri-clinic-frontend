@@ -8384,11 +8384,15 @@ textarea.input {
     color: #0f172a;
     word-break: break-all;
     line-height: 1.35;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .employees-hr-cred-row__val--mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     letter-spacing: 0.02em;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .employees-hr-cred-warn {

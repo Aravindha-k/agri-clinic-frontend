@@ -37,6 +37,7 @@ import {
 } from "../utils/roles";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
+import { copyTextToClipboard } from "../utils/clipboard";
 import {
   Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
   RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
@@ -1422,6 +1423,7 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
   };
 
   const handleCopyCredentials = async () => {
+    if (copyBusy) return;
     if (!credentials?.username || !credentials?.temporary_password) return;
     const text = [
       "Kavya Agri Clinic",
@@ -1431,10 +1433,24 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
     ].join("\n");
     setCopyBusy(true);
     try {
-      await navigator.clipboard.writeText(text);
-      toast("Credentials copied", "success");
+      const ok = await copyTextToClipboard(text);
+      if (ok) {
+        toast("Credentials copied", "success", 3500, { id: "employee-cred-copy" });
+      } else {
+        toast(
+          "Could not copy automatically. Please copy the credentials manually.",
+          "error",
+          3500,
+          { id: "employee-cred-copy" }
+        );
+      }
     } catch {
-      toast("Could not copy credentials. Please copy them manually.", "error");
+      toast(
+        "Could not copy automatically. Please copy the credentials manually.",
+        "error",
+        3500,
+        { id: "employee-cred-copy" }
+      );
     } finally {
       setCopyBusy(false);
     }
