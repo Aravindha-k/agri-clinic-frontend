@@ -6559,13 +6559,13 @@ textarea.input {
 }
 
 .brand-globe-stage {
-    width: 6.5rem;
-    height: 6.5rem;
+    width: 6.75rem;
+    height: 6.75rem;
     margin: 0 auto;
     flex-shrink: 0;
     position: relative;
-    perspective: 1000px;
-    perspective-origin: 50% 50%;
+    perspective: 1100px;
+    perspective-origin: 50% 45%;
 }
 
 .brand-globe-enter,
@@ -6599,7 +6599,7 @@ textarea.input {
     -webkit-transform-style: preserve-3d;
     animation: brandGlobeSpin 14s linear infinite;
     will-change: transform;
-    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.28));
+    /* No filter here — drop-shadow blurs logo text during 3D spin */
 }
 
 .brand-globe-face {
@@ -6608,38 +6608,41 @@ textarea.input {
     width: 100%;
     height: 100%;
     margin: 0;
-    padding: 0.35rem;
+    /* Tighter inset so seal text reads larger/clearer */
+    padding: 0.1rem;
     border: none;
     border-radius: 50%;
     object-fit: contain;
     object-position: center;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    /* Prefer crisp bitmap scaling for the seal artwork */
+    image-rendering: auto;
     background:
         radial-gradient(
             circle at 50% 42%,
             #ffffff 0%,
-            #f4faf6 58%,
-            #e6f4ea 100%
+            #ffffff 62%,
+            #f3faf5 100%
         );
     box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.18),
-        0 8px 18px rgba(0, 0, 0, 0.22);
+        0 0 0 1px rgba(255, 255, 255, 0.22),
+        0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
 .brand-globe-front {
-    transform: rotateY(0deg) translateZ(0.5px);
+    transform: rotateY(0deg) translateZ(1px);
 }
 
 /* 180deg face + parent spin keeps back-facing logo reading normally (not mirrored) */
 .brand-globe-back {
-    transform: rotateY(180deg) translateZ(0.5px);
+    transform: rotateY(180deg) translateZ(1px);
 }
 
 @keyframes brandGlobeEnter {
     from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.96);
     }
     to {
         opacity: 1;
@@ -6649,10 +6652,11 @@ textarea.input {
 
 @keyframes brandGlobeSpin {
     from {
-        transform: rotateX(-4deg) rotateY(0deg);
+        /* Shallower tilt = less foreshortening blur on seal text */
+        transform: rotateX(-2deg) rotateY(0deg) translateZ(0);
     }
     to {
-        transform: rotateX(-4deg) rotateY(360deg);
+        transform: rotateX(-2deg) rotateY(360deg) translateZ(0);
     }
 }
 
@@ -6725,14 +6729,14 @@ textarea.input {
 
 .sidebar--collapsed .brand-globe-stage,
 .sidebar-collapsed .brand-globe-stage {
-    width: 3rem;
-    height: 3rem;
+    width: 3.15rem;
+    height: 3.15rem;
 }
 
 @media (max-width: 1023px) {
     .brand-globe-stage {
-        width: 5.5rem;
-        height: 5.5rem;
+        width: 5.75rem;
+        height: 5.75rem;
     }
 }
 
@@ -6747,8 +6751,8 @@ textarea.input {
     }
 
     .brand-globe-stage {
-        width: 5.25rem;
-        height: 5.25rem;
+        width: 5.5rem;
+        height: 5.5rem;
     }
 
     .sidebar-brand__title {
