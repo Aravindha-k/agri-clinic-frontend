@@ -31,57 +31,66 @@ export default function ConfirmDialog({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            className="confirm-dialog-root"
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
         >
-            <div className="enterprise-backdrop" onClick={loading ? undefined : onCancel} aria-hidden="true" />
-            <div className="enterprise-modal">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    disabled={loading}
-                    className="enterprise-close-btn absolute top-4 right-4"
-                    aria-label="Close"
+            <div
+                className="confirm-dialog-backdrop"
+                onClick={loading ? undefined : onCancel}
+                aria-hidden="true"
+            />
+            <div className="confirm-dialog-center">
+                <div
+                    className="enterprise-modal confirm-dialog-modal"
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    <X className="w-4 h-4" />
-                </button>
-                <div className="flex items-start gap-4 pr-6">
-                    <div className={`enterprise-modal__icon ${iconClass}`}>
-                        <AlertTriangle className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h3 id="confirm-dialog-title" className="enterprise-modal__title">
-                            {title}
-                        </h3>
-                        <p className="enterprise-modal__message">{message}</p>
-                    </div>
-                </div>
-                <div className="enterprise-modal__footer">
                     <button
                         type="button"
                         onClick={onCancel}
                         disabled={loading}
-                        className="btn btn-secondary btn-md"
+                        className="enterprise-close-btn absolute top-4 right-4"
+                        aria-label="Close"
                     >
-                        {cancelLabel}
+                        <X className="w-4 h-4 pointer-events-none" aria-hidden="true" />
                     </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        disabled={loading}
-                        className={confirmBtn}
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Confirming…
-                            </>
-                        ) : (
-                            confirmLabel
-                        )}
-                    </button>
+                    <div className="flex items-start gap-4 pr-6">
+                        <div className={`enterprise-modal__icon ${iconClass}`}>
+                            <AlertTriangle className="w-6 h-6" aria-hidden="true" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 id="confirm-dialog-title" className="enterprise-modal__title">
+                                {title}
+                            </h3>
+                            <p className="enterprise-modal__message">{message}</p>
+                        </div>
+                    </div>
+                    <div className="enterprise-modal__footer">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            disabled={loading}
+                            className="btn btn-secondary btn-md"
+                        >
+                            {cancelLabel}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={loading}
+                            className={confirmBtn}
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin pointer-events-none" aria-hidden="true" />
+                                    Confirming…
+                                </>
+                            ) : (
+                                confirmLabel
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>,

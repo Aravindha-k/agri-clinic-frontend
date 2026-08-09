@@ -73,34 +73,52 @@ function FarmersTableSkeleton() {
 
 function FarmerRowActions({ farmerId, onView, onEdit, onDelete, deleting }) {
   return (
-    <div className="farmers-action-group">
+    <div
+      className="farmers-action-group"
+      role="group"
+      aria-label="Farmer actions"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         className="farmers-action-btn farmers-action-btn--primary"
-        onClick={() => farmerId && onView(farmerId)}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (farmerId == null || farmerId === "") return;
+          onView?.(farmerId);
+        }}
         aria-label="View farmer"
         title="View profile"
       >
-        <Eye className="w-4 h-4" />
+        <Eye className="w-4 h-4 pointer-events-none" aria-hidden="true" />
       </button>
       <button
         type="button"
-        className="farmers-action-btn"
-        onClick={() => farmerId && onEdit(farmerId)}
+        className="farmers-action-btn farmers-action-btn--edit"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (farmerId == null || farmerId === "") return;
+          onEdit?.(farmerId);
+        }}
         aria-label="Edit farmer"
         title="Edit farmer"
       >
-        <Pencil className="w-4 h-4" />
+        <Pencil className="w-4 h-4 pointer-events-none" aria-hidden="true" />
       </button>
       <button
         type="button"
         className="farmers-action-btn farmers-action-btn--danger"
-        onClick={() => farmerId && onDelete?.(farmerId)}
-        disabled={deleting}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (farmerId == null || farmerId === "") return;
+          onDelete?.(farmerId);
+        }}
+        disabled={Boolean(deleting)}
         aria-label="Delete farmer"
         title="Delete farmer"
       >
-        <Trash2 className="w-4 h-4" />
+        <Trash2 className="w-4 h-4 pointer-events-none" aria-hidden="true" />
       </button>
     </div>
   );
@@ -243,9 +261,16 @@ export default function FarmersList() {
     URL.revokeObjectURL(url);
   };
 
-  const handleView = (id) => navigate(`/farmers/${id}`);
-  const handleEdit = (id) => navigate(`/farmers/${id}/edit`);
+  const handleView = (id) => {
+    if (id == null || id === "") return;
+    navigate(`/farmers/${id}`);
+  };
+  const handleEdit = (id) => {
+    if (id == null || id === "") return;
+    navigate(`/farmers/${id}/edit`);
+  };
   const handleAskDelete = (id) => {
+    if (id == null || id === "") return;
     const farmer = farmers.find((f) => String(f.id) === String(id));
     setDeleteError("");
     setDeleteTarget(farmer || { id, name: `Farmer #${id}` });
@@ -259,7 +284,21 @@ export default function FarmersList() {
       setDeleteTarget(null);
       await loadFarmers();
     } catch (err) {
-      setDeleteError(friendlyErrorMessage(err, "Failed to delete farmer."));
+      const status = err?.response?.status;
+      if (status === 409) {
+        setDeleteError(
+          friendlyErrorMessage(
+            err,
+            "This farmer cannot be deleted because related records still exist."
+          )
+        );
+      } else if (status === 404) {
+        setDeleteError("Farmer was not found. It may have already been deleted.");
+      } else if (status === 401 || status === 403) {
+        setDeleteError("You don't have permission to delete this farmer.");
+      } else {
+        setDeleteError(friendlyErrorMessage(err, "Failed to delete farmer."));
+      }
     } finally {
       setDeleting(false);
     }
@@ -495,29 +534,41 @@ export default function FarmersList() {
                         <span className="farmers-mobile-card__value">{district}</span>
                       </div>
                     </div>
-                    <div className="farmers-mobile-card__actions">
+                    <div className="farmers-mobile-card__actions" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm flex-1"
-                        onClick={() => f.id && handleView(f.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (f.id != null) handleView(f.id);
+                        }}
+                        aria-label="View farmer"
                       >
-                        <Eye className="w-3.5 h-3.5" /> View
+                        <Eye className="w-3.5 h-3.5 pointer-events-none" aria-hidden="true" /> View
                       </button>
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm flex-1"
-                        onClick={() => f.id && handleEdit(f.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (f.id != null) handleEdit(f.id);
+                        }}
+                        aria-label="Edit farmer"
                       >
-                        <Pencil className="w-3.5 h-3.5" /> Edit
+                        <Pencil className="w-3.5 h-3.5 pointer-events-none" aria-hidden="true" /> Edit
                       </button>
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm text-red-600"
-                        onClick={() => f.id && handleAskDelete(f.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (f.id != null) handleAskDelete(f.id);
+                        }}
+                        disabled={deleting}
                         aria-label="Delete farmer"
                         title="Delete farmer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5 pointer-events-none" aria-hidden="true" />
                       </button>
                     </div>
                   </article>
@@ -628,13 +679,14 @@ export default function FarmersList() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete farmer?"
+        title="Delete Farmer?"
         message={
           deleteError
             ? deleteError
-            : `"${deleteTarget?.name || deleteTarget?.id || "This farmer"}" will be permanently removed. This action cannot be undone.`
+            : `Are you sure you want to delete "${deleteTarget?.name || deleteTarget?.id || "this farmer"}"? This action cannot be undone.`
         }
         confirmLabel={deleteError ? "Retry delete" : "Delete"}
+        cancelLabel="Cancel"
         loading={deleting}
         onConfirm={handleConfirmDelete}
         onCancel={() => {

@@ -87,7 +87,21 @@ export const createFarmer = async (data) => {
 };
 
 export const updateFarmer = async (id, data) => {
-  const response = await api.put(`${BASE}/${id}/`, data);
+  try {
+    const response = await api.patch(`${BASE}/${id}/`, data);
+    return unwrapSuccessEnvelope(response) ?? {};
+  } catch (err) {
+    // Some deployments only allow PUT for full update.
+    if (err?.response?.status === 405) {
+      const response = await api.put(`${BASE}/${id}/`, data);
+      return unwrapSuccessEnvelope(response) ?? {};
+    }
+    throw err;
+  }
+};
+
+export const patchFarmer = async (id, data) => {
+  const response = await api.patch(`${BASE}/${id}/`, data);
   return unwrapSuccessEnvelope(response) ?? {};
 };
 

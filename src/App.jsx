@@ -50,6 +50,7 @@ function App() {
           <Route path="employees" element={<Employees />} />
           <Route path="farmers" element={<FarmersList />} />
           <Route path="farmers/new" element={<FarmerEditor />} />
+          <Route path="farmers/:id/edit" element={<FarmerEditor mode="edit" />} />
           <Route
             path="farmers/:id"
             element={
@@ -58,7 +59,6 @@ function App() {
               </LazyPage>
             }
           />
-          <Route path="farmers/:id/edit" element={<FarmerEditor mode="edit" />} />
           <Route path="visits" element={<Visits />} />
           <Route path="visits/create" element={<CreateVisit />} />
           <Route

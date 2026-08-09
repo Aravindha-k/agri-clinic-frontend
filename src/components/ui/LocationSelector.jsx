@@ -75,9 +75,9 @@ export default function LocationSelector({ value = {}, onChange, className = "" 
                     <MapPin className="w-3 h-3" /> District
                 </label>
                 <div className="relative">
-                    <select value={value.district || ""} onChange={(e) => handleDistrictChange(e.target.value)} className={selectClass}>
+                    <select value={String(value.district || "")} onChange={(e) => handleDistrictChange(e.target.value)} className={selectClass}>
                         <option value="">Select District</option>
-                        {districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        {districts.map((d) => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -89,10 +89,10 @@ export default function LocationSelector({ value = {}, onChange, className = "" 
                     <MapPin className="w-3 h-3" /> Village
                 </label>
                 <div className="relative">
-                    <select value={value.village || ""} onChange={(e) => handleVillageChange(e.target.value)}
+                    <select value={String(value.village || "")} onChange={(e) => handleVillageChange(e.target.value)}
                         disabled={!value.district || loadingVillages} className={`${selectClass} disabled:opacity-50`}>
                         <option value="">{loadingVillages ? "Loading…" : "Select Village"}</option>
-                        {villages.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        {villages.map((v) => <option key={v.id} value={String(v.id)}>{v.name}</option>)}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>

@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import FarmerForm from "./FarmerForm";
-import { getFarmerDetail } from "../api/farmer.api";
-import { createFarmer as createMasterFarmer, updateFarmer as updateMasterFarmer } from "../api/master.api";
+import { getFarmerDetail, createFarmer, updateFarmer } from "../api/farmer.api";
 import { normalizeFarmerFormError } from "../utils/apiErrorNormalize";
 
 const resolveObject = (payload) => {
     const raw = payload?.data ?? payload;
-    if (raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data)) return raw.data;
+    if (raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data) && raw.id == null && raw.name == null) {
+        return raw.data;
+    }
     if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
     return null;
 };
@@ -37,8 +38,12 @@ export default function FarmerEditor({ mode = "create" }) {
             .then((res) => {
                 if (active) setInitial(resolveObject(res));
             })
-            .catch(() => {
-                if (active) setError("Failed to load farmer details.");
+            .catch((err) => {
+                if (!active) return;
+                const status = err?.response?.status;
+                if (status === 404) setError("Farmer not found.");
+                else if (status === 401 || status === 403) setError("You don't have permission to edit this farmer.");
+                else setError("Failed to load farmer details.");
             })
             .finally(() => {
                 if (active) setLoading(false);
@@ -51,9 +56,11 @@ export default function FarmerEditor({ mode = "create" }) {
         setError("");
         setFieldErrors({});
         try {
-            const saved = isEdit ? await updateMasterFarmer(id, payload) : await createMasterFarmer(payload);
+            const saved = isEdit ? await updateFarmer(id, payload) : await createFarmer(payload);
             const farmer = resolveObject(saved);
-            navigate(`/farmers/${farmer?.id ?? farmer?.phone ?? id ?? ""}`.replace(/\/$/, ""));
+            const nextId = farmer?.id ?? id;
+            if (nextId) navigate(`/farmers/${nextId}`);
+            else navigate("/farmers");
         } catch (err) {
             const normalized = normalizeFarmerFormError(
                 err,
@@ -100,6 +107,7 @@ export default function FarmerEditor({ mode = "create" }) {
 
             <div className="section-card p-4">
                 <FarmerForm
+                    key={isEdit ? `edit-${id}-${initial?.id ?? "loading"}` : "create"}
                     initial={initial || {}}
                     farmerId={isEdit ? id : undefined}
                     onPhotoUpdated={handlePhotoUpdated}

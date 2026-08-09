@@ -19,6 +19,7 @@ import {
 } from "../utils/displayValue";
 import { GpsIndicator, EmptyState } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
+import RouteFallback from "../components/RouteFallback";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import jsPDF from "jspdf";
@@ -29,8 +30,39 @@ const fmt = (d) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
-const totalAcreage = (fields) =>
-    fields.reduce((s, f) => s + parseFloat(f.land_size ?? f.field_size ?? 0), 0).toFixed(1);
+const totalAcreage = (fields) => {
+    const list = Array.isArray(fields) ? fields : [];
+    return list.reduce((s, f) => s + parseFloat(f?.land_size ?? f?.field_size ?? 0), 0).toFixed(1);
+};
+
+/** Normalize farmer detail payload (envelope or plain object). */
+function resolveFarmerRecord(payload) {
+    if (payload == null) return null;
+    const raw = payload?.data ?? payload;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        // Nested success envelope without farmer identity on the outer object
+        if (
+            raw.data &&
+            typeof raw.data === "object" &&
+            !Array.isArray(raw.data) &&
+            raw.id == null &&
+            raw.name == null &&
+            raw.phone == null
+        ) {
+            return raw.data;
+        }
+        return raw;
+    }
+    return null;
+}
+
+function resolveListPayload(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.results)) return payload.results;
+    if (Array.isArray(payload?.data?.results)) return payload.data.results;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+}
 
 /* --- Sub-components (presentational) --- */
 const KPI_ICONS = {
@@ -333,30 +365,32 @@ export default function FarmerDetail() {
                 getFarmerVisits(id),
             ]);
             if (farmerRes.status === "fulfilled") {
-                const d = farmerRes.value;
-                setFarmer(d?.data ?? d ?? null);
+                const record = resolveFarmerRecord(farmerRes.value);
+                if (record) {
+                    setFarmer(record);
+                } else {
+                    setFarmer(null);
+                    setError("Farmer not found");
+                }
             } else {
-                setError("Failed to load farmer details");
+                const reason = farmerRes.reason;
+                const status = reason?.response?.status;
+                if (status === 404) {
+                    setError("Farmer not found");
+                } else if (status === 401 || status === 403) {
+                    setError("You don't have permission to view this farmer.");
+                } else {
+                    setError(friendlyErrorMessage(reason, "Failed to load farmer details"));
+                }
             }
             if (fieldsRes.status === "fulfilled") {
-                const d = fieldsRes.value;
-                setFields(Array.isArray(d) ? d : Array.isArray(d?.results) ? d.results : Array.isArray(d?.data) ? d.data : []);
+                setFields(resolveListPayload(fieldsRes.value));
             }
             if (visitsRes.status === "fulfilled") {
-                const d = visitsRes.value;
-                const list = Array.isArray(d)
-                    ? d
-                    : Array.isArray(d?.results)
-                        ? d.results
-                        : Array.isArray(d?.data?.results)
-                            ? d.data.results
-                            : Array.isArray(d?.data)
-                                ? d.data
-                                : [];
-                setVisits(list);
+                setVisits(resolveListPayload(visitsRes.value));
             }
-        } catch {
-            setError("Failed to load farmer data");
+        } catch (err) {
+            setError(friendlyErrorMessage(err, "Failed to load farmer data"));
         } finally {
             setLoading(false);
         }
@@ -831,13 +865,14 @@ export default function FarmerDetail() {
             )}
             <ConfirmDialog
                 open={deleteOpen}
-                title="Delete farmer?"
+                title="Delete Farmer?"
                 message={
                     deleteError
                         ? deleteError
-                        : `"${farmer?.name || id}" will be permanently removed. This action cannot be undone.`
+                        : `Are you sure you want to delete "${farmer?.name || id}"? This action cannot be undone.`
                 }
                 confirmLabel={deleteError ? "Retry delete" : "Delete"}
+                cancelLabel="Cancel"
                 loading={deleting}
                 onConfirm={async () => {
                     if (!id || deleting) return;
@@ -845,9 +880,24 @@ export default function FarmerDetail() {
                     setDeleteError("");
                     try {
                         await deleteFarmer(id);
+                        setDeleteOpen(false);
                         navigate("/farmers");
                     } catch (err) {
-                        setDeleteError(friendlyErrorMessage(err, "Failed to delete farmer."));
+                        const status = err?.response?.status;
+                        if (status === 409) {
+                            setDeleteError(
+                                friendlyErrorMessage(
+                                    err,
+                                    "This farmer cannot be deleted because related records still exist."
+                                )
+                            );
+                        } else if (status === 404) {
+                            setDeleteError("Farmer was not found. It may have already been deleted.");
+                        } else if (status === 401 || status === 403) {
+                            setDeleteError("You don't have permission to delete this farmer.");
+                        } else {
+                            setDeleteError(friendlyErrorMessage(err, "Failed to delete farmer."));
+                        }
                     } finally {
                         setDeleting(false);
                     }

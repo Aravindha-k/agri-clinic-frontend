@@ -5591,11 +5591,11 @@ textarea.input {
 }
 
 .farmers-action-group {
-    @apply flex items-center justify-end gap-0.5;
+    @apply relative z-10 flex items-center justify-end gap-0.5;
 }
 
 .farmers-action-btn {
-    @apply inline-flex items-center justify-center rounded-lg transition-all duration-150;
+    @apply relative z-10 inline-flex items-center justify-center rounded-lg transition-all duration-150;
     min-width: 2.25rem;
     min-height: 2.25rem;
     color: var(--text-muted);
@@ -5609,13 +5609,30 @@ textarea.input {
     @apply bg-emerald-100 text-emerald-800;
 }
 
+.farmers-action-btn--edit:hover {
+    @apply bg-emerald-50 text-emerald-700;
+}
+
 .farmers-action-btn--danger:hover {
     @apply bg-red-50 text-red-600;
+}
+
+.farmers-action-btn:disabled {
+    @apply opacity-40 cursor-not-allowed;
 }
 
 .farmers-action-btn:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
+}
+
+.farmers-table .data-table th:last-child,
+.farmers-table .data-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: -8px 0 12px -12px rgba(15, 23, 42, 0.25);
 }
 
 .farmers-status {
@@ -9296,6 +9313,37 @@ textarea.input {
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     animation: fadeIn 0.2s ease-out both;
+}
+
+.confirm-dialog-root {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+
+.confirm-dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s ease-out both;
+}
+
+.confirm-dialog-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    pointer-events: none;
+}
+
+.confirm-dialog-modal {
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
 }
 
 .enterprise-modal {
