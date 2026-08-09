@@ -1,5 +1,5 @@
-/** Live tracking poll — mobile GPS ~5 min; admin refreshes once per minute. */
-export const LIVE_TRACKING_POLL_MS = 60_000;
+/** Live tracking poll — keep near real-time while page is visible. */
+export const LIVE_TRACKING_POLL_MS = 5_000;
 
 /** Day-map silent sync while viewing today's duty. */
 export const DAY_MAP_AUTO_SYNC_MS = 60_000;

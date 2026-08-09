@@ -51,9 +51,12 @@ export default function MapEmployeeViewport({
     const manualFit = fitRequestId !== lastFitRequest.current;
 
     if (!locations?.length) {
-      // Empty roster: TN default only (never on every poll once already shown).
-      if (manualFit || !didInitialFit.current) {
-        didInitialFit.current = true;
+      // Empty roster: TN default. Clear roster sig so the next first markers still get one fit.
+      const hadMarkers = prevRosterSig.current !== "";
+      if (manualFit || !didInitialFit.current || hadMarkers) {
+        if (hadMarkers) {
+          didInitialFit.current = false;
+        }
         prevRosterSig.current = "";
         lastFitRequest.current = fitRequestId;
         const timer = window.setTimeout(() => {
@@ -78,7 +81,8 @@ export default function MapEmployeeViewport({
       } else if (refitMode === "roster") {
         shouldFit = rosterSig !== prevRosterSig.current;
       } else {
-        // once — first successful non-empty load only; polls/GPS status must not refit
+        // once — first successful non-empty load only (including empty → first marker).
+        // Subsequent polls / GPS updates must not steal the admin viewport.
         shouldFit = !didInitialFit.current;
       }
     }

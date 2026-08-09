@@ -230,14 +230,14 @@ export const CANONICAL_DUTY_LABELS = {
 };
 
 export const CANONICAL_GPS_LABELS = {
-  gps_active: "Online",
-  gps_stale: "Stale",
-  gps_offline: "Offline",
-  no_location: "No Location Yet",
+  gps_active: "Fresh",
+  gps_stale: "Delayed",
+  gps_offline: "Lost",
+  no_location: "No GPS",
   unknown: "Status unavailable",
-  gps_delayed: "Stale",
-  gps_lost: "Offline",
-  gps_off: "Offline",
+  gps_delayed: "Delayed",
+  gps_lost: "Lost",
+  gps_off: "Lost",
 };
 
 export const CANONICAL_TRACKING_LABELS = CANONICAL_GPS_LABELS;
@@ -311,9 +311,89 @@ export function hasLiveMapLocation(emp) {
   return Number.isFinite(lat) && Number.isFinite(lng);
 }
 
+/** Presence from tracking_status — Online while Fresh/Delayed; Offline when Lost. */
+export function resolvePresenceStatusKey(emp) {
+  const tracking = resolveCanonicalTrackingStatusKey(emp);
+  if (tracking === "gps_active" || tracking === "gps_stale") return "online";
+  if (tracking === "gps_offline") return "offline";
+  if (tracking === "no_location") return "offline";
+  return "unknown";
+}
+
+export const PRESENCE_STATUS_LABELS = {
+  online: "Online",
+  offline: "Offline",
+  unknown: "—",
+};
+
+export function presenceStatusLabel(emp) {
+  return PRESENCE_STATUS_LABELS[resolvePresenceStatusKey(emp)] ?? "—";
+}
+
+/**
+ * Stable duty start time from backend started_at (never GPS / last_seen / page load).
+ */
+export function formatDutyStartedAt(emp) {
+  const iso = emp?.started_at ?? emp?.duty_started_at ?? null;
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+export function formatDutyExpectedEndAt(emp) {
+  const iso = emp?.expected_end_at ?? null;
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/** Elapsed since backend started_at — stable across polls for the same start. */
+export function formatDutyElapsed(emp, now = Date.now()) {
+  const iso = emp?.started_at ?? emp?.duty_started_at ?? null;
+  if (!iso) return null;
+  const start = new Date(iso).getTime();
+  if (Number.isNaN(start)) return null;
+  const sec = Math.max(0, Math.floor((now - start) / 1000));
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  if (hrs <= 0) return `${mins}m`;
+  return `${hrs}h ${mins}m`;
+}
+
 /** User-facing tracking label for live roster */
 export function liveLocationStatusLabel(emp) {
   return canonicalTrackingLabel(emp);
+}
+
+/**
+ * Secondary detail for roster/summary freshness copy.
+ * @returns {string|null}
+ */
+export function liveLocationFreshnessDetail(emp) {
+  const tracking = resolveCanonicalTrackingStatusKey(emp);
+  const hasCoords = hasLiveMapLocation(emp);
+
+  if (tracking === "no_location" || !hasCoords) {
+    return "Waiting for first GPS";
+  }
+  if (tracking === "gps_stale" || tracking === "gps_offline") {
+    return "Showing last known location";
+  }
+  return null;
 }
 
 function formatRelativeFromIso(iso) {
@@ -382,16 +462,18 @@ export function resolveLiveEmployeeList(payload) {
 export function normalizeLiveEmployee(emp) {
   if (!emp || typeof emp !== "object") return emp;
 
-  // Keep last valid coords for map even when tracking is Stale/Offline — never invent fakes.
-  const coordsValid = hasValidCoords(emp);
-  const lat = coordsValid ? parseCoord(emp.latitude) : null;
-  const lng = coordsValid ? parseCoord(emp.longitude) : null;
+  // Prefer fresh top-level latitude/longitude from EmployeeLiveLocation.
+  // Never let nested/legacy location bags overwrite valid top-level coords.
+  const topLat = parseCoord(emp.latitude);
+  const topLng = parseCoord(emp.longitude);
+  const topValid = hasValidCoords({ latitude: topLat, longitude: topLng });
+  const lat = topValid ? topLat : null;
+  const lng = topValid ? topLng : null;
   const lastGpsUpdate =
     emp.location_recorded_at ??
     emp.last_gps_update ??
     emp.last_location_at ??
     emp.last_update ??
-    emp.last_seen ??
     null;
   const lastHeartbeat =
     emp.last_heartbeat_at ?? emp.last_heartbeat ?? null;
@@ -447,9 +529,10 @@ export function normalizeLiveEmployee(emp) {
     last_gps_update: lastGpsUpdate,
     last_heartbeat_at: lastHeartbeat,
     last_seen_minutes: ageMin,
-    last_update: lastGpsUpdate,
-    last_seen: lastGpsUpdate,
+    // Keep last_seen for display only — never use it as GPS recorded time substitute when GPS fields exist.
+    last_seen: emp.last_seen ?? lastHeartbeat ?? lastGpsUpdate,
     last_location_at: lastGpsUpdate,
+    last_update: lastGpsUpdate,
     last_update_age_minutes: ageMin,
     last_location_age_minutes: ageMin,
     is_on_duty: isOnDuty,

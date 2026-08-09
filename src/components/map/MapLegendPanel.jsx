@@ -3,9 +3,10 @@
  */
 export function GpsStatusMapLegend() {
   const items = [
-    { color: "#22c55e", label: "Online" },
-    { color: "#f59e0b", label: "Stale" },
-    { color: "#64748b", label: "Offline" },
+    { color: "#22c55e", label: "Fresh" },
+    { color: "#f59e0b", label: "Delayed" },
+    { color: "#64748b", label: "Lost" },
+    { color: "#0ea5e9", label: "No GPS" },
   ];
 
   return (

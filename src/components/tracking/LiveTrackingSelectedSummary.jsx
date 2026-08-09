@@ -13,6 +13,10 @@ import {
   isNoLocationYet,
   formatLastGpsUpdate,
   formatLastHeartbeat,
+  formatDutyStartedAt,
+  formatDutyElapsed,
+  presenceStatusLabel,
+  liveLocationFreshnessDetail,
 } from "../../utils/dutyTracking";
 import {
   formatLiveRelativeTime,
@@ -35,16 +39,22 @@ export default function LiveTrackingSelectedSummary({
   const code = employee?.employee_code ?? employee?.employee_id ?? null;
   const dutyLabel = employee ? canonicalDutyLabel(employee) : "";
   const trackingLabel = employee ? canonicalTrackingLabel(employee) : "";
+  const presenceLabel = employee ? presenceStatusLabel(employee) : "";
   const trackingKey = employee ? resolveCanonicalTrackingStatusKey(employee) : "unknown";
   const gpsHw = employee ? gpsHardwareLabel(employee) : null;
   const permission = employee ? permissionLabel(employee) : null;
   const service = employee ? trackingServiceLabel(employee) : null;
   const hasLoc = employee ? hasLiveMapLocation(employee) : false;
   const noLocation = employee ? isNoLocationYet(employee) || !hasLoc : true;
+  const freshness = employee ? liveLocationFreshnessDetail(employee) : null;
+  const startedLabel = employee ? formatDutyStartedAt(employee) : null;
+  const elapsed = employee ? formatDutyElapsed(employee) : null;
   const lat = Number(employee?.latitude);
   const lng = Number(employee?.longitude);
   const coordsValid =
     hasLoc && Number.isFinite(lat) && Number.isFinite(lng) && isValidTamilNaduCoordinate(lat, lng);
+  const outOfRegion =
+    hasLoc && Number.isFinite(lat) && Number.isFinite(lng) && !isValidTamilNaduCoordinate(lat, lng);
   const coordText = coordsValid ? formatCoordinates(lat, lng) : null;
   const recordedAt = getLiveGpsRecordedAt(employee);
   const relativeLocation = formatLiveRelativeTime(recordedAt) || (employee ? formatLastGpsUpdate(employee) : null);
@@ -79,19 +89,36 @@ export default function LiveTrackingSelectedSummary({
             {code ? <p className="live-tracking-selected-summary__code">{code}</p> : null}
           </div>
           <p className="live-tracking-selected-summary__status">
-            {dutyLabel} · {trackingLabel}
+            {dutyLabel} · {presenceLabel} · GPS {trackingLabel}
           </p>
+          {startedLabel || elapsed ? (
+            <p className="live-tracking-selected-summary__meta text-[11px] text-slate-500">
+              {[
+                startedLabel ? `Started ${startedLabel}` : null,
+                elapsed ? `Elapsed ${elapsed}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
           {metaBits.length ? (
             <p className="live-tracking-selected-summary__meta text-[11px] text-slate-500">
               {metaBits.join(" · ")}
             </p>
           ) : null}
-          {noLocation || trackingKey === "no_location" ? (
-            <p className="live-tracking-selected-summary__empty">Waiting for first GPS update</p>
+          {outOfRegion ? (
+            <p className="live-tracking-selected-summary__empty">Location unavailable</p>
+          ) : noLocation || trackingKey === "no_location" ? (
+            <p className="live-tracking-selected-summary__empty">Waiting for first GPS</p>
           ) : location.loading ? (
             <p className="live-tracking-selected-summary__loading">Resolving place name…</p>
           ) : (
             <>
+              {freshness ? (
+                <p className="live-tracking-selected-summary__meta text-[11px] text-amber-700">
+                  {freshness}
+                </p>
+              ) : null}
               {locationTitle ? (
                 <p className="live-tracking-selected-summary__place">
                   <MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />

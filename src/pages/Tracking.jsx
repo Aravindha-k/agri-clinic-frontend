@@ -36,6 +36,11 @@ import {
     canonicalGpsLabel,
     formatLastGpsUpdate,
     formatLastHeartbeat,
+    formatDutyStartedAt,
+    formatDutyExpectedEndAt,
+    formatDutyElapsed,
+    presenceStatusLabel,
+    liveLocationFreshnessDetail,
     dedupeLiveEmployees,
     isOnDutyWorking,
     hasLiveMapLocation,
@@ -167,20 +172,33 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
     const trackingKey = resolveCanonicalTrackingStatusKey(emp);
     const trackingLabel = liveLocationStatusLabel(emp);
     const dutyLabel = canonicalDutyLabel(emp);
+    const presenceLabel = presenceStatusLabel(emp);
     const lastLoc = formatLastGpsUpdate(emp);
     const heartbeat = formatLastHeartbeat(emp);
+    const startedLabel = formatDutyStartedAt(emp);
+    const elapsed = formatDutyElapsed(emp);
+    const freshness = liveLocationFreshnessDetail(emp);
+    const lat = Number(emp?.latitude);
+    const lng = Number(emp?.longitude);
+    const outOfRegion =
+        hasLoc &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        !isValidTamilNaduCoordinate(lat, lng);
 
     let detailLine = null;
-    if (trackingKey === "no_location" || !hasLoc) {
-        detailLine = "Waiting for first GPS update";
-    } else if (heartbeat) {
-        detailLine =
-            trackingKey === "gps_offline"
-                ? `Last heartbeat ${heartbeat}`
-                : `Heartbeat ${heartbeat}`;
-        if (lastLoc) detailLine += ` · Location ${lastLoc}`;
+    if (outOfRegion) {
+        detailLine = "Location unavailable";
+    } else if (freshness) {
+        detailLine = freshness;
+        if (lastLoc && trackingKey !== "no_location") {
+            detailLine += ` · Last GPS ${lastLoc}`;
+        }
     } else if (lastLoc) {
-        detailLine = `Last location ${lastLoc}`;
+        detailLine = `Last GPS ${lastLoc}`;
+        if (heartbeat) detailLine += ` · Heartbeat ${heartbeat}`;
+    } else if (heartbeat) {
+        detailLine = `Heartbeat ${heartbeat}`;
     }
 
     return (
@@ -217,7 +235,18 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
                         <DutyGpsStatusBadge employee={emp} />
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1.5">
-                        {dutyLabel} · {trackingLabel}
+                        {dutyLabel} · {presenceLabel} · GPS {trackingLabel}
+                        {startedLabel || elapsed ? (
+                            <>
+                                <br />
+                                {[
+                                    startedLabel ? `Started ${startedLabel}` : null,
+                                    elapsed ? `Elapsed ${elapsed}` : null,
+                                ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                            </>
+                        ) : null}
                         {detailLine ? (
                             <>
                                 <br />
@@ -406,6 +435,9 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
 
                                     <div className="tracking-drawer-metric-grid">
                                         {[
+                                            { label: "Duty started", value: formatDutyStartedAt(employee) ?? "—", icon: Clock },
+                                            { label: "Elapsed", value: formatDutyElapsed(employee) ?? "—", icon: Activity },
+                                            { label: "Expected end", value: formatDutyExpectedEndAt(employee) ?? "—", icon: Clock },
                                             { label: "Last GPS update", value: formatLastGpsUpdate(employee), icon: Eye },
                                             { label: "Battery", value: employee.battery_level != null ? `${employee.battery_level}%` : "—", icon: Battery },
                                             { label: "Accuracy", value: employee.accuracy != null ? `${Math.round(employee.accuracy)} m` : "—", icon: Gauge },
@@ -735,7 +767,7 @@ export default function Tracking() {
         },
         {
             icon: MapPin,
-            label: "Online",
+            label: "Fresh GPS",
             value: dutyStats.gps_active,
             accent: BRAND.primaryDark,
             gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
@@ -743,7 +775,7 @@ export default function Tracking() {
         },
         {
             icon: Clock,
-            label: "Stale",
+            label: "Delayed",
             value: dutyStats.gps_stale,
             accent: BRAND.warning,
             gradient: BRAND_GRADIENTS.cardAccent,
@@ -751,7 +783,7 @@ export default function Tracking() {
         },
         {
             icon: WifiOff,
-            label: "Offline",
+            label: "Lost GPS",
             value: dutyStats.gps_offline,
             accent: "#64748b",
             gradient: "linear-gradient(135deg,#fff 0%,#f8fafc 100%)",
@@ -759,7 +791,7 @@ export default function Tracking() {
         },
         {
             icon: AlertTriangle,
-            label: "No location",
+            label: "No GPS",
             value: dutyStats.no_location,
             accent: BRAND.danger,
             gradient: "linear-gradient(135deg,#fff 0%,#fef2f2 100%)",
@@ -770,19 +802,19 @@ export default function Tracking() {
     const filterOptions = [
         { key: "all", label: "All active", count: activeEmployees.length },
         { key: "working", label: "Working", count: dutyStats.working },
-        { key: "gps_active", label: "Online", count: dutyStats.gps_active },
-        { key: "gps_stale", label: "Stale", count: dutyStats.gps_stale },
-        { key: "gps_offline", label: "Offline", count: dutyStats.gps_offline },
-        { key: "no_location", label: "No location", count: dutyStats.no_location },
+        { key: "gps_active", label: "Fresh", count: dutyStats.gps_active },
+        { key: "gps_stale", label: "Delayed", count: dutyStats.gps_stale },
+        { key: "gps_offline", label: "Lost", count: dutyStats.gps_offline },
+        { key: "no_location", label: "No GPS", count: dutyStats.no_location },
     ];
 
     const todaySummary = [
         { label: "Working", value: dutyStats.working },
-        { label: "Online", value: dutyStats.gps_active },
-        { label: "Stale", value: dutyStats.gps_stale },
-        { label: "Offline", value: dutyStats.gps_offline },
+        { label: "Fresh", value: dutyStats.gps_active },
+        { label: "Delayed", value: dutyStats.gps_stale },
+        { label: "Lost", value: dutyStats.gps_offline },
         { label: "On map", value: mapEmployees.length },
-        { label: "No location", value: dutyStats.no_location },
+        { label: "No GPS", value: dutyStats.no_location },
     ];
 
     if (loading && employees.length === 0) {
@@ -802,7 +834,7 @@ export default function Tracking() {
                             <span className="text-slate-700 font-bold tabular-nums">
                                 {lastRefresh.toLocaleTimeString()}
                             </span>
-                            <span className="text-slate-400 font-medium">· 60s sync</span>
+                            <span className="text-slate-400 font-medium">· 5s sync</span>
                             {refreshing ? (
                                 <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" aria-hidden="true" />
                             ) : null}
@@ -855,7 +887,7 @@ export default function Tracking() {
                     <AdminMapCard
                         className="tracking-map-panel"
                         title="Live employee locations"
-                        subtitle={`${activeEmployees.length} active employee${activeEmployees.length === 1 ? "" : "s"} · ${dutyStats.gps_active} online · ${dutyStats.gps_stale} stale · ${dutyStats.gps_offline} offline · ${dutyStats.no_location} no location`}
+                        subtitle={`${activeEmployees.length} active employee${activeEmployees.length === 1 ? "" : "s"} · ${dutyStats.gps_active} fresh · ${dutyStats.gps_stale} delayed · ${dutyStats.gps_offline} lost · ${dutyStats.no_location} no GPS`}
                         showOpenInMaps={false}
                         headerActions={
                             <>
@@ -880,7 +912,7 @@ export default function Tracking() {
                                 </button>
                                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                                     <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" aria-hidden="true" />
-                                    60s refresh
+                                    5s refresh
                                 </span>
                             </>
                         }

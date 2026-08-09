@@ -3,7 +3,7 @@ import { getBackoffMs, shouldPausePolling } from "../utils/apiBackoff";
 
 /**
  * Polls `callback` on an interval; backs off when API is unreachable; pauses when tab is hidden.
- * Callback identity is ignored for scheduling — pass a stable function or rely on callbackRef.
+ * Immediate first run on mount; no overlapping in-flight requests.
  */
 export function useAdaptivePolling(callback, intervalMs = 30_000, userDeps = []) {
   const callbackRef = useRef(callback);
@@ -14,6 +14,13 @@ export function useAdaptivePolling(callback, intervalMs = 30_000, userDeps = [])
   useEffect(() => {
     let cancelled = false;
     let timerId = null;
+
+    const clearTimer = () => {
+      if (timerId != null) {
+        window.clearTimeout(timerId);
+        timerId = null;
+      }
+    };
 
     const run = async (isRefresh = false) => {
       if (cancelled || document.visibilityState === "hidden") return;
@@ -35,9 +42,11 @@ export function useAdaptivePolling(callback, intervalMs = 30_000, userDeps = [])
     };
 
     const scheduleNext = () => {
-      if (cancelled) return;
+      if (cancelled || document.visibilityState === "hidden") return;
+      clearTimer();
       const delay = shouldPausePolling() ? Math.max(getBackoffMs(), intervalMs) : intervalMs;
       timerId = window.setTimeout(() => {
+        timerId = null;
         run(true).finally(() => {
           if (!cancelled) scheduleNext();
         });
@@ -49,15 +58,22 @@ export function useAdaptivePolling(callback, intervalMs = 30_000, userDeps = [])
     });
 
     const onVisible = () => {
-      if (document.visibilityState === "visible" && !cancelled) {
-        run(true);
+      if (cancelled) return;
+      if (document.visibilityState === "hidden") {
+        clearTimer();
+        return;
       }
+      // Tab visible again: fetch immediately, then resume interval.
+      clearTimer();
+      run(true).finally(() => {
+        if (!cancelled) scheduleNext();
+      });
     };
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       cancelled = true;
-      if (timerId) window.clearTimeout(timerId);
+      clearTimer();
       document.removeEventListener("visibilitychange", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
