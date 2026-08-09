@@ -8287,6 +8287,121 @@ textarea.input {
     @apply bg-slate-50 text-slate-500 cursor-default;
 }
 
+.employees-hr-field__hint {
+    margin: 0.375rem 0 0;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #64748b;
+    letter-spacing: 0.01em;
+}
+
+.employees-hr-cred-info {
+    padding: 0.875rem 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(30, 132, 73, 0.14);
+    background: linear-gradient(160deg, #f0fdf4 0%, #ffffff 70%);
+}
+
+.employees-hr-cred-info__title {
+    margin: 0 0 0.625rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #047857;
+}
+
+.employees-hr-cred-info__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.625rem;
+}
+
+@media (min-width: 480px) {
+    .employees-hr-cred-info__grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.875rem;
+    }
+}
+
+.employees-hr-cred-info__key {
+    margin: 0;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.employees-hr-cred-info__val {
+    margin: 0.2rem 0 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.35;
+}
+
+.employees-hr-cred-modal {
+    max-width: 28rem;
+}
+
+.employees-hr-cred-card {
+    padding: 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.employees-hr-cred-card__label {
+    margin: 0 0 0.75rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #047857;
+}
+
+.employees-hr-cred-row + .employees-hr-cred-row {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.employees-hr-cred-row__key {
+    display: block;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.employees-hr-cred-row__val {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    word-break: break-all;
+    line-height: 1.35;
+}
+
+.employees-hr-cred-row__val--mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    letter-spacing: 0.02em;
+}
+
+.employees-hr-cred-warn {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.875rem;
+}
+
 .employees-hr-toggle-card {
     @apply dashboard-section-card p-4 flex items-center justify-between gap-3;
 }

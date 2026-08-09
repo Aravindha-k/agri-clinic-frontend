@@ -36,6 +36,7 @@ import {
   isProtectedOwnerTarget,
 } from "../utils/roles";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useToast } from "../components/ui/Toast";
 import {
   Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
   RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
@@ -1317,35 +1318,125 @@ EmployeeDrawer.displayName = "EmployeeDrawer";
 /* ================================================================
    ADD EMPLOYEE MODAL
    ================================================================ */
-const EMPTY_FORM = { username: "", first_name: "", last_name: "", phone: "", password: "", role: "field_officer", district: "" };
+const EMPTY_FORM = { first_name: "", last_name: "", phone: "", role: "field_officer", district: "" };
+
+function usernamePatternHint(firstName) {
+  const cleaned = String(firstName || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+  return cleaned ? `KAC-${cleaned}##` : "KAC-<FIRSTNAME>##";
+}
+
+function createEmployeeErrorMessage(err) {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  const detail =
+    (typeof data?.detail === "string" && data.detail) ||
+    (typeof data?.message === "string" && data.message) ||
+    (typeof data?.error === "string" && data.error) ||
+    null;
+
+  if (status === 403) {
+    return detail || "You do not have permission to create employees.";
+  }
+  if (status === 409) {
+    return detail || "This employee conflicts with an existing record.";
+  }
+  if (status === 400) {
+    if (detail) return detail;
+    if (data && typeof data === "object") {
+      const firstFieldError = Object.values(data).find((v) => Array.isArray(v) && v[0]);
+      if (firstFieldError?.[0]) return String(firstFieldError[0]);
+      const nested = Object.values(data).find((v) => typeof v === "string" && v);
+      if (nested) return nested;
+    }
+    return "Please check the form and try again.";
+  }
+  if (status >= 500) {
+    return "Something went wrong while creating the employee. Please try again.";
+  }
+  return detail || "Failed to create employee.";
+}
 
 const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
+  const toast = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [credentials, setCredentials] = useState(null); // { username, temporary_password, displayName }
+  const [copyBusy, setCopyBusy] = useState(false);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
+  const clearCredentials = useCallback(() => {
+    setCredentials(null);
+  }, []);
+
+  const finishAndClose = useCallback(() => {
+    clearCredentials();
+    setForm(EMPTY_FORM);
+    setError(null);
+    setSaving(false);
+    onClose();
+  }, [clearCredentials, onClose]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     setSaving(true);
     setError(null);
     try {
-      const payload = { ...form };
-      if (!payload.district) delete payload.district;
+      const payload = {
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        phone: form.phone.trim(),
+        role: form.role,
+      };
+      if (form.district) payload.district = form.district;
+
       const res = await createEmployee(payload);
-      const created = res.data?.data ?? res.data ?? res;
-      onCreated(created);
+      const body = res?.data?.data ?? res?.data ?? res ?? {};
+      const username = body.username ?? "";
+      const temporaryPassword = body.temporary_password ?? "";
+
+      const safeEmployee = { ...body };
+      delete safeEmployee.temporary_password;
+      onCreated(safeEmployee);
+
+      setCredentials({
+        username,
+        temporary_password: temporaryPassword,
+        displayName:
+          [body.first_name || form.first_name, body.last_name || form.last_name]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || username || "Employee",
+      });
       setForm(EMPTY_FORM);
-      onClose();
     } catch (err) {
-      const detail = err.response?.data?.detail
-        ?? err.response?.data?.message
-        ?? Object.values(err.response?.data ?? {})?.[0]?.[0]
-        ?? "Failed to create employee.";
-      setError(detail);
+      setError(createEmployeeErrorMessage(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCopyCredentials = async () => {
+    if (!credentials?.username || !credentials?.temporary_password) return;
+    const text = [
+      "Kavya Agri Clinic",
+      "",
+      `Username: ${credentials.username}`,
+      `Temporary Password: ${credentials.temporary_password}`,
+    ].join("\n");
+    setCopyBusy(true);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Credentials copied", "success");
+    } catch {
+      toast("Could not copy credentials. Please copy them manually.", "error");
+    } finally {
+      setCopyBusy(false);
     }
   };
 
@@ -1353,85 +1444,215 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
 
   return createPortal(
     <>
-      <div className="employees-hr-modal-backdrop" onClick={onClose} aria-hidden="true" />
+      <div
+        className="employees-hr-modal-backdrop"
+        onClick={credentials ? undefined : finishAndClose}
+        aria-hidden="true"
+      />
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
-        <div className="employees-hr-modal pointer-events-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="add-employee-title">
-          <div className="employees-hr-modal__head">
-            <div className="flex items-center gap-3">
-              <div className="employees-hr-header__icon !p-2.5 !rounded-xl">
-                <UserPlus className="w-5 h-5" aria-hidden="true" />
-              </div>
-              <div>
-                <h3 id="add-employee-title" className="text-base font-bold text-slate-900">Add employee</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Create a new field team member</p>
+        {credentials ? (
+          <div
+            className="employees-hr-modal employees-hr-cred-modal pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-cred-title"
+          >
+            <div className="employees-hr-modal__head">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="employees-hr-header__icon !p-2.5 !rounded-xl">
+                  <CheckCircle className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <h3 id="employee-cred-title" className="text-base font-bold text-slate-900">
+                    Employee created successfully
+                  </h3>
+                  <p className="text-sm font-semibold text-slate-700 mt-0.5 truncate">
+                    {credentials.displayName}
+                  </p>
+                </div>
               </div>
             </div>
-            <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all" aria-label="Close">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <form onSubmit={handleSubmit}>
             <div className="employees-hr-modal__body">
-              {error && (
-                <div className="flex items-start gap-2.5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{typeof error === "string" ? error : JSON.stringify(error)}</span>
+              <div className="employees-hr-cred-card">
+                <p className="employees-hr-cred-card__label">Login credentials</p>
+                <div className="employees-hr-cred-row">
+                  <span className="employees-hr-cred-row__key">Username</span>
+                  <span className="employees-hr-cred-row__val">{credentials.username || "—"}</span>
                 </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="employees-hr-field">
-                  <label>First name</label>
-                  <input placeholder="Ravi" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
-                </div>
-                <div className="employees-hr-field">
-                  <label>Last name</label>
-                  <input placeholder="Kumar" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
+                <div className="employees-hr-cred-row">
+                  <span className="employees-hr-cred-row__key">Temporary password</span>
+                  <span className="employees-hr-cred-row__val employees-hr-cred-row__val--mono">
+                    {credentials.temporary_password || "—"}
+                  </span>
                 </div>
               </div>
-              <div className="employees-hr-field">
-                <label>Username <span className="text-red-500">*</span></label>
-                <input required placeholder="emp001" value={form.username} onChange={(e) => set("username", e.target.value)} />
-              </div>
-              <div className="employees-hr-field">
-                <label>Password <span className="text-red-500">*</span></label>
-                <input required type="password" placeholder="Min 8 characters" value={form.password} onChange={(e) => set("password", e.target.value)} minLength={8} />
-              </div>
-              <div className="employees-hr-field">
-                <label>Phone</label>
-                <input placeholder="9876543210" value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={15} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="employees-hr-field">
-                  <label>Role <span className="text-red-500">*</span></label>
-                  <select required value={form.role} onChange={(e) => set("role", e.target.value)}>
-                    <option value="field_officer">Field Officer</option>
-                    <option value="supervisor">Supervisor</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div className="employees-hr-field">
-                  <label>District</label>
-                  <select value={form.district} onChange={(e) => set("district", e.target.value)}>
-                    <option value="">Select district</option>
-                    {districts.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <p className="employees-hr-cred-warn">
+                Please share these credentials securely with the employee. The temporary password
+                will not be shown again.
+              </p>
             </div>
             <div className="employees-hr-modal__foot">
-              <button type="button" onClick={onClose} className="btn btn-secondary btn-md">
-                Cancel
+              <button
+                type="button"
+                onClick={handleCopyCredentials}
+                disabled={copyBusy || !credentials.username || !credentials.temporary_password}
+                className="btn btn-secondary btn-md"
+              >
+                <Copy className="w-4 h-4" aria-hidden="true" />
+                {copyBusy ? "Copying…" : "Copy credentials"}
               </button>
-              <button type="submit" disabled={saving} className="btn btn-primary btn-md">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <UserPlus className="w-4 h-4" aria-hidden="true" />}
-                {saving ? "Creating\u2026" : "Create employee"}
+              <button type="button" onClick={finishAndClose} className="btn btn-primary btn-md">
+                Done
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+        ) : (
+          <div
+            className="employees-hr-modal pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-employee-title"
+          >
+            <div className="employees-hr-modal__head">
+              <div className="flex items-center gap-3">
+                <div className="employees-hr-header__icon !p-2.5 !rounded-xl">
+                  <UserPlus className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 id="add-employee-title" className="text-base font-bold text-slate-900">
+                    Add employee
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Create a new field team member</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={finishAndClose}
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                aria-label="Close"
+                disabled={saving}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="employees-hr-modal__body">
+                {error && (
+                  <div className="flex items-start gap-2.5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{typeof error === "string" ? error : JSON.stringify(error)}</span>
+                  </div>
+                )}
+
+                <div className="employees-hr-cred-info" aria-label="Login credentials information">
+                  <p className="employees-hr-cred-info__title">Login credentials</p>
+                  <div className="employees-hr-cred-info__grid">
+                    <div>
+                      <p className="employees-hr-cred-info__key">Username</p>
+                      <p className="employees-hr-cred-info__val">Automatically generated</p>
+                    </div>
+                    <div>
+                      <p className="employees-hr-cred-info__key">Temporary password</p>
+                      <p className="employees-hr-cred-info__val">
+                        Generated securely after employee creation
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="employees-hr-field">
+                    <label>
+                      First name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      required
+                      placeholder="Aravindh"
+                      value={form.first_name}
+                      onChange={(e) => set("first_name", e.target.value)}
+                      disabled={saving}
+                    />
+                    <p className="employees-hr-field__hint">
+                      Username pattern: {usernamePatternHint(form.first_name)}
+                    </p>
+                  </div>
+                  <div className="employees-hr-field">
+                    <label>Last name</label>
+                    <input
+                      placeholder="Siddharthan"
+                      value={form.last_name}
+                      onChange={(e) => set("last_name", e.target.value)}
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+                <div className="employees-hr-field">
+                  <label>Phone</label>
+                  <input
+                    placeholder="9876543210"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                    maxLength={15}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="employees-hr-field">
+                    <label>
+                      Role <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={form.role}
+                      onChange={(e) => set("role", e.target.value)}
+                      disabled={saving}
+                    >
+                      <option value="field_officer">Field Officer</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div className="employees-hr-field">
+                    <label>District</label>
+                    <select
+                      value={form.district}
+                      onChange={(e) => set("district", e.target.value)}
+                      disabled={saving}
+                    >
+                      <option value="">Select district</option>
+                      {districts.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="employees-hr-modal__foot">
+                <button
+                  type="button"
+                  onClick={finishAndClose}
+                  className="btn btn-secondary btn-md"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving} className="btn btn-primary btn-md">
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  {saving ? "Creating…" : "Create employee"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </>,
     document.body
