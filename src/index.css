@@ -6547,7 +6547,7 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar brand — official logo seal (controlled motion only) */
+/* Sidebar brand — official logo seal (layered motion; no transform fights) */
 .sidebar-brand {
     @apply relative z-10 flex flex-col items-center text-center;
     margin: 0;
@@ -6567,15 +6567,36 @@ textarea.input {
     overflow: visible;
 }
 
+.brand-seal-enter,
+.brand-seal-hover,
 .brand-seal-alive {
-    position: relative;
     width: 100%;
     height: 100%;
     transform-origin: center center;
-    animation: brandSealAlive 4.8s ease-in-out 500ms infinite;
+}
+
+/* Layer 1: one-time entrance only */
+.brand-seal-enter {
+    animation: brandSealEnter 450ms ease-out both;
+}
+
+/* Layer 2: hover scale — does NOT pause the breathing loop */
+.brand-seal-hover {
+    transition: transform 180ms ease-out;
+}
+
+.brand-seal-hover:hover {
+    transform: scale(1.035);
+}
+
+/* Layer 3: continuous breathing (transform only) */
+.brand-seal-alive {
+    position: relative;
+    animation: brandSealAlive 4.8s ease-in-out 0.45s infinite;
     will-change: transform;
 }
 
+/* Layer 4: image + shadow pulse (no transform animation) */
 .brand-seal-mark {
     display: block;
     width: 100%;
@@ -6596,26 +6617,8 @@ textarea.input {
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.18),
         0 10px 24px rgba(0, 0, 0, 0.28);
-    animation:
-        brandSealEnter 450ms ease-out both,
-        brandSealShadow 4.8s ease-in-out 500ms infinite;
-    transition: transform 180ms ease-out;
-    will-change: transform, opacity, box-shadow;
-    transform-origin: center center;
-}
-
-/* Pause continuous motion, then apply a clean hover scale on the mark */
-.brand-seal-alive:hover {
-    animation-play-state: paused;
-}
-
-.brand-seal-alive:hover .brand-seal-mark {
-    animation-play-state: paused;
-    transform: scale(1.035) !important;
-    box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.2),
-        0 12px 28px rgba(0, 0, 0, 0.3),
-        0 6px 16px rgba(30, 132, 73, 0.16) !important;
+    animation: brandSealShadow 4.8s ease-in-out 0.45s infinite;
+    will-change: box-shadow;
 }
 
 @keyframes brandSealEnter {
@@ -6634,7 +6637,7 @@ textarea.input {
         transform: scale(1) rotate(0deg);
     }
     50% {
-        transform: scale(1.025) rotate(1deg);
+        transform: scale(1.03) rotate(2deg);
     }
     100% {
         transform: scale(1) rotate(0deg);
@@ -6651,12 +6654,14 @@ textarea.input {
     50% {
         box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.2),
-            0 12px 28px rgba(0, 0, 0, 0.3),
-            0 8px 18px rgba(30, 132, 73, 0.16);
+            0 14px 30px rgba(0, 0, 0, 0.32),
+            0 8px 18px rgba(30, 132, 73, 0.2);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .brand-seal-enter,
+    .brand-seal-hover,
     .brand-seal-alive,
     .brand-seal-mark {
         animation: none !important;
@@ -6665,8 +6670,11 @@ textarea.input {
         opacity: 1 !important;
     }
 
-    .brand-seal-alive:hover .brand-seal-mark {
+    .brand-seal-hover:hover {
         transform: none;
+    }
+
+    .brand-seal-mark {
         box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.18),
             0 10px 24px rgba(0, 0, 0, 0.28);
@@ -10715,6 +10723,8 @@ textarea.input {
     .fade-in,
     .fade-up,
     .table-animate,
+    .brand-seal-enter,
+    .brand-seal-hover,
     .brand-seal-alive,
     .brand-seal-mark,
     .confirm-dialog-backdrop,
