@@ -135,16 +135,18 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="brand-seal-stage">
               <div className="brand-seal-enter">
                 <div className="brand-seal-hover">
-                  <div className="brand-seal-alive">
-                    <img
-                      className="brand-seal-mark"
-                      src={companyLogo}
-                      alt="Kavya Agri-Horti Clinic"
-                      width={120}
-                      height={120}
-                      decoding="async"
-                      draggable={false}
-                    />
+                  <div className="brand-seal-motion">
+                    <div className="brand-seal-light">
+                      <img
+                        className="brand-seal-mark"
+                        src={companyLogo}
+                        alt="Kavya Agri-Horti Clinic"
+                        width={120}
+                        height={120}
+                        decoding="async"
+                        draggable={false}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

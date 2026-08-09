@@ -6547,7 +6547,7 @@ textarea.input {
     border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-/* Sidebar brand — official logo seal (layered motion; no transform fights) */
+/* Sidebar brand — premium live seal (layered; no transform fights) */
 .sidebar-brand {
     @apply relative z-10 flex flex-col items-center text-center;
     margin: 0;
@@ -6569,7 +6569,8 @@ textarea.input {
 
 .brand-seal-enter,
 .brand-seal-hover,
-.brand-seal-alive {
+.brand-seal-motion,
+.brand-seal-light {
     width: 100%;
     height: 100%;
     transform-origin: center center;
@@ -6580,7 +6581,7 @@ textarea.input {
     animation: brandSealEnter 450ms ease-out both;
 }
 
-/* Layer 2: hover scale — does NOT pause the breathing loop */
+/* Layer 2: hover scale — does NOT pause continuous motion */
 .brand-seal-hover {
     transition: transform 180ms ease-out;
 }
@@ -6589,16 +6590,48 @@ textarea.input {
     transform: scale(1.035);
 }
 
-/* Layer 3: continuous breathing (transform only) */
-.brand-seal-alive {
+/* Layer 3: continuous float + scale + rotational drift */
+.brand-seal-motion {
     position: relative;
-    animation: brandSealAlive 4.8s ease-in-out 0.45s infinite;
+    animation: brandSealMotion 7s ease-in-out 0.45s infinite;
     will-change: transform;
 }
 
-/* Layer 4: image + shadow pulse (no transform animation) */
+/* Layer 4: clipped soft light sweep across the seal face */
+.brand-seal-light {
+    position: relative;
+    border-radius: 50%;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.brand-seal-light::after {
+    content: "";
+    position: absolute;
+    inset: -12%;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: 50%;
+    background: linear-gradient(
+        115deg,
+        transparent 36%,
+        rgba(255, 255, 255, 0) 42%,
+        rgba(255, 255, 255, 0.22) 50%,
+        rgba(255, 255, 255, 0) 58%,
+        transparent 64%
+    );
+    background-size: 220% 100%;
+    background-position: 140% 0;
+    opacity: 0;
+    mix-blend-mode: soft-light;
+    animation: brandSealSweep 8s ease-in-out 1.2s infinite;
+}
+
+/* Layer 5: official logo image + depth shadow (no transform animation) */
 .brand-seal-mark {
     display: block;
+    position: relative;
+    z-index: 0;
     width: 100%;
     height: 100%;
     margin: 0;
@@ -6616,8 +6649,8 @@ textarea.input {
         );
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.18),
-        0 10px 24px rgba(0, 0, 0, 0.28);
-    animation: brandSealShadow 4.8s ease-in-out 0.45s infinite;
+        0 10px 22px rgba(0, 0, 0, 0.26);
+    animation: brandSealShadow 7s ease-in-out 0.45s infinite;
     will-change: box-shadow;
 }
 
@@ -6632,15 +6665,18 @@ textarea.input {
     }
 }
 
-@keyframes brandSealAlive {
+@keyframes brandSealMotion {
     0% {
-        transform: scale(1) rotate(0deg);
+        transform: translateY(0) scale(1) rotate(0deg);
     }
-    50% {
-        transform: scale(1.03) rotate(2deg);
+    35% {
+        transform: translateY(-2px) scale(1.022) rotate(1.5deg);
+    }
+    65% {
+        transform: translateY(-1px) scale(1.015) rotate(-1deg);
     }
     100% {
-        transform: scale(1) rotate(0deg);
+        transform: translateY(0) scale(1) rotate(0deg);
     }
 }
 
@@ -6649,20 +6685,53 @@ textarea.input {
     100% {
         box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.18),
-            0 10px 24px rgba(0, 0, 0, 0.28);
+            0 10px 22px rgba(0, 0, 0, 0.26);
     }
-    50% {
+    35% {
         box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.2),
-            0 14px 30px rgba(0, 0, 0, 0.32),
-            0 8px 18px rgba(30, 132, 73, 0.2);
+            0 14px 28px rgba(0, 0, 0, 0.3),
+            0 8px 16px rgba(30, 132, 73, 0.18);
+    }
+    65% {
+        box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.18),
+            0 12px 24px rgba(0, 0, 0, 0.28),
+            0 6px 14px rgba(30, 132, 73, 0.12);
+    }
+}
+
+@keyframes brandSealSweep {
+    0%,
+    65% {
+        opacity: 0;
+        background-position: 140% 0;
+    }
+    70% {
+        opacity: 0.55;
+        background-position: 110% 0;
+    }
+    76% {
+        opacity: 0.4;
+        background-position: 50% 0;
+    }
+    82% {
+        opacity: 0.2;
+        background-position: -10% 0;
+    }
+    83%,
+    100% {
+        opacity: 0;
+        background-position: -40% 0;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .brand-seal-enter,
     .brand-seal-hover,
-    .brand-seal-alive,
+    .brand-seal-motion,
+    .brand-seal-light,
+    .brand-seal-light::after,
     .brand-seal-mark {
         animation: none !important;
         transition: none !important;
@@ -6674,10 +6743,15 @@ textarea.input {
         transform: none;
     }
 
+    .brand-seal-light::after {
+        content: none;
+        opacity: 0 !important;
+    }
+
     .brand-seal-mark {
         box-shadow:
             0 0 0 1px rgba(255, 255, 255, 0.18),
-            0 10px 24px rgba(0, 0, 0, 0.28);
+            0 10px 22px rgba(0, 0, 0, 0.26);
     }
 }
 
@@ -10725,7 +10799,9 @@ textarea.input {
     .table-animate,
     .brand-seal-enter,
     .brand-seal-hover,
-    .brand-seal-alive,
+    .brand-seal-motion,
+    .brand-seal-light,
+    .brand-seal-light::after,
     .brand-seal-mark,
     .confirm-dialog-backdrop,
     .enterprise-modal,
