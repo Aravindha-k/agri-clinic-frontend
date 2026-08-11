@@ -1,4 +1,6 @@
-﻿import { NavLink, useNavigate } from "react-router-dom";
+﻿import { useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { lockOverlayScroll } from "../../utils/overlayLock";
 import { LayoutDashboard, LogOut, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
@@ -71,6 +73,22 @@ export default function Sidebar({ isOpen, onClose }) {
   const { logout, user, loading: authLoading } = useAuth();
   const sections = resolveNavSections(user);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const unlock = lockOverlayScroll();
+    const onKey = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      unlock();
+    };
+  }, [isOpen, onClose]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -93,7 +111,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside
         className={`fixed lg:sticky lg:top-0 left-0 top-0 z-40 flex flex-col flex-shrink-0
-          h-screen w-[260px] min-w-[260px] max-w-[260px]
+          h-screen h-dvh w-[260px] min-w-[260px] max-w-[260px]
           transition-transform duration-300 ease-in-out select-none
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0`}

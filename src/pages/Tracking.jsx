@@ -3,6 +3,8 @@ import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { createPortal } from "react-dom";
+import { useOverlayLock } from "../utils/overlayLock";
 import AdminMapCard from "../components/map/AdminMapCard";
 import { GpsStatusMapLegend } from "../components/map/MapLegendPanel";
 import MapEmployeeViewport from "../components/map/MapEmployeeViewport";
@@ -278,17 +280,15 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
     const [endError, setEndError] = useState("");
     const [endReason, setEndReason] = useState("");
     const endInFlightRef = useRef(false);
+    const drawerRef = useRef(null);
+    useOverlayLock({
+        open: isOpen,
+        onClose,
+        panelRef: drawerRef,
+        closeOnEscape: !ending,
+    });
     const userId = employee?.user_id ?? employee?.id;
     const canForceEnd = Boolean(userId) && isOnDutyWorking(employee);
-
-    useEffect(() => {
-        if (!isOpen) return undefined;
-        const onKey = (e) => {
-            if (e.key === "Escape" && !ending) onClose?.();
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [isOpen, onClose, ending]);
 
     useEffect(() => {
         if (isOpen) {
@@ -338,7 +338,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <>
             <div
                 className="tracking-drawer-backdrop"
@@ -347,7 +347,13 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
                 data-overlay="tracking-drawer-backdrop"
             />
 
-            <div className="tracking-drawer">
+            <div
+                ref={drawerRef}
+                className="tracking-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label={employee ? `Employee tracking: ${empName(employee)}` : "Employee tracking"}
+            >
                 {employee && (
                     <div className="flex flex-col h-full">
                         <div className={`tracking-drawer-hero bg-gradient-to-br ${heroGrad[color] ?? heroGrad.gray}`}>
@@ -513,7 +519,8 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
                 loading={ending}
                 variant="danger"
             />
-        </>
+        </>,
+        document.body
     );
 };
 

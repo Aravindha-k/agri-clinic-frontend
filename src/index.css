@@ -396,12 +396,28 @@ body {
 
 @media (max-width: 767px) {
     .app-header__main {
-        align-items: center;
+        align-items: flex-start;
+        flex-wrap: wrap;
         gap: 0.5rem;
     }
 
+    .app-header__tools {
+        flex: 1 1 100%;
+        min-width: 0;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .app-header__cluster {
+        flex-wrap: wrap;
+        min-width: 0;
+        justify-content: flex-end;
+    }
+
     .app-header__page-actions {
-        max-width: 9rem;
+        max-width: none;
+        width: 100%;
+        justify-content: flex-end;
     }
 
     .app-header__page-actions .btn-md {
@@ -1022,6 +1038,7 @@ textarea.input {
 /* ── Table utilities ── */
 .table-container {
     @apply overflow-x-auto;
+    max-width: 100%;
 }
 
 .data-table {
@@ -1747,6 +1764,9 @@ textarea.input {
 
 .tracking-live-pill {
     @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
     background: rgba(255, 255, 255, 0.95);
     border-color: rgba(16, 185, 129, 0.18);
     color: var(--neutral-500);
@@ -2703,6 +2723,7 @@ textarea.input {
     min-height: 100dvh;
     display: flex;
     flex-direction: row;
+    min-width: 0;
     background: var(--login-gray);
     animation: loginPageIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -2716,7 +2737,7 @@ textarea.input {
 .login-aside {
     flex: 0 0 42%;
     width: 42%;
-    min-width: 560px;
+    min-width: 0;
     max-width: none;
     min-height: 100vh;
     min-height: 100dvh;
@@ -3375,7 +3396,7 @@ textarea.input {
 
 .login-aside__chips-row {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 12px;
 }
@@ -3401,7 +3422,7 @@ textarea.input {
         border-color 0.25s ease,
         box-shadow 0.25s ease;
     cursor: default;
-    flex-shrink: 0;
+    flex-shrink: 1;
 }
 
 .login-feature-pill:hover {
@@ -3440,6 +3461,7 @@ textarea.input {
 .login-main {
     flex: 1 1 58%;
     width: 58%;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -3517,9 +3539,9 @@ textarea.input {
     justify-content: center;
     width: 100%;
     max-width: 700px;
-    margin-left: 70px;
+    margin-left: 0;
     margin-right: auto;
-    padding: 2.5rem 2rem;
+    padding: 2.5rem 2rem 2.5rem calc(2rem + 70px);
     position: relative;
     z-index: 1;
     box-sizing: border-box;
@@ -4081,7 +4103,7 @@ textarea.input {
     .login-aside {
         flex: 0 0 44%;
         width: 44%;
-        min-width: 420px;
+        min-width: 0;
     }
 
     .login-aside__seal-wrapper {
@@ -4115,8 +4137,9 @@ textarea.input {
     }
 
     .login-form-area {
-        margin-left: 36px;
+        margin-left: 0;
         max-width: 640px;
+        padding-left: calc(2rem + 36px);
     }
 
     .login-card {
@@ -7735,6 +7758,115 @@ textarea.input {
     @apply w-full h-full flex items-center justify-center text-slate-300;
 }
 
+.visit-evidence-preview {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3.5rem 1rem 1.25rem;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.visit-evidence-preview__close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0;
+    border-radius: 9999px;
+    color: #ffffff;
+    background: rgba(15, 23, 42, 0.55);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+}
+
+.visit-evidence-preview__close:hover {
+    background: rgba(15, 23, 42, 0.78);
+}
+
+.visit-evidence-preview__close:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.visit-evidence-preview__shell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    max-width: min(92vw, 1200px);
+    max-height: calc(100vh - 2rem);
+}
+
+.visit-evidence-preview__stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: calc(100vh - 140px);
+}
+
+.visit-evidence-preview__img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: min(92vw, 1200px);
+    max-height: calc(100vh - 140px);
+    object-fit: contain;
+    border-radius: 0.75rem;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.visit-evidence-preview__name {
+    margin: 0.75rem 0 0;
+    max-width: min(92vw, 1200px);
+    padding: 0 0.25rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.35;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.visit-evidence-preview__unavailable {
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    border-radius: 0.75rem;
+    background: rgba(15, 23, 42, 0.55);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+@media (max-width: 430px) {
+    .visit-evidence-preview {
+        padding: 3.25rem 0.75rem 1rem;
+    }
+
+    .visit-evidence-preview__close {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+}
+
 .visit-report-attachments__title {
     @apply text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-3 mt-5 first:mt-0;
 }
@@ -8123,7 +8255,7 @@ textarea.input {
 
 .employees-hr-drawer {
     @apply fixed top-0 right-0 h-full w-full sm:w-[32rem] lg:w-[36rem] bg-white z-[9999] shadow-2xl flex flex-col;
-    animation: employees-hr-drawer-in 0.28s ease-out forwards;
+    animation: employees-hr-drawer-in 0.28s ease-out;
 }
 
 @keyframes employees-hr-drawer-in {
@@ -8415,21 +8547,22 @@ textarea.input {
 }
 
 .employees-hr-modal {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden;
+    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col;
+    max-height: min(92dvh, calc(100vh - 2rem));
 }
 
 .employees-hr-modal__head {
-    @apply flex items-center justify-between px-5 py-4 border-b;
+    @apply flex items-center justify-between px-5 py-4 border-b shrink-0;
     border-color: rgba(15, 23, 42, 0.06);
     background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%);
 }
 
 .employees-hr-modal__body {
-    @apply px-5 py-5 max-h-[70vh] overflow-y-auto space-y-4;
+    @apply px-5 py-5 overflow-y-auto space-y-4 flex-1 min-h-0;
 }
 
 .employees-hr-modal__foot {
-    @apply px-5 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-3;
+    @apply px-5 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-3 shrink-0 flex-wrap;
 }
 
 .employees-hr-skeleton-grid {
@@ -8814,7 +8947,7 @@ textarea.input {
 }
 
 .reports-bi-table-wrap {
-    @apply overflow-x-auto;
+    @apply table-container;
 }
 
 .reports-bi-table .data-table tbody td {
@@ -9051,7 +9184,7 @@ textarea.input {
 }
 
 .masters-admin-table-wrap {
-    @apply overflow-x-auto;
+    @apply table-container;
 }
 
 .masters-admin-table .data-table thead th,
@@ -9678,7 +9811,7 @@ textarea.input {
 }
 
 .audit-console-table-wrap {
-    @apply overflow-x-auto;
+    @apply table-container;
 }
 
 .audit-console-table .data-table thead th {
@@ -9740,7 +9873,7 @@ textarea.input {
 .profile-crop-modal {
     position: fixed;
     inset: 0;
-    z-index: 2000;
+    z-index: 10050;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9759,7 +9892,7 @@ textarea.input {
 .profile-crop-modal__panel {
     position: relative;
     width: min(920px, 100%);
-    max-height: min(90vh, 720px);
+    max-height: min(90dvh, 720px);
     display: flex;
     flex-direction: column;
     background: #fff;
@@ -9813,12 +9946,15 @@ textarea.input {
     grid-template-columns: 1fr 180px;
     gap: 16px;
     padding: 16px 18px;
-    min-height: 320px;
+    min-height: 0;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .profile-crop-modal__crop-area {
     position: relative;
-    min-height: 300px;
+    min-height: 180px;
+    height: min(42vh, 360px);
     border-radius: 12px;
     overflow: hidden;
     background: #0f172a;
@@ -9971,6 +10107,10 @@ textarea.input {
     z-index: 10;
     width: 100%;
     max-width: 28rem;
+    max-height: min(90dvh, calc(100vh - 2rem));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     padding: 1.5rem;
     border-radius: 1.25rem;
     background: var(--surface-0);
@@ -10387,11 +10527,11 @@ textarea.input {
     }
 
     .app-header__tools {
-        flex-shrink: 0;
+        min-width: 0;
     }
 
     .app-header__page-actions {
-        max-width: 8.5rem;
+        max-width: none;
     }
 
     .enterprise-modal__footer {

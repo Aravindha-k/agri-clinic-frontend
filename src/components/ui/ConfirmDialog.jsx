@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle, X, Loader2 } from "lucide-react";
 import { createPortal } from "react-dom";
+import { lockOverlayScroll } from "../../utils/overlayLock";
 
 function getFocusable(root) {
   if (!root) return [];
@@ -29,8 +30,7 @@ export default function ConfirmDialog({
     if (!open) return undefined;
 
     previouslyFocused.current = document.activeElement;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockOverlayScroll();
 
     const panel = panelRef.current;
     const focusables = getFocusable(panel);
@@ -66,7 +66,7 @@ export default function ConfirmDialog({
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      unlock();
       const prev = previouslyFocused.current;
       if (prev && typeof prev.focus === "function") {
         try {

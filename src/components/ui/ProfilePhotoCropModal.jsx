@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useOverlayLock } from "../../utils/overlayLock";
 import Cropper from "react-easy-crop";
 import { AlertCircle, Loader2, X, ZoomIn } from "lucide-react";
 import {
@@ -110,12 +112,20 @@ export default function ProfilePhotoCropModal({
     }
   };
 
+  const busy = processing || previewing;
+  const panelRef = useRef(null);
+  useOverlayLock({
+    open: Boolean(open && imageSrc),
+    onClose,
+    panelRef,
+    closeOnEscape: !busy,
+  });
+
   if (!open || !imageSrc) return null;
 
-  const busy = processing || previewing;
-
-  return (
+  return createPortal(
     <div
+      ref={panelRef}
       className="profile-crop-modal"
       role="dialog"
       aria-modal="true"
@@ -241,6 +251,7 @@ export default function ProfilePhotoCropModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

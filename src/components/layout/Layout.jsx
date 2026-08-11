@@ -63,7 +63,7 @@ export default function Layout() {
   return (
     <PageChromeProvider>
       <SoftRefreshProvider>
-        <div className="app-shell flex h-screen overflow-hidden">
+        <div className="app-shell flex h-screen h-dvh overflow-hidden">
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
           <div className="app-shell__main flex-1 flex flex-col min-w-0 overflow-hidden">
             <Header onMenuClick={() => setSidebarOpen((open) => !open)} />

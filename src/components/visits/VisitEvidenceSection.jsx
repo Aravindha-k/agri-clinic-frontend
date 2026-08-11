@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useOverlayLock } from "../../utils/overlayLock";
 import {
   Paperclip,
   Image as ImageIcon,
@@ -41,42 +43,57 @@ function toneClasses(tone) {
 }
 
 function ImagePreviewModal({ item, onClose }) {
+  const panelRef = useRef(null);
+  useOverlayLock({
+    open: Boolean(item),
+    onClose,
+    panelRef,
+    trapFocus: true,
+  });
+
   if (!item) return null;
   const src = item.url || item.thumbnailUrl;
-  return (
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      ref={panelRef}
+      className="visit-evidence-preview"
       role="dialog"
       aria-modal="true"
       aria-label="Image preview"
       onClick={onClose}
     >
-      <div
-        className="relative max-w-4xl w-full max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+      <button
+        type="button"
+        onClick={onClose}
+        className="visit-evidence-preview__close"
+        aria-label="Close image preview"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute -top-10 right-0 p-2 text-white/90 hover:text-white"
-          aria-label="Close preview"
-        >
-          <X className="w-6 h-6" />
-        </button>
-        {src ? (
-          <img
-            src={src}
-            alt={item.filename}
-            className="max-h-[80vh] w-auto max-w-full mx-auto rounded-xl shadow-2xl object-contain bg-black/20"
-          />
-        ) : (
-          <div className="rounded-xl bg-white p-8 text-center text-slate-500">
-            Preview unavailable for this file.
-          </div>
-        )}
-        <p className="mt-3 text-center text-sm text-white/90 truncate">{item.filename}</p>
+        <X className="w-5 h-5" aria-hidden="true" />
+      </button>
+      <div
+        className="visit-evidence-preview__shell"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="visit-evidence-preview__stage">
+          {src ? (
+            <img
+              src={src}
+              alt={item.filename || "Visit evidence"}
+              className="visit-evidence-preview__img"
+            />
+          ) : (
+            <p className="visit-evidence-preview__unavailable">Preview unavailable for this file.</p>
+          )}
+        </div>
+        {item.filename ? (
+          <p className="visit-evidence-preview__name" title={item.filename}>
+            {item.filename}
+          </p>
+        ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -324,6 +341,7 @@ export default function VisitEvidenceSection({ visitId, onCountChange, variant =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
+  const closePreview = useCallback(() => setPreview(null), []);
 
   const load = useCallback(async () => {
     if (!visitId) return;
@@ -356,7 +374,7 @@ export default function VisitEvidenceSection({ visitId, onCountChange, variant =
           onLoad={load}
           onPreview={setPreview}
         />
-        <ImagePreviewModal item={preview} onClose={() => setPreview(null)} />
+        <ImagePreviewModal item={preview} onClose={closePreview} />
       </>
     );
   }
@@ -424,7 +442,7 @@ export default function VisitEvidenceSection({ visitId, onCountChange, variant =
         )}
       </div>
 
-      <ImagePreviewModal item={preview} onClose={() => setPreview(null)} />
+      <ImagePreviewModal item={preview} onClose={closePreview} />
     </section>
   );
 }

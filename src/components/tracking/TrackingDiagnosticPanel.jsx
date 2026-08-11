@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useOverlayLock } from "../../utils/overlayLock";
 import { X, RefreshCw, Bug } from "lucide-react";
 import { createPortal } from "react-dom";
 import { getEmployeeTrackingDiagnostics } from "../../api/tracking.api";
@@ -49,21 +50,22 @@ export default function TrackingDiagnosticPanel({ employee, open, onClose }) {
     load();
   }, [open, userId, load]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const panelRef = useRef(null);
+  useOverlayLock({ open, onClose, panelRef });
 
   if (!open) return null;
 
   const statusEmp = data ?? employee;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9997] flex justify-end" data-overlay="tracking-diagnostics">
+    <div
+      ref={panelRef}
+      className="fixed inset-0 z-[9997] flex justify-end"
+      data-overlay="tracking-diagnostics"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tracking diagnostics"
+    >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
       <div className="relative bg-white shadow-2xl h-full w-full max-w-lg overflow-y-auto flex flex-col">
         <div className="sticky top-0 z-10 bg-white border-b px-5 py-4 flex items-center justify-between">
@@ -78,7 +80,7 @@ export default function TrackingDiagnosticPanel({ employee, open, onClose }) {
             <button type="button" onClick={load} disabled={loading} className="p-2 rounded-lg hover:bg-gray-100" title="Refresh">
               <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100">
+            <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100" aria-label="Close diagnostics">
               <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>

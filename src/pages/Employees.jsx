@@ -36,6 +36,7 @@ import {
   isProtectedOwnerTarget,
 } from "../utils/roles";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { useOverlayLock } from "../utils/overlayLock";
 import { useToast } from "../components/ui/Toast";
 import { copyTextToClipboard } from "../utils/clipboard";
 import {
@@ -916,6 +917,8 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   const canPromoteAdmin = canAssignAdminRole(actor);
   const targetIsOwner = isProtectedOwnerTarget(selectedEmp);
   const [tab, setTab] = useState(initialTab || "details");
+  const drawerRef = useRef(null);
+  useOverlayLock({ open, onClose, panelRef: drawerRef });
 
   // Tracking data
   const [summary, setSummary] = useState(null);
@@ -1108,7 +1111,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   return createPortal(
     <>
       <div className="employees-hr-drawer-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="employees-hr-drawer" role="dialog" aria-modal="true" aria-label={`Employee profile: ${empName(profile)}`}>
+      <div ref={drawerRef} className="employees-hr-drawer" role="dialog" aria-modal="true" aria-label={`Employee profile: ${empName(profile)}`}>
 
         <div className="employees-hr-drawer-hero">
           <div className="employees-hr-drawer-hero__glow w-40 h-40 -top-10 -right-10" aria-hidden="true" />
@@ -1214,7 +1217,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                 <input readOnly value={selectedEmp?.username || selectedEmp?.employee_id || ""} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="employees-hr-field">
                   <label>First name</label>
                   <input placeholder="First name"
@@ -1233,7 +1236,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                   value={editForm.phone || ""} onChange={e => setEF("phone", e.target.value)} maxLength={15} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="employees-hr-field">
                   <label>Role</label>
                   <select value={editForm.role || ""} onChange={e => setEF("role", e.target.value)} disabled={!canMutate}>
@@ -1367,6 +1370,7 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
   const [error, setError] = useState(null);
   const [credentials, setCredentials] = useState(null); // { username, temporary_password, displayName }
   const [copyBusy, setCopyBusy] = useState(false);
+  const modalRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -1381,6 +1385,13 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
     setSaving(false);
     onClose();
   }, [clearCredentials, onClose]);
+
+  useOverlayLock({
+    open,
+    onClose: finishAndClose,
+    panelRef: modalRef,
+    closeOnEscape: !saving,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1465,7 +1476,7 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
         onClick={credentials ? undefined : finishAndClose}
         aria-hidden="true"
       />
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+      <div ref={modalRef} className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
         {credentials ? (
           <div
             className="employees-hr-modal employees-hr-cred-modal pointer-events-auto"
