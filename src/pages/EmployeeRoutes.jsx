@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, RefreshCw, Users } from "lucide-react";
 import RouteFallback from "../components/RouteFallback";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { EmptyState, PageHeader } from "../components/ui/command";
@@ -164,10 +164,22 @@ export default function EmployeeRoutes() {
         title="Employee Route History"
         subtitle="Day markers for Start, submitted visits, and End — matched to mobile Day map"
         actions={
-          <Link to="/tracking" className="enterprise-link-back">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Live Tracking
-          </Link>
+          selectedUserId && employees.length > 0 ? (
+            <button
+              type="button"
+              onClick={loadRoute}
+              disabled={routeLoading}
+              className="btn btn-secondary btn-md"
+            >
+              <RefreshCw className={`w-4 h-4 ${routeLoading ? "animate-spin" : ""}`} aria-hidden="true" />
+              {routeLoading ? "Refreshing…" : "Refresh route"}
+            </button>
+          ) : (
+            <Link to="/tracking" className="enterprise-link-back">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Live Tracking
+            </Link>
+          )
         }
       />
 
@@ -191,32 +203,12 @@ export default function EmployeeRoutes() {
       ) : null}
 
       {employees.length > 0 ? (
-      <div className="section-card p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-end route-history-filters">
-        <div className="flex-1 min-w-[200px]">
-          <label className="form-label flex items-center gap-1.5" htmlFor="page-route-employee">
-            <Users className="w-3.5 h-3.5" />
-            Employee
-          </label>
-          <select
-            id="page-route-employee"
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            className="select"
-          >
-            {employees.map((emp) => (
-              <option key={emp.user_id ?? emp.id} value={String(emp.user_id ?? emp.id)}>
-                {empName(emp)}
-                {emp.employee_id ? ` (${emp.employee_id})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      ) : null}
-
       <EmployeeRouteMapView
         userId={selectedUserId}
         employee={selectedEmployee}
+        employees={employees}
+        selectedUserId={selectedUserId}
+        onEmployeeChange={setSelectedUserId}
         routeDate={routeDate}
         onRouteDateChange={setRouteDate}
         routeData={routeData}
@@ -229,7 +221,9 @@ export default function EmployeeRoutes() {
         dateInputId="page-route-date"
         mapScopeKey={scopeKey}
         showingCached={showingCached}
+        variant="workspace"
       />
+      ) : null}
     </div>
   );
 }

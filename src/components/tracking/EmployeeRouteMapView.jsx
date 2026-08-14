@@ -14,7 +14,7 @@ import {
   computeRouteSummary,
 } from "../../utils/employeeRoute";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
-import { RefreshCw, Radio } from "lucide-react";
+import { RefreshCw, Radio, Users } from "lucide-react";
 import { formatDistanceKm } from "../../utils/trackingStatus";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
@@ -119,6 +119,9 @@ function routeIcon(color, size = 18) {
 export default function EmployeeRouteMapView({
   userId,
   employee = null,
+  employees = [],
+  selectedUserId = "",
+  onEmployeeChange,
   routeDate,
   onRouteDateChange,
   routeData,
@@ -167,6 +170,7 @@ export default function EmployeeRouteMapView({
   const zoom = markerCount === 1 ? 14 : markerCount > 1 ? 12 : TAMIL_NADU_ZOOM;
 
   const isDrawerVariant = variant === "tracking-drawer";
+  const isWorkspaceVariant = variant === "workspace";
   const employeeLabel = employee ? empName(employee) : "Employee";
 
   let statusMessage = null;
@@ -191,7 +195,59 @@ export default function EmployeeRouteMapView({
     statusTone = "info";
   }
 
-  const dateToolbar = (
+  const workspaceToolbar = isWorkspaceVariant ? (
+    <div className="route-history-workspace__toolbar">
+      <div className="route-history-workspace__field">
+        <label htmlFor="page-route-employee">
+          <Users className="w-3.5 h-3.5" aria-hidden="true" />
+          Employee
+        </label>
+        <select
+          id="page-route-employee"
+          className="select"
+          value={selectedUserId}
+          onChange={(e) => onEmployeeChange?.(e.target.value)}
+        >
+          {employees.map((emp) => (
+            <option key={emp.user_id ?? emp.id} value={String(emp.user_id ?? emp.id)}>
+              {empName(emp)}
+              {emp.employee_id ? ` (${emp.employee_id})` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="route-history-workspace__field">
+        <label htmlFor={dateInputId}>Route date</label>
+        <input
+          id={dateInputId}
+          type="date"
+          value={routeDate}
+          max={todayIsoDate()}
+          disabled={routeLoading && markerCount === 0}
+          onChange={(e) => onRouteDateChange(e.target.value)}
+          className="select"
+        />
+      </div>
+      <div className="route-history-workspace__meta">
+        {autoSyncing || routeSyncing ? (
+          <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+            <Radio className={`w-3 h-3 ${routeSyncing ? "animate-pulse" : ""}`} aria-hidden="true" />
+            {routeSyncing ? "Updating…" : "Live"}
+          </span>
+        ) : null}
+        {markerCount > 0 ? (
+          <span className="text-xs text-slate-500">
+            {markerCount} marker{markerCount === 1 ? "" : "s"}
+            {summary.visitCount > 0
+              ? ` · ${summary.visitCount} visit${summary.visitCount === 1 ? "" : "s"}`
+              : ""}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
+
+  const dateToolbar = !isWorkspaceVariant ? (
     <div
       className={
         isDrawerVariant
@@ -227,105 +283,129 @@ export default function EmployeeRouteMapView({
           : ""}
       </span>
     </div>
+  ) : null;
+
+  const compactSummary = markerCount > 0 ? (
+    <div className={isWorkspaceVariant ? "route-history-workspace__summary" : "tracking-drawer-route__summary grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"}>
+      <SummaryCard label="Visits" value={String(summary.visitCount ?? 0)} />
+      {summary.distanceKm != null && Number.isFinite(Number(summary.distanceKm)) ? (
+        <SummaryCard label="Distance" value={formatDistanceKm(summary.distanceKm)} />
+      ) : null}
+      {!isWorkspaceVariant && summary.employeeName ? (
+        <SummaryCard label="Employee" value={summary.employeeName} />
+      ) : null}
+      {!isWorkspaceVariant && showDutyMeta ? (
+        <>
+          <SummaryCard label="Duty start" value={formatRouteTimestamp(routeData?.startTime)} />
+          <SummaryCard label="Duty end" value={formatRouteTimestamp(routeData?.endTime)} />
+        </>
+      ) : !isWorkspaceVariant ? (
+        <>
+          <SummaryCard label="Duration" value={formatRouteDuration(summary.durationMinutes)} />
+          <SummaryCard label="Start time" value={formatRouteTimestamp(summary.startTime)} />
+          <SummaryCard label="End time" value={formatRouteTimestamp(summary.endTime)} />
+        </>
+      ) : (
+        <>
+          <SummaryCard label="Duration" value={formatRouteDuration(summary.durationMinutes)} />
+          <SummaryCard label="Start" value={formatRouteTimestamp(summary.startTime)} />
+        </>
+      )}
+      {!isWorkspaceVariant ? (
+        <SummaryCard
+          label="End reason"
+          value={summary.endReason ? String(summary.endReason).replace(/_/g, " ") : "—"}
+        />
+      ) : null}
+    </div>
+  ) : null;
+
+  const mapBlock = (
+    <>
+      {compactSummary}
+      <div className={isWorkspaceVariant ? "route-history-workspace__map-timeline" : undefined}>
+        <div className={isWorkspaceVariant ? "route-history-workspace__map min-w-0" : undefined}>
+          <AdminMapCard
+            title="Employee route summary"
+            subtitle={`${employeeLabel} · ${routeDate ?? todayIsoDate()}`}
+            showOpenInMaps={false}
+            footerMessage="This map shows only Start, submitted Visit and End points for the selected day."
+            mapSize={isDrawerVariant ? "drawer" : "default"}
+            mapProps={{
+              center,
+              zoom,
+              mapKey,
+              height: mapHeight,
+              legend: <RouteEndpointMapLegend />,
+              legendTitle: "Day markers",
+              loading: Boolean(routeLoading && markerCount === 0),
+              loadingLabel: "Updating map…",
+              statusMessage: !routeLoading || markerCount > 0 ? statusMessage : null,
+              statusTone,
+              statusDetail,
+              onRetry,
+              fallbackAction: onRetry ? (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Refresh data
+                </button>
+              ) : null,
+            }}
+            mapChildren={
+              <>
+                <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
+                {markers.map((marker, idx) => (
+                  <Marker
+                    key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
+                    position={[marker.latitude, marker.longitude]}
+                    icon={routeIcon(
+                      MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
+                      marker.type === "visit" ? 16 : 18
+                    )}
+                  >
+                    <Popup autoPan keepInView maxWidth={320}>
+                      <EmployeeMapPopup
+                        name={
+                          marker.type === "start"
+                            ? "Start"
+                            : marker.type === "end"
+                              ? "End"
+                              : marker.label || "Visit"
+                        }
+                        lat={marker.latitude}
+                        lng={marker.longitude}
+                        entity={marker}
+                        lastUpdated={formatRouteTimestamp(marker.captured_at)}
+                      />
+                    </Popup>
+                  </Marker>
+                ))}
+              </>
+            }
+          />
+        </div>
+
+        {markerCount > 0 ? (
+          <div className={isWorkspaceVariant ? "route-history-workspace__timeline" : undefined}>
+            <RouteDayTimeline markers={markers} />
+          </div>
+        ) : null}
+      </div>
+    </>
   );
+
+  if (isWorkspaceVariant) {
+    return (
+      <section className="route-history-workspace dashboard-section-card">
+        {workspaceToolbar}
+        <div className="route-history-workspace__body">{mapBlock}</div>
+      </section>
+    );
+  }
 
   return (
     <div className={isDrawerVariant ? "tracking-drawer-route" : "space-y-4"}>
       {dateToolbar}
-
-      {markerCount > 0 ? (
-        <div
-          className={
-            isDrawerVariant
-              ? "tracking-drawer-route__summary"
-              : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
-          }
-        >
-          {summary.employeeName ? (
-            <SummaryCard label="Employee" value={summary.employeeName} />
-          ) : null}
-          <SummaryCard label="Visits" value={String(summary.visitCount ?? 0)} />
-          {summary.distanceKm != null && Number.isFinite(Number(summary.distanceKm)) ? (
-            <SummaryCard label="Distance" value={formatDistanceKm(summary.distanceKm)} />
-          ) : null}
-          {showDutyMeta ? (
-            <>
-              <SummaryCard label="Duty start" value={formatRouteTimestamp(routeData?.startTime)} />
-              <SummaryCard label="Duty end" value={formatRouteTimestamp(routeData?.endTime)} />
-            </>
-          ) : (
-            <>
-              <SummaryCard label="Duration" value={formatRouteDuration(summary.durationMinutes)} />
-              <SummaryCard label="Start time" value={formatRouteTimestamp(summary.startTime)} />
-              <SummaryCard label="End time" value={formatRouteTimestamp(summary.endTime)} />
-            </>
-          )}
-          <SummaryCard
-            label="End reason"
-            value={summary.endReason ? String(summary.endReason).replace(/_/g, " ") : "—"}
-          />
-        </div>
-      ) : null}
-
-      <AdminMapCard
-        title="Employee route summary"
-        subtitle={`${employeeLabel} · ${routeDate ?? todayIsoDate()}`}
-        showOpenInMaps={false}
-        footerMessage="This map shows only Start, submitted Visit and End points for the selected day."
-        mapSize={isDrawerVariant ? "drawer" : "default"}
-        mapProps={{
-          center,
-          zoom,
-          mapKey,
-          height: mapHeight,
-          legend: <RouteEndpointMapLegend />,
-          legendTitle: "Day markers",
-          loading: Boolean(routeLoading && markerCount === 0),
-          loadingLabel: "Updating map…",
-          statusMessage: !routeLoading || markerCount > 0 ? statusMessage : null,
-          statusTone,
-          statusDetail,
-          onRetry,
-          fallbackAction: onRetry ? (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
-              <RefreshCw className="w-3.5 h-3.5" /> Refresh data
-            </button>
-          ) : null,
-        }}
-        mapChildren={
-          <>
-            <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
-            {markers.map((marker, idx) => (
-              <Marker
-                key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
-                position={[marker.latitude, marker.longitude]}
-                icon={routeIcon(
-                  MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
-                  marker.type === "visit" ? 16 : 18
-                )}
-              >
-                <Popup autoPan keepInView maxWidth={320}>
-                  <EmployeeMapPopup
-                    name={
-                      marker.type === "start"
-                        ? "Start"
-                        : marker.type === "end"
-                          ? "End"
-                          : marker.label || "Visit"
-                    }
-                    lat={marker.latitude}
-                    lng={marker.longitude}
-                    entity={marker}
-                    lastUpdated={formatRouteTimestamp(marker.captured_at)}
-                  />
-                </Popup>
-              </Marker>
-            ))}
-          </>
-        }
-      />
-
-      {markerCount > 0 ? <RouteDayTimeline markers={markers} /> : null}
+      {mapBlock}
     </div>
   );
 }

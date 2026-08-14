@@ -394,35 +394,42 @@ body {
     min-height: 0;
 }
 
+.app-header__page-actions-row {
+    display: none;
+}
+
 @media (max-width: 767px) {
-    .app-header__main {
-        align-items: flex-start;
+    .app-header__page-actions--inline {
+        display: none;
+    }
+
+    .app-header__page-actions-row {
+        display: flex;
         flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
         gap: 0.5rem;
+        width: 100%;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .app-header__page-actions-row .btn {
+        min-height: var(--control-height-md);
+    }
+
+    .app-header__title {
+        font-size: 1.125rem;
+        line-height: 1.25;
+    }
+
+    .app-header__lead {
+        flex: 1 1 100%;
     }
 
     .app-header__tools {
         flex: 1 1 100%;
-        min-width: 0;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-    }
-
-    .app-header__cluster {
-        flex-wrap: wrap;
-        min-width: 0;
-        justify-content: flex-end;
-    }
-
-    .app-header__page-actions {
-        max-width: none;
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-    .app-header__page-actions .btn-md {
-        padding-left: 0.65rem;
-        padding-right: 0.65rem;
+        justify-content: space-between;
     }
 }
 
@@ -1601,7 +1608,12 @@ textarea.input {
 }
 
 .pagination-btn {
-    @apply w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-all bg-white border border-gray-200 text-gray-500;
+    @apply flex items-center justify-center rounded-lg text-sm font-medium transition-all bg-white border border-gray-200 text-gray-500;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    width: auto;
+    height: auto;
+    padding: 0 0.625rem;
     box-shadow: var(--shadow-xs);
 }
 
@@ -11044,9 +11056,17 @@ textarea.input {
     .skeleton,
     .agri-loader,
     .brand-loader,
-    .section-card {
+    .section-card,
+    .employees-hr-drawer,
+    .employees-hr-drawer-hero__glow,
+    .tracking-stat-card,
+    .dashboard-insight-widget {
         animation: none !important;
         transition: none !important;
+    }
+
+    .employees-hr-drawer-hero__glow {
+        opacity: 0 !important;
     }
 
     .btn:active:not(:disabled) {
@@ -11093,4 +11113,200 @@ textarea.input {
 }
 .route-day-timeline__detail {
   @apply text-xs text-slate-600 mt-0.5;
+}
+
+/* ── Visual polish pass: employee drawer hierarchy ── */
+.employees-hr-drawer-block {
+  @apply rounded-xl border border-slate-200/80 bg-white overflow-hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.employees-hr-drawer-block__head {
+  @apply flex items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60;
+}
+
+.employees-hr-drawer-block__title {
+  @apply text-xs font-bold uppercase tracking-wider text-slate-500 m-0;
+}
+
+.employees-hr-drawer-block__subtitle {
+  @apply text-[11px] text-slate-400 m-0 mt-0.5 font-normal normal-case tracking-normal;
+}
+
+.employees-hr-drawer-block__body {
+  @apply px-4 py-3 space-y-3;
+}
+
+.employees-hr-drawer-sections {
+  @apply space-y-4 pb-2;
+}
+
+.employees-hr-drawer-disclosure {
+  @apply border-t border-slate-100 pt-2;
+}
+
+.employees-hr-drawer-disclosure__toggle {
+  @apply w-full flex items-center justify-between gap-2 text-left text-sm font-semibold text-slate-700 py-2 px-0 bg-transparent border-0 cursor-pointer;
+  min-height: var(--control-height-md);
+}
+
+.employees-hr-drawer-disclosure__toggle:hover {
+  @apply text-slate-900;
+}
+
+.employees-hr-drawer-disclosure__panel {
+  @apply pt-2;
+}
+
+.employees-hr-drawer-block__disclosure {
+  @apply w-full flex items-center justify-between gap-2 text-left text-sm font-semibold text-slate-700 py-2 px-0 bg-transparent border-0 cursor-pointer;
+  min-height: var(--control-height-md);
+}
+
+.employees-hr-drawer-block__disclosure:hover {
+  @apply text-slate-900;
+}
+
+.dashboard-alerts-primary {
+  @apply mb-4;
+}
+
+.dashboard-alerts-primary .alerts-panel--empty {
+  @apply border-slate-200/80;
+}
+
+.dashboard-alerts-primary .alerts-panel--empty .section-subtitle {
+  @apply text-slate-400;
+}
+
+.dashboard-main-row--map-only {
+  @apply grid grid-cols-1 gap-4;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-main-row--map-only {
+    @apply grid-cols-1;
+  }
+}
+
+/* ── Route history workspace ── */
+.route-history-workspace {
+  @apply flex flex-col gap-0 min-h-0;
+}
+
+.route-history-workspace__toolbar {
+  @apply flex flex-wrap items-end gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50;
+}
+
+.route-history-workspace__field {
+  @apply flex flex-col gap-1 min-w-0;
+  flex: 1 1 10rem;
+  max-width: 100%;
+}
+
+.route-history-workspace__field label {
+  @apply inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500;
+}
+
+.route-history-workspace__field .select {
+  @apply w-full min-h-[2.5rem];
+}
+
+.route-history-workspace__meta {
+  @apply flex flex-wrap items-center gap-2 ml-auto shrink-0 pb-0.5;
+}
+
+.route-history-workspace__toolbar-actions {
+  @apply flex items-center gap-2 ml-auto shrink-0;
+}
+
+.route-history-workspace__body {
+  @apply flex flex-col gap-0 min-h-0;
+}
+
+.route-history-workspace__summary {
+  @apply px-4 py-2.5 border-b border-slate-100 bg-white grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2;
+}
+
+.route-history-workspace__map-timeline {
+  @apply grid grid-cols-1 min-h-0;
+}
+
+@media (min-width: 1024px) {
+  .route-history-workspace__map-timeline {
+    grid-template-columns: 1fr minmax(16rem, 22rem);
+  }
+}
+
+.route-history-workspace__map {
+  @apply min-h-[280px] min-w-0;
+}
+
+.route-history-workspace__timeline {
+  @apply border-t border-slate-100 lg:border-t-0 lg:border-l min-w-0 max-h-[420px] overflow-y-auto;
+}
+
+/* ── Always-visible row actions (tracking / notifications) ── */
+.tracking-emp-card__action,
+.notifications-row__action {
+  @apply opacity-100 shrink-0;
+  min-width: var(--control-height-md);
+  min-height: var(--control-height-md);
+}
+
+@media (hover: hover) {
+  .tracking-emp-card__action,
+  .notifications-row__action {
+    @apply opacity-80;
+  }
+
+  .tracking-emp-card:hover .tracking-emp-card__action,
+  .notifications-row:hover .notifications-row__action {
+    @apply opacity-100;
+  }
+}
+
+/* ── Farmer detail grid ── */
+.farmer-detail-card--wide {
+  @apply lg:col-span-2;
+}
+
+/* ── Reports filter alignment ── */
+.reports-bi-filters .filter-bar {
+  @apply mb-0;
+}
+
+.reports-preview-caption {
+  @apply text-xs text-slate-500 mt-1;
+}
+
+/* ── Table consistency (narrow pass) ── */
+.data-table thead th,
+.table-shell thead th {
+  @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+}
+
+.data-table tbody tr,
+.table-shell tbody tr {
+  min-height: 2.75rem;
+}
+
+.data-table .table-action-btn,
+.table-shell .table-action-btn {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+}
+
+@media (max-width: 767px) {
+  .app-header__main {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .app-header__cluster {
+    flex-wrap: wrap;
+    min-width: 0;
+    justify-content: flex-end;
+  }
 }

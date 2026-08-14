@@ -609,7 +609,6 @@ export default function FarmerDetail() {
             <div className="farmer-detail-kpi-grid">
                 <StatCard icon={LandPlot} label="Total Fields" value={fields.length} color="emerald" />
                 <StatCard icon={TrendingUp} label="Total Acreage" value={`${acreage} ac`} color="teal" />
-                <StatCard icon={ClipboardList} label="Submitted Visits" value={visits.length} color="blue" />
                 <StatCard icon={MapPin} label="With GPS" value={gpsVisits} color="cyan" />
             </div>
 
@@ -631,27 +630,7 @@ export default function FarmerDetail() {
 
             {tab === "info" && (
                 <div className="farmer-detail-grid">
-                    <div className="farmer-detail-photo-card">
-                        <h3 className="farmer-detail-card__title w-full text-left flex items-center gap-2">
-                            <ImageIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                            Profile Photo
-                        </h3>
-                        <ProfilePhotoUpload
-                            entity={farmer}
-                            displayName={farmer.name || "Farmer"}
-                            size="2xl"
-                            variant="teal"
-                            onUpload={(file) => uploadFarmerPhoto(farmer.id, file)}
-                            onPhotoUpdated={(url, data) =>
-                                setFarmer((f) => ({ ...f, profile_photo_url: url, ...data }))
-                            }
-                        />
-                        <p className="farmer-detail-photo-card__hint">
-                            Tap the photo to update the farmer profile image. Used across visits and reports.
-                        </p>
-                    </div>
-
-                    <div className="farmer-detail-card">
+                    <div className="farmer-detail-card farmer-detail-card--wide">
                         <h3 className="farmer-detail-card__title">Personal Details</h3>
                         <InfoRow icon={User} label="Full Name" value={farmer.name} />
                         <InfoRow icon={Phone} label="Phone Number" value={farmer.phone} />
@@ -693,26 +672,6 @@ export default function FarmerDetail() {
                             <Suspense fallback={<RouteFallback label="Loading chart…" />}>
                                 <FarmerVisitTrendChart data={visitTrendData} />
                             </Suspense>
-                        </div>
-                    </div>
-
-                    <div className="farmer-detail-card">
-                        <h3 className="farmer-detail-card__title">Visit Summary</h3>
-                        <div className="space-y-2">
-                            {[
-                                { label: "Submitted visits", val: visits.length, cls: "bg-slate-100 text-slate-700" },
-                                { label: "With GPS", val: gpsVisits, cls: "bg-emerald-50 text-emerald-700" },
-                            ].map(({ label, val, cls }) => (
-                                <div key={label} className="farmer-detail-summary-row">
-                                    <span className="text-sm text-slate-600 font-medium">{label}</span>
-                                    <span className={`farmer-detail-summary-row__badge ${cls}`}>{val}</span>
-                                </div>
-                            ))}
-                            {visits.length > 0 && (
-                                <p className="pt-2 text-xs text-slate-400">
-                                    Last visit: <span className="font-semibold text-slate-600">{lastVisitLabel}</span>
-                                </p>
-                            )}
                         </div>
                     </div>
                 </div>

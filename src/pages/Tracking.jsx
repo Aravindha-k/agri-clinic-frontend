@@ -92,11 +92,19 @@ const useCountUp = (target, duration = 900) => {
     const [val, setVal] = useState(0);
     const prev = useRef(0);
     useEffect(() => {
-        const s = prev.current;
+        const reducedMotion =
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const e = Number(target) || 0;
+        if (reducedMotion) {
+            setVal(e);
+            prev.current = e;
+            return undefined;
+        }
+        const s = prev.current;
         if (s === e) {
             setVal(e);
-            return;
+            return undefined;
         }
         const t0 = performance.now();
         let raf;
@@ -264,7 +272,7 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
                         e.stopPropagation();
                         onOpenDrawer?.(emp);
                     }}
-                    className="p-2.5 rounded-lg text-emerald-700 hover:bg-emerald-50 sm:opacity-70 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0"
+                    className="tracking-emp-card__action p-2.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-all shrink-0"
                     aria-label={`Open ${empName(emp)} details`}
                 >
                     <Eye className="w-4 h-4" aria-hidden="true" />

@@ -861,6 +861,230 @@ const AssignedVillagesSection = memo(({ profile, summary, loading: isLoading }) 
 });
 AssignedVillagesSection.displayName = "AssignedVillagesSection";
 
+/* --- Consolidated drawer details: Profile / Field Activity / Account --- */
+const EmployeeDrawerDetails = memo(({
+  profile,
+  summary,
+  activities,
+  loadingSummary,
+  loadingActivity,
+  onPhotoUpdated,
+}) => {
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const s = summary || {};
+  const p = profile || {};
+  const working = Boolean(s.is_on_field || s.is_working || s.workday_active || s.active_workday);
+  const lastLoc = s.last_location_at || s.last_seen || s.last_heartbeat || p.last_seen;
+  const workStart = s.workday_started_at || s.duty_started_at || s.start_time;
+  const visitsToday = s.visits_today ?? s.total_visits;
+  const accountActive = p.is_active !== false;
+  const district =
+    p.district_name || (typeof p.district === "object" ? p.district?.name : p.district);
+  const villages = resolveAssignedVillages(p, s);
+  const routeUserId = p.user_id ?? p.user ?? p.id;
+
+  const workDayLine = workStart
+    ? `${fmtRel(workStart)} \u2013 ${working ? "Active" : "Ended"}`
+    : working
+      ? "Active"
+      : "Not started";
+
+  const fieldMetrics = [
+    { label: "Today\u2019s visits", value: visitsToday != null ? String(visitsToday) : "\u2014" },
+    {
+      label: "Distance",
+      value: s.distance_km != null ? `${s.distance_km} km` : "\u2014",
+    },
+    {
+      label: "Farmers visited",
+      value: s.farmers_visited ?? s.farmers_today ?? "\u2014",
+    },
+    {
+      label: "Evidence",
+      value: s.attachments_today ?? s.evidence_count ?? "\u2014",
+    },
+  ];
+
+  const fieldState = [
+    { label: "Duty status", value: working ? "Working" : "Not working", highlight: working },
+    { label: "Work day", value: workDayLine },
+    { label: "Last location", value: lastLoc ? fmtRel(lastLoc) : "\u2014" },
+    { label: "GPS accuracy", value: s.gps_accuracy ? `\u00b1${s.gps_accuracy}m` : "\u2014" },
+    { label: "On field", value: s.is_on_field ? "Yes" : "No", highlight: s.is_on_field },
+    { label: "Last seen", value: fmtRel(s.last_seen || p.last_seen) },
+  ];
+
+  return (
+    <div className="employees-hr-drawer-sections">
+      <section className="employees-hr-drawer-block" aria-labelledby="emp-drawer-profile">
+        <header className="employees-hr-drawer-block__head">
+          <UserCheck className="w-4 h-4" aria-hidden="true" />
+          <div>
+            <h3 id="emp-drawer-profile" className="employees-hr-drawer-block__title">Profile</h3>
+            <p className="employees-hr-drawer-block__subtitle">Identity and territory</p>
+          </div>
+        </header>
+        <div className="employees-hr-drawer-block__body">
+          <EmployeeProfile profile={profile} loading={false} onPhotoUpdated={onPhotoUpdated} />
+          {loadingSummary ? (
+            <div className="employees-hr-kv-grid animate-pulse mt-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="employees-hr-kv space-y-2">
+                  <Bone className="w-16 h-3" />
+                  <Bone className="w-24 h-4" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="employees-hr-kv-grid mt-4">
+              {[
+                { label: "Employee ID", value: p.employee_id || p.username },
+                { label: "Username", value: p.username },
+                { label: "Phone", value: p.phone },
+                { label: "Role", value: p.role?.replace(/_/g, " ") },
+                { label: "District", value: district || "\u2014" },
+                {
+                  label: "Status",
+                  value: accountActive ? (p.is_online ? "Active · Online" : "Active") : "Inactive",
+                  highlight: accountActive,
+                },
+              ].map((item) => (
+                <div key={item.label} className="employees-hr-kv">
+                  <div className="employees-hr-kv__label">{item.label}</div>
+                  <p className={`employees-hr-kv__value ${item.highlight ? "employees-hr-kv__value--highlight" : ""}`}>
+                    {item.value || "\u2014"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          {villages.length > 0 ? (
+            <div className="employees-hr-villages mt-3">
+              {villages.map((v, i) => (
+                <span key={`${v}-${i}`} className="employees-hr-village-chip">
+                  <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  {v}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="employees-hr-drawer-block" aria-labelledby="emp-drawer-field">
+        <header className="employees-hr-drawer-block__head">
+          <Activity className="w-4 h-4" aria-hidden="true" />
+          <div>
+            <h3 id="emp-drawer-field" className="employees-hr-drawer-block__title">Field Activity</h3>
+            <p className="employees-hr-drawer-block__subtitle">Today&apos;s operational snapshot</p>
+          </div>
+        </header>
+        <div className="employees-hr-drawer-block__body space-y-4">
+          {loadingSummary ? (
+            <div className="employees-hr-performance animate-pulse">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="employees-hr-performance__card space-y-2">
+                  <Bone className="w-16 h-3" />
+                  <Bone className="w-24 h-4" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="employees-hr-kv-grid employees-hr-kv-grid--compact">
+                {fieldState.map((item) => (
+                  <div key={item.label} className="employees-hr-kv">
+                    <div className="employees-hr-kv__label">{item.label}</div>
+                    <p className={`employees-hr-kv__value ${item.highlight ? "employees-hr-kv__value--highlight" : ""}`}>
+                      {item.value || "\u2014"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="employees-hr-performance">
+                {fieldMetrics.map((item) => (
+                  <div key={item.label} className="employees-hr-performance__card">
+                    <p className="employees-hr-performance__label">{item.label}</p>
+                    <p className="employees-hr-performance__value">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              {routeUserId ? (
+                <Link
+                  to={`/tracking/routes?userId=${routeUserId}`}
+                  className="inline-flex items-center gap-2 btn btn-secondary btn-sm w-full sm:w-auto"
+                >
+                  <Route className="w-4 h-4" aria-hidden="true" />
+                  View route history
+                  <ChevronRight className="w-4 h-4 ml-auto" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </>
+          )}
+          <div className="employees-hr-drawer-disclosure">
+            <button
+              type="button"
+              className="employees-hr-drawer-disclosure__toggle"
+              aria-expanded={timelineOpen}
+              onClick={() => setTimelineOpen((open) => !open)}
+            >
+              <span>Recent field activity</span>
+              <ChevronRight
+                className={`w-4 h-4 transition-transform ${timelineOpen ? "rotate-90" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+            {timelineOpen ? (
+              <div className="employees-hr-drawer-disclosure__panel">
+                <EmployeeActivityTimeline activities={activities} loading={loadingActivity} />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="employees-hr-drawer-block" aria-labelledby="emp-drawer-account">
+        <header className="employees-hr-drawer-block__head">
+          <Shield className="w-4 h-4" aria-hidden="true" />
+          <div>
+            <h3 id="emp-drawer-account" className="employees-hr-drawer-block__title">Account</h3>
+            <p className="employees-hr-drawer-block__subtitle">Login and device status</p>
+          </div>
+        </header>
+        <div className="employees-hr-drawer-block__body space-y-3">
+          <div className="employees-hr-kv-grid employees-hr-kv-grid--compact">
+            {[
+              { label: "Account", value: accountActive ? "Active" : "Inactive", highlight: accountActive },
+              { label: "Mobile login", value: accountActive ? "Enabled" : "Disabled" },
+              {
+                label: "Last login",
+                value: s.device_status?.last_login_at
+                  ? fmtRel(s.device_status.last_login_at)
+                  : "\u2014",
+              },
+              {
+                label: "Last mobile activity",
+                value: s.device_status?.last_seen_at || s.device_status?.last_login_at
+                  ? fmtRel(s.device_status.last_seen_at || s.device_status.last_login_at)
+                  : "\u2014",
+              },
+            ].map((item) => (
+              <div key={item.label} className="employees-hr-kv">
+                <div className="employees-hr-kv__label">{item.label}</div>
+                <p className={`employees-hr-kv__value ${item.highlight ? "employees-hr-kv__value--highlight" : ""}`}>
+                  {item.value || "\u2014"}
+                </p>
+              </div>
+            ))}
+          </div>
+          <EmployeeDeviceInfoSection employee={profile} summary={summary} />
+        </div>
+      </section>
+    </div>
+  );
+});
+EmployeeDrawerDetails.displayName = "EmployeeDrawerDetails";
+
 /* --- Admin Reset Section (inside Password tab) --- */
 const AdminResetSection = memo(({ empId }) => {
   const [newPass, setNewPass] = useState("");
@@ -1226,41 +1450,14 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
         <div className="employees-hr-drawer-body">
 
           {tab === "details" && (
-            <>
-              <div className="employees-hr-section">
-                <div className="employees-hr-section__body">
-                  <EmployeeProfile profile={profile} loading={false} onPhotoUpdated={onUpdated} />
-                </div>
-              </div>
-
-              <HrSection icon={Signal} title="Tracking summary" subtitle="Real-time status">
-                <EmployeeSummary summary={summary} profile={profile} loading={loadingSummary} />
-                {(profile?.user_id ?? profile?.user ?? profile?.id) && (
-                  <Link
-                    to={`/tracking/routes?userId=${profile?.user_id ?? profile?.user ?? profile?.id}`}
-                    className="mt-3 inline-flex items-center gap-2 btn btn-secondary btn-sm"
-                  >
-                    <Route className="w-4 h-4" aria-hidden="true" />
-                    View route history
-                    <ChevronRight className="w-4 h-4 ml-auto" aria-hidden="true" />
-                  </Link>
-                )}
-              </HrSection>
-
-              <AssignedVillagesSection profile={profile} summary={summary} loading={loadingSummary} />
-
-              <HrSection icon={Radio} title="Device & connectivity" subtitle="Field app status">
-                <EmployeeDeviceInfoSection employee={profile} summary={summary} />
-              </HrSection>
-
-              <EmployeeFieldActivity summary={summary} profile={profile} loading={loadingSummary} />
-
-              <EmployeePerformanceSummary summary={summary} profile={profile} />
-
-              <HrSection icon={Activity} title="Activity timeline" subtitle="Today\u2019s events">
-                <EmployeeActivityTimeline activities={activities} loading={loadingActivity} />
-              </HrSection>
-            </>
+            <EmployeeDrawerDetails
+              profile={profile}
+              summary={summary}
+              activities={activities}
+              loadingSummary={loadingSummary}
+              loadingActivity={loadingActivity}
+              onPhotoUpdated={onUpdated}
+            />
           )}
 
           {tab === "edit" && (

@@ -11,6 +11,10 @@ import {
   EmptyState,
   ErrorRetry,
   PageHeader,
+  FilterBar,
+  FilterField,
+  FilterToolbarRow,
+  FilterActiveRow,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import RouteFallback from "../components/RouteFallback";
@@ -488,65 +492,65 @@ export default function Reports() {
         </div>
       </section>
 
-      <section className="reports-bi-filters" aria-label="Report filters">
-        <div className="reports-bi-filters__row">
-          <div className="reports-bi-filters__dates">
-            <div className="reports-bi-date-field">
-              <label htmlFor="report-from">From date</label>
-              <input
-                id="report-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-            <div className="reports-bi-date-field">
-              <label htmlFor="report-to">To date</label>
-              <input
-                id="report-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-            <div className="reports-bi-date-field">
-              <label htmlFor="report-employee">Employee</label>
-              <select
-                id="report-employee"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-              >
-                <option value="">All employees</option>
-                {employees.map((emp) => (
-                  <option key={emp.id ?? emp.employee_id} value={emp.id ?? emp.employee_id}>
-                    {empName(emp)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="reports-bi-date-field">
-              <label htmlFor="report-district">District</label>
-              <select
-                id="report-district"
-                value={districtId}
-                onChange={(e) => setDistrictId(e.target.value)}
-              >
-                <option value="">All districts</option>
-                {districts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <p className="reports-bi-filters__summary">
+      <FilterBar className="reports-bi-filters">
+        <FilterToolbarRow>
+          <FilterField label="From date">
+            <input
+              id="report-from"
+              type="date"
+              className="search-input w-full"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </FilterField>
+          <FilterField label="To date">
+            <input
+              id="report-to"
+              type="date"
+              className="search-input w-full"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </FilterField>
+          <FilterField label="Employee">
+            <select
+              id="report-employee"
+              className="search-input w-full"
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+            >
+              <option value="">All employees</option>
+              {employees.map((emp) => (
+                <option key={emp.id ?? emp.employee_id} value={emp.id ?? emp.employee_id}>
+                  {empName(emp)}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="District">
+            <select
+              id="report-district"
+              className="search-input w-full"
+              value={districtId}
+              onChange={(e) => setDistrictId(e.target.value)}
+            >
+              <option value="">All districts</option>
+              {districts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+        </FilterToolbarRow>
+        <FilterActiveRow label="Summary">
+          <span className="reports-bi-filters__summary">
             <Calendar className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             {dateInvalid ? "Invalid date range" : `${visitTotal} visits in selected range`}
             {refreshing ? " · Updating…" : ""}
-          </p>
-        </div>
-      </section>
+          </span>
+        </FilterActiveRow>
+      </FilterBar>
 
       <div className="reports-bi-kpi-grid">
         {kpis.map((kpi) => (
@@ -837,10 +841,9 @@ export default function Reports() {
               <BarChart3 className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
             </div>
             <div>
-              <h3 className="reports-bi-panel__title">Visit records</h3>
+              <h3 className="reports-bi-panel__title">Recent visits</h3>
               <p className="reports-bi-panel__subtitle">
-                Preview of latest {filtered.length} record{filtered.length === 1 ? "" : "s"}
-                {visitTotal > filtered.length ? ` of ${visitTotal}` : ""}
+                Showing up to 50 records{visitTotal > 0 ? ` · ${visitTotal} in range` : ""}
               </p>
             </div>
           </div>

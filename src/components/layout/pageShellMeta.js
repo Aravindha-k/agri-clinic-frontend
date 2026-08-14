@@ -20,8 +20,8 @@ const EXACT = {
     subtitle: "Field visit records",
   },
   "/crop-issues": {
-    title: "Crop Issues",
-    subtitle: "Crop problems and field findings",
+    title: "Crop Directory",
+    subtitle: "Crop types used when recording field visits",
   },
   "/tracking": {
     title: "Live Tracking",

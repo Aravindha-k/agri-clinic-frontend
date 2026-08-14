@@ -9,8 +9,9 @@ const SEVERITY = {
 };
 
 export default function AlertsPanel({ alerts = [] }) {
+  const isEmpty = alerts.length === 0;
   return (
-    <div className="dashboard-section-card flex flex-col">
+    <div className={`dashboard-section-card flex flex-col${isEmpty ? " alerts-panel--empty" : ""}`}>
       <div className="section-card-header">
         <div className="flex items-center gap-2.5">
           <div className="icon-box">

@@ -74,8 +74,8 @@ export default function Issues() {
   return (
     <div className="page-container crop-issues-page">
       <PageHeader
-        title="Crop Issues"
-        subtitle="Manage the crop directory used when recording field visits and crop issues."
+        title="Crop Directory"
+        subtitle="Browse the crop directory used when recording field visits."
         actions={
           <button type="button" onClick={fetchCrops} className="btn btn-primary btn-md">
             <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
@@ -155,7 +155,7 @@ export default function Issues() {
             title={crops.length === 0 ? "No crops in master data" : "No crops match your search"}
             subtitle={
               crops.length === 0
-                ? "Add crops under Masters → Crops so field visits and crop issues can reference them."
+                ? "Add crops under Masters → Crops so field visits can reference them in the crop directory."
                 : "Try a different name or clear the search filter."
             }
             action={

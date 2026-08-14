@@ -602,6 +602,31 @@ const Dashboard = () => {
         />
       </div>
 
+      <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
+        <div className="dashboard-alerts-primary">
+          <AlertsPanel alerts={opsAlerts ?? []} />
+        </div>
+      </WidgetErrorBoundary>
+
+      {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
+        <div className="dashboard-status-strip">
+          <button
+            type="button"
+            onClick={() => navigate("/tracking")}
+            className="dashboard-status-chip dashboard-status-chip--live"
+          >
+            <Radio className="w-4 h-4" />
+            {stats.workingNow} working now · {stats.onlineNow} GPS online
+          </button>
+          {stats.gpsIssues > 0 && (
+            <span className="dashboard-status-chip dashboard-status-chip--alert">
+              <AlertTriangle className="w-4 h-4" />
+              {stats.gpsIssues} GPS issue{stats.gpsIssues !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      )}
+
       <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
         <QuickActions />
       </WidgetErrorBoundary>
@@ -671,35 +696,11 @@ const Dashboard = () => {
         <LiveOperationsPanel ops={liveOps ?? {}} />
       </WidgetErrorBoundary>
 
-      <div className="dashboard-ops-row">
-        <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
-          <AlertsPanel alerts={opsAlerts ?? []} />
-        </WidgetErrorBoundary>
-        <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
-          <UnifiedActivityFeed events={activityFeed ?? []} />
-        </WidgetErrorBoundary>
-      </div>
+      <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
+        <UnifiedActivityFeed events={activityFeed ?? []} />
+      </WidgetErrorBoundary>
 
-      {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
-        <div className="dashboard-status-strip">
-          <button
-            type="button"
-            onClick={() => navigate("/tracking")}
-            className="dashboard-status-chip dashboard-status-chip--live"
-          >
-            <Radio className="w-4 h-4" />
-            {stats.workingNow} working now · {stats.onlineNow} GPS online
-          </button>
-          {stats.gpsIssues > 0 && (
-            <span className="dashboard-status-chip dashboard-status-chip--alert">
-              <AlertTriangle className="w-4 h-4" />
-              {stats.gpsIssues} GPS issue{stats.gpsIssues !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="dashboard-main-row">
+      <div className="dashboard-main-row dashboard-main-row--map-only">
         <WidgetErrorBoundary
           name="LiveMap"
           title="Live Field Map unavailable"
@@ -718,69 +719,6 @@ const Dashboard = () => {
             />
           </Suspense>
         </WidgetErrorBoundary>
-
-        <div className="dashboard-section-card flex flex-col">
-          <SectionHeader
-            icon={Clock}
-            title="Recent Activity Feed"
-            subtitle="Workday sessions & field activity"
-          />
-          <div className="dashboard-timeline__scroll">
-            {workdays.length === 0 ? (
-              <EmptyState
-                icon={Clock}
-                title="No activity yet"
-                subtitle="Workday sessions will appear here once employees start tracking."
-                className="py-12"
-              />
-            ) : (
-              <div className="dashboard-timeline">
-                {workdays.slice(0, 10).map((wd, i) => {
-                  const isComplete = !!wd.end_time;
-                  const dotColor = wd.status === "active" || !isComplete
-                    ? "bg-sky-500"
-                    : "bg-emerald-500";
-                  const employeeName =
-                    wd.employee?.first_name ||
-                    wd.employee?.username ||
-                    "Employee";
-                  return (
-                    <div key={wd.id || i} className="dashboard-timeline-item">
-                      <div className={`dashboard-timeline-dot ${dotColor}`} aria-hidden="true" />
-                      <div className="dashboard-timeline-card">
-                        <div className="dashboard-timeline-card__head">
-                          <ProfileAvatar entity={wd.employee} size="xs" />
-                          <p className="dashboard-timeline-card__title">{employeeName}</p>
-                          <OpsStatusBadge
-                            status={
-                              wd.status || (isComplete ? "completed" : "active")
-                            }
-                          />
-                        </div>
-                        <div className="dashboard-timeline-card__time">
-                          <Clock className="w-3 h-3" aria-hidden="true" />
-                          <span>{formatTime(wd.start_time)}</span>
-                          {wd.end_time && (
-                            <>
-                              <span className="text-slate-300" aria-hidden="true">&rarr;</span>
-                              <span>{formatTime(wd.end_time)}</span>
-                              <span className="dashboard-timeline-card__time-strong">
-                                {formatDuration(wd.start_time, wd.end_time)}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1.5 pl-[2.375rem]">
-                          {formatDate(wd.start_time)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Visit trends — lazy-loaded chart */}

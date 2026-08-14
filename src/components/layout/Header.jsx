@@ -124,7 +124,7 @@ export default function Header({ onMenuClick }) {
               <div className="app-header__divider hidden md:block" aria-hidden="true" />
 
               {actions && (
-                <div className="app-header__page-actions">
+                <div className="app-header__page-actions app-header__page-actions--inline">
                   {actions}
                 </div>
               )}
@@ -209,6 +209,10 @@ export default function Header({ onMenuClick }) {
             </div>
           </div>
         </div>
+
+        {hasChrome && actions ? (
+          <div className="app-header__page-actions-row">{actions}</div>
+        ) : null}
       </div>
     </header>
   );

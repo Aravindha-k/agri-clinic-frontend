@@ -207,7 +207,7 @@ export default function Notifications() {
                       <button
                         type="button"
                         onClick={() => markAsRead(n.id)}
-                        className="p-2.5 rounded-lg hover:bg-emerald-50 text-emerald-600 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-emerald-400 transition-colors sm:opacity-70 group-hover:opacity-100"
+                        className="notifications-row__action p-2.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
                         aria-label="Mark as read"
                         title="Mark as read"
                       >
