@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { captureAppError } from "../../utils/errorReporting";
 
 /**
  * Catches render errors for a single route so the app shell (sidebar/header) stays visible.
@@ -15,6 +16,9 @@ export default class PageErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    captureAppError(error, "PageErrorBoundary", {
+      componentStack: String(info?.componentStack || "").slice(0, 500),
+    });
     if (import.meta.env.DEV) {
       console.error("[PageErrorBoundary]", error, info);
     }

@@ -64,8 +64,6 @@ export default function Header({ onMenuClick }) {
 
   const handleLogout = async () => {
     try { await logout(); } catch { }
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
     navigate("/login");
   };
 

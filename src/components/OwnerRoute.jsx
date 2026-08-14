@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { canAccessOwnerSecurityScreens } from "../utils/roles";
 import { PageLoader } from "./ui/command";
+import { getAccessToken } from "../utils/authTokens";
 
 /**
  * UI gate for owner/superuser-only screens.
@@ -10,7 +11,7 @@ import { PageLoader } from "./ui/command";
  */
 export default function OwnerRoute({ children, redirectTo = "/dashboard" }) {
   const { loading, token, user } = useAuth();
-  const storedToken = typeof window !== "undefined" ? localStorage.getItem("access") : null;
+  const storedToken = typeof window !== "undefined" ? getAccessToken() : null;
   const hasToken = !!(token || storedToken);
 
   if (!hasToken && !loading) {

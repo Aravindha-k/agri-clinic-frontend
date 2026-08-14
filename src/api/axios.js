@@ -1,12 +1,13 @@
 import axios from "axios";
-import {
-  ADMIN_SESSION_EXPIRED_MESSAGE,
-  isAdminSessionExpiredError,
-} from "../utils/authErrors";
+import { isAdminSessionExpiredError } from "../utils/authErrors";
 import { getApiV1BaseURL } from "../config/api";
-
-const SESSION_EXPIRED_STORAGE_KEY = "auth_redirect_message";
-const SESSION_EXPIRED_REASON = "admin_session_expired";
+import { getAccessToken } from "../utils/authTokens";
+import {
+  handleFailedRefresh,
+  isAuthRefreshExempt,
+  redirectToLoginOnce,
+  refreshSessionOnce,
+} from "../utils/authRefresh";
 
 const baseURL = getApiV1BaseURL(import.meta.env.VITE_API_BASE_URL);
 
@@ -21,8 +22,9 @@ if (import.meta.env.DEV) {
 }
 
 instance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access");
+  const token = getAccessToken();
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -44,11 +46,17 @@ export function unwrapResponse(raw) {
   return raw;
 }
 
+/** Shared refresh used by interceptor and AuthContext. */
+export function refreshSession() {
+  return refreshSessionOnce((url, body, config) => instance.post(url, body, config));
+}
+
 instance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
-    const url = error?.config?.url ?? error?.config?.baseURL ?? "unknown";
+    const config = error?.config || {};
+    const url = config.url ?? config.baseURL ?? "unknown";
 
     if (!error.response) {
       console.error(
@@ -59,21 +67,48 @@ instance.interceptors.response.use(
         url,
         error.message
       );
-    } else if (status === 401 || status === 403) {
-      const isLoginRequest = String(url).includes("/auth/login");
-      if (!isLoginRequest && (status === 401 || isAdminSessionExpiredError(error))) {
-        const expired = isAdminSessionExpiredError(error);
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
-        if (expired) {
-          sessionStorage.setItem(SESSION_EXPIRED_STORAGE_KEY, ADMIN_SESSION_EXPIRED_MESSAGE);
-          window.location.href = `/login?reason=${SESSION_EXPIRED_REASON}`;
-        } else {
-          console.warn("[api] Session expired — redirecting to login.");
-          window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    const requestId =
+      error.response.headers?.["x-request-id"] ||
+      error.response.headers?.["x-correlation-id"] ||
+      null;
+    if (typeof requestId === "string" && requestId) {
+      error.requestId = requestId;
+    }
+
+    // 403 is authorization/business denial — never refresh, never logout.
+    if (status === 403) {
+      return Promise.reject(error);
+    }
+
+    if (status === 401 && !isAuthRefreshExempt(config) && !config._retry) {
+      config._retry = true;
+      try {
+        const access = await refreshSession();
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${access}`;
+        // Replay once. 401 means JWT auth rejected before the view ran,
+        // so POST/PUT/PATCH/DELETE are not duplicated by this retry.
+        return instance(config);
+      } catch (refreshErr) {
+        if (refreshErr?.networkRefreshFailed) {
+          return Promise.reject(refreshErr);
         }
+        handleFailedRefresh(refreshErr);
+        return Promise.reject(refreshErr);
       }
-    } else if (status !== 403) {
+    }
+
+    if (status === 401 && config._retry) {
+      redirectToLoginOnce({
+        sessionExpired: isAdminSessionExpiredError(error),
+      });
+      return Promise.reject(error);
+    }
+
+    if (status !== 403) {
       console.error("[api] HTTP", status, url, error?.response?.data ?? error.message);
     }
 

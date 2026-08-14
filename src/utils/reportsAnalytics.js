@@ -243,6 +243,44 @@ export function topEntries(countMap, limit = 8) {
     .slice(0, limit);
 }
 
+function seriesToMap(rows, nameKey, countKey) {
+  const map = {};
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const name = row?.[nameKey];
+    const count = safeNumber(row?.[countKey], 0);
+    if (name) map[String(name)] = count;
+  });
+  return map;
+}
+
+/** Map GET /reports/summary/ payload onto the existing Reports analytics shape. */
+export function analyticsFromSummary(summary, employees = []) {
+  const live = buildGpsComplianceAnalytics([], employees);
+  const t = summary?.totals || {};
+  const visits = safeNumber(t.visits ?? t.submitted_visits, 0);
+  return {
+    totalVisits: visits,
+    totalFarmers: safeNumber(t.farmers, 0),
+    villagesCovered: safeNumber(t.villages_covered, 0),
+    cropTypes: seriesToMap(summary?.visits_by_crop, "crop_name", "count"),
+    farmerCoverageByVillage: seriesToMap(
+      summary?.farmer_coverage_by_village,
+      "village_name",
+      "farmers"
+    ),
+    visitsByEmployee: seriesToMap(summary?.visits_by_employee, "employee_name", "count"),
+    visitsByDistrict: seriesToMap(summary?.visits_by_district, "district_name", "count"),
+    gpsCompliancePct: safeNumber(t.gps_compliance_pct, 0),
+    gpsCompliant: safeNumber(t.gps_compliant, 0),
+    visitsWithEvidence: safeNumber(t.visits_with_evidence, 0),
+    attachmentTotal: safeNumber(t.evidence_files, 0),
+    evidenceRatePct: safeNumber(t.evidence_rate_pct, 0),
+    gpsDisabledIncidents: live.gpsDisabledIncidents,
+    trackingUptimePct: live.trackingUptimePct,
+    visitsByDay: Array.isArray(summary?.visits_by_day) ? summary.visits_by_day : [],
+  };
+}
+
 export function exportVisitsCsv(rows, filename = "agri-visits-report.csv") {
   if (!rows?.length) return;
   const headers = ["ID", "Farmer", "Crop", "Location", "Employee", "Date", "Status"];

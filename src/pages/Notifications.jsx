@@ -207,10 +207,11 @@ export default function Notifications() {
                       <button
                         type="button"
                         onClick={() => markAsRead(n.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-all"
+                        className="p-2.5 rounded-lg hover:bg-emerald-50 text-emerald-600 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-emerald-400 transition-colors sm:opacity-70 group-hover:opacity-100"
+                        aria-label="Mark as read"
                         title="Mark as read"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </>
                   )}

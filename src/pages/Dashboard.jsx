@@ -508,7 +508,7 @@ const Dashboard = () => {
           iconBg={KPI_THEMES.farmers.iconBg}
           iconColor={KPI_THEMES.farmers.iconColor}
           onClick={() => navigate("/farmers")}
-          trend={{ direction: "neutral", text: "All farmers in registry" }}
+          trend={{ direction: "neutral", text: "Registry total" }}
         />
         <PremiumKpiCard
           icon={LandPlot}
@@ -517,7 +517,7 @@ const Dashboard = () => {
           gradient={KPI_THEMES.fields.gradient}
           iconBg={KPI_THEMES.fields.iconBg}
           iconColor={KPI_THEMES.fields.iconColor}
-          trend={{ direction: "up", text: "Mapped" }}
+          trend={{ direction: "neutral", text: "Mapped fields" }}
         />
         <PremiumKpiCard
           icon={Calendar}
@@ -528,11 +528,7 @@ const Dashboard = () => {
           iconColor={KPI_THEMES.visits.iconColor}
           onClick={() => navigate("/visits")}
           subValue={stats.todayVisits > 0 ? `${stats.todayVisits} today` : undefined}
-          trend={
-            stats.todayVisits > 0
-              ? { direction: "up", text: `+${stats.todayVisits} today` }
-              : { direction: "neutral", text: "All time" }
-          }
+          trend={{ direction: "neutral", text: "All-time total" }}
         />
         <PremiumKpiCard
           icon={AlertTriangle}
@@ -544,8 +540,8 @@ const Dashboard = () => {
           onClick={() => navigate("/crop-issues")}
           trend={
             stats.issues_open > 0
-              ? { direction: "down", text: "Needs attention" }
-              : { direction: "up", text: "All clear" }
+              ? { direction: "neutral", text: "Open now" }
+              : { direction: "neutral", text: "None open" }
           }
         />
         <PremiumKpiCard
@@ -558,7 +554,7 @@ const Dashboard = () => {
           onClick={() => navigate("/visits")}
           trend={
             stats.todayVisits > 0
-              ? { direction: "up", text: "On track" }
+              ? { direction: "neutral", text: "Submitted today" }
               : { direction: "neutral", text: "No visits yet" }
           }
         />
@@ -579,8 +575,8 @@ const Dashboard = () => {
           }
           trend={
             stats.workingNow > 0
-              ? { direction: "up", text: "In field" }
-              : { direction: "neutral", text: "Idle" }
+              ? { direction: "neutral", text: "On duty now" }
+              : { direction: "neutral", text: "None on duty" }
           }
         />
         <PremiumKpiCard
@@ -599,11 +595,9 @@ const Dashboard = () => {
                 : "Live GPS status"
           }
           trend={
-            stats.workingNow > 0 && stats.onlineNow >= stats.workingNow
-              ? { direction: "up", text: "Healthy" }
-              : stats.gpsIssues > 0
-                ? { direction: "down", text: `${stats.gpsIssues} issues` }
-                : { direction: "neutral", text: "Monitoring" }
+            stats.gpsIssues > 0
+              ? { direction: "neutral", text: `${stats.gpsIssues} GPS issues` }
+              : { direction: "neutral", text: "Live snapshot" }
           }
         />
       </div>

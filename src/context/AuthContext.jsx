@@ -1,8 +1,16 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { loginUser, refreshToken, getCurrentUser, logout as logoutAPI } from '../api/auth.api';
+import { loginUser, getCurrentUser, logout as logoutAPI } from '../api/auth.api';
+import { refreshSession } from '../api/axios';
 import { unwrapSuccessEnvelope } from '../utils/apiUnwrap';
 import { loginAuthErrorMessage } from '../utils/authErrors';
 import { clearAllAdminMapSnapshots } from '../utils/mapSnapshotCache';
+import {
+    persistTokens,
+    clearTokens,
+    getAccessToken,
+    getRefreshToken,
+    subscribeAuthTokens,
+} from '../utils/authTokens';
 
 const AuthContext = createContext();
 
@@ -67,9 +75,15 @@ export const AuthProvider = ({ children }) => {
         setRefreshTokenValue(null);
         setUser(null);
         setError(null);
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
+        clearTokens();
         clearAllAdminMapSnapshots();
+    }, []);
+
+    useEffect(() => {
+        return subscribeAuthTokens(({ access, refresh }) => {
+            setToken(access || null);
+            setRefreshTokenValue(refresh || null);
+        });
     }, []);
 
     useEffect(() => {
@@ -120,7 +134,7 @@ export const AuthProvider = ({ children }) => {
             return profile;
         } catch (err) {
             const status = err?.response?.status;
-            if (status === 401 || status === 403) {
+            if (status === 401) {
                 clearSession();
             } else {
                 console.error('Failed to fetch user:', err);
@@ -132,8 +146,8 @@ export const AuthProvider = ({ children }) => {
     }, [clearSession]);
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('access');
-        const storedRefreshToken = localStorage.getItem('refresh');
+        const storedToken = getAccessToken();
+        const storedRefreshToken = getRefreshToken();
 
         if (storedToken && storedRefreshToken) {
             setToken(storedToken);
@@ -158,21 +172,19 @@ export const AuthProvider = ({ children }) => {
 
             const loginUserObj = normalizeUserProfile(body);
             if (loginUserObj && !isAdminUser(loginUserObj)) {
-                localStorage.removeItem('access');
-                localStorage.removeItem('refresh');
+                clearTokens();
                 const msg = 'This account does not have admin panel access.';
                 setError(msg);
                 throw new Error(msg);
             }
 
+            persistTokens({ access, refresh });
             setToken(access);
             setRefreshTokenValue(refresh);
-            localStorage.setItem('access', access);
-            localStorage.setItem('refresh', refresh);
 
             const profile = await fetchCurrentUser();
             if (!profile) {
-                const accessStillThere = localStorage.getItem('access');
+                const accessStillThere = getAccessToken();
                 if (!accessStillThere) {
                     const msg = 'This account does not have admin panel access.';
                     setError(msg);
@@ -192,22 +204,12 @@ export const AuthProvider = ({ children }) => {
     }, [fetchCurrentUser, clearSession]);
 
     const refresh = useCallback(async () => {
-        const currentRefresh = refreshTokenRef.current;
-        if (!currentRefresh) {
-            throw new Error('No refresh token available');
-        }
-
         try {
-            const response = await refreshToken(currentRefresh);
-            const body = unwrapSuccessEnvelope(response) ?? response.data;
-            const access = body?.access ?? body?.access_token;
-            if (!access) throw new Error('Refresh response missing access token');
-
-            setToken(access);
-            localStorage.setItem('access', access);
-            return access;
+            return await refreshSession();
         } catch (err) {
-            await logout();
+            if (!err?.networkRefreshFailed) {
+                await logout();
+            }
             throw err;
         }
     }, [logout]);

@@ -14,6 +14,7 @@ import LiveMapPanController from "../components/tracking/LiveMapPanController";
 import LiveMapFullscreenController from "../components/tracking/LiveMapFullscreenController";
 import EmployeeRoutePanel from "../components/tracking/EmployeeRoutePanel";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
+import TrackingDiagnosticPanel from "../components/tracking/TrackingDiagnosticPanel";
 import { useAdaptivePolling } from "../hooks/useAdaptivePolling";
 import useCloseOnRouteChange from "../hooks/useCloseOnRouteChange";
 import {
@@ -263,10 +264,10 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
                         e.stopPropagation();
                         onOpenDrawer?.(emp);
                     }}
-                    className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    className="p-2.5 rounded-lg text-emerald-700 hover:bg-emerald-50 sm:opacity-70 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0"
                     aria-label={`Open ${empName(emp)} details`}
                 >
-                    <Eye className="w-4 h-4" />
+                    <Eye className="w-4 h-4" aria-hidden="true" />
                 </button>
             </div>
         </article>
@@ -279,13 +280,14 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
     const [ending, setEnding] = useState(false);
     const [endError, setEndError] = useState("");
     const [endReason, setEndReason] = useState("");
+    const [fieldStatusOpen, setFieldStatusOpen] = useState(false);
     const endInFlightRef = useRef(false);
     const drawerRef = useRef(null);
     useOverlayLock({
         open: isOpen,
         onClose,
         panelRef: drawerRef,
-        closeOnEscape: !ending,
+        closeOnEscape: !ending && !fieldStatusOpen,
     });
     const userId = employee?.user_id ?? employee?.id;
     const canForceEnd = Boolean(userId) && isOnDutyWorking(employee);
@@ -479,6 +481,17 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
 
                                     <EmployeeDeviceInfoSection employee={employee} summary={employee} />
 
+                                    {userId ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFieldStatusOpen(true)}
+                                            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
+                                        >
+                                            <Activity className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                                            View field status
+                                        </button>
+                                    ) : null}
+
                                     {canForceEnd ? (
                                         <button
                                             type="button"
@@ -518,6 +531,11 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
                 onCancel={() => !ending && setConfirmEnd(false)}
                 loading={ending}
                 variant="danger"
+            />
+            <TrackingDiagnosticPanel
+                employee={employee}
+                open={fieldStatusOpen}
+                onClose={() => setFieldStatusOpen(false)}
             />
         </>,
         document.body

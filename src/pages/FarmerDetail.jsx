@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { visitWhenLabel, visitHasGps, visitEmployeeLabel } from "../utils/visitFarmer";
 import FarmerFieldLocationMap from "../components/map/FarmerFieldLocationMap";
+import FarmerVisitEvidenceThumbs from "../components/farmers/FarmerVisitEvidenceThumbs";
 
 const FarmerVisitTrendChart = lazy(() => import("../components/farmers/FarmerVisitTrendChart"));
 import { resolveVisitCropDisplay, resolveVisitFieldNotes } from "../utils/visitDisplay";
@@ -847,10 +848,17 @@ export default function FarmerDetail() {
                                                         </span>
                                                     )}
                                                     <GpsIndicator latitude={v.latitude} longitude={v.longitude} compact />
+                                                    {Number(v.evidence_count) > 0 ? (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <ImageIcon className="w-3 h-3" />
+                                                            {Number(v.evidence_count)} evidence
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                                 {notes && notes !== "Not added by employee" && (
                                                     <p className="farmer-detail-visit-item__notes">{notes}</p>
                                                 )}
+                                                <FarmerVisitEvidenceThumbs visit={v} />
                                             </div>
                                         </div>
                                         {clickable && (

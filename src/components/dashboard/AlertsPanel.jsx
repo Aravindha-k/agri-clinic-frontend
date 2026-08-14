@@ -17,8 +17,8 @@ export default function AlertsPanel({ alerts = [] }) {
             <Bell className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h3 className="section-title">Alerts</h3>
-            <p className="section-subtitle">{alerts.length} active signal{alerts.length !== 1 ? "s" : ""}</p>
+            <h3 className="section-title">Needs Attention</h3>
+            <p className="section-subtitle">{alerts.length} item{alerts.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
       </div>
@@ -27,7 +27,7 @@ export default function AlertsPanel({ alerts = [] }) {
           <EmptyState
             icon={Bell}
             title="All clear"
-            subtitle="No operational alerts right now."
+            subtitle="No operational items need attention right now."
             className="py-8"
           />
         ) : (

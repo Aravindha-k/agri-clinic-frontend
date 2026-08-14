@@ -93,8 +93,7 @@ export default function Sidebar({ isOpen, onClose }) {
     try {
       await logout();
     } catch {
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
+      /* AuthContext.clearSession already ran in logout finally */
     }
     navigate("/login");
   };

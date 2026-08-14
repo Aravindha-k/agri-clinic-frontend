@@ -7,6 +7,7 @@ import MapStatusOverlay from "./MapStatusOverlay";
 import MapResizeController from "./MapResizeController";
 import { DEFAULT_ADMIN_MAP_BASEMAP } from "../../config/mapBasemap";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
+import { captureAppError } from "../../utils/errorReporting";
 import "../../utils/leafletSetup";
 
 /** Stable floor so Leaflet never mounts at 0×0 inside % / flex parents. */
@@ -25,8 +26,10 @@ class MapErrorBoundary extends Component {
     return { failed: true };
   }
 
-  componentDidCatch() {
-    /* swallow — fallback UI handles it */
+  componentDidCatch(error, info) {
+    captureAppError(error, "MapErrorBoundary", {
+      componentStack: String(info?.componentStack || "").slice(0, 500),
+    });
   }
 
   reset = () => {

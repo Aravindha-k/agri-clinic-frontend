@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { useMapLocationAddress } from "../../hooks/useMapLocationAddress";
 import { formatCoordinates } from "../../utils/visitLocation";
 import MapOpenInMapsButton from "./MapOpenInMapsButton";

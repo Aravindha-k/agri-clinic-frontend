@@ -759,6 +759,69 @@ const EmployeePerformanceSummary = memo(({ summary, profile }) => {
 });
 EmployeePerformanceSummary.displayName = "EmployeePerformanceSummary";
 
+const EmployeeFieldActivity = memo(({ summary, profile, loading: isLoading }) => {
+  if (isLoading) {
+    return (
+      <HrSection icon={Activity} title="Field Activity" subtitle="Today\u2019s operational snapshot">
+        <div className="employees-hr-performance animate-pulse">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="employees-hr-performance__card space-y-2">
+              <Bone className="w-16 h-3" />
+              <Bone className="w-24 h-4" />
+            </div>
+          ))}
+        </div>
+      </HrSection>
+    );
+  }
+
+  const s = summary || {};
+  const p = profile || {};
+  const working = Boolean(s.is_on_field || s.is_working || s.workday_active || s.active_workday);
+  const lastLoc = s.last_location_at || s.last_seen || s.last_heartbeat || p.last_seen;
+  const workStart = s.workday_started_at || s.duty_started_at || s.start_time;
+  const visitsToday = s.visits_today ?? s.total_visits;
+  const accountActive = p.is_active !== false;
+  const device = s.device_status;
+  const mobileEnabled = accountActive;
+
+  const workDayLine = workStart
+    ? `${fmtRel(workStart)} \u2013 ${working ? "Active" : "Ended"}`
+    : working
+      ? "Active"
+      : "Not started";
+
+  const items = [
+    { label: "Status", value: working ? "Working" : "Not working" },
+    { label: "Account", value: accountActive ? "Active" : "Inactive" },
+    { label: "Mobile login", value: mobileEnabled ? "Enabled" : "Disabled" },
+    { label: "Last location", value: lastLoc ? fmtRel(lastLoc) : "\u2014" },
+    { label: "Today\u2019s visits", value: visitsToday != null ? String(visitsToday) : "\u2014" },
+    { label: "Work day", value: workDayLine },
+  ];
+
+  if (device?.last_login_at || device?.last_seen_at) {
+    items.push({
+      label: "Last mobile activity",
+      value: fmtRel(device.last_login_at || device.last_seen_at),
+    });
+  }
+
+  return (
+    <HrSection icon={Activity} title="Field Activity" subtitle="Today\u2019s operational snapshot">
+      <div className="employees-hr-performance">
+        {items.map((item) => (
+          <div key={item.label} className="employees-hr-performance__card">
+            <p className="employees-hr-performance__label">{item.label}</p>
+            <p className="employees-hr-performance__value">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </HrSection>
+  );
+});
+EmployeeFieldActivity.displayName = "EmployeeFieldActivity";
+
 const AssignedVillagesSection = memo(({ profile, summary, loading: isLoading }) => {
   if (isLoading) {
     return (
@@ -967,9 +1030,10 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   // Open on requested tab (View → details, Edit → edit)
   useEffect(() => {
     if (open && selectedEmp) {
-      setTab(initialTab || "details");
+      const next = initialTab || "details";
+      setTab(next === "password" && !canMutate ? "details" : next);
     }
-  }, [open, selectedEmp?.id, initialTab]);
+  }, [open, selectedEmp?.id, initialTab, canMutate]);
 
   // Reset transient state when drawer closes
   useEffect(() => {
@@ -1105,7 +1169,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   const TABS = [
     { id: "details", label: "Details", icon: Info },
     { id: "edit", label: "Edit", icon: Edit2 },
-    { id: "password", label: "Password", icon: Key },
+    ...(canMutate ? [{ id: "password", label: "Password", icon: Key }] : []),
   ];
 
   return createPortal(
@@ -1188,6 +1252,8 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
               <HrSection icon={Radio} title="Device & connectivity" subtitle="Field app status">
                 <EmployeeDeviceInfoSection employee={profile} summary={summary} />
               </HrSection>
+
+              <EmployeeFieldActivity summary={summary} profile={profile} loading={loadingSummary} />
 
               <EmployeePerformanceSummary summary={summary} profile={profile} />
 
@@ -1296,7 +1362,14 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
           )}
 
           {tab === "password" && (
-            <AdminResetSection empId={selectedEmp?.employee_id ?? selectedEmp?.username} />
+            canMutate ? (
+              <AdminResetSection empId={selectedEmp?.employee_id ?? selectedEmp?.username} />
+            ) : (
+              <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                You don&apos;t have permission to reset this employee&apos;s password.
+                {targetIsOwner ? " Owner accounts are protected." : null}
+              </div>
+            )
           )}
         </div>
       </div>

@@ -207,7 +207,7 @@ body {
 }
 
 .app-header__menu-btn {
-    @apply p-1.5 -ml-0.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 transition-all flex-shrink-0;
+    @apply inline-flex items-center justify-center w-11 h-11 -ml-0.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100/80 transition-all flex-shrink-0;
 }
 
 .app-header__chrome {
@@ -364,8 +364,8 @@ body {
 }
 
 .app-header__icon-btn {
-    width: 2.5rem; /* 40px */
-    height: 2.5rem;
+    width: 2.75rem; /* 44px */
+    height: 2.75rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -6450,6 +6450,45 @@ textarea.input {
     border: 1px solid rgba(15, 23, 42, 0.05);
 }
 
+.farmer-visit-evidence {
+    @apply mt-3;
+}
+
+.farmer-visit-evidence__row {
+    @apply flex items-center gap-2 flex-wrap;
+}
+
+.farmer-visit-evidence-thumb {
+    @apply relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-0 shrink-0;
+    width: 44px;
+    height: 44px;
+}
+
+.farmer-visit-evidence-thumb:focus-visible {
+    box-shadow: var(--focus-ring);
+}
+
+.farmer-visit-evidence-thumb__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.farmer-visit-evidence-thumb--fallback {
+    @apply inline-flex items-center justify-center text-slate-400;
+}
+
+.farmer-visit-evidence__more {
+    @apply inline-flex items-center justify-center rounded-lg text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200;
+    width: 44px;
+    height: 44px;
+}
+
+.farmer-visit-evidence__count {
+    @apply text-[11px] font-medium text-slate-500;
+}
+
 .farmer-detail-skeleton-hero {
     @apply rounded-2xl p-6 space-y-4;
     background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
@@ -8696,6 +8735,18 @@ textarea.input {
 }
 
 .reports-bi-date-field input[type="date"]:focus {
+    box-shadow: var(--focus-ring);
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
+.reports-bi-date-field select {
+    @apply w-full px-3 text-sm font-medium text-slate-800 bg-white border border-slate-200 rounded-xl outline-none transition-shadow;
+    box-sizing: border-box;
+    height: var(--control-height-md);
+    min-height: var(--control-height-md);
+}
+
+.reports-bi-date-field select:focus {
     box-shadow: var(--focus-ring);
     border-color: rgba(99, 102, 241, 0.35);
 }
@@ -11001,4 +11052,45 @@ textarea.input {
     .btn:active:not(:disabled) {
         transform: none !important;
     }
+}
+
+/* Route History day timeline (read-only) */
+.route-day-timeline {
+  @apply rounded-xl border border-slate-100 bg-white p-4 overflow-hidden;
+}
+.route-day-timeline__heading {
+  @apply text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-3;
+}
+.route-day-timeline__list {
+  @apply m-0 p-0 list-none space-y-0;
+}
+.route-day-timeline__item {
+  @apply flex gap-3 min-w-0;
+}
+.route-day-timeline__rail {
+  @apply flex flex-col items-center w-3 shrink-0 pt-1;
+}
+.route-day-timeline__dot {
+  @apply w-2.5 h-2.5 rounded-full border-2 border-white shadow ring-1 ring-slate-200 bg-emerald-500;
+}
+.route-day-timeline__item--start .route-day-timeline__dot {
+  @apply bg-blue-500;
+}
+.route-day-timeline__item--end .route-day-timeline__dot {
+  @apply bg-red-500;
+}
+.route-day-timeline__line {
+  @apply w-px flex-1 min-h-[1.25rem] bg-slate-200 my-1;
+}
+.route-day-timeline__body {
+  @apply pb-4 min-w-0;
+}
+.route-day-timeline__title {
+  @apply text-sm font-semibold text-slate-900;
+}
+.route-day-timeline__time {
+  @apply text-xs text-slate-500 mt-0.5 tabular-nums;
+}
+.route-day-timeline__detail {
+  @apply text-xs text-slate-600 mt-0.5;
 }

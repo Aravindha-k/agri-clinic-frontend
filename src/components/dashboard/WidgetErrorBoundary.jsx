@@ -1,7 +1,11 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
+import { captureAppError } from "../../utils/errorReporting";
 
 function logWidgetError(name, error, info) {
+  captureAppError(error, `WidgetErrorBoundary:${name ?? "unknown"}`, {
+    componentStack: String(info?.componentStack || "").slice(0, 500),
+  });
   if (import.meta.env.DEV) {
     console.error(`[DashboardWidget:${name ?? "unknown"}]`, error, info);
   }

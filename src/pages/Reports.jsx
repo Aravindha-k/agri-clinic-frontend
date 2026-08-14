@@ -1,8 +1,11 @@
-import { useEffect, useState, useMemo, lazy, Suspense } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
-import { fetchAllVisits } from "../api/visit.api";
+import { fetchAllVisits, getVisits } from "../api/visit.api";
+import { getReportSummary } from "../api/report.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { getEmployeeGeo, getAdminStatus } from "../api/tracking.api";
+import { getEmployees } from "../api/employee.api";
+import { getDistricts } from "../api/master.api";
 import {
   PageLoader,
   EmptyState,
@@ -22,15 +25,14 @@ import {
 import { BRAND, CHART_COLORS } from "../theme/brand";
 import { WidgetErrorBoundary, DashboardShellErrorBoundary } from "../components/dashboard/WidgetErrorBoundary";
 import {
-  buildGpsComplianceAnalytics,
   buildRouteAnalytics,
-  filterVisitsByDateRange,
   topEntries,
   exportVisitsCsv,
   exportVisitsExcel,
   normalizeVisitsResponse,
   normalizeGeoRouteDistances,
   mergeRouteDistances,
+  analyticsFromSummary,
 } from "../utils/reportsAnalytics";
 import {
   resolveTrackingEmployeeList,
@@ -42,6 +44,8 @@ import {
   resolveVillageLabel,
   resolveFarmerLabel,
 } from "../utils/displayValue";
+import { empName } from "../utils/trackingDisplay";
+import { resolveList } from "../utils/apiUnwrap";
 import {
   BarChart3,
   Users,
@@ -179,74 +183,150 @@ function ReportSection({ icon: Icon, title, subtitle, children, action, boundary
 }
 
 export default function Reports() {
-  const [data, setData] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [previewRows, setPreviewRows] = useState([]);
   const [routeDistances, setRouteDistances] = useState([]);
   const [trackingEmployees, setTrackingEmployees] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [districtId, setDistrictId] = useState("");
   const [dateFrom, setDateFrom] = useState(() => defaultDateRange().from);
   const [dateTo, setDateTo] = useState(() => defaultDateRange().to);
+  const requestSeq = useRef(0);
+  const dateInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo);
 
-  const load = async () => {
+  const reportParams = useMemo(() => {
+    const params = {};
+    if (dateFrom) params.from = dateFrom;
+    if (dateTo) params.to = dateTo;
+    if (employeeId) params.employee = employeeId;
+    if (districtId) params.district = districtId;
+    return params;
+  }, [dateFrom, dateTo, employeeId, districtId]);
+
+  const visitFilterParams = useMemo(() => {
+    const params = {};
+    if (dateFrom) params.start_date = dateFrom;
+    if (dateTo) params.end_date = dateTo;
+    if (employeeId) params.employee = employeeId;
+    if (districtId) params.district = districtId;
+    return params;
+  }, [dateFrom, dateTo, employeeId, districtId]);
+
+  const load = useCallback(async ({ initial = false } = {}) => {
+    if (dateInvalid) {
+      setError("From date must be on or before To date.");
+      return;
+    }
+    const seq = ++requestSeq.current;
     setError(null);
-    setLoading(true);
+    if (initial) setLoading(true);
+    else setRefreshing(true);
     try {
-      const [visitsR, geoR, adminR] = await Promise.allSettled([
-        fetchAllVisits(),
+      const [summaryR, geoR, adminR] = await Promise.allSettled([
+        getReportSummary(reportParams),
         getEmployeeGeo(),
         getAdminStatus(),
       ]);
+      if (seq !== requestSeq.current) return;
 
-      if (visitsR.status === "fulfilled") {
-        const merged = visitsR.value;
-        const records = normalizeVisitsResponse(merged).map(normalizeReportRow);
-        setData(records);
-        logApiDiagnostics({
-          label: "reports-visits",
-          url: "/api/v1/admin/visits/",
-          apiCount: merged?.count,
-          rowsLoaded: records.length,
-          pagination: { pagesLoaded: merged?.pagesLoaded },
-        });
-      } else {
-        throw visitsR.reason;
+      if (summaryR.status !== "fulfilled") {
+        throw summaryR.reason;
       }
+      setSummary(summaryR.value);
 
-      let employees = [];
+      let liveEmployees = [];
       if (adminR.status === "fulfilled") {
-        employees = resolveTrackingEmployeeList(adminR.value).map(normalizeTrackingEmployee);
-        setTrackingEmployees(employees);
+        liveEmployees = resolveTrackingEmployeeList(adminR.value).map(normalizeTrackingEmployee);
+        setTrackingEmployees(liveEmployees);
       } else {
         setTrackingEmployees([]);
       }
 
       if (geoR.status === "fulfilled") {
-        const fromGeo = normalizeGeoRouteDistances(geoR.value, employees);
-        const fromEmployees = normalizeGeoRouteDistances(null, employees);
+        const fromGeo = normalizeGeoRouteDistances(geoR.value, liveEmployees);
+        const fromEmployees = normalizeGeoRouteDistances(null, liveEmployees);
         setRouteDistances(mergeRouteDistances(fromGeo, fromEmployees));
       } else {
-        setRouteDistances(normalizeGeoRouteDistances(null, employees));
+        setRouteDistances(normalizeGeoRouteDistances(null, liveEmployees));
+      }
+
+      try {
+        const preview = await getVisits({
+          ...visitFilterParams,
+          page: 1,
+          page_size: 50,
+        });
+        if (seq !== requestSeq.current) return;
+        const records = (preview?.results ?? []).map(normalizeReportRow);
+        setPreviewRows(records);
+        logApiDiagnostics({
+          label: "reports-preview",
+          url: "/api/v1/admin/visits/",
+          apiCount: preview?.count,
+          rowsLoaded: records.length,
+          pagination: { page: 1, page_size: 50 },
+        });
+      } catch {
+        if (seq !== requestSeq.current) return;
+        setPreviewRows([]);
       }
     } catch (err) {
+      if (seq !== requestSeq.current) return;
       setError(err.message || "Failed to load reports");
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, [dateInvalid, reportParams, visitFilterParams]);
+
+  const skipFilterEffect = useRef(true);
 
   useEffect(() => {
-    load();
+    load({ initial: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial mount only
   }, []);
 
-  const dateFiltered = useMemo(
-    () => filterVisitsByDateRange(data, dateFrom, dateTo),
-    [data, dateFrom, dateTo]
-  );
+  useEffect(() => {
+    if (skipFilterEffect.current) {
+      skipFilterEffect.current = false;
+      return;
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filter identity only
+  }, [dateFrom, dateTo, employeeId, districtId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [empRows, distRes] = await Promise.all([
+          getEmployees(),
+          getDistricts(),
+        ]);
+        if (cancelled) return;
+        setEmployees(Array.isArray(empRows) ? empRows : []);
+        setDistricts(resolveList(distRes));
+      } catch {
+        /* filter dropdowns are optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const analytics = useMemo(
-    () => buildGpsComplianceAnalytics(dateFiltered, trackingEmployees),
-    [dateFiltered, trackingEmployees]
+    () => analyticsFromSummary(summary, trackingEmployees),
+    [summary, trackingEmployees]
   );
 
   const routeAnalytics = useMemo(
@@ -264,9 +344,9 @@ export default function Reports() {
   );
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return dateFiltered;
+    if (!search.trim()) return previewRows;
     const q = search.toLowerCase();
-    return dateFiltered.filter(
+    return previewRows.filter(
       (r) =>
         (r.farmer_name || "").toLowerCase().includes(q) ||
         (r.crop || "").toLowerCase().includes(q) ||
@@ -274,9 +354,36 @@ export default function Reports() {
         (r.location_name || "").toLowerCase().includes(q) ||
         String(r.id || "").includes(q)
     );
-  }, [dateFiltered, search]);
+  }, [previewRows, search]);
+
+  const handleExport = async (kind) => {
+    if (dateInvalid || exporting) return;
+    setExporting(true);
+    setError(null);
+    try {
+      const merged = await fetchAllVisits({
+        ...visitFilterParams,
+        ...(search.trim() ? { search: search.trim() } : {}),
+      });
+      const records = normalizeVisitsResponse(merged).map(normalizeReportRow);
+      logApiDiagnostics({
+        label: "reports-export",
+        url: "/api/v1/admin/visits/",
+        apiCount: merged?.count,
+        rowsLoaded: records.length,
+        pagination: { pagesLoaded: merged?.pagesLoaded },
+      });
+      if (kind === "xlsx") exportVisitsExcel(records);
+      else exportVisitsCsv(records);
+    } catch (err) {
+      setError(err.message || "Failed to export visits");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const totalRouteKm = routeAnalytics.totalKm;
+  const visitTotal = analytics.totalVisits;
 
   const kpis = [
     {
@@ -314,7 +421,7 @@ export default function Reports() {
     },
   ];
 
-  if (loading) {
+  if (loading && !summary) {
     return <ReportsLoadingSkeleton />;
   }
 
@@ -329,8 +436,8 @@ export default function Reports() {
         </span>
       }
       actions={
-        <button type="button" onClick={() => load()} className="btn btn-primary btn-md">
-          <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
+        <button type="button" onClick={() => load()} className="btn btn-primary btn-md" disabled={refreshing}>
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} /> {refreshing ? "Refreshing…" : "Refresh"}
         </button>
       }
     />
@@ -345,7 +452,7 @@ export default function Reports() {
         <ErrorRetry
           compact
           message={friendlyErrorMessage(error, "Couldn't load reports. Please try again.")}
-          onRetry={load}
+          onRetry={() => load()}
         />
       )}
 
@@ -353,27 +460,29 @@ export default function Reports() {
         <div className="reports-bi-export__inner">
           <div className="reports-bi-export__copy">
             <p className="reports-bi-export__label">Export center</p>
-            <p className="reports-bi-export__title">{filtered.length} visit records ready to export</p>
+            <p className="reports-bi-export__title">
+              {visitTotal} visit{visitTotal === 1 ? "" : "s"} in this range
+            </p>
             <p className="reports-bi-export__hint">
-              Downloads respect your current date range and search filters
+              Export downloads matching rows. Opening this page does not load every visit.
             </p>
           </div>
           <div className="reports-bi-export__actions">
             <button
               type="button"
-              onClick={() => exportVisitsExcel(filtered)}
-              disabled={!filtered.length}
+              onClick={() => handleExport("xlsx")}
+              disabled={exporting || dateInvalid || visitTotal === 0}
               className="btn btn-secondary btn-md disabled:opacity-50"
             >
-              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Export Excel
+              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> {exporting ? "Exporting…" : "Export Excel"}
             </button>
             <button
               type="button"
-              onClick={() => exportVisitsCsv(filtered)}
-              disabled={!filtered.length}
+              onClick={() => handleExport("csv")}
+              disabled={exporting || dateInvalid || visitTotal === 0}
               className="btn btn-secondary btn-md disabled:opacity-50"
             >
-              <Download className="w-4 h-4" aria-hidden="true" /> Export CSV
+              <Download className="w-4 h-4" aria-hidden="true" /> {exporting ? "Exporting…" : "Export CSV"}
             </button>
           </div>
         </div>
@@ -400,10 +509,41 @@ export default function Reports() {
                 onChange={(e) => setDateTo(e.target.value)}
               />
             </div>
+            <div className="reports-bi-date-field">
+              <label htmlFor="report-employee">Employee</label>
+              <select
+                id="report-employee"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+              >
+                <option value="">All employees</option>
+                {employees.map((emp) => (
+                  <option key={emp.id ?? emp.employee_id} value={emp.id ?? emp.employee_id}>
+                    {empName(emp)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="reports-bi-date-field">
+              <label htmlFor="report-district">District</label>
+              <select
+                id="report-district"
+                value={districtId}
+                onChange={(e) => setDistrictId(e.target.value)}
+              >
+                <option value="">All districts</option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <p className="reports-bi-filters__summary">
             <Calendar className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            {dateFiltered.length} visits in selected range
+            {dateInvalid ? "Invalid date range" : `${visitTotal} visits in selected range`}
+            {refreshing ? " · Updating…" : ""}
           </p>
         </div>
       </section>
@@ -436,6 +576,64 @@ export default function Reports() {
                   count={count}
                   total={analytics.totalVisits}
                   accent={CHART_COLORS.secondary}
+                  variant="employee"
+                />
+              ))}
+            </div>
+          )}
+        </ReportSection>
+
+        <ReportSection
+          icon={Calendar}
+          title="Visits by Day"
+          subtitle="Daily visit volume from the summary endpoint"
+          boundaryName="VisitsByDay"
+        >
+          {(analytics.visitsByDay || []).length === 0 ? (
+            <div className="reports-bi-empty-panel">
+              <EmptyState icon={Calendar} title="No daily visit data" subtitle="Daily counts appear once visits are submitted in this range." />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(analytics.visitsByDay || []).slice(-14).map((row) => {
+                const label = row?.date
+                  ? new Date(`${row.date}T12:00:00`).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                    })
+                  : "—";
+                return (
+                  <AnalyticsBarRow
+                    key={row?.date || label}
+                    label={label}
+                    count={Number(row?.count) || 0}
+                    total={analytics.totalVisits}
+                    variant="coverage"
+                  />
+                );
+              })}
+            </div>
+          )}
+        </ReportSection>
+
+        <ReportSection
+          icon={MapPin}
+          title="Visits by District"
+          subtitle="Geographic distribution of submitted visits"
+          boundaryName="VisitsByDistrict"
+        >
+          {topEntries(analytics.visitsByDistrict).length === 0 ? (
+            <div className="reports-bi-empty-panel">
+              <EmptyState icon={MapPin} title="No district data" subtitle="District totals appear once visits include location." />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topEntries(analytics.visitsByDistrict).map(([name, count]) => (
+                <AnalyticsBarRow
+                  key={name}
+                  label={name}
+                  count={count}
+                  total={analytics.totalVisits}
                   variant="employee"
                 />
               ))}
@@ -640,7 +838,10 @@ export default function Reports() {
             </div>
             <div>
               <h3 className="reports-bi-panel__title">Visit records</h3>
-              <p className="reports-bi-panel__subtitle">{filtered.length} records</p>
+              <p className="reports-bi-panel__subtitle">
+                Preview of latest {filtered.length} record{filtered.length === 1 ? "" : "s"}
+                {visitTotal > filtered.length ? ` of ${visitTotal}` : ""}
+              </p>
             </div>
           </div>
           <div className="reports-bi-table-search">
@@ -737,11 +938,12 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
-        {filtered.length > 50 && (
+        {visitTotal > 0 ? (
           <div className="reports-bi-table-footer">
-            Showing first 50 of {filtered.length} records
+            Preview only — use Export for the full filtered set
+            {visitTotal > filtered.length ? ` (${visitTotal} visits in range)` : ""}.
           </div>
-        )}
+        ) : null}
       </div>
       </WidgetErrorBoundary>
     </div>

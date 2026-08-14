@@ -15,6 +15,7 @@ import {
 } from "../../utils/employeeRoute";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
 import { RefreshCw, Radio } from "lucide-react";
+import { formatDistanceKm } from "../../utils/trackingStatus";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
@@ -29,6 +30,74 @@ function SummaryCard({ label, value }) {
     <div className="tracking-drawer-route__summary-card">
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="text-sm font-bold text-slate-900 mt-0.5 tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function RouteDayTimeline({ markers }) {
+  if (!Array.isArray(markers) || markers.length === 0) return null;
+
+  const sorted = [...markers].sort((a, b) => {
+    const ta = new Date(a?.captured_at || 0).getTime();
+    const tb = new Date(b?.captured_at || 0).getTime();
+    const sa = Number.isFinite(ta) ? ta : 0;
+    const sb = Number.isFinite(tb) ? tb : 0;
+    if (sa !== sb) return sa - sb;
+    const order = { start: 0, visit: 1, end: 2 };
+    return (order[a?.type] ?? 1) - (order[b?.type] ?? 1);
+  });
+
+  let visitIndex = 0;
+  const items = sorted.map((marker, idx) => {
+    const type = marker?.type || "visit";
+    let title = "Event";
+    let tone = "visit";
+    if (type === "start") {
+      title = "Start work";
+      tone = "start";
+    } else if (type === "end") {
+      title = "End work";
+      tone = "end";
+    } else {
+      visitIndex += 1;
+      title = `Visit ${visitIndex}`;
+      tone = "visit";
+    }
+    const detail =
+      type === "visit"
+        ? marker.label || marker.farmer_name || marker.village_name || null
+        : null;
+    return {
+      key: `${type}-${marker.visitId ?? marker.localSyncId ?? idx}`,
+      title,
+      tone,
+      time: formatRouteTimestamp(marker.captured_at),
+      detail,
+    };
+  });
+
+  return (
+    <div className="route-day-timeline" aria-label="Day timeline">
+      <p className="route-day-timeline__heading">Day timeline</p>
+      <ol className="route-day-timeline__list">
+        {items.map((item, i) => (
+          <li key={item.key} className={`route-day-timeline__item route-day-timeline__item--${item.tone}`}>
+            <div className="route-day-timeline__rail" aria-hidden="true">
+              <span className="route-day-timeline__dot" />
+              {i < items.length - 1 ? <span className="route-day-timeline__line" /> : null}
+            </div>
+            <div className="route-day-timeline__body min-w-0">
+              <p className="route-day-timeline__title">{item.title}</p>
+              <p className="route-day-timeline__time">{item.time}</p>
+              {item.detail ? (
+                <p className="route-day-timeline__detail truncate" title={item.detail}>
+                  {item.detail}
+                </p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -169,10 +238,16 @@ export default function EmployeeRouteMapView({
           className={
             isDrawerVariant
               ? "tracking-drawer-route__summary"
-              : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2"
+              : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
           }
         >
+          {summary.employeeName ? (
+            <SummaryCard label="Employee" value={summary.employeeName} />
+          ) : null}
           <SummaryCard label="Visits" value={String(summary.visitCount ?? 0)} />
+          {summary.distanceKm != null && Number.isFinite(Number(summary.distanceKm)) ? (
+            <SummaryCard label="Distance" value={formatDistanceKm(summary.distanceKm)} />
+          ) : null}
           {showDutyMeta ? (
             <>
               <SummaryCard label="Duty start" value={formatRouteTimestamp(routeData?.startTime)} />
@@ -249,6 +324,8 @@ export default function EmployeeRouteMapView({
           </>
         }
       />
+
+      {markerCount > 0 ? <RouteDayTimeline markers={markers} /> : null}
     </div>
   );
 }

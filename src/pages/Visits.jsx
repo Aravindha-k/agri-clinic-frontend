@@ -1,6 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { getVisits, deleteVisit } from "../api/visit.api";
 import { useNavigate, useLocation } from "react-router-dom";
+import { todayIsoDate } from "../utils/businessDate";
+import { debounce } from "../utils/debounce";
 import {
   normalizeVisitList,
   resolveVisitFarmer,
@@ -58,32 +60,26 @@ const DATE_CHIPS = [
   { id: "month", label: "This month" },
 ];
 
-function visitDateValue(v) {
-  const raw = v?.visit_date ?? v?.created_at ?? v?.timestamp;
-  if (!raw) return null;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function matchesDateChip(v, chip) {
-  if (chip === "all") return true;
-  const d = visitDateValue(v);
-  if (!d) return false;
-  const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
+/** Build start_date/end_date (YYYY-MM-DD) for admin/visits — inclusive Asia/Kolkata dates. */
+function dateRangeForChip(chip) {
+  if (!chip || chip === "all") return null;
+  const end = todayIsoDate();
   if (chip === "today") {
-    return d >= start;
+    return { start_date: end, end_date: end };
   }
   if (chip === "week") {
-    start.setDate(start.getDate() - 7);
-    return d >= start;
+    const endDate = new Date(`${end}T12:00:00`);
+    if (Number.isNaN(endDate.getTime())) return null;
+    const weekday = endDate.getDay();
+    const mondayOffset = weekday === 0 ? 6 : weekday - 1;
+    endDate.setDate(endDate.getDate() - mondayOffset);
+    return { start_date: todayIsoDate(endDate), end_date: end };
   }
   if (chip === "month") {
-    start.setMonth(start.getMonth() - 1);
-    return d >= start;
+    const start = `${end.slice(0, 7)}-01`;
+    return { start_date: start, end_date: end };
   }
-  return true;
+  return null;
 }
 
 function VisitsTableSkeleton() {
@@ -254,31 +250,41 @@ export default function Visits() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [dateChip, setDateChip] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const requestSeq = useRef(0);
 
   const loadVisits = useCallback(
     async (pageNum = 1) => {
+      const seq = ++requestSeq.current;
       setLoading(true);
       setError("");
       try {
         const params = { page: pageNum, page_size: PAGE_SIZE };
         if (search.trim()) params.search = search.trim();
+        const range = dateRangeForChip(dateChip);
+        if (range) {
+          params.start_date = range.start_date;
+          params.end_date = range.end_date;
+        }
         const data = await getVisits(params);
+        if (seq !== requestSeq.current) return;
         const list = normalizeVisitList(data?.results ?? []);
         setVisits(list);
         setTotal(typeof data?.count === "number" ? data.count : list.length);
       } catch (err) {
+        if (seq !== requestSeq.current) return;
         setError(err?.message || "Failed to load visits");
         setVisits([]);
         setTotal(0);
       } finally {
-        setLoading(false);
+        if (seq === requestSeq.current) setLoading(false);
       }
     },
-    [search]
+    [search, dateChip]
   );
 
   useEffect(() => {
@@ -292,10 +298,33 @@ export default function Visits() {
     }
   }, [location.state?.refreshVisits, loadVisits, page, navigate, location.pathname]);
 
-  const filteredVisits = useMemo(
-    () => visits.filter((v) => matchesDateChip(v, dateChip)),
-    [visits, dateChip]
+  const debouncedSetSearch = useMemo(
+    () =>
+      debounce((value) => {
+        setSearch(value);
+        setPage(1);
+      }, 300),
+    []
   );
+
+  useEffect(() => () => debouncedSetSearch.cancel?.(), [debouncedSetSearch]);
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+    if (!value.trim()) {
+      debouncedSetSearch.cancel?.();
+      setSearch("");
+      setPage(1);
+      return;
+    }
+    debouncedSetSearch(value);
+  };
+
+  const handleDateChip = (chipId) => {
+    if (chipId === dateChip) return;
+    setDateChip(chipId);
+    setPage(1);
+  };
 
   const handleView = (id) => navigate(`/visits/${id}`);
   const handleEdit = (id) => navigate(`/visits/${id}/edit`);
@@ -368,10 +397,8 @@ export default function Visits() {
           </div>
           <div className="visits-kpi-pill">
             <div>
-              <p className="visits-kpi-pill__value">{filteredVisits.length}</p>
-              <p className="visits-kpi-pill__label">
-                {dateChip === "all" ? "On this page" : "Matching filter"}
-              </p>
+              <p className="visits-kpi-pill__value">{visits.length}</p>
+              <p className="visits-kpi-pill__label">On this page</p>
             </div>
           </div>
           {hasActiveFilters && (
@@ -391,7 +418,7 @@ export default function Visits() {
             <button
               key={chip.id}
               type="button"
-              onClick={() => setDateChip(chip.id)}
+              onClick={() => handleDateChip(chip.id)}
               className={`filter-chip ${
                 dateChip === chip.id ? "filter-chip--active" : "filter-chip--idle"
               }`}
@@ -408,18 +435,17 @@ export default function Visits() {
               <input
                 type="search"
                 placeholder="Search farmer, mobile, village, crop, land, employee…"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="search-input"
                 aria-label="Search visits"
               />
-              {search ? (
+              {searchInput ? (
                 <button
                   type="button"
                   onClick={() => {
+                    debouncedSetSearch.cancel?.();
+                    setSearchInput("");
                     setSearch("");
                     setPage(1);
                   }}
@@ -477,6 +503,8 @@ export default function Visits() {
               <button
                 type="button"
                 onClick={() => {
+                  debouncedSetSearch.cancel?.();
+                  setSearchInput("");
                   setSearch("");
                   setDateChip("all");
                   setPage(1);
@@ -521,7 +549,7 @@ export default function Visits() {
             <VisitsTableSkeleton />
           </div>
         )
-      ) : filteredVisits.length === 0 ? (
+      ) : visits.length === 0 ? (
         <div className="dashboard-section-card">
           <EmptyState
             icon={Calendar}
@@ -536,6 +564,8 @@ export default function Visits() {
                 <button
                   type="button"
                   onClick={() => {
+                    debouncedSetSearch.cancel?.();
+                    setSearchInput("");
                     setSearch("");
                     setDateChip("all");
                     setPage(1);
@@ -558,7 +588,7 @@ export default function Visits() {
         </div>
       ) : viewMode === "grid" ? (
         <div className="visits-grid">
-          {filteredVisits.map((v) => (
+          {visits.map((v) => (
             <VisitListCard
               key={`visit-${v.id}`}
               visit={v}
@@ -590,7 +620,7 @@ export default function Visits() {
                 </tr>
               </thead>
               <tbody>
-                {filteredVisits.map((v) => (
+                {visits.map((v) => (
                   <VisitRow
                     key={`visit-${v.id}`}
                     v={v}
@@ -605,7 +635,7 @@ export default function Visits() {
         </div>
       )}
 
-      {!loading && filteredVisits.length > 0 && (
+      {!loading && visits.length > 0 && (
         <div className="pagination visits-pagination">
           <span className="pagination-info">
             Showing <span className="font-semibold text-slate-700">{showingFrom}–{showingTo}</span> of{" "}
