@@ -293,22 +293,13 @@ export default function MasterLocationsPage() {
         try {
             const summary = await fetchLocationSummary();
             setLocationSummary(summary);
-            if (typeof summary.districts === "number") setDistrictTotal(summary.districts);
-            if (typeof summary.taluks === "number") setTalukGlobalTotal(summary.taluks);
-            if (typeof summary.villages === "number") setVillageGlobalTotal(summary.villages);
+            if (summary.districts != null) setDistrictTotal(summary.districts);
+            if (summary.taluks != null) setTalukGlobalTotal(summary.taluks);
+            if (summary.villages != null) setVillageGlobalTotal(summary.villages);
         } catch {
             setLocationSummary(null);
-            try {
-                const [talukPage, villagePage] = await Promise.all([
-                    fetchTaluksPage({ page_size: 1 }),
-                    fetchVillagesPage({ page_size: 1 }),
-                ]);
-                setTalukGlobalTotal(typeof talukPage.count === "number" ? talukPage.count : 0);
-                setVillageGlobalTotal(typeof villagePage.count === "number" ? villagePage.count : 0);
-            } catch {
-                setTalukGlobalTotal(0);
-                setVillageGlobalTotal(0);
-            }
+            setTalukGlobalTotal(0);
+            setVillageGlobalTotal(0);
         }
     }, []);
 

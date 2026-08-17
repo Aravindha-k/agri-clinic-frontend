@@ -103,28 +103,85 @@ export async function fetchVillagesPage(params = {}) {
   return fetchMasterPage("masters/villages", params);
 }
 
+/** Accept only finite numbers or numeric strings — never arrays/objects. */
+function resolveNumericCount(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function pickSummaryCount(data, ...keys) {
+  if (!data || typeof data !== "object") return null;
+  for (const key of keys) {
+    const value = data[key];
+    const direct = resolveNumericCount(value);
+    if (direct != null) return direct;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const nested = resolveNumericCount(value.count ?? value.total ?? value.active);
+      if (nested != null) return nested;
+    }
+  }
+  return null;
+}
+
 /** Canonical active location counts — GET /masters/location-summary/ */
 export async function fetchLocationSummary() {
   const response = await api.get("masters/location-summary/");
   const data = unwrapSuccessEnvelope(response) ?? response?.data ?? {};
 
-  const pickCount = (...keys) => {
-    for (const key of keys) {
-      const value = data?.[key];
-      if (typeof value === "number" && !Number.isNaN(value)) return value;
-      if (value != null && value !== "" && !Number.isNaN(Number(value))) {
-        return Number(value);
-      }
+  let districts = pickSummaryCount(
+    data,
+    "active_districts",
+    "district_count",
+    "districts"
+  );
+  let taluks = pickSummaryCount(
+    data,
+    "active_taluks",
+    "taluk_count",
+    "active_taluk_count",
+    "total_taluks"
+  );
+  let villages = pickSummaryCount(
+    data,
+    "active_villages",
+    "village_count",
+    "villages"
+  );
+
+  if (data.counts && typeof data.counts === "object") {
+    districts ??= pickSummaryCount(data.counts, "districts", "active_districts", "district_count");
+    taluks ??= pickSummaryCount(data.counts, "taluks", "active_taluks", "taluk_count");
+    villages ??= pickSummaryCount(data.counts, "villages", "active_villages", "village_count");
+  }
+
+  if (districts == null) {
+    const page = await fetchMasterPage("masters/districts", { page_size: 1 });
+    districts = resolveNumericCount(page.count);
+  }
+  if (taluks == null || taluks === 0) {
+    const page = await fetchTaluksPage({ page_size: 1 });
+    const pageCount = resolveNumericCount(page.count);
+    if (pageCount != null && (taluks == null || pageCount > taluks)) {
+      taluks = pageCount;
     }
-    return null;
-  };
+  }
+  if (villages == null) {
+    const page = await fetchVillagesPage({ page_size: 1 });
+    villages = resolveNumericCount(page.count);
+  }
 
   const summary = {
-    districts: pickCount("active_districts", "districts", "district_count"),
-    taluks: pickCount("active_taluks", "taluks", "taluk_count"),
-    villages: pickCount("active_villages", "villages", "village_count"),
-    officialImported: pickCount("official_imported", "official_villages"),
-    legacyPreserved: pickCount("legacy_preserved", "legacy_villages"),
+    districts,
+    taluks,
+    villages,
+    officialImported: pickSummaryCount(data, "official_imported", "official_villages"),
+    legacyPreserved: pickSummaryCount(data, "legacy_preserved", "legacy_villages"),
   };
 
   logApiDiagnostics({
@@ -132,7 +189,7 @@ export async function fetchLocationSummary() {
     url: "/api/v1/masters/location-summary/",
     apiCount: summary.villages,
     rowsLoaded: 1,
-    extra: summary,
+    extra: { ...summary, rawKeys: Object.keys(data || {}) },
   });
 
   return summary;
