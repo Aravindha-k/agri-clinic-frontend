@@ -51,6 +51,10 @@ const EXACT = {
     title: "Problem Items",
     subtitle: "Dropdown options for field problems",
   },
+  "/masters/employee-locations": {
+    title: "Employee Locations",
+    subtitle: "Reference territory assignments for field employees",
+  },
   "/reports": {
     title: "Analytics & Reports",
     subtitle: "Field visits, coverage, GPS compliance, and routes",

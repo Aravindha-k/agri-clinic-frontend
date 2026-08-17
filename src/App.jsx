@@ -11,6 +11,7 @@ import MasterLocationsPage from "./pages/masters/MasterLocationsPage";
 import MasterCropsPage from "./pages/masters/MasterCropsPage";
 import MasterProblemCategories from "./pages/masters/MasterProblemCategories";
 import MasterProblemItems from "./pages/masters/MasterProblemItems";
+import MasterEmployeeLocationsPage from "./pages/masters/MasterEmployeeLocationsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import OwnerRoute from "./components/OwnerRoute";
 import FarmersList from "./pages/FarmersList";
@@ -129,6 +130,7 @@ function App() {
           <Route path="masters/crops" element={<MasterCropsPage />} />
           <Route path="masters/problem-categories" element={<MasterProblemCategories />} />
           <Route path="masters/problem-items" element={<MasterProblemItems />} />
+          <Route path="masters/employee-locations" element={<MasterEmployeeLocationsPage />} />
         </Route>
       </Routes>
     </Router>

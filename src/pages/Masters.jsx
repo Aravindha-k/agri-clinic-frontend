@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { MapPin, Wheat, Tag, Bug, ChevronRight, Database } from "lucide-react";
+import { MapPin, Wheat, Tag, Bug, ChevronRight, Database, MapPinned } from "lucide-react";
 import { PageHeader } from "../components/ui/command";
 
 const MASTER_SECTIONS = [
@@ -38,6 +38,15 @@ const MASTER_SECTIONS = [
         bg: "linear-gradient(160deg,#fffbeb 0%,#fef3c7 100%)",
         iconBg: "#fde68a",
         path: "/masters/problem-items",
+    },
+    {
+        title: "Employee Locations",
+        description: "Reference territory assignments for field employees",
+        icon: MapPinned,
+        color: "#4338ca",
+        bg: "linear-gradient(160deg,#eef2ff 0%,#e0e7ff 100%)",
+        iconBg: "#c7d2fe",
+        path: "/masters/employee-locations",
     },
 ];
 
