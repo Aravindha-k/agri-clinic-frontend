@@ -93,6 +93,21 @@ export async function fetchVillagesByTaluk(talukId, params = {}) {
   return page.results;
 }
 
+/** All villages for one taluk — follows pagination (assignment drawer). */
+export async function fetchAllVillagesByTaluk(talukId, params = {}) {
+  if (!talukId) return { results: [], count: 0 };
+  return fetchAllPaginated(
+    (p) =>
+      fetchMasterPage("masters/villages", {
+        taluk: talukId,
+        page_size: 500,
+        ...params,
+        ...p,
+      }),
+    { page_size: 500, is_active: true, ...params }
+  );
+}
+
 /** Paginated taluks with optional district/search filters */
 export async function fetchTaluksPage(params = {}) {
   return fetchMasterPage("masters/taluks", params);

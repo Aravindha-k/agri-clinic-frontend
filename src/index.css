@@ -9643,6 +9643,14 @@ textarea.input {
     @apply ml-auto p-1 rounded-md hover:bg-red-100;
 }
 
+.emp-loc-village-error {
+    @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 space-y-2;
+}
+
+.emp-loc-taluk-block__count {
+    @apply ml-auto text-xs font-semibold text-slate-500 tabular-nums;
+}
+
 .emp-loc-save-success {
     @apply text-sm font-semibold text-emerald-700 m-0;
 }

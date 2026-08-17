@@ -14,20 +14,22 @@ import SlidePanel from "../ui/SlidePanel";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import ErrorRetry from "../ui/ErrorRetry";
 import { PageLoader } from "../ui/command";
-import { fetchAllDistricts, fetchTaluksByDistrict, fetchVillagesByTaluk } from "../../api/master.api";
+import {
+  fetchAllDistricts,
+  fetchAllVillagesByTaluk,
+  fetchTaluksByDistrict,
+} from "../../api/master.api";
 import {
   fetchEmployeeLocationAssignmentDetail,
   updateEmployeeLocationAssignments,
 } from "../../api/employeeLocationAssignments.api";
 import {
   buildAssignmentsPayload,
+  countSelectedVillagesInTaluk,
   createEmptyAssignmentFormState,
-  DISTRICT_SCOPE_ENTIRE,
-  DISTRICT_SCOPE_SELECTIVE,
   filterAssignableVillages,
   parseAssignmentsToFormState,
-  TALUK_SCOPE_ENTIRE,
-  TALUK_SCOPE_SELECTIVE,
+  setAllVillagesForTaluk,
   toggleDistrictSelection,
   toggleTalukSelection,
   toggleVillageSelection,
@@ -44,42 +46,59 @@ function empDisplayName(employee) {
   );
 }
 
-function ScopeRadio({ name, value, current, onChange, label, disabled }) {
-  return (
-    <label className="emp-loc-scope-radio">
-      <input
-        type="radio"
-        name={name}
-        value={value}
-        checked={current === value}
-        onChange={() => onChange(value)}
-        disabled={disabled}
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
-
 function VillageCheckboxList({
   talukId,
   districtId,
   villages,
   loading,
+  loadError,
+  onRetry,
   selectedIds,
+  villageTalukMap,
   onToggle,
+  onSelectAll,
+  onClearAll,
   search,
   onSearchChange,
 }) {
+  const assignable = useMemo(
+    () => filterAssignableVillages(villages, talukId),
+    [villages, talukId]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = filterAssignableVillages(villages);
-    if (!q) return list;
-    return list.filter((v) => String(v.name || "").toLowerCase().includes(q));
-  }, [villages, search]);
+    if (!q) return assignable;
+    return assignable.filter((v) => String(v.name || "").toLowerCase().includes(q));
+  }, [assignable, search]);
 
-  const selectedInTaluk = selectedIds.filter((id) =>
-    filtered.some((v) => Number(v.id) === Number(id))
+  const selectedInTaluk = selectedIds.filter(
+    (id) => villageTalukMap?.[id] === Number(talukId)
   );
+
+  if (loading) {
+    return (
+      <div className="emp-loc-inline-loading" aria-busy="true">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+        Loading villages…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="emp-loc-village-error">
+        <p>Unable to load villages — {loadError}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (assignable.length === 0) {
+    return <p className="emp-loc-empty-inline">No villages found for this taluk.</p>;
+  }
 
   return (
     <div className="emp-loc-village-panel">
@@ -95,30 +114,22 @@ function VillageCheckboxList({
             aria-label={`Search villages in taluk ${talukId}`}
           />
         </div>
-        <span className="emp-loc-village-panel__count">
-          {selectedInTaluk.length} selected
-        </span>
-        {selectedInTaluk.length > 0 && (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              for (const id of selectedInTaluk) {
-                onToggle(id, false);
-              }
-            }}
-          >
-            Clear
-          </button>
-        )}
+        <span className="emp-loc-village-panel__count">{selectedInTaluk.length} selected</span>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onSelectAll}>
+          Select all
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onClearAll}
+          disabled={selectedInTaluk.length === 0}
+        >
+          Clear
+        </button>
       </div>
-      {loading ? (
-        <div className="emp-loc-inline-loading" aria-busy="true">
-          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-          Loading villages…
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="emp-loc-empty-inline">No assignable villages for this taluk.</p>
+
+      {filtered.length === 0 ? (
+        <p className="emp-loc-empty-inline">No villages match your search.</p>
       ) : (
         <ul className="emp-loc-village-list" role="group">
           {filtered.map((village) => {
@@ -160,12 +171,12 @@ export default function EmployeeLocationAssignmentDrawer({
   const [districtsLoading, setDistrictsLoading] = useState(false);
   const [formState, setFormState] = useState(createEmptyAssignmentFormState);
   const [expandedDistricts, setExpandedDistricts] = useState({});
-  const [expandedTaluks, setExpandedTaluks] = useState({});
 
   const [talukCache, setTalukCache] = useState({});
   const [talukLoading, setTalukLoading] = useState({});
   const [villageCache, setVillageCache] = useState({});
   const [villageLoading, setVillageLoading] = useState({});
+  const [villageLoadError, setVillageLoadError] = useState({});
   const [villageSearch, setVillageSearch] = useState({});
 
   const talukDistrictMap = useMemo(() => {
@@ -203,18 +214,26 @@ export default function EmployeeLocationAssignmentDrawer({
   }, [talukCache]);
 
   const loadVillages = useCallback(async (talukId) => {
-    if (!talukId || villageCache[talukId]) return;
+    if (!talukId) return;
+    if (villageCache[talukId] && !villageLoadError[talukId]) return;
+
     setVillageLoading((prev) => ({ ...prev, [talukId]: true }));
+    setVillageLoadError((prev) => ({ ...prev, [talukId]: null }));
     try {
-      const rows = await fetchVillagesByTaluk(talukId, { is_active: true });
+      const { results } = await fetchAllVillagesByTaluk(talukId, { is_active: true });
       setVillageCache((prev) => ({
         ...prev,
-        [talukId]: filterAssignableVillages(rows || []),
+        [talukId]: filterAssignableVillages(results || [], talukId),
+      }));
+    } catch (err) {
+      setVillageLoadError((prev) => ({
+        ...prev,
+        [talukId]: friendlyErrorMessage(err, "Request failed"),
       }));
     } finally {
       setVillageLoading((prev) => ({ ...prev, [talukId]: false }));
     }
-  }, [villageCache]);
+  }, [villageCache, villageLoadError]);
 
   const hydrateFromDetail = useCallback(async () => {
     if (!employee?.id) return;
@@ -233,21 +252,14 @@ export default function EmployeeLocationAssignmentDrawer({
       }
       setExpandedDistricts(districtExpand);
 
-      const talukExpand = {};
-      for (const tid of parsed.selectedTalukIds) {
-        talukExpand[tid] = true;
-      }
-      setExpandedTaluks(talukExpand);
-
       await loadDistricts();
 
       for (const did of parsed.selectedDistrictIds) {
         await loadTaluks(did);
       }
+
       for (const tid of parsed.selectedTalukIds) {
-        if (parsed.talukScope[tid] === TALUK_SCOPE_SELECTIVE) {
-          await loadVillages(tid);
-        }
+        await loadVillages(tid);
       }
     } catch (err) {
       setLoadError(friendlyErrorMessage(err, "Could not load location assignments."));
@@ -267,6 +279,9 @@ export default function EmployeeLocationAssignmentDrawer({
       setSaved(false);
       setConfirmClear(false);
       setVillageSearch({});
+      setVillageCache({});
+      setVillageLoadError({});
+      setTalukCache({});
     }
   }, [open, employee?.id, hydrateFromDetail]);
 
@@ -275,13 +290,15 @@ export default function EmployeeLocationAssignmentDrawer({
     if (checked) {
       setExpandedDistricts((prev) => ({ ...prev, [districtId]: true }));
       loadTaluks(districtId);
+    } else {
+      setExpandedDistricts((prev) => ({ ...prev, [districtId]: false }));
     }
   };
 
   const handleTalukToggle = (talukId, districtId, checked) => {
     setFormState((prev) => toggleTalukSelection(prev, talukId, districtId, checked));
     if (checked) {
-      setExpandedTaluks((prev) => ({ ...prev, [talukId]: true }));
+      loadVillages(talukId);
     }
   };
 
@@ -292,7 +309,7 @@ export default function EmployeeLocationAssignmentDrawer({
   };
 
   const handleSave = async () => {
-    if (!employee?.id || saving) return;
+    if (!employee?.id || saving || formState.selectedVillageIds.length === 0) return;
     setSaving(true);
     setSaveError(null);
     setSaved(false);
@@ -329,10 +346,8 @@ export default function EmployeeLocationAssignmentDrawer({
     }
   };
 
-  const hasAssignments =
-    formState.selectedDistrictIds.length > 0 ||
-    formState.selectedTalukIds.length > 0 ||
-    formState.selectedVillageIds.length > 0;
+  const hasSavedVillages = formState.selectedVillageIds.length > 0;
+  const canSave = hasSavedVillages && !saving && !loading;
 
   return (
     <>
@@ -381,7 +396,7 @@ export default function EmployeeLocationAssignmentDrawer({
                   <MapPin className="w-4 h-4" aria-hidden="true" />
                   Assigned Locations
                 </h3>
-                {hasAssignments && (
+                {hasSavedVillages && (
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm emp-loc-drawer__clear-all"
@@ -394,7 +409,7 @@ export default function EmployeeLocationAssignmentDrawer({
                 )}
               </div>
 
-              {!hasAssignments && (
+              {!hasSavedVillages && (
                 <p className="emp-loc-empty">No locations assigned yet.</p>
               )}
 
@@ -407,10 +422,9 @@ export default function EmployeeLocationAssignmentDrawer({
                 <div className="emp-loc-district-list">
                   {districts.map((district) => {
                     const did = Number(district.id);
-                    const selected = formState.selectedDistrictIds.includes(did);
-                    const expanded = expandedDistricts[did];
-                    const scope =
-                      formState.districtScope[did] ?? DISTRICT_SCOPE_SELECTIVE;
+                    const districtOpen =
+                      expandedDistricts[did] || formState.selectedDistrictIds.includes(did);
+                    const districtChecked = formState.selectedDistrictIds.includes(did);
                     const taluks = talukCache[did] || [];
 
                     return (
@@ -420,14 +434,14 @@ export default function EmployeeLocationAssignmentDrawer({
                             type="button"
                             className="emp-loc-expand-btn"
                             onClick={() => {
-                              const next = !expanded;
+                              const next = !districtOpen;
                               setExpandedDistricts((prev) => ({ ...prev, [did]: next }));
                               if (next) loadTaluks(did);
                             }}
-                            aria-expanded={expanded}
-                            aria-label={`${expanded ? "Collapse" : "Expand"} ${district.name}`}
+                            aria-expanded={districtOpen}
+                            aria-label={`${districtOpen ? "Collapse" : "Expand"} ${district.name}`}
                           >
-                            {expanded ? (
+                            {districtOpen ? (
                               <ChevronDown className="w-4 h-4" aria-hidden="true" />
                             ) : (
                               <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -436,165 +450,115 @@ export default function EmployeeLocationAssignmentDrawer({
                           <label className="emp-loc-check-row emp-loc-check-row--strong">
                             <input
                               type="checkbox"
-                              checked={selected}
+                              checked={districtChecked}
                               onChange={(e) => handleDistrictToggle(did, e.target.checked)}
                             />
                             <span>{district.name}</span>
                           </label>
                         </div>
 
-                        {selected && expanded && (
+                        {districtOpen && (
                           <div className="emp-loc-district-block__body">
-                            <fieldset className="emp-loc-scope-fieldset">
-                              <legend className="sr-only">Assignment scope for {district.name}</legend>
-                              <ScopeRadio
-                                name={`district-scope-${did}`}
-                                value={DISTRICT_SCOPE_ENTIRE}
-                                current={scope}
-                                onChange={(val) =>
-                                  setFormState((prev) => ({
-                                    ...prev,
-                                    districtScope: { ...prev.districtScope, [did]: val },
-                                  }))
-                                }
-                                label="Entire District"
-                              />
-                              <ScopeRadio
-                                name={`district-scope-${did}`}
-                                value={DISTRICT_SCOPE_SELECTIVE}
-                                current={scope}
-                                onChange={(val) =>
-                                  setFormState((prev) => ({
-                                    ...prev,
-                                    districtScope: { ...prev.districtScope, [did]: val },
-                                  }))
-                                }
-                                label="Select Taluks / Villages"
-                              />
-                            </fieldset>
+                            <div className="emp-loc-taluk-list">
+                              {talukLoading[did] ? (
+                                <div className="emp-loc-inline-loading" aria-busy="true">
+                                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                                  Loading taluks…
+                                </div>
+                              ) : taluks.length === 0 ? (
+                                <p className="emp-loc-empty-inline">No taluks available.</p>
+                              ) : (
+                                taluks.map((taluk) => {
+                                  const tid = Number(taluk.id);
+                                  const talukChecked = formState.selectedTalukIds.includes(tid);
 
-                            {scope === DISTRICT_SCOPE_SELECTIVE && (
-                              <div className="emp-loc-taluk-list">
-                                {talukLoading[did] ? (
-                                  <div className="emp-loc-inline-loading" aria-busy="true">
-                                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                                    Loading taluks…
-                                  </div>
-                                ) : taluks.length === 0 ? (
-                                  <p className="emp-loc-empty-inline">No taluks available.</p>
-                                ) : (
-                                  taluks.map((taluk) => {
-                                    const tid = Number(taluk.id);
-                                    const talukSelected =
-                                      formState.selectedTalukIds.includes(tid);
-                                    const talukExpanded = expandedTaluks[tid];
-                                    const tScope =
-                                      formState.talukScope[tid] ?? TALUK_SCOPE_SELECTIVE;
-
-                                    return (
-                                      <div key={tid} className="emp-loc-taluk-block">
-                                        <div className="emp-loc-taluk-block__head">
-                                          <button
-                                            type="button"
-                                            className="emp-loc-expand-btn"
-                                            onClick={() => {
-                                              const next = !talukExpanded;
-                                              setExpandedTaluks((prev) => ({
-                                                ...prev,
-                                                [tid]: next,
-                                              }));
-                                              if (next && tScope === TALUK_SCOPE_SELECTIVE) {
-                                                loadVillages(tid);
-                                              }
-                                            }}
-                                            aria-expanded={talukExpanded}
-                                          >
-                                            {talukExpanded ? (
-                                              <ChevronDown className="w-4 h-4" aria-hidden="true" />
-                                            ) : (
-                                              <ChevronRight className="w-4 h-4" aria-hidden="true" />
-                                            )}
-                                          </button>
-                                          <label className="emp-loc-check-row">
-                                            <input
-                                              type="checkbox"
-                                              checked={talukSelected}
-                                              onChange={(e) =>
-                                                handleTalukToggle(tid, did, e.target.checked)
-                                              }
-                                            />
-                                            <span>{taluk.name}</span>
-                                          </label>
-                                        </div>
-
-                                        {talukSelected && talukExpanded && (
-                                          <div className="emp-loc-taluk-block__body">
-                                            <fieldset className="emp-loc-scope-fieldset">
-                                              <legend className="sr-only">
-                                                Scope for {taluk.name}
-                                              </legend>
-                                              <ScopeRadio
-                                                name={`taluk-scope-${tid}`}
-                                                value={TALUK_SCOPE_ENTIRE}
-                                                current={tScope}
-                                                onChange={(val) => {
-                                                  setFormState((prev) => ({
-                                                    ...prev,
-                                                    talukScope: {
-                                                      ...prev.talukScope,
-                                                      [tid]: val,
-                                                    },
-                                                  }));
-                                                }}
-                                                label="Entire Taluk"
-                                              />
-                                              <ScopeRadio
-                                                name={`taluk-scope-${tid}`}
-                                                value={TALUK_SCOPE_SELECTIVE}
-                                                current={tScope}
-                                                onChange={(val) => {
-                                                  setFormState((prev) => ({
-                                                    ...prev,
-                                                    talukScope: {
-                                                      ...prev.talukScope,
-                                                      [tid]: val,
-                                                    },
-                                                  }));
-                                                  if (val === TALUK_SCOPE_SELECTIVE) {
-                                                    loadVillages(tid);
-                                                  }
-                                                }}
-                                                label="Select Villages"
-                                              />
-                                            </fieldset>
-
-                                            {tScope === TALUK_SCOPE_SELECTIVE && (
-                                              <VillageCheckboxList
-                                                talukId={tid}
-                                                districtId={did}
-                                                villages={villageCache[tid] || []}
-                                                loading={villageLoading[tid]}
-                                                selectedIds={formState.selectedVillageIds}
-                                                onToggle={(vid, checked) =>
-                                                  handleVillageToggle(vid, tid, did, checked)
-                                                }
-                                                search={villageSearch[tid] || ""}
-                                                onSearchChange={(val) =>
-                                                  setVillageSearch((prev) => ({
-                                                    ...prev,
-                                                    [tid]: val,
-                                                  }))
-                                                }
-                                              />
-                                            )}
-                                          </div>
-                                        )}
+                                  return (
+                                    <div key={tid} className="emp-loc-taluk-block">
+                                      <div className="emp-loc-taluk-block__head">
+                                        <label className="emp-loc-check-row">
+                                          <input
+                                            type="checkbox"
+                                            checked={talukChecked}
+                                            onChange={(e) =>
+                                              handleTalukToggle(tid, did, e.target.checked)
+                                            }
+                                          />
+                                          <span>{taluk.name}</span>
+                                          {talukChecked && (
+                                            <span className="emp-loc-taluk-block__count">
+                                              {countSelectedVillagesInTaluk(formState, tid)}{" "}
+                                              selected
+                                            </span>
+                                          )}
+                                        </label>
                                       </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            )}
+
+                                      {talukChecked && (
+                                        <div className="emp-loc-taluk-block__body">
+                                          <VillageCheckboxList
+                                            talukId={tid}
+                                            districtId={did}
+                                            villages={villageCache[tid] || []}
+                                            loading={villageLoading[tid]}
+                                            loadError={villageLoadError[tid]}
+                                            onRetry={() => {
+                                              setVillageCache((prev) => {
+                                                const next = { ...prev };
+                                                delete next[tid];
+                                                return next;
+                                              });
+                                              loadVillages(tid);
+                                            }}
+                                            selectedIds={formState.selectedVillageIds}
+                                            villageTalukMap={formState.villageTalukMap}
+                                            onToggle={(vid, checked) =>
+                                              handleVillageToggle(vid, tid, did, checked)
+                                            }
+                                            onSelectAll={() => {
+                                              const allIds = filterAssignableVillages(
+                                                villageCache[tid] || [],
+                                                tid
+                                              ).map((v) => Number(v.id));
+                                              setFormState((prev) =>
+                                                setAllVillagesForTaluk(
+                                                  prev,
+                                                  tid,
+                                                  did,
+                                                  allIds,
+                                                  true
+                                                )
+                                              );
+                                            }}
+                                            onClearAll={() => {
+                                              const allIds = filterAssignableVillages(
+                                                villageCache[tid] || [],
+                                                tid
+                                              ).map((v) => Number(v.id));
+                                              setFormState((prev) =>
+                                                setAllVillagesForTaluk(
+                                                  prev,
+                                                  tid,
+                                                  did,
+                                                  allIds,
+                                                  false
+                                                )
+                                              );
+                                            }}
+                                            search={villageSearch[tid] || ""}
+                                            onSearchChange={(val) =>
+                                              setVillageSearch((prev) => ({
+                                                ...prev,
+                                                [tid]: val,
+                                              }))
+                                            }
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
                         )}
                       </section>
@@ -629,7 +593,12 @@ export default function EmployeeLocationAssignmentDrawer({
                   type="button"
                   className="btn btn-primary btn-md"
                   onClick={handleSave}
-                  disabled={saving || loading}
+                  disabled={!canSave}
+                  title={
+                    !hasSavedVillages
+                      ? "Select at least one village, or use Remove all to clear assignments"
+                      : undefined
+                  }
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                   {saving ? "Saving…" : "Save assignments"}
@@ -651,7 +620,7 @@ export default function EmployeeLocationAssignmentDrawer({
       <ConfirmDialog
         open={confirmClear}
         title="Remove all assigned locations?"
-        message="This clears every district, taluk, and village reference for this employee. It does not deactivate the employee account."
+        message="This clears every village reference for this employee. It does not deactivate the employee account."
         onConfirm={handleClearAll}
         onCancel={() => setConfirmClear(false)}
         loading={saving}
