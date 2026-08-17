@@ -143,6 +143,7 @@ export default function MasterProblemItems() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterCrop, setFilterCrop] = useState("");
   const [panel, setPanel] = useState({ open: false, mode: "add", item: null });
   const [confirm, setConfirm] = useState({ open: false, item: null });
   const [saving, setSaving] = useState(false);
@@ -168,6 +169,7 @@ export default function MasterProblemItems() {
       if (available) {
         const params = {};
         if (filterCategory) params.category_id = filterCategory;
+        if (filterCrop) params.crop_id = filterCrop;
         const { items, count } = await fetchAllProblemMasters(params);
         setRows(items || []);
         setTotalCount(typeof count === "number" ? count : (items?.length ?? 0));
@@ -181,7 +183,7 @@ export default function MasterProblemItems() {
     } finally {
       setLoading(false);
     }
-  }, [filterCategory, toast]);
+  }, [filterCategory, filterCrop, toast]);
 
   useEffect(() => {
     load();
@@ -452,13 +454,29 @@ export default function MasterProblemItems() {
                 ))}
               </select>
             </FilterField>
-            {(search.trim() || filterCategory) ? (
+            <FilterField label="Crop" className="min-w-[12rem]">
+              <select
+                value={filterCrop}
+                onChange={(e) => setFilterCrop(e.target.value)}
+                className="masters-admin-filter-select"
+                aria-label="Filter by crop"
+              >
+                <option value="">All crops</option>
+                {crops.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name_en || c.name}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            {(search.trim() || filterCategory || filterCrop) ? (
               <FilterField spacer>
                 <button
                   type="button"
                   onClick={() => {
                     setSearch("");
                     setFilterCategory("");
+                    setFilterCrop("");
                   }}
                   className="btn btn-ghost btn-md filter-toolbar__clear"
                 >
@@ -470,7 +488,7 @@ export default function MasterProblemItems() {
               <p className="masters-admin-filters__meta">{filtered.length} items shown</p>
             </FilterField>
           </FilterToolbarRow>
-          {(search.trim() || filterCategory) ? (
+          {(search.trim() || filterCategory || filterCrop) ? (
             <FilterActiveRow>
               {search.trim() ? (
                 <span className="filter-chip filter-chip--active capitalize">
@@ -480,6 +498,11 @@ export default function MasterProblemItems() {
               {filterCategory ? (
                 <span className="filter-chip filter-chip--idle">
                   Category: {managedCategories.find((c) => String(c.id) === String(filterCategory))?.name || filterCategory}
+                </span>
+              ) : null}
+              {filterCrop ? (
+                <span className="filter-chip filter-chip--idle">
+                  Crop: {crops.find((c) => String(c.id) === String(filterCrop))?.name_en || crops.find((c) => String(c.id) === String(filterCrop))?.name || filterCrop}
                 </span>
               ) : null}
             </FilterActiveRow>
@@ -494,7 +517,7 @@ export default function MasterProblemItems() {
               icon={Bug}
               title="No problem items"
               subtitle={
-                search || filterCategory
+                search || filterCategory || filterCrop
                   ? "No items match your filters"
                   : "Add pests, diseases, or nutrient issues — or import from Excel"
               }
@@ -518,10 +541,12 @@ export default function MasterProblemItems() {
                   <tr key={row.id}>
                     <td className="text-sm text-slate-600">{resolveProblemCropLabel(row)}</td>
                     <td className="text-sm text-slate-700">{resolveProblemCategoryLabel(row)}</td>
-                    <td className="font-semibold text-slate-900">
-                      {resolveProblemEnglishName(row) || "—"}
+                    <td className="font-semibold text-slate-900 min-w-0">
+                      <div className="min-w-0">
+                        <p>{resolveProblemEnglishName(row) || "—"}</p>
+                      </div>
                     </td>
-                    <td className="text-sm text-slate-600">
+                    <td className="text-sm text-slate-600 min-w-0" lang="ta">
                       {resolveProblemTamilName(row) || "—"}
                     </td>
                     <td>

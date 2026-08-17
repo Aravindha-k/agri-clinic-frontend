@@ -1,7 +1,9 @@
 import { PageLoader, PageHeader } from "../../components/ui/command";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-    fetchAllDistricts, fetchAllVillages,
+    fetchAllDistricts,
+    fetchTaluksByDistrict,
+    fetchVillagesPage,
     createDistrict, updateDistrict, deleteDistrict,
     createVillage, updateVillage, deleteVillage,
 } from "../../api/master.api";
@@ -16,38 +18,39 @@ const TABLE_PAGE_SIZE = 25;
 const TABS = ["districts", "villages"];
 const TAB_LABELS = { districts: "Districts", villages: "Villages" };
 
+function resolveTalukName(item, taluks, districts) {
+    const talukId = item.taluk ?? item.taluk_id;
+    const tal = taluks.find((t) => String(t.id) === String(talukId));
+    if (tal?.name) return tal.name;
+    if (item.taluk_name) return item.taluk_name;
+    if (typeof item.taluk === "object" && item.taluk?.name) return item.taluk.name;
+    return "\u2014";
+}
+
 const inputClass = "masters-admin-field";
 
 /* ── Generic Location Form ── */
-function LocationForm({ type, initial = {}, parents = [], onSubmit, onCancel, loading }) {
+function DistrictForm({ initial = {}, onSubmit, onCancel, loading }) {
     const [name, setName] = useState(initial.name || "");
-    const [parentId, setParentId] = useState(
-        type === "villages" ? (initial.district || initial.district_id || "") : ""
-    );
-
-    const parentLabel = type === "villages" ? "District" : null;
 
     return (
-        <form onSubmit={(e) => {
-            e.preventDefault();
-            const payload = { name };
-            if (type === "villages" && parentId) payload.district = parentId;
-            onSubmit(payload);
-        }} className="masters-admin-form">
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                onSubmit({ name });
+            }}
+            className="masters-admin-form"
+        >
             <div className={inputClass}>
                 <label>Name *</label>
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                    placeholder={`Enter ${type.slice(0, -1)} name`} />
+                <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter district name"
+                />
             </div>
-            {parentLabel && (
-                <div className={inputClass}>
-                    <label>{parentLabel}</label>
-                    <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
-                        <option value="">Select {parentLabel}</option>
-                        {parents.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                </div>
-            )}
             <div className="masters-admin-form__foot">
                 <button type="submit" disabled={loading || !name.trim()} className="btn btn-primary btn-md">
                     {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
@@ -63,6 +66,149 @@ function LocationForm({ type, initial = {}, parents = [], onSubmit, onCancel, lo
     );
 }
 
+function VillageForm({ initial = {}, districts = [], onSubmit, onCancel, loading }) {
+    const [name, setName] = useState(initial.name || "");
+    const [districtId, setDistrictId] = useState(
+        String(initial.district ?? initial.district_id ?? "")
+    );
+    const [talukId, setTalukId] = useState(String(initial.taluk ?? initial.taluk_id ?? ""));
+    const [code, setCode] = useState(initial.code ?? initial.village_code ?? "");
+    const [isActive, setIsActive] = useState(initial.is_active !== false);
+    const [taluks, setTaluks] = useState([]);
+    const [taluksLoading, setTaluksLoading] = useState(false);
+
+    useEffect(() => {
+        if (!districtId) {
+            setTaluks([]);
+            return;
+        }
+        setTaluksLoading(true);
+        fetchTaluksByDistrict(districtId)
+            .then(setTaluks)
+            .catch(() => setTaluks([]))
+            .finally(() => setTaluksLoading(false));
+    }, [districtId]);
+
+    const handleDistrictChange = (value) => {
+        setDistrictId(value);
+        setTalukId("");
+    };
+
+    return (
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                const payload = {
+                    name: name.trim(),
+                    taluk: talukId ? Number(talukId) : talukId,
+                    is_active: isActive,
+                };
+                if (code.trim()) payload.code = code.trim();
+                onSubmit(payload);
+            }}
+            className="masters-admin-form"
+        >
+            <div className={inputClass}>
+                <label>District *</label>
+                <select
+                    required
+                    value={districtId}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                >
+                    <option value="">Select district</option>
+                    {districts.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div className={inputClass}>
+                <label>Taluk *</label>
+                <select
+                    required
+                    value={talukId}
+                    onChange={(e) => setTalukId(e.target.value)}
+                    disabled={!districtId || taluksLoading}
+                >
+                    <option value="">
+                        {!districtId
+                            ? "Select district first"
+                            : taluksLoading
+                                ? "Loading taluks…"
+                                : "Select taluk"}
+                    </option>
+                    {taluks.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div className={inputClass}>
+                <label>Village name *</label>
+                <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter village name"
+                />
+            </div>
+            <div className={inputClass}>
+                <label>Official code</label>
+                <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="Optional village code"
+                />
+            </div>
+            <div className={inputClass}>
+                <label>Status</label>
+                <select value={isActive ? "active" : "inactive"} onChange={(e) => setIsActive(e.target.value === "active")}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div className="masters-admin-form__foot">
+                <button
+                    type="submit"
+                    disabled={loading || !name.trim() || !districtId || !talukId}
+                    className="btn btn-primary btn-md"
+                >
+                    {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                    {initial.id ? "Update" : "Create"}
+                </button>
+                {onCancel && (
+                    <button type="button" onClick={onCancel} className="btn btn-secondary btn-md">
+                        Cancel
+                    </button>
+                )}
+            </div>
+        </form>
+    );
+}
+
+function LocationForm({ type, initial = {}, parents = [], onSubmit, onCancel, loading }) {
+    if (type === "villages") {
+        return (
+            <VillageForm
+                initial={initial}
+                districts={parents}
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+                loading={loading}
+            />
+        );
+    }
+
+    return (
+        <DistrictForm
+            initial={initial}
+            onSubmit={onSubmit}
+            onCancel={onCancel}
+            loading={loading}
+        />
+    );
+}
+
 /* ── Main Page ── */
 export default function MasterLocationsPage() {
     const [activeTab, setActiveTab] = useState("districts");
@@ -70,6 +216,10 @@ export default function MasterLocationsPage() {
     const [villages, setVillages] = useState([]);
     const [districtTotal, setDistrictTotal] = useState(0);
     const [villageTotal, setVillageTotal] = useState(0);
+    const [filterDistrict, setFilterDistrict] = useState("");
+    const [filterTaluk, setFilterTaluk] = useState("");
+    const [filterTaluks, setFilterTaluks] = useState([]);
+    const [filterTaluksLoading, setFilterTaluksLoading] = useState(false);
     const [tablePage, setTablePage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -80,40 +230,92 @@ export default function MasterLocationsPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
-    const fetchAll = useCallback(async () => {
+    const fetchDistricts = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const [dRes, vRes] = await Promise.all([
-                fetchAllDistricts(),
-                fetchAllVillages(),
-            ]);
+            const dRes = await fetchAllDistricts();
             setDistricts(dRes.results);
             setDistrictTotal(dRes.count);
-            setVillages(vRes.results);
-            setVillageTotal(vRes.count);
         } catch {
-            setError("Failed to load locations.");
+            setError("Failed to load districts.");
             setDistricts([]);
-            setVillages([]);
             setDistrictTotal(0);
-            setVillageTotal(0);
         } finally {
             setLoading(false);
         }
     }, []);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    const fetchVillages = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const params = {
+                page: tablePage,
+                page_size: TABLE_PAGE_SIZE,
+            };
+            if (filterDistrict) params.district = filterDistrict;
+            if (filterTaluk) params.taluk = filterTaluk;
+            if (search.trim()) params.search = search.trim();
+            const page = await fetchVillagesPage(params);
+            setVillages(page.results);
+            setVillageTotal(page.count);
+        } catch {
+            setError("Failed to load villages.");
+            setVillages([]);
+            setVillageTotal(0);
+        } finally {
+            setLoading(false);
+        }
+    }, [tablePage, filterDistrict, filterTaluk, search]);
+
+    const fetchAll = useCallback(async () => {
+        if (activeTab === "districts") {
+            await fetchDistricts();
+        } else {
+            await fetchVillages();
+        }
+    }, [activeTab, fetchDistricts, fetchVillages]);
+
+    useEffect(() => { fetchDistricts(); }, [fetchDistricts]);
+
+    useEffect(() => {
+        if (activeTab !== "villages") return;
+        fetchVillages();
+    }, [activeTab, fetchVillages]);
+
+    useEffect(() => {
+        if (!filterDistrict) {
+            setFilterTaluks([]);
+            return;
+        }
+        let active = true;
+        (async () => {
+            setFilterTaluksLoading(true);
+            try {
+                const rows = await fetchTaluksByDistrict(filterDistrict);
+                if (active) setFilterTaluks(rows);
+            } catch {
+                if (active) setFilterTaluks([]);
+            } finally {
+                if (active) setFilterTaluksLoading(false);
+            }
+        })();
+        return () => { active = false; };
+    }, [filterDistrict]);
 
     useEffect(() => {
         setTablePage(1);
-    }, [activeTab, search]);
+    }, [activeTab, search, filterDistrict, filterTaluk]);
 
     const getCurrentList = () => {
-        const list = activeTab === "districts" ? districts : villages;
-        if (!search.trim()) return list;
-        const q = search.toLowerCase();
-        return list.filter((item) => (item.name || "").toLowerCase().includes(q));
+        if (activeTab === "districts") {
+            const list = districts;
+            if (!search.trim()) return list;
+            const q = search.toLowerCase();
+            return list.filter((item) => (item.name || "").toLowerCase().includes(q));
+        }
+        return villages;
     };
 
     const getParents = () => {
@@ -163,10 +365,14 @@ export default function MasterLocationsPage() {
 
     const currentList = getCurrentList();
     const apiTotal = activeTab === "districts" ? districtTotal : villageTotal;
-    const tableTotalPages = Math.max(1, Math.ceil(currentList.length / TABLE_PAGE_SIZE));
+    const tableTotalPages = activeTab === "districts"
+        ? Math.max(1, Math.ceil(currentList.length / TABLE_PAGE_SIZE))
+        : Math.max(1, Math.ceil(villageTotal / TABLE_PAGE_SIZE));
     const pagedList = useMemo(
-        () => currentList.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE),
-        [currentList, tablePage]
+        () => activeTab === "districts"
+            ? currentList.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE)
+            : currentList,
+        [activeTab, currentList, tablePage]
     );
     const parentCol = activeTab === "villages";
 
@@ -185,7 +391,7 @@ export default function MasterLocationsPage() {
         <div className="masters-admin page-container">
             <PageHeader
                 title="Master Locations"
-                subtitle="Manage districts and villages"
+                subtitle="Manage districts, taluks, and villages"
                 badge={
                     <span className="masters-admin-header__badge">
                         <MapPin className="w-3 h-3" aria-hidden="true" />
@@ -235,13 +441,42 @@ export default function MasterLocationsPage() {
                             aria-label={`Search ${TAB_LABELS[activeTab].toLowerCase()}`}
                         />
                     </div>
-                    {search && (
-                        <button type="button" onClick={() => setSearch("")} className="btn btn-ghost btn-md filter-toolbar__clear">
+                    {activeTab === "villages" ? (
+                        <>
+                            <select
+                                value={filterDistrict}
+                                onChange={(e) => { setFilterDistrict(e.target.value); setFilterTaluk(""); }}
+                                className="masters-admin-filter-select min-w-[10rem]"
+                                aria-label="Filter by district"
+                            >
+                                <option value="">All districts</option>
+                                {districts.map((d) => (
+                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={filterTaluk}
+                                onChange={(e) => setFilterTaluk(e.target.value)}
+                                disabled={!filterDistrict || filterTaluksLoading}
+                                className="masters-admin-filter-select min-w-[10rem] disabled:opacity-50"
+                                aria-label="Filter by taluk"
+                            >
+                                <option value="">
+                                    {!filterDistrict ? "Select district first" : filterTaluksLoading ? "Loading taluks…" : "All taluks"}
+                                </option>
+                                {filterTaluks.map((t) => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                        </>
+                    ) : null}
+                    {(search || filterDistrict || filterTaluk) ? (
+                        <button type="button" onClick={() => { setSearch(""); setFilterDistrict(""); setFilterTaluk(""); }} className="btn btn-ghost btn-md filter-toolbar__clear">
                             <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
                         </button>
-                    )}
+                    ) : null}
                     <p className="masters-admin-filters__meta lg:ml-auto">
-                        {currentList.length} {TAB_LABELS[activeTab].toLowerCase()} shown
+                        {activeTab === "districts" ? currentList.length : villageTotal} {TAB_LABELS[activeTab].toLowerCase()} shown
                     </p>
                 </div>
             </section>
@@ -270,8 +505,16 @@ export default function MasterLocationsPage() {
                         <table className="data-table compact-table masters-admin-table w-full">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    {parentCol && <th>District</th>}
+                                    <th>{activeTab === "villages" ? "Village" : "Name"}</th>
+                                    {activeTab === "villages" ? (
+                                        <>
+                                            <th>Taluk</th>
+                                            <th>District</th>
+                                            <th>Code</th>
+                                            <th>Status</th>
+                                        </>
+                                    ) : null}
+                                    {parentCol && activeTab !== "villages" && <th>District</th>}
                                     <th className="w-28 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -286,7 +529,15 @@ export default function MasterLocationsPage() {
                                                 <p className="masters-admin-row-name">{item.name}</p>
                                             </div>
                                         </td>
-                                        {parentCol && <td className="text-sm text-slate-600">{getParentName(item)}</td>}
+                                        {activeTab === "villages" ? (
+                                            <>
+                                                <td className="text-sm text-slate-600">{resolveTalukName(item, filterTaluks.length ? filterTaluks : [], districts)}</td>
+                                                <td className="text-sm text-slate-600">{getParentName(item)}</td>
+                                                <td className="text-sm text-slate-500 font-mono">{item.code || item.village_code || "\u2014"}</td>
+                                                <td className="text-sm text-slate-600">{item.is_active === false ? "Inactive" : "Active"}</td>
+                                            </>
+                                        ) : null}
+                                        {parentCol && activeTab !== "villages" && <td className="text-sm text-slate-600">{getParentName(item)}</td>}
                                         <td>
                                             <div className="masters-admin-actions">
                                                 <button type="button" onClick={() => openEdit(item)} title="Edit" className="masters-admin-action-btn masters-admin-action-btn--edit" aria-label="Edit">
@@ -305,8 +556,8 @@ export default function MasterLocationsPage() {
                     {tableTotalPages > 1 && (
                         <div className="masters-admin-pagination">
                             <span>
-                                Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, currentList.length)} of {currentList.length}
-                                {search.trim() ? ` (filtered from ${apiTotal} total)` : ` (${apiTotal} total)`}
+                                Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, activeTab === "districts" ? currentList.length : villageTotal)} of {activeTab === "districts" ? currentList.length : villageTotal}
+                                {activeTab === "villages" && (filterDistrict || filterTaluk || search.trim()) ? " (filtered)" : ""}
                             </span>
                             <div className="masters-admin-pagination__controls">
                                 <button

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CustomDropdown from "../components/CustomDropdown";
 import VisitMediaUploadField from "../components/visits/VisitMediaUploadField";
+import LocationSelector from "../components/ui/LocationSelector";
 import { PageHeader, ErrorRetry } from "../components/ui/command";
+import ProblemMultiSelect from "../components/visits/ProblemMultiSelect";
 import { fetchAllCrops } from "../api/crop.api";
-import { fetchAllVillages, fetchProblemCategories, fetchAllProblemMasters } from "../api/master.api";
 import { fetchAllFarmers } from "../api/farmer.api";
 import { createVisit, uploadVisitAttachment } from "../api/visit.api";
 import {
@@ -12,12 +13,8 @@ import {
   farmersToDropdownOptions,
 } from "../utils/farmerFormMapping";
 import {
-  PROBLEM_TYPE_PILLS,
-  PROBLEM_TYPE_CODES,
   validateCreateVisitForm,
   buildCreateVisitPayload,
-  findCategoryForCode,
-  categoryRequiresMaster,
 } from "../utils/createVisitForm";
 import { ChevronLeft, Loader2 } from "lucide-react";
 
@@ -26,13 +23,15 @@ const EMPTY_FORM = {
   farmer_id: null,
   farmer_name: "",
   farmer_phone: "",
-  village: null,
+  district: "",
+  district_name: "",
+  taluk: "",
+  taluk_name: "",
+  village: "",
+  village_name: "",
   crop: null,
   land_area: "",
-  problem_type_code: "",
-  problem_category: null,
-  problem_master: null,
-  problem_other: "",
+  problem_item_ids: [],
   problem_description: "",
 };
 
@@ -119,49 +118,23 @@ export default function CreateVisit() {
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [villages, setVillages] = useState([]);
   const [crops, setCrops] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [problemMasters, setProblemMasters] = useState([]);
-  const [mastersLoading, setMastersLoading] = useState(false);
-  const [mastersApiMissing, setMastersApiMissing] = useState(false);
   const [mediaFiles, setMediaFiles] = useState([]);
 
   const [farmers, setFarmers] = useState([]);
   const [farmerOptions, setFarmerOptions] = useState([]);
   const [farmersLoading, setFarmersLoading] = useState(true);
-  const [villageLoading, setVillageLoading] = useState(true);
   const [cropLoading, setCropLoading] = useState(true);
 
   const isExistingFarmer = form.farmer_mode === "existing";
-  const isOthers = form.problem_type_code === PROBLEM_TYPE_CODES.OTHERS;
-
-  const selectedCategory = useMemo(
-    () => findCategoryForCode(categories, form.problem_type_code),
-    [categories, form.problem_type_code]
-  );
-
-  const needsMasterDropdown = useMemo(() => {
-    if (!form.problem_type_code || isOthers) return false;
-    return categoryRequiresMaster(selectedCategory, form.problem_type_code);
-  }, [selectedCategory, form.problem_type_code, isOthers]);
+  const locationDefaultDistrict = isExistingFarmer ? null : "Villupuram";
 
   useEffect(() => {
-    setVillageLoading(true);
-    fetchAllVillages()
-      .then((page) => setVillages(page.results || []))
-      .catch(() => setVillages([]))
-      .finally(() => setVillageLoading(false));
-
     setCropLoading(true);
     fetchAllCrops()
       .then((page) => setCrops(page.results || []))
       .catch(() => setCrops([]))
       .finally(() => setCropLoading(false));
-
-    fetchProblemCategories()
-      .then(setCategories)
-      .catch(() => setCategories([]));
 
     setFarmersLoading(true);
     fetchAllFarmers()
@@ -179,43 +152,17 @@ export default function CreateVisit() {
 
   const preselectFarmerId = location.state?.farmerId;
   useEffect(() => {
-    if (!preselectFarmerId || !farmers.length || !villages.length) return;
+    if (!preselectFarmerId || !farmers.length) return;
     const farmer = farmers.find((f) => f.id === preselectFarmerId);
     if (!farmer) return;
-    const mapped = farmerRecordToVisitForm(farmer, villages);
+    const mapped = farmerRecordToVisitForm(farmer);
     if (!mapped) return;
     setForm((prev) => ({
       ...prev,
       farmer_mode: "existing",
       ...mapped,
     }));
-  }, [preselectFarmerId, farmers, villages]);
-
-  const loadProblemMasters = useCallback(async () => {
-    if (!form.problem_type_code || !selectedCategory?.id) {
-      setProblemMasters([]);
-      return;
-    }
-    setMastersLoading(true);
-    try {
-      const { items, apiAvailable } = await fetchAllProblemMasters({
-        category_id: selectedCategory.id,
-        problem_category: selectedCategory.id,
-        crop_id: form.crop || undefined,
-      });
-      setMastersApiMissing(apiAvailable === false);
-      setProblemMasters(items || []);
-    } catch {
-      setProblemMasters([]);
-      setMastersApiMissing(true);
-    } finally {
-      setMastersLoading(false);
-    }
-  }, [form.problem_type_code, selectedCategory?.id, form.crop]);
-
-  useEffect(() => {
-    loadProblemMasters();
-  }, [loadProblemMasters]);
+  }, [preselectFarmerId, farmers]);
 
   const setField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -227,6 +174,19 @@ export default function CreateVisit() {
     setField(name, value);
   };
 
+  const handleLocationChange = (loc) => {
+    setForm((prev) => ({
+      ...prev,
+      district: loc.district || "",
+      district_name: loc.district_name || "",
+      taluk: loc.taluk || "",
+      taluk_name: loc.taluk_name || "",
+      village: loc.village || "",
+      village_name: loc.village_name || "",
+    }));
+    setErrors((prev) => ({ ...prev, village: undefined }));
+  };
+
   const setFarmerMode = (mode) => {
     setForm({ ...EMPTY_FORM, farmer_mode: mode });
     setErrors({});
@@ -234,7 +194,7 @@ export default function CreateVisit() {
 
   const selectExistingFarmer = (farmerId) => {
     const farmer = farmers.find((f) => f.id === farmerId);
-    const mapped = farmerRecordToVisitForm(farmer, villages);
+    const mapped = farmerRecordToVisitForm(farmer);
     if (!mapped) {
       setField("farmer_id", farmerId);
       return;
@@ -247,34 +207,11 @@ export default function CreateVisit() {
     setErrors({});
   };
 
-  const selectProblemType = (code) => {
-    const cat = findCategoryForCode(categories, code);
-    setForm((prev) => ({
-      ...prev,
-      problem_type_code: code,
-      problem_category: cat?.id ?? null,
-      problem_master: null,
-      problem_other: code === PROBLEM_TYPE_CODES.OTHERS ? prev.problem_other : "",
-    }));
-    setErrors((prev) => ({
-      ...prev,
-      problem_type_code: undefined,
-      problem_category: undefined,
-      problem_master: undefined,
-      problem_other: undefined,
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     setSubmitError("");
 
-    const requiresMaster = needsMasterDropdown && problemMasters.length > 0;
-
-    const validation = validateCreateVisitForm(form, {
-      requiresMaster,
-      mediaFiles,
-    });
+    const validation = validateCreateVisitForm(form, { mediaFiles });
     if (Object.keys(validation).length > 0) {
       setErrors(validation);
       return;
@@ -282,7 +219,7 @@ export default function CreateVisit() {
 
     try {
       setLoading(true);
-      const payload = buildCreateVisitPayload(form, categories);
+      const payload = buildCreateVisitPayload(form);
       const visit = await createVisit(payload);
       const visitId = visit?.id;
 
@@ -332,15 +269,6 @@ export default function CreateVisit() {
     ...c,
     name_en: c.name_en || c.name || `Crop #${c.id}`,
   }));
-
-  const masterLabel =
-    form.problem_type_code === PROBLEM_TYPE_CODES.PEST
-      ? "Pest"
-      : form.problem_type_code === PROBLEM_TYPE_CODES.DISEASE
-        ? "Disease"
-        : form.problem_type_code === PROBLEM_TYPE_CODES.NUTRIENT
-          ? "Nutrient deficiency"
-          : "Other problem";
 
   return (
     <div className="page-container page-container--form max-w-5xl">
@@ -400,21 +328,23 @@ export default function CreateVisit() {
               error={errors.farmer_phone}
               placeholder="10-digit mobile"
             />
-            <div className="create-visit-field">
-              <label className="form-label" htmlFor="create-visit-village">
-                Village <span className="form-required" aria-hidden="true">*</span>
-              </label>
-              <CustomDropdown
-                id="create-visit-village"
-                options={villages}
-                value={form.village}
-                onChange={(id) => setField("village", id)}
-                labelKey="name"
-                placeholder={villageLoading ? "Loading villages…" : "Select village"}
-                disabled={villageLoading || villages.length === 0}
-              />
-              {errors.village ? <p className="form-error">{errors.village}</p> : null}
-            </div>
+          </div>
+
+          <div className="create-visit-field mt-4">
+            <p className="form-label">
+              Location
+              <span className="form-required" aria-hidden="true"> *</span>
+            </p>
+            <LocationSelector
+              value={{
+                district: form.district,
+                taluk: form.taluk,
+                village: form.village,
+              }}
+              onChange={handleLocationChange}
+              defaultDistrictName={locationDefaultDistrict}
+            />
+            {errors.village ? <p className="form-error">{errors.village}</p> : null}
           </div>
         </SectionCard>
 
@@ -430,7 +360,7 @@ export default function CreateVisit() {
                 value={form.crop}
                 onChange={(id) => {
                   setField("crop", id);
-                  setField("problem_master", null);
+                  setField("problem_item_ids", []);
                 }}
                 labelKey="name_en"
                 subLabelKey="name_ta"
@@ -453,93 +383,23 @@ export default function CreateVisit() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Problem Information" subtitle="Type, sub-category, and description">
+        <SectionCard title="Problems identified" subtitle="Crop-aware multi-select from problem masters">
           <div className="create-visit-field">
-            <span className="form-label">
-              Problem Type <span className="form-required" aria-hidden="true">*</span>
-            </span>
-            <div className="create-visit-pills" role="group" aria-label="Problem type">
-              {PROBLEM_TYPE_PILLS.map((pill) => {
-                const active = form.problem_type_code === pill.code;
-                const cat = findCategoryForCode(categories, pill.code);
-                const disabled = categories.length > 0 && !cat;
-                return (
-                  <button
-                    key={pill.code}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => selectProblemType(pill.code)}
-                    className={`create-visit-pill${active ? " create-visit-pill--active" : ""}`}
-                    aria-pressed={active}
-                  >
-                    {pill.label}
-                  </button>
-                );
-              })}
-            </div>
-            {errors.problem_type_code ? (
-              <p className="form-error">{errors.problem_type_code}</p>
-            ) : null}
-            {errors.problem_category ? (
-              <p className="form-error">{errors.problem_category}</p>
-            ) : null}
+            <label className="form-label" htmlFor="create-visit-problems">
+              Problems identified
+              <span className="form-required" aria-hidden="true"> *</span>
+            </label>
+            <ProblemMultiSelect
+              id="create-visit-problems"
+              cropId={form.crop}
+              value={form.problem_item_ids}
+              onChange={(ids) => setField("problem_item_ids", ids)}
+              error={errors.problem_item_ids}
+            />
           </div>
 
-          {form.problem_type_code && needsMasterDropdown ? (
-            <div className="create-visit-field">
-              <label className="form-label" htmlFor="create-visit-master">
-                {masterLabel}
-                <span className="form-required" aria-hidden="true"> *</span>
-              </label>
-              {mastersApiMissing ? (
-                <p className="form-hint form-hint--warn">
-                  Problem list API is not available yet. Add items under{" "}
-                  <button
-                    type="button"
-                    className="form-hint__link"
-                    onClick={() => navigate("/masters/problem-items")}
-                  >
-                    Masters → Problem items
-                  </button>{" "}
-                  when enabled, or choose <strong>Others</strong> and describe below.
-                </p>
-              ) : (
-                <CustomDropdown
-                  id="create-visit-master"
-                  options={problemMasters}
-                  value={form.problem_master}
-                  onChange={(id) => setField("problem_master", id)}
-                  labelKey="name"
-                  placeholder={
-                    mastersLoading
-                      ? "Loading options…"
-                      : problemMasters.length
-                        ? `Select ${masterLabel.toLowerCase()}`
-                        : "No items — add under Masters"
-                  }
-                  disabled={mastersLoading || problemMasters.length === 0}
-                />
-              )}
-              {errors.problem_master ? (
-                <p className="form-error">{errors.problem_master}</p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {isOthers ? (
-            <Field
-              label="Other problem"
-              name="problem_other"
-              value={form.problem_other}
-              onChange={handleChange}
-              required
-              error={errors.problem_other}
-              placeholder="Describe the problem type"
-            />
-          ) : null}
-
           <Field
-            label="Problem Description"
+            label="Field observation / description"
             name="problem_description"
             type="textarea"
             value={form.problem_description}

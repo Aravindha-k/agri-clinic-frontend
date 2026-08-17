@@ -11310,3 +11310,153 @@ textarea.input {
     justify-content: flex-end;
   }
 }
+
+/* ── Phase 1: location cascade + visit problems ── */
+.location-cascade .select {
+  @apply w-full min-h-[2.5rem];
+}
+
+.visit-problems-panel {
+  @apply space-y-4;
+}
+
+.visit-problems-panel--empty {
+  @apply rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center;
+}
+
+.visit-problems-panel__empty {
+  @apply text-sm text-slate-500 m-0;
+}
+
+.visit-problems-group__title {
+  @apply text-sm font-semibold text-slate-800 m-0;
+}
+
+.visit-problems-group__count {
+  @apply text-slate-400 font-medium;
+}
+
+.visit-problems-group__list {
+  @apply flex flex-wrap gap-2 mt-2;
+}
+
+.visit-problems-chip {
+  @apply inline-flex flex-col gap-0.5 rounded-lg border border-slate-200 bg-white px-3 py-2 min-w-0 max-w-full;
+  box-shadow: var(--shadow-xs);
+}
+
+.visit-problems-chip__name {
+  @apply text-sm font-medium text-slate-800 break-words;
+}
+
+.visit-problems-chip__tamil {
+  @apply text-xs text-slate-500 break-words;
+}
+
+.visit-problems-summary-line {
+  @apply text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5;
+}
+
+.visit-problems-summary-line__count {
+  @apply font-semibold text-slate-600;
+}
+
+.visit-problems-summary-line__names {
+  @apply text-slate-500 min-w-0 break-words;
+}
+
+.farmer-detail-visit-item__problems {
+  @apply mt-1;
+}
+
+.problem-multi-select {
+  @apply rounded-xl border border-slate-200 bg-white p-4 space-y-3 min-w-0;
+}
+
+.problem-multi-select__toolbar {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.problem-multi-select__search-wrap {
+  @apply relative flex-1 min-w-[12rem];
+}
+
+.problem-multi-select__search-icon {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none;
+}
+
+.problem-multi-select__search {
+  @apply pl-9 w-full min-w-0;
+}
+
+.problem-multi-select__count {
+  @apply text-xs font-semibold text-slate-600 tabular-nums whitespace-nowrap;
+}
+
+.problem-multi-select__clear {
+  @apply shrink-0;
+}
+
+.problem-multi-select__status {
+  @apply text-sm text-slate-500 py-4 text-center;
+}
+
+.problem-multi-select__status--error {
+  @apply flex flex-wrap items-center justify-center gap-2 text-red-600;
+}
+
+.problem-multi-select__groups {
+  @apply space-y-4 max-h-[28rem] overflow-y-auto overflow-x-hidden pr-1;
+}
+
+.problem-multi-select__group {
+  @apply min-w-0 border-0 p-0 m-0;
+}
+
+.problem-multi-select__group-title {
+  @apply text-sm font-semibold text-slate-800 mb-2 px-0;
+}
+
+.problem-multi-select__list {
+  @apply space-y-1 list-none m-0 p-0;
+}
+
+.problem-multi-select__option {
+  @apply flex items-start gap-2.5 rounded-lg px-2 py-2 cursor-pointer hover:bg-slate-50 min-w-0;
+}
+
+.problem-multi-select__option input {
+  @apply mt-1 shrink-0;
+}
+
+.problem-multi-select__option-text {
+  @apply flex flex-col gap-0.5 min-w-0;
+}
+
+.problem-multi-select__option-name {
+  @apply text-sm font-medium text-slate-800 break-words;
+}
+
+.problem-multi-select__option-tamil {
+  @apply text-xs text-slate-500 break-words;
+}
+
+@media (max-width: 767px) {
+  .farmers-filters .filter-toolbar__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .farmers-filters .filter-toolbar__select {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.visit-report-additional {
+  @apply rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3;
+}
+
+.visit-report-additional__title {
+  @apply text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2;
+}

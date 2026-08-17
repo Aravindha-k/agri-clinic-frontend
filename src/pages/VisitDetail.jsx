@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { getVisitDetail, updateVisit, deleteVisit } from "../api/visit.api";
 import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
 import VisitLocationDisplay from "../components/visits/VisitLocationDisplay";
+import VisitProblemsPanel from "../components/visits/VisitProblemsPanel";
+import ProblemMultiSelect from "../components/visits/ProblemMultiSelect";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -16,9 +18,17 @@ import {
     resolveVisitProblemSeen,
     resolveVisitActionTaken,
     resolveVisitFollowUpDate,
+    visitFieldIsMissing,
     VISIT_FIELD_NOTES_LABEL,
     VISIT_NOT_ADDED,
 } from "../utils/visitDisplay";
+import { resolveLocationBlock } from "../utils/locationDisplay";
+import { resolveVisitProblems } from "../utils/visitProblems";
+import {
+    buildVisitProblemUpdatePayload,
+    extractProblemItemIdsFromVisit,
+    resolveVisitCropId,
+} from "../utils/createVisitForm";
 import { unwrapSuccessEnvelope } from "../utils/apiUnwrap";
 import {
     ArrowLeft,
@@ -207,11 +217,13 @@ function getEmployeeBlock(v) {
 function getFarmerBlock(v) {
     const resolved = resolveVisitFarmer(v);
     const f = v?.farmer ?? v?.farmer_info;
+    const location = resolveLocationBlock({ ...f, ...v, district_name: resolved.district, village_name: resolved.village, taluk_name: resolved.taluk });
     return {
         name: resolved.name,
         phone: resolved.phone,
-        village: resolved.village,
-        district: resolved.district,
+        village: location.village,
+        district: location.district,
+        taluk: location.taluk,
         code: f?.farmer_code,
         photoUrl: resolved.profilePhotoUrl,
         entity: f ?? v,
@@ -245,6 +257,42 @@ function getCropBlock(v) {
         stage: v?.crop_stage,
         health: v?.crop_health,
     };
+}
+
+function getOptionalFieldRows(v, field, crop, visitNotes) {
+    const rows = [];
+    const variety = v?.crop_variety ?? v?.variety;
+    const severity = v?.severity ?? v?.problem_severity;
+    const landName = field.landName;
+    const landArea = field.landArea;
+    const cropStage = crop.stage;
+    const cropHealth = crop.health;
+
+    if (!visitFieldIsMissing(landName) && landName !== "—") {
+        rows.push({ label: "Land parcel", value: landName });
+    }
+    if (!visitFieldIsMissing(landArea) && landArea !== "—") {
+        rows.push({ label: "Area (acres)", value: landArea });
+    }
+    if (!visitFieldIsMissing(variety)) {
+        rows.push({ label: "Variety", value: variety });
+    }
+    if (!visitFieldIsMissing(cropStage)) {
+        rows.push({ label: "Crop stage", value: cropStage });
+    }
+    if (!visitFieldIsMissing(cropHealth)) {
+        rows.push({ label: "Crop health", value: cropHealth });
+    }
+    if (!visitFieldIsMissing(severity)) {
+        rows.push({ label: "Severity", value: severity });
+    }
+    if (!visitFieldIsMissing(visitNotes.actionTaken)) {
+        rows.push({ label: "Action taken", value: visitNotes.actionTaken });
+    }
+    if (!visitFieldIsMissing(visitNotes.followUpDate)) {
+        rows.push({ label: "Follow-up date", value: visitNotes.followUpDate });
+    }
+    return rows;
 }
 
 function getVisitNotesBlock(v) {
@@ -327,7 +375,12 @@ export default function VisitDetail(props) {
                     return;
                 }
                 setData(d);
-                setFormData(d);
+                setFormData({
+                    ...d,
+                    problem_item_ids: extractProblemItemIdsFromVisit(d),
+                    field_notes: d.field_notes ?? d.observation ?? "",
+                    crop_id: resolveVisitCropId(d),
+                });
             } catch {
                 setError("Failed to load visit details");
                 setData(null);
@@ -347,7 +400,10 @@ export default function VisitDetail(props) {
         setSaving(true);
         setError(null);
         try {
-            await updateVisit(id, formData);
+            const payload = buildVisitProblemUpdatePayload(formData, {
+                originalCropId: resolveVisitCropId(data),
+            });
+            await updateVisit(id, payload);
             navigate(`/visits/${id}`);
         } catch {
             setError("Failed to save changes");
@@ -372,6 +428,9 @@ export default function VisitDetail(props) {
     const field = getFieldBlock(v);
     const crop = getCropBlock(v);
     const visitNotes = getVisitNotesBlock(v);
+    const optionalRows = getOptionalFieldRows(v, field, crop, visitNotes);
+    const visitProblems = resolveVisitProblems(v);
+    const hasStructuredProblems = visitProblems.length > 0;
 
     const headerAttachmentCount =
         evidenceCount ?? resolveVisitAttachmentCount(data);
@@ -491,35 +550,44 @@ export default function VisitDetail(props) {
             <section className="visit-report-summary" aria-label="Visit summary">
                 <div className="visit-report-summary__glow -top-8 -right-8 w-40 h-40" aria-hidden="true" />
                 <div className="visit-report-summary__inner">
-                    <p className="visit-report-summary__label">Inspection summary</p>
+                    <p className="visit-report-summary__label">Visit summary</p>
                     <div className="visit-report-summary__grid">
-                        <div className="visit-report-summary__cell">
-                            <p className="visit-report-summary__cell-label">Inspector</p>
-                            <p className="visit-report-summary__cell-value">{employee.name}</p>
-                        </div>
                         <div className="visit-report-summary__cell">
                             <p className="visit-report-summary__cell-label">Farmer</p>
                             <p className="visit-report-summary__cell-value">{farmer.name}</p>
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">District</p>
+                            <p className="visit-report-summary__cell-value">{farmer.district}</p>
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Taluk</p>
+                            <p className="visit-report-summary__cell-value">{farmer.taluk}</p>
+                        </div>
+                        <div className="visit-report-summary__cell">
+                            <p className="visit-report-summary__cell-label">Village</p>
+                            <p className="visit-report-summary__cell-value">{farmer.village}</p>
                         </div>
                         <div className="visit-report-summary__cell">
                             <p className="visit-report-summary__cell-label">Crop</p>
                             <p className="visit-report-summary__cell-value">{crop.name}</p>
                         </div>
                         <div className="visit-report-summary__cell">
-                            <p className="visit-report-summary__cell-label">Land</p>
-                            <p className="visit-report-summary__cell-value">{field.landName}</p>
+                            <p className="visit-report-summary__cell-label">Employee</p>
+                            <p className="visit-report-summary__cell-value">{employee.name}</p>
                         </div>
                         <div className="visit-report-summary__cell">
-                            <p className="visit-report-summary__cell-label">GPS</p>
+                            <p className="visit-report-summary__cell-label">Visit date</p>
                             <p className="visit-report-summary__cell-value">
-                                {hasGps ? "Verified" : "Missing"}
+                                {visitDateLabel}
+                                {visitTimeLabel ? ` · ${visitTimeLabel}` : ""}
                             </p>
                         </div>
                         <div className="visit-report-summary__cell">
-                            <p className="visit-report-summary__cell-label">Evidence</p>
+                            <p className="visit-report-summary__cell-label">Status</p>
                             <p className="visit-report-summary__cell-value">
-                                {headerAttachmentCount ?? 0} file
-                                {(headerAttachmentCount ?? 0) === 1 ? "" : "s"}
+                                {hasGps ? "GPS verified" : "No GPS"}
+                                {headerAttachmentCount > 0 ? ` · ${headerAttachmentCount} evidence` : ""}
                             </p>
                         </div>
                     </div>
@@ -530,169 +598,97 @@ export default function VisitDetail(props) {
                 <main className="visit-report-main">
                     <ReportSection
                         number="01"
-                        title="Farmer & site"
-                        subtitle="Subject profile, land parcel, and crop details"
-                        icon={User}
-                    >
-                        <div className="visit-report-farmer">
-                            <div className="visit-report-farmer__profile">
-                                <ProfileAvatar
-                                    entity={farmer.entity}
-                                    src={farmer.photoUrl}
-                                    name={farmer.name}
-                                    size="lg"
-                                    variant="teal"
-                                />
-                                <div className="min-w-0 mt-3">
-                                    <p className="visit-report-farmer__name">{farmer.name}</p>
-                                    {farmer.phone && farmer.phone !== "—" && (
-                                        <p className="visit-report-farmer__phone">
-                                            <Phone className="w-3 h-3" aria-hidden="true" />
-                                            {farmer.phone}
-                                        </p>
-                                    )}
-                                    {farmer.code && mode === "view" && (
-                                        <span className="visit-report-farmer__code">
-                                            {farmer.code}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="visit-report-farmer__details">
-                                {mode === "edit" ? (
-                                    <div className="visit-report-kv-grid">
-                                        <Field
-                                            label="Farmer name"
-                                            name="farmer_name"
-                                            value={farmer.name}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="Phone"
-                                            name="farmer_phone"
-                                            value={farmer.phone}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="Village"
-                                            name="village_name"
-                                            value={farmer.village}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="District"
-                                            name="district_name"
-                                            value={farmer.district}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="Land name"
-                                            name="land_name"
-                                            value={field.landName}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="Area (acres)"
-                                            name="land_area"
-                                            value={field.landArea}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="Crop"
-                                            name="crop_name"
-                                            value={v?.crop_name ?? ""}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                        <Field
-                                            label="Crop stage"
-                                            name="crop_stage"
-                                            value={crop.stage ?? ""}
-                                            editable
-                                            onChange={handleChange}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="visit-report-kv-grid">
-                                        <ReportKv label="Village" value={farmer.village} />
-                                        <ReportKv label="District" value={farmer.district} />
-                                        <ReportKv label="Land parcel" value={field.landName} />
-                                        <ReportKv label="Area (acres)" value={field.landArea} />
-                                        <ReportKv
-                                            label="Crop"
-                                            value={crop.name}
-                                            muted={crop.name === VISIT_NOT_ADDED}
-                                        />
-                                        <ReportKv label="Crop stage" value={crop.stage} />
-                                        {crop.health && (
-                                            <ReportKv label="Crop health" value={crop.health} />
-                                        )}
-                                        {field.gps && (
-                                            <ReportKv label="Field GPS" value={field.gps} />
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </ReportSection>
-
-                    <ReportSection
-                        number="02"
-                        title="Field notes"
-                        subtitle="Observations recorded during the visit"
+                        title="Field observations"
+                        subtitle="Severity, notes, and additional field information"
                         icon={FileText}
-                    >
-                        {mode === "edit" ? (
-                            <Field
-                                label={VISIT_FIELD_NOTES_LABEL}
-                                name="field_notes"
-                                value={v?.field_notes ?? v?.observation ?? ""}
-                                editable
-                                onChange={handleChange}
-                                type="textarea"
-                            />
-                        ) : (
-                            <div className="visit-report-notes">
-                                <p className="visit-report-notes__label">
-                                    <FileText className="w-3.5 h-3.5" aria-hidden="true" />
-                                    {VISIT_FIELD_NOTES_LABEL}
-                                </p>
-                                <p
-                                    className={`visit-report-notes__body ${
-                                        visitNotes.fieldNotes === VISIT_NOT_ADDED
-                                            ? "visit-report-notes__body--muted"
-                                            : ""
-                                    }`}
-                                >
-                                    {asDisplayString(visitNotes.fieldNotes, VISIT_NOT_ADDED)}
-                                </p>
-                            </div>
-                        )}
-                    </ReportSection>
-
-                    <ReportSection
-                        number="03"
-                        title="Recommendations"
-                        subtitle="Problem identified, action taken, and follow-up plan"
-                        icon={Stethoscope}
                     >
                         {mode === "edit" ? (
                             <div className="space-y-4">
                                 <Field
-                                    label="Problem seen"
+                                    label={VISIT_FIELD_NOTES_LABEL}
+                                    name="field_notes"
+                                    value={v?.field_notes ?? v?.observation ?? ""}
+                                    editable
+                                    onChange={handleChange}
+                                    type="textarea"
+                                />
+                                <Field
+                                    label="Employee observation (free text)"
                                     name="problem_seen"
                                     value={v?.problem_seen ?? ""}
                                     editable
                                     onChange={handleChange}
                                     type="textarea"
                                 />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="visit-report-notes">
+                                    <p className="visit-report-notes__label">
+                                        <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                                        {VISIT_FIELD_NOTES_LABEL}
+                                    </p>
+                                    <p
+                                        className={`visit-report-notes__body ${
+                                            visitNotes.fieldNotes === VISIT_NOT_ADDED
+                                                ? "visit-report-notes__body--muted"
+                                                : ""
+                                        }`}
+                                    >
+                                        {asDisplayString(visitNotes.fieldNotes, VISIT_NOT_ADDED)}
+                                    </p>
+                                </div>
+                                {optionalRows.length > 0 ? (
+                                    <div className="visit-report-additional mt-4">
+                                        <p className="visit-report-additional__title">Additional field information</p>
+                                        <div className="visit-report-kv-grid">
+                                            {optionalRows.map((row) => (
+                                                <ReportKv key={row.label} label={row.label} value={row.value} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </>
+                        )}
+                    </ReportSection>
+
+                    <ReportSection
+                        number="02"
+                        title="Problems identified"
+                        subtitle={
+                            hasStructuredProblems
+                                ? `${visitProblems.length} problem${visitProblems.length === 1 ? "" : "s"} recorded`
+                                : "Structured and legacy problem records"
+                        }
+                        icon={Stethoscope}
+                    >
+                        {mode === "edit" ? (
+                            <ProblemMultiSelect
+                                cropId={resolveVisitCropId(v)}
+                                value={v?.problem_item_ids ?? []}
+                                onChange={(ids) =>
+                                    setFormData((prev) => ({ ...prev, problem_item_ids: ids }))
+                                }
+                            />
+                        ) : hasStructuredProblems ? (
+                            <VisitProblemsPanel visit={v} />
+                        ) : visitNotes.problemSeen !== VISIT_NOT_ADDED ? (
+                            <div className="visit-report-notes">
+                                <p className="visit-report-notes__body">{visitNotes.problemSeen}</p>
+                            </div>
+                        ) : (
+                            <VisitProblemsPanel visit={v} />
+                        )}
+                    </ReportSection>
+
+                    <ReportSection
+                        number="03"
+                        title="Recommendations & follow-up"
+                        subtitle="Action taken and follow-up plan"
+                        icon={CheckCircle2}
+                    >
+                        {mode === "edit" ? (
+                            <div className="space-y-4">
                                 <Field
                                     label="Action taken"
                                     name="action_taken"
@@ -712,13 +708,6 @@ export default function VisitDetail(props) {
                             </div>
                         ) : (
                             <div className="visit-report-recommendations">
-                                <RecommendationCard
-                                    label="Problem seen"
-                                    value={visitNotes.problemSeen}
-                                    tone="problem"
-                                    icon={AlertTriangle}
-                                    muted={visitNotes.problemSeen === VISIT_NOT_ADDED}
-                                />
                                 <RecommendationCard
                                     label="Action taken"
                                     value={visitNotes.actionTaken}

@@ -93,6 +93,13 @@ export function resolveVisitFieldNotes(visit) {
 
 export function resolveVisitProblemSeen(visit) {
   if (!visit || typeof visit !== "object") return VISIT_NOT_ADDED;
+
+  if (Array.isArray(visit.problems) && visit.problems.length > 0) {
+    return (
+      pickVisitText(visit.problem_seen, visit.issue_observed) ?? VISIT_NOT_ADDED
+    );
+  }
+
   return (
     pickVisitText(
       visit.problem_seen,

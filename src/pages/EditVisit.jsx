@@ -2,8 +2,14 @@ import { PageLoader, PageHeader, ErrorRetry } from "../components/ui/command";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getVisitDetail, updateVisit } from "../api/visit.api";
+import ProblemMultiSelect from "../components/visits/ProblemMultiSelect";
 import { resolveVisitCropDisplay, VISIT_NOT_ADDED } from "../utils/visitDisplay";
-import { ClipboardCheck, FileText, Calendar, ChevronLeft } from "lucide-react";
+import {
+  buildVisitProblemUpdatePayload,
+  extractProblemItemIdsFromVisit,
+  resolveVisitCropId,
+} from "../utils/createVisitForm";
+import { ClipboardCheck, FileText, Calendar, ChevronLeft, Stethoscope } from "lucide-react";
 
 /* ---------- UI COMPONENTS ---------- */
 
@@ -34,6 +40,7 @@ export default function EditVisit() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [originalCropId, setOriginalCropId] = useState(null);
   const [formData, setFormData] = useState({
     farmer_name: "",
     farmer_phone: "",
@@ -52,6 +59,8 @@ export default function EditVisit() {
     general_advice: "",
     follow_up_required: false,
     next_visit_date: "",
+    problem_item_ids: [],
+    crop_id: null,
   });
 
   const [loading, setLoading] = useState(true);
@@ -67,6 +76,9 @@ export default function EditVisit() {
       const res = await getVisitDetail(id);
       const d = res?.data?.data || res?.data || res || {};
 
+      const cropId = resolveVisitCropId(d);
+      setOriginalCropId(cropId);
+
       setFormData({
         farmer_name: d.farmer_name || "",
         farmer_phone: d.farmer_phone || "",
@@ -76,12 +88,14 @@ export default function EditVisit() {
           (resolveVisitCropDisplay(d) !== VISIT_NOT_ADDED
             ? resolveVisitCropDisplay(d)
             : ""),
+        crop_id: cropId,
         crop_stage: d.crop_stage || "",
         land_name: d.land_name || "",
         land_area: d.land_area || "",
         notes: d.notes || "",
         field_notes: d.field_notes || d.observation || "",
         problem_seen: d.problem_seen || "",
+        problem_item_ids: extractProblemItemIdsFromVisit(d),
         action_taken: d.action_taken || "",
         fertilizer_advice: d.fertilizer_advice || "",
         pesticide_advice: d.pesticide_advice || "",
@@ -116,7 +130,10 @@ export default function EditVisit() {
     setError("");
 
     try {
-      await updateVisit(id, formData);
+      const payload = buildVisitProblemUpdatePayload(formData, {
+        originalCropId,
+      });
+      await updateVisit(id, payload);
       setSuccess(true);
 
       setTimeout(() => {
@@ -219,7 +236,7 @@ export default function EditVisit() {
                 <textarea name="field_notes" value={formData.field_notes} onChange={handleChange} className="input" rows={3} />
               </DetailItem>
 
-              <DetailItem label="Problem Seen" span2>
+              <DetailItem label="Employee observation (free text)" span2>
                 <textarea name="problem_seen" value={formData.problem_seen} onChange={handleChange} className="input" rows={2} />
               </DetailItem>
 
@@ -243,6 +260,18 @@ export default function EditVisit() {
                 <input name="general_advice" value={formData.general_advice} onChange={handleChange} className="input" />
               </DetailItem>
             </div>
+          </Section>
+
+          <Section icon={Stethoscope} title="Problems identified" accent="violet">
+            <DetailItem label="Structured problems" span2>
+              <ProblemMultiSelect
+                cropId={formData.crop_id}
+                value={formData.problem_item_ids}
+                onChange={(ids) =>
+                  setFormData((prev) => ({ ...prev, problem_item_ids: ids }))
+                }
+              />
+            </DetailItem>
           </Section>
 
           <Section icon={Calendar} title="Follow Up" accent="amber">

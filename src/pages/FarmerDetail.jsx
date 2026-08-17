@@ -14,6 +14,8 @@ import FarmerVisitEvidenceThumbs from "../components/farmers/FarmerVisitEvidence
 
 const FarmerVisitTrendChart = lazy(() => import("../components/farmers/FarmerVisitTrendChart"));
 import { resolveVisitCropDisplay, resolveVisitFieldNotes } from "../utils/visitDisplay";
+import { VisitProblemsSummaryLine } from "../components/visits/VisitProblemsPanel";
+import { resolveLocationBlock } from "../utils/locationDisplay";
 import {
     resolveVillageLabel,
     resolveDistrictLabel,
@@ -451,6 +453,7 @@ export default function FarmerDetail() {
     }
 
     const gpsVisits = visits.filter(visitHasGps).length;
+    const location = resolveLocationBlock(farmer);
     const acreage = totalAcreage(fields);
     const lastVisitLabel =
         visits.length > 0
@@ -579,14 +582,6 @@ export default function FarmerDetail() {
                                 <Phone className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
                                 {farmer.phone || "—"}
                             </span>
-                            <span className="farmer-detail-hero__meta-item">
-                                <MapPin className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
-                                {farmer.district_name || farmer.district || "—"}
-                            </span>
-                            <span className="farmer-detail-hero__meta-item">
-                                <Sprout className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
-                                {farmer.village_name || resolveVillageLabel(farmer.village)}
-                            </span>
                             {farmer.created_at && (
                                 <span className="farmer-detail-hero__meta-item">
                                     <Calendar className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
@@ -640,8 +635,9 @@ export default function FarmerDetail() {
 
                     <div className="farmer-detail-card">
                         <h3 className="farmer-detail-card__title">Location</h3>
-                        <InfoRow icon={MapPin} label="District" value={farmer.district_name || farmer.district} />
-                        <InfoRow icon={MapPin} label="Village" value={farmer.village_name || resolveVillageLabel(farmer.village)} />
+                        <InfoRow icon={MapPin} label="District" value={location.district} />
+                        <InfoRow icon={MapPin} label="Taluk" value={location.taluk} />
+                        <InfoRow icon={MapPin} label="Village" value={location.village} />
                     </div>
 
                     <div className="farmer-detail-card">
@@ -817,6 +813,7 @@ export default function FarmerDetail() {
                                                 {notes && notes !== "Not added by employee" && (
                                                     <p className="farmer-detail-visit-item__notes">{notes}</p>
                                                 )}
+                                                <VisitProblemsSummaryLine visit={v} className="farmer-detail-visit-item__problems" />
                                                 <FarmerVisitEvidenceThumbs visit={v} />
                                             </div>
                                         </div>

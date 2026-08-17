@@ -48,14 +48,30 @@ export function resolveProblemCategoryLabel(row) {
 }
 
 export function resolveProblemCropLabel(row) {
+  const mappings = row?.crops ?? row?.crop_mappings ?? row?.applicable_crops;
+  if (Array.isArray(mappings) && mappings.length > 0) {
+    const labels = mappings
+      .map((c) => {
+        if (!c) return null;
+        if (typeof c === "string") return c;
+        return c.name_en || c.name || c.crop_name || null;
+      })
+      .filter(Boolean);
+    if (labels.length > 0) return labels.join(", ");
+  }
+
   if (row?.crop_name) return row.crop_name;
   const crop = row?.crop;
-  if (!crop) return "Any crop";
+  if (!crop) return "All / Unrestricted";
   if (typeof crop === "string") return crop;
   const en = crop.name_en || crop.name;
   const ta = crop.name_ta;
   if (en && ta) return `${en} / ${ta}`;
-  return en || "Any crop";
+  return en || "All / Unrestricted";
+}
+
+export function resolveProblemCropsLabel(row) {
+  return resolveProblemCropLabel(row);
 }
 
 export function problemItemMatchesSearch(row, query) {

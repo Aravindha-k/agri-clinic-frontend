@@ -13,6 +13,7 @@ import {
   resolveFarmerLabel,
   resolveEmployeeLabel,
 } from "./displayValue";
+import { resolveTalukLabel } from "./locationDisplay";
 import { resolveProfilePhotoUrl } from "./profilePhoto";
 
 function pickString(...candidates) {
@@ -61,6 +62,13 @@ export function resolveVisitFarmer(visit) {
       typeof visit.district === "string" ? visit.district : null
     ) ?? DISPLAY_FALLBACK;
 
+  const talukRaw = f?.taluk ?? f?.taluk_id ?? visit.taluk ?? visit.taluk_id;
+  const taluk =
+    pickString(
+      visit.taluk_name,
+      resolveTalukLabel(talukRaw, { legacyNull: true })
+    ) ?? DISPLAY_FALLBACK;
+
   const name =
     pickString(
       visit.farmer_name,
@@ -87,6 +95,7 @@ export function resolveVisitFarmer(visit) {
     phone,
     village,
     district,
+    taluk,
     cropName,
     profilePhotoUrl,
   };

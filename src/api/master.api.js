@@ -64,6 +64,40 @@ export const createDistrict = districtApi.create;
 export const updateDistrict = districtApi.update;
 export const deleteDistrict = districtApi.remove;
 
+/* Taluks */
+const talukApi = crud("masters/taluks");
+export const getTaluks = talukApi.list;
+export const createTaluk = talukApi.create;
+export const updateTaluk = talukApi.update;
+export const deleteTaluk = talukApi.remove;
+
+/** Taluks for a district — lightweight, no full-dataset fetch */
+export async function fetchTaluksByDistrict(districtId, params = {}) {
+  if (!districtId) return [];
+  const page = await fetchMasterPage("masters/taluks", {
+    district: districtId,
+    page_size: 500,
+    ...params,
+  });
+  return page.results;
+}
+
+/** Villages for a taluk — lightweight, no full-dataset fetch */
+export async function fetchVillagesByTaluk(talukId, params = {}) {
+  if (!talukId) return [];
+  const page = await fetchMasterPage("masters/villages", {
+    taluk: talukId,
+    page_size: 500,
+    ...params,
+  });
+  return page.results;
+}
+
+/** Paginated villages with optional district/taluk/search filters */
+export async function fetchVillagesPage(params = {}) {
+  return fetchMasterPage("masters/villages", params);
+}
+
 /* Villages */
 const villageApi = crud("masters/villages");
 export const getVillages = villageApi.list;

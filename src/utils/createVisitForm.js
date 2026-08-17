@@ -41,10 +41,7 @@ function normalizePhone(value) {
   return String(value ?? "").replace(/\D/g, "");
 }
 
-export function validateCreateVisitForm(
-  form,
-  { requiresMaster = true, mediaFiles = [] } = {}
-) {
+export function validateCreateVisitForm(form, { mediaFiles = [] } = {}) {
   const errors = {};
 
   if (form.farmer_mode === "existing" && !form.farmer_id) {
@@ -67,25 +64,13 @@ export function validateCreateVisitForm(
     errors.land_area = "Acreage is required and must be greater than 0.";
   }
 
-  if (!form.problem_type_code) {
-    errors.problem_type_code = "Problem type is required.";
-  }
-
-  if (!form.problem_category) {
-    errors.problem_category = "Problem category is required.";
+  const problemIds = Array.isArray(form.problem_item_ids) ? form.problem_item_ids : [];
+  if (problemIds.length === 0) {
+    errors.problem_item_ids = "Select at least one problem.";
   }
 
   const description = String(form.problem_description ?? "").trim();
   if (!description) errors.problem_description = "Problem description is required.";
-
-  if (requiresMaster && !form.problem_master) {
-    errors.problem_master = "Select a problem from the list.";
-  }
-
-  if (form.problem_type_code === PROBLEM_TYPE_CODES.OTHERS) {
-    const other = String(form.problem_other ?? "").trim();
-    if (!other) errors.problem_other = "Other problem is required.";
-  }
 
   if (mediaFiles?.length) {
     Object.assign(errors, validateVisitMediaFiles(mediaFiles));
@@ -94,22 +79,13 @@ export function validateCreateVisitForm(
   return errors;
 }
 
-export function buildCreateVisitPayload(form, categories) {
-  const category =
-    findCategoryForCode(categories, form.problem_type_code) ||
-    categories.find((c) => c.id === form.problem_category);
-
+export function buildCreateVisitPayload(form) {
   const problemDescription = String(form.problem_description ?? "").trim();
-  const otherLabel = String(form.problem_other ?? "").trim();
-  const categoryId = category?.id ?? form.problem_category;
-  const masterId = form.problem_master || null;
   const phone = normalizePhone(form.farmer_phone);
   const acreage = parseFloat(form.land_area);
-
-  const problemSubcategory =
-    form.problem_type_code === PROBLEM_TYPE_CODES.OTHERS
-      ? otherLabel || null
-      : masterId;
+  const problemItemIds = (form.problem_item_ids || [])
+    .map((id) => Number(id))
+    .filter((id) => !Number.isNaN(id));
 
   const payload = {
     farmer_name: String(form.farmer_name ?? "").trim(),
@@ -117,17 +93,13 @@ export function buildCreateVisitPayload(form, categories) {
     village: form.village,
     crop: form.crop,
     acreage,
-    problem_category: categoryId,
-    problem_subcategory: problemSubcategory,
+    problem_item_ids: problemItemIds,
     problem_description: problemDescription,
     // Backend aliases (unchanged API contract)
     farmer_phone: phone,
     village_id: form.village,
     crop_id: form.crop,
     land_area: acreage,
-    problem_category_id: categoryId,
-    problem_master: masterId,
-    problem_master_id: masterId,
     problem_seen: problemDescription,
   };
 
@@ -137,4 +109,61 @@ export function buildCreateVisitPayload(form, categories) {
   }
 
   return payload;
+}
+
+/** Build PATCH payload for visit problem updates */
+export function buildVisitProblemUpdatePayload(form, { originalCropId } = {}) {
+  const payload = {};
+  const problemItemIds = (form.problem_item_ids || [])
+    .map((id) => Number(id))
+    .filter((id) => !Number.isNaN(id));
+
+  if (Array.isArray(form.problem_item_ids)) {
+    payload.problem_item_ids = problemItemIds;
+  }
+
+  const observation = String(form.problem_seen ?? "").trim();
+  if (form.problem_seen !== undefined) {
+    payload.problem_seen = observation;
+  }
+
+  if (form.field_notes !== undefined) {
+    payload.field_notes = String(form.field_notes ?? "").trim();
+    payload.observation = payload.field_notes;
+  }
+
+  if (form.action_taken !== undefined) {
+    payload.action_taken = String(form.action_taken ?? "").trim();
+  }
+
+  const followUp = form.next_visit_date ?? form.follow_up_date;
+  if (followUp !== undefined) {
+    payload.next_visit_date = followUp || null;
+    payload.follow_up_date = followUp || null;
+  }
+
+  if (originalCropId != null && form.crop_id != null && String(form.crop_id) !== String(originalCropId)) {
+    payload.crop = form.crop_id;
+    payload.crop_id = form.crop_id;
+  }
+
+  return payload;
+}
+
+export function extractProblemItemIdsFromVisit(visit) {
+  if (!visit || typeof visit !== "object") return [];
+  if (Array.isArray(visit.problems) && visit.problems.length > 0) {
+    return visit.problems
+      .map((p) => p?.id ?? p?.problem_item_id ?? p?.problem_master_id)
+      .filter((id) => id != null);
+  }
+  const legacyId = visit.problem_master_id ?? visit.problem_item_id;
+  return legacyId != null ? [legacyId] : [];
+}
+
+export function resolveVisitCropId(visit) {
+  if (!visit || typeof visit !== "object") return null;
+  const crop = visit.crop;
+  if (crop && typeof crop === "object") return crop.id ?? null;
+  return visit.crop_id ?? visit.crop ?? null;
 }

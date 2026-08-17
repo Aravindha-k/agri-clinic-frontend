@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { User, Phone, Loader2 } from "lucide-react";
 import LocationSelector from "../components/ui/LocationSelector";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
@@ -22,10 +22,16 @@ function buildFormState(initial = {}) {
         phone: initial.phone || initial.mobile || "",
         district: toId(initial.district ?? initial.district_id),
         district_name: initial.district_name || (typeof initial.district === "object" ? initial.district?.name : "") || "",
+        taluk: toId(initial.taluk ?? initial.taluk_id),
+        taluk_name: initial.taluk_name || (typeof initial.taluk === "object" ? initial.taluk?.name : "") || "",
         village: toId(initial.village ?? initial.village_id),
         village_name: initial.village_name || (typeof initial.village === "object" ? initial.village?.name : "") || "",
         total_land_area: initial.total_land_area ?? initial.total_area ?? "",
     };
+}
+
+function buildLocationSnapshot(form) {
+    return `${form.district}|${form.taluk}|${form.village}`;
 }
 
 export default function FarmerForm({
@@ -38,11 +44,15 @@ export default function FarmerForm({
     fieldErrors = {},
 }) {
     const [form, setForm] = useState(() => buildFormState(initial));
+    const initialLocationRef = useRef(buildLocationSnapshot(buildFormState(initial)));
+    const isEdit = Boolean(initial?.id);
 
     // Keep form in sync when editor finishes loading farmer detail.
     useEffect(() => {
-        setForm(buildFormState(initial));
-    }, [initial?.id, initial?.name, initial?.phone, initial?.district, initial?.village, initial?.total_land_area]);
+        const next = buildFormState(initial);
+        setForm(next);
+        initialLocationRef.current = buildLocationSnapshot(next);
+    }, [initial?.id, initial?.name, initial?.phone, initial?.district, initial?.taluk, initial?.village, initial?.total_land_area]);
 
     const set = (field, val) => setForm((f) => ({ ...f, [field]: val }));
 
@@ -51,6 +61,7 @@ export default function FarmerForm({
             ...f,
             ...loc,
             district: toId(loc.district),
+            taluk: toId(loc.taluk),
             village: toId(loc.village),
         }));
     };
@@ -58,13 +69,24 @@ export default function FarmerForm({
     const handleSubmit = (e) => {
         e.preventDefault();
         if (loading) return;
-        onSubmit({
+
+        const locationDirty = buildLocationSnapshot(form) !== initialLocationRef.current;
+        const payload = {
             name: form.name.trim(),
             phone: form.phone || undefined,
-            district: form.district || undefined,
-            village: form.village || undefined,
             total_land_area: form.total_land_area === "" ? undefined : form.total_land_area,
-        });
+        };
+
+        if (!isEdit || locationDirty) {
+            if (!form.district || !form.taluk || !form.village) {
+                return;
+            }
+            payload.district = form.district;
+            payload.taluk = form.taluk;
+            payload.village = form.village;
+        }
+
+        onSubmit(payload);
     };
 
     return (
@@ -112,8 +134,13 @@ export default function FarmerForm({
             <div>
                 <p className="form-label uppercase tracking-wider">Location</p>
                 <LocationSelector
-                    value={{ district: form.district, village: form.village }}
+                    value={{
+                        district: form.district,
+                        taluk: form.taluk,
+                        village: form.village,
+                    }}
                     onChange={handleLocationChange}
+                    defaultDistrictName={isEdit ? null : "Villupuram"}
                 />
             </div>
 
@@ -126,7 +153,7 @@ export default function FarmerForm({
 
             {/* Actions */}
             <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <button type="submit" disabled={loading || !form.name.trim()} className="btn btn-primary btn-md">
+                <button type="submit" disabled={loading || !form.name.trim() || (!isEdit && (!form.district || !form.taluk || !form.village))} className="btn btn-primary btn-md">
                     {loading && <Loader2 className="w-4 h-4 animate-spin pointer-events-none" aria-hidden="true" />}
                     {initial.id ? "Update" : "Create"} Farmer
                 </button>

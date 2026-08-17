@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFarmers, deleteFarmer } from "../api/farmer.api";
-import { fetchAllVillages } from "../api/master.api";
+import {
+  fetchAllDistricts,
+  fetchTaluksByDistrict,
+  fetchVillagesByTaluk,
+} from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import {
   Search,
@@ -135,26 +139,57 @@ export default function FarmersList() {
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [districtFilter, setDistrictFilter] = useState("");
+  const [talukFilter, setTalukFilter] = useState("");
   const [villageFilter, setVillageFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [talukOptions, setTalukOptions] = useState([]);
   const [villageOptions, setVillageOptions] = useState([]);
+  const [taluksLoading, setTaluksLoading] = useState(false);
+  const [villagesLoading, setVillagesLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
-    fetchAllVillages()
-      .then((pageData) => {
-        setVillageOptions(pageData.results || []);
+    fetchAllDistricts()
+      .then((pageData) => setDistrictOptions(pageData.results || []))
+      .catch(() => setDistrictOptions([]));
+  }, []);
+
+  useEffect(() => {
+    if (!districtFilter) {
+      setTalukOptions([]);
+      return;
+    }
+    setTaluksLoading(true);
+    fetchTaluksByDistrict(districtFilter)
+      .then(setTalukOptions)
+      .catch(() => setTalukOptions([]))
+      .finally(() => setTaluksLoading(false));
+  }, [districtFilter]);
+
+  useEffect(() => {
+    if (!talukFilter) {
+      setVillageOptions([]);
+      return;
+    }
+    setVillagesLoading(true);
+    fetchVillagesByTaluk(talukFilter)
+      .then((rows) => {
+        setVillageOptions(rows);
         logApiDiagnostics({
           label: "farmers-village-dropdown",
           url: "/api/v1/masters/villages/",
-          apiCount: pageData.count,
-          rowsLoaded: pageData.results?.length ?? 0,
+          apiCount: rows.length,
+          rowsLoaded: rows.length,
+          extra: { taluk: talukFilter },
         });
       })
-      .catch(() => setVillageOptions([]));
-  }, []);
+      .catch(() => setVillageOptions([]))
+      .finally(() => setVillagesLoading(false));
+  }, [talukFilter]);
 
   const loadFarmers = useCallback(async () => {
     const seq = ++loadSeq.current;
@@ -211,6 +246,8 @@ export default function FarmersList() {
   const handleClearFilters = () => {
     setSearchInput("");
     setSearch("");
+    setDistrictFilter("");
+    setTalukFilter("");
     setVillageFilter("");
     setPage(1);
   };
@@ -221,7 +258,14 @@ export default function FarmersList() {
     loadFarmers();
   };
 
-  const hasActiveFilters = Boolean(search.trim() || villageFilter);
+  const hasActiveFilters = Boolean(
+    search.trim() || districtFilter || talukFilter || villageFilter
+  );
+
+  const districtLabel = districtOptions.find((d) => String(d.id) === String(districtFilter))?.name;
+  const talukLabel = talukOptions.find((t) => String(t.id) === String(talukFilter))?.name;
+  const villageLabel = villageOptions.find((v) => String(v.name) === String(villageFilter))?.name
+    || villageFilter;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const showingFrom = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const showingTo = Math.min(page * PAGE_SIZE, totalCount);
@@ -411,6 +455,52 @@ export default function FarmersList() {
               )}
             </div>
           </FilterField>
+          <FilterField label="District" className="min-w-[9rem]">
+            <select
+              className="select filter-toolbar__select"
+              value={districtFilter}
+              onChange={(e) => {
+                setDistrictFilter(e.target.value);
+                setTalukFilter("");
+                setVillageFilter("");
+                setPage(1);
+              }}
+              aria-label="Filter by district"
+            >
+              <option value="">All districts</option>
+              {districtOptions.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
+          <FilterField label="Taluk" className="min-w-[9rem]">
+            <select
+              className="select filter-toolbar__select"
+              value={talukFilter}
+              onChange={(e) => {
+                setTalukFilter(e.target.value);
+                setVillageFilter("");
+                setPage(1);
+              }}
+              disabled={!districtFilter || taluksLoading}
+              aria-label="Filter by taluk"
+            >
+              <option value="">
+                {!districtFilter
+                  ? "Select district first"
+                  : taluksLoading
+                    ? "Loading taluks…"
+                    : "All taluks"}
+              </option>
+              {talukOptions.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </FilterField>
           <FilterField label="Village" className="min-w-[10rem]">
             <select
               className="select filter-toolbar__select"
@@ -419,9 +509,16 @@ export default function FarmersList() {
                 setVillageFilter(e.target.value);
                 setPage(1);
               }}
+              disabled={!talukFilter || villagesLoading}
               aria-label="Filter by village"
             >
-              <option value="">All villages</option>
+              <option value="">
+                {!talukFilter
+                  ? "Select taluk first"
+                  : villagesLoading
+                    ? "Loading villages…"
+                    : "All villages"}
+              </option>
               {villageOptions.map((v) => (
                 <option key={v.id} value={v.name}>
                   {v.name}
@@ -448,9 +545,19 @@ export default function FarmersList() {
                 Search: {search.trim()}
               </span>
             )}
+            {districtFilter && (
+              <span className="filter-chip filter-chip--idle">
+                District: {districtLabel || districtFilter}
+              </span>
+            )}
+            {talukFilter && (
+              <span className="filter-chip filter-chip--idle">
+                Taluk: {talukLabel || talukFilter}
+              </span>
+            )}
             {villageFilter && (
               <span className="filter-chip filter-chip--idle">
-                Village: {villageFilter}
+                Village: {villageLabel}
               </span>
             )}
           </FilterActiveRow>
