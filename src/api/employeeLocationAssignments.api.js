@@ -5,7 +5,7 @@ const TAG = "[employeeLocationAssignments.api]";
 
 /**
  * GET /api/v1/admin/employee-location-assignments/
- * Compact employee rows with location_assignment_summary counts only.
+ * Compact employee rows with location_assignment_summary counts and preview names.
  */
 export async function fetchEmployeeLocationAssignments(params = {}) {
   const response = await api.get("admin/employee-location-assignments/", { params });

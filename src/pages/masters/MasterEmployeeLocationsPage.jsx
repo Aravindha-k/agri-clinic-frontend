@@ -17,6 +17,10 @@ import {
 } from "../../components/ui/command";
 import ErrorRetry from "../../components/ui/ErrorRetry";
 import EmployeeLocationAssignmentDrawer from "../../components/masters/EmployeeLocationAssignmentDrawer";
+import EmployeeLocationViewDrawer from "../../components/masters/EmployeeLocationViewDrawer";
+import LocationPreviewCell, {
+  DEFAULT_LIMITS,
+} from "../../components/masters/LocationPreviewCell";
 import { fetchEmployeeLocationAssignments } from "../../api/employeeLocationAssignments.api";
 import { fetchAllDistricts, fetchTaluksByDistrict } from "../../api/master.api";
 import { friendlyErrorMessage } from "../../utils/friendlyError";
@@ -38,11 +42,6 @@ function formatRole(role) {
   return String(role).replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-function countLabel(count, singular, plural) {
-  const n = Number(count) || 0;
-  return `${n} ${n === 1 ? singular : plural}`;
-}
-
 export default function MasterEmployeeLocationsPage() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -60,6 +59,7 @@ export default function MasterEmployeeLocationsPage() {
   const [filterTaluksLoading, setFilterTaluksLoading] = useState(false);
 
   const [drawerEmployee, setDrawerEmployee] = useState(null);
+  const [viewEmployee, setViewEmployee] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -126,18 +126,21 @@ export default function MasterEmployeeLocationsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const handleSaved = useCallback((employeeId, summary) => {
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row?.employee?.id !== employeeId) return row;
-        return {
-          ...row,
-          location_assignment_summary: summary ?? row.location_assignment_summary,
-        };
-      })
-    );
-    loadRows();
-  }, [loadRows]);
+  const handleSaved = useCallback(
+    (employeeId, summary) => {
+      setRows((prev) =>
+        prev.map((row) => {
+          if (row?.employee?.id !== employeeId) return row;
+          return {
+            ...row,
+            location_assignment_summary: summary ?? row.location_assignment_summary,
+          };
+        })
+      );
+      loadRows();
+    },
+    [loadRows]
+  );
 
   const shownLabel = useMemo(() => {
     if (loading) return "Loading…";
@@ -265,6 +268,7 @@ export default function MasterEmployeeLocationsPage() {
                 {rows.map((row) => {
                   const employee = row.employee || {};
                   const summary = row.location_assignment_summary || {};
+                  const preview = row.location_assignment_preview || {};
                   const dc = summary.district_count ?? 0;
                   const tc = summary.taluk_count ?? 0;
                   const vc = summary.village_count ?? 0;
@@ -280,16 +284,26 @@ export default function MasterEmployeeLocationsPage() {
                       </td>
                       <td>{employee.employee_id || "\u2014"}</td>
                       <td>{formatRole(employee.role)}</td>
-                      <td>
-                        {noAssignment
-                          ? "\u2014"
-                          : countLabel(dc, "District", "Districts")}
+                      <td data-label="Districts">
+                        <LocationPreviewCell
+                          items={preview.districts}
+                          totalCount={dc}
+                          limit={DEFAULT_LIMITS.districts}
+                        />
                       </td>
-                      <td>
-                        {noAssignment ? "\u2014" : countLabel(tc, "Taluk", "Taluks")}
+                      <td data-label="Taluks">
+                        <LocationPreviewCell
+                          items={preview.taluks}
+                          totalCount={tc}
+                          limit={DEFAULT_LIMITS.taluks}
+                        />
                       </td>
-                      <td>
-                        {noAssignment ? "\u2014" : countLabel(vc, "Village", "Villages")}
+                      <td data-label="Villages">
+                        <LocationPreviewCell
+                          items={preview.villages}
+                          totalCount={vc}
+                          limit={DEFAULT_LIMITS.villages}
+                        />
                       </td>
                       <td>
                         <span
@@ -303,13 +317,24 @@ export default function MasterEmployeeLocationsPage() {
                         </span>
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => setDrawerEmployee(employee)}
-                        >
-                          Manage
-                        </button>
+                        <div className="emp-loc-table__actions">
+                          {!noAssignment && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => setViewEmployee(employee)}
+                            >
+                              View all
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setDrawerEmployee(employee)}
+                          >
+                            Manage
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -349,6 +374,12 @@ export default function MasterEmployeeLocationsPage() {
         employee={drawerEmployee}
         onClose={() => setDrawerEmployee(null)}
         onSaved={handleSaved}
+      />
+
+      <EmployeeLocationViewDrawer
+        open={Boolean(viewEmployee)}
+        employee={viewEmployee}
+        onClose={() => setViewEmployee(null)}
       />
     </div>
   );
