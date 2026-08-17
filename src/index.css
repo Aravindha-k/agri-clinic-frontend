@@ -9140,7 +9140,8 @@ textarea.input {
 }
 
 .masters-admin-tabs {
-    @apply flex flex-wrap gap-1;
+    @apply flex flex-wrap gap-1 overflow-x-auto max-w-full;
+    -webkit-overflow-scrolling: touch;
 }
 
 .masters-admin-tab {
@@ -9173,6 +9174,10 @@ textarea.input {
 
 .masters-admin-filters {
     @apply dashboard-section-card p-4;
+}
+
+.masters-admin-summary-hint {
+    @apply text-xs text-slate-500 mt-2 mb-0;
 }
 
 .masters-admin-filters__row {

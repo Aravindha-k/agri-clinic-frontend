@@ -93,9 +93,49 @@ export async function fetchVillagesByTaluk(talukId, params = {}) {
   return page.results;
 }
 
+/** Paginated taluks with optional district/search filters */
+export async function fetchTaluksPage(params = {}) {
+  return fetchMasterPage("masters/taluks", params);
+}
+
 /** Paginated villages with optional district/taluk/search filters */
 export async function fetchVillagesPage(params = {}) {
   return fetchMasterPage("masters/villages", params);
+}
+
+/** Canonical active location counts — GET /masters/location-summary/ */
+export async function fetchLocationSummary() {
+  const response = await api.get("masters/location-summary/");
+  const data = unwrapSuccessEnvelope(response) ?? response?.data ?? {};
+
+  const pickCount = (...keys) => {
+    for (const key of keys) {
+      const value = data?.[key];
+      if (typeof value === "number" && !Number.isNaN(value)) return value;
+      if (value != null && value !== "" && !Number.isNaN(Number(value))) {
+        return Number(value);
+      }
+    }
+    return null;
+  };
+
+  const summary = {
+    districts: pickCount("active_districts", "districts", "district_count"),
+    taluks: pickCount("active_taluks", "taluks", "taluk_count"),
+    villages: pickCount("active_villages", "villages", "village_count"),
+    officialImported: pickCount("official_imported", "official_villages"),
+    legacyPreserved: pickCount("legacy_preserved", "legacy_villages"),
+  };
+
+  logApiDiagnostics({
+    label: "location-summary",
+    url: "/api/v1/masters/location-summary/",
+    apiCount: summary.villages,
+    rowsLoaded: 1,
+    extra: summary,
+  });
+
+  return summary;
 }
 
 /* Villages */
