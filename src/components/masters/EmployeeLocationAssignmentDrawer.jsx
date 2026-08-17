@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ChevronDown,
@@ -170,7 +170,8 @@ export default function EmployeeLocationAssignmentDrawer({
   const [districts, setDistricts] = useState([]);
   const [districtsLoading, setDistrictsLoading] = useState(false);
   const [formState, setFormState] = useState(createEmptyAssignmentFormState);
-  const [expandedDistricts, setExpandedDistricts] = useState({});
+  const [expandedDistrictIds, setExpandedDistrictIds] = useState({});
+  const [expandedTalukIds, setExpandedTalukIds] = useState({});
 
   const [talukCache, setTalukCache] = useState({});
   const [talukLoading, setTalukLoading] = useState({});
@@ -178,6 +179,15 @@ export default function EmployeeLocationAssignmentDrawer({
   const [villageLoading, setVillageLoading] = useState({});
   const [villageLoadError, setVillageLoadError] = useState({});
   const [villageSearch, setVillageSearch] = useState({});
+
+  const talukCacheRef = useRef(talukCache);
+  const villageCacheRef = useRef(villageCache);
+  const villageLoadErrorRef = useRef(villageLoadError);
+  const hydrateRequestRef = useRef(0);
+
+  talukCacheRef.current = talukCache;
+  villageCacheRef.current = villageCache;
+  villageLoadErrorRef.current = villageLoadError;
 
   const talukDistrictMap = useMemo(() => {
     const map = {};
@@ -200,7 +210,7 @@ export default function EmployeeLocationAssignmentDrawer({
   }, []);
 
   const loadTaluks = useCallback(async (districtId) => {
-    if (!districtId || talukCache[districtId]) return;
+    if (!districtId || talukCacheRef.current[districtId]) return;
     setTalukLoading((prev) => ({ ...prev, [districtId]: true }));
     try {
       const rows = await fetchTaluksByDistrict(districtId, { is_active: true });
@@ -211,11 +221,11 @@ export default function EmployeeLocationAssignmentDrawer({
     } finally {
       setTalukLoading((prev) => ({ ...prev, [districtId]: false }));
     }
-  }, [talukCache]);
+  }, []);
 
   const loadVillages = useCallback(async (talukId) => {
     if (!talukId) return;
-    if (villageCache[talukId] && !villageLoadError[talukId]) return;
+    if (villageCacheRef.current[talukId] && !villageLoadErrorRef.current[talukId]) return;
 
     setVillageLoading((prev) => ({ ...prev, [talukId]: true }));
     setVillageLoadError((prev) => ({ ...prev, [talukId]: null }));
@@ -233,16 +243,21 @@ export default function EmployeeLocationAssignmentDrawer({
     } finally {
       setVillageLoading((prev) => ({ ...prev, [talukId]: false }));
     }
-  }, [villageCache, villageLoadError]);
+  }, []);
 
   const hydrateFromDetail = useCallback(async () => {
     if (!employee?.id) return;
+    const requestId = hydrateRequestRef.current + 1;
+    hydrateRequestRef.current = requestId;
+
     setLoading(true);
     setLoadError(null);
     setSaved(false);
     setSaveError(null);
     try {
       const detail = await fetchEmployeeLocationAssignmentDetail(employee.id);
+      if (hydrateRequestRef.current !== requestId) return;
+
       const parsed = parseAssignmentsToFormState(detail?.assignments || []);
       setFormState(parsed);
 
@@ -250,55 +265,92 @@ export default function EmployeeLocationAssignmentDrawer({
       for (const did of parsed.selectedDistrictIds) {
         districtExpand[did] = true;
       }
-      setExpandedDistricts(districtExpand);
+      setExpandedDistrictIds(districtExpand);
+
+      const talukExpand = {};
+      for (const tid of parsed.selectedTalukIds) {
+        talukExpand[tid] = true;
+      }
+      setExpandedTalukIds(talukExpand);
 
       await loadDistricts();
+      if (hydrateRequestRef.current !== requestId) return;
 
       for (const did of parsed.selectedDistrictIds) {
         await loadTaluks(did);
       }
+      if (hydrateRequestRef.current !== requestId) return;
 
       for (const tid of parsed.selectedTalukIds) {
         await loadVillages(tid);
       }
     } catch (err) {
+      if (hydrateRequestRef.current !== requestId) return;
       setLoadError(friendlyErrorMessage(err, "Could not load location assignments."));
     } finally {
-      setLoading(false);
+      if (hydrateRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, [employee?.id, loadDistricts, loadTaluks, loadVillages]);
 
   useEffect(() => {
-    if (open && employee?.id) {
-      hydrateFromDetail();
-    }
     if (!open) {
+      hydrateRequestRef.current += 1;
       setFormState(createEmptyAssignmentFormState());
       setLoadError(null);
       setSaveError(null);
       setSaved(false);
       setConfirmClear(false);
+      setExpandedDistrictIds({});
+      setExpandedTalukIds({});
       setVillageSearch({});
       setVillageCache({});
       setVillageLoadError({});
       setTalukCache({});
+      setTalukLoading({});
+      setVillageLoading({});
+      return;
+    }
+
+    if (employee?.id) {
+      hydrateFromDetail();
     }
   }, [open, employee?.id, hydrateFromDetail]);
+
+  const expandDistrict = (districtId) => {
+    setExpandedDistrictIds((prev) => ({ ...prev, [districtId]: true }));
+    loadTaluks(districtId);
+  };
+
+  const collapseDistrict = (districtId) => {
+    setExpandedDistrictIds((prev) => ({ ...prev, [districtId]: false }));
+  };
+
+  const expandTaluk = (talukId) => {
+    setExpandedTalukIds((prev) => ({ ...prev, [talukId]: true }));
+    loadVillages(talukId);
+  };
+
+  const collapseTaluk = (talukId) => {
+    setExpandedTalukIds((prev) => ({ ...prev, [talukId]: false }));
+  };
 
   const handleDistrictToggle = (districtId, checked) => {
     setFormState((prev) => toggleDistrictSelection(prev, districtId, checked, talukDistrictMap));
     if (checked) {
-      setExpandedDistricts((prev) => ({ ...prev, [districtId]: true }));
-      loadTaluks(districtId);
+      expandDistrict(districtId);
     } else {
-      setExpandedDistricts((prev) => ({ ...prev, [districtId]: false }));
+      collapseDistrict(districtId);
     }
   };
 
   const handleTalukToggle = (talukId, districtId, checked) => {
     setFormState((prev) => toggleTalukSelection(prev, talukId, districtId, checked));
     if (checked) {
-      loadVillages(talukId);
+      expandTaluk(talukId);
+    } else {
+      collapseTaluk(talukId);
     }
   };
 
@@ -422,8 +474,7 @@ export default function EmployeeLocationAssignmentDrawer({
                 <div className="emp-loc-district-list">
                   {districts.map((district) => {
                     const did = Number(district.id);
-                    const districtOpen =
-                      expandedDistricts[did] || formState.selectedDistrictIds.includes(did);
+                    const districtOpen = Boolean(expandedDistrictIds[did]);
                     const districtChecked = formState.selectedDistrictIds.includes(did);
                     const taluks = talukCache[did] || [];
 
@@ -434,9 +485,11 @@ export default function EmployeeLocationAssignmentDrawer({
                             type="button"
                             className="emp-loc-expand-btn"
                             onClick={() => {
-                              const next = !districtOpen;
-                              setExpandedDistricts((prev) => ({ ...prev, [did]: next }));
-                              if (next) loadTaluks(did);
+                              if (districtOpen) {
+                                collapseDistrict(did);
+                              } else {
+                                expandDistrict(did);
+                              }
                             }}
                             aria-expanded={districtOpen}
                             aria-label={`${districtOpen ? "Collapse" : "Expand"} ${district.name}`}
@@ -451,6 +504,7 @@ export default function EmployeeLocationAssignmentDrawer({
                             <input
                               type="checkbox"
                               checked={districtChecked}
+                              onClick={(e) => e.stopPropagation()}
                               onChange={(e) => handleDistrictToggle(did, e.target.checked)}
                             />
                             <span>{district.name}</span>
@@ -471,6 +525,7 @@ export default function EmployeeLocationAssignmentDrawer({
                                 taluks.map((taluk) => {
                                   const tid = Number(taluk.id);
                                   const talukChecked = formState.selectedTalukIds.includes(tid);
+                                  const talukOpen = Boolean(expandedTalukIds[tid]);
 
                                   return (
                                     <div key={tid} className="emp-loc-taluk-block">
@@ -479,6 +534,7 @@ export default function EmployeeLocationAssignmentDrawer({
                                           <input
                                             type="checkbox"
                                             checked={talukChecked}
+                                            onClick={(e) => e.stopPropagation()}
                                             onChange={(e) =>
                                               handleTalukToggle(tid, did, e.target.checked)
                                             }
@@ -493,7 +549,7 @@ export default function EmployeeLocationAssignmentDrawer({
                                         </label>
                                       </div>
 
-                                      {talukChecked && (
+                                      {talukOpen && (
                                         <div className="emp-loc-taluk-block__body">
                                           <VillageCheckboxList
                                             talukId={tid}
