@@ -11,7 +11,7 @@ export function resolveTalukLabel(taluk, { legacyNull = false } = {}) {
     return legacyNull ? TALUK_NOT_ASSIGNED : DISPLAY_FALLBACK;
   }
   if (typeof taluk === "string") return taluk.trim() || (legacyNull ? TALUK_NOT_ASSIGNED : DISPLAY_FALLBACK);
-  if (typeof taluk === "number") return String(taluk);
+  if (typeof taluk === "number") return legacyNull ? TALUK_NOT_ASSIGNED : DISPLAY_FALLBACK;
   if (typeof taluk === "object") {
     const label = taluk.name ?? taluk.taluk_name ?? taluk.label;
     return label ? String(label) : legacyNull ? TALUK_NOT_ASSIGNED : DISPLAY_FALLBACK;

@@ -19,8 +19,8 @@ import { resolveProfilePhotoUrl } from "./profilePhoto";
 function pickString(...candidates) {
   for (const c of candidates) {
     if (c == null || c === "") continue;
+    if (typeof c === "number") continue;
     if (typeof c === "string" && c !== DISPLAY_FALLBACK) return c;
-    if (typeof c === "number") return String(c);
   }
   return null;
 }
@@ -57,6 +57,7 @@ export function resolveVisitFarmer(visit) {
   const district =
     pickString(
       visit.district_name,
+      visit.farmer_district,
       resolveDistrictLabel(f?.district, ""),
       resolveDistrictLabel(visit.district, ""),
       typeof visit.district === "string" ? visit.district : null
@@ -66,6 +67,7 @@ export function resolveVisitFarmer(visit) {
   const taluk =
     pickString(
       visit.taluk_name,
+      visit.farmer_taluk,
       resolveTalukLabel(talukRaw, { legacyNull: true })
     ) ?? DISPLAY_FALLBACK;
 
@@ -152,12 +154,22 @@ export function normalizeVisitRecord(visit) {
       visit.farmer_village ?? (farmer.village !== DISPLAY_FALLBACK ? farmer.village : undefined),
     village_name:
       visit.village_name ?? (farmer.village !== DISPLAY_FALLBACK ? farmer.village : undefined),
+    district_name:
+      visit.district_name ?? (farmer.district !== DISPLAY_FALLBACK ? farmer.district : undefined),
+    taluk_name:
+      visit.taluk_name ?? (farmer.taluk !== DISPLAY_FALLBACK ? farmer.taluk : undefined),
     crop_name:
       visit.crop_name ?? (farmer.cropName !== DISPLAY_FALLBACK ? farmer.cropName : undefined),
     land_name: landName,
     employee_name:
       visit.employee_name ??
       (resolveEmployeeLabel(visit.employee, "") || undefined),
+    evidence_count:
+      typeof visit.evidence_count === "number"
+        ? visit.evidence_count
+        : Array.isArray(visit.evidence)
+          ? visit.evidence.length
+          : visit.evidence_count,
   };
 }
 

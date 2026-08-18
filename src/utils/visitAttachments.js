@@ -201,15 +201,27 @@ export function normalizeVisitAttachmentList(payload) {
   return payload.map(normalizeVisitAttachment).filter(Boolean);
 }
 
-/** Attachment count on visit list/detail payloads when API embeds it. */
+/** Attachment/evidence count — prefers unified evidence_count from API. */
 export function resolveVisitAttachmentCount(visit) {
   if (!visit || typeof visit !== "object") return null;
   const n =
+    visit.evidence_count ??
     visit.attachment_count ??
     visit.attachments_count ??
-    visit.evidence_count ??
     visit.image_count;
   if (typeof n === "number" && Number.isFinite(n)) return n;
+  if (Array.isArray(visit.evidence) && visit.evidence.length) return visit.evidence.length;
+  const mediaFiles = visit.media_files ?? visit.media?.images ?? [];
+  const attachments = visit.attachments ?? [];
+  const mediaLen = Array.isArray(mediaFiles) ? mediaFiles.length : 0;
+  const attachLen = Array.isArray(attachments) ? attachments.length : 0;
+  if (mediaLen || attachLen) return mediaLen + attachLen;
   if (Array.isArray(visit.attachments)) return visit.attachments.length;
   return null;
+}
+
+/** Normalize unified evidence rows from visit detail or attachments API. */
+export function normalizeVisitEvidenceList(payload) {
+  if (!Array.isArray(payload)) return [];
+  return payload.map(normalizeVisitAttachment).filter(Boolean);
 }

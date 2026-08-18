@@ -5,7 +5,7 @@ import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
 import VisitLocationDisplay from "../components/visits/VisitLocationDisplay";
 import VisitProblemsPanel from "../components/visits/VisitProblemsPanel";
 import ProblemMultiSelect from "../components/visits/ProblemMultiSelect";
-import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
+import { resolveVisitAttachmentCount, normalizeVisitEvidenceList } from "../utils/visitAttachments";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { friendlyErrorMessage } from "../utils/friendlyError";
@@ -217,7 +217,13 @@ function getEmployeeBlock(v) {
 function getFarmerBlock(v) {
     const resolved = resolveVisitFarmer(v);
     const f = v?.farmer ?? v?.farmer_info;
-    const location = resolveLocationBlock({ ...f, ...v, district_name: resolved.district, village_name: resolved.village, taluk_name: resolved.taluk });
+    const location = resolveLocationBlock({
+        ...f,
+        ...v,
+        district_name: v?.district_name ?? v?.farmer_district ?? resolved.district,
+        village_name: v?.village_name ?? v?.farmer_village ?? resolved.village,
+        taluk_name: v?.taluk_name ?? v?.farmer_taluk ?? resolved.taluk,
+    });
     return {
         name: resolved.name,
         phone: resolved.phone,
@@ -434,6 +440,11 @@ export default function VisitDetail(props) {
 
     const headerAttachmentCount =
         evidenceCount ?? resolveVisitAttachmentCount(data);
+
+    const seedEvidence = useMemo(
+        () => normalizeVisitEvidenceList(data?.evidence),
+        [data?.evidence]
+    );
 
     const visitDateLabel = fmtDate(v?.visit_date ?? v?.created_at);
     const visitTimeLabel = v?.visit_time ? fmtTime(v.visit_time) : null;
@@ -781,6 +792,7 @@ export default function VisitDetail(props) {
                                 visitId={id}
                                 onCountChange={setEvidenceCount}
                                 variant="report"
+                                seedItems={seedEvidence.length > 0 ? seedEvidence : null}
                             />
                         </ReportSection>
                     )}

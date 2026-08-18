@@ -336,12 +336,27 @@ function ReportEvidenceContent({ items, loading, error, onLoad, onPreview }) {
   );
 }
 
-export default function VisitEvidenceSection({ visitId, onCountChange, variant = "default" }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function VisitEvidenceSection({
+  visitId,
+  onCountChange,
+  variant = "default",
+  seedItems = null,
+}) {
+  const [items, setItems] = useState(() =>
+    Array.isArray(seedItems) ? seedItems : []
+  );
+  const [loading, setLoading] = useState(!Array.isArray(seedItems));
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
   const closePreview = useCallback(() => setPreview(null), []);
+
+  useEffect(() => {
+    if (Array.isArray(seedItems)) {
+      setItems(seedItems);
+      setLoading(false);
+      onCountChange?.(seedItems.length);
+    }
+  }, [seedItems, onCountChange]);
 
   const load = useCallback(async () => {
     if (!visitId) return;
@@ -353,16 +368,24 @@ export default function VisitEvidenceSection({ visitId, onCountChange, variant =
       onCountChange?.(list.length);
     } catch (err) {
       setError(err?.message || "Failed to load visit evidence");
-      setItems([]);
-      onCountChange?.(0);
+      if (Array.isArray(seedItems) && seedItems.length) {
+        setItems(seedItems);
+        onCountChange?.(seedItems.length);
+      } else {
+        setItems([]);
+        onCountChange?.(0);
+      }
     } finally {
       setLoading(false);
     }
-  }, [visitId, onCountChange]);
+  }, [visitId, onCountChange, seedItems]);
 
   useEffect(() => {
+    if (Array.isArray(seedItems) && seedItems.length) {
+      return;
+    }
     load();
-  }, [load]);
+  }, [load, seedItems]);
 
   if (variant === "report") {
     return (

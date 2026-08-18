@@ -65,7 +65,7 @@ export function resolveCropLabel(crop, fallback = DISPLAY_FALLBACK) {
 export function resolveVillageLabel(village, fallback = DISPLAY_FALLBACK) {
   if (village == null || village === "") return fallback;
   if (typeof village === "string") return village;
-  if (typeof village === "number") return String(village);
+  if (typeof village === "number") return fallback;
   if (typeof village === "object") {
     const label = village.name ?? village.village_name ?? village.label;
     return label ? String(label) : fallback;
@@ -76,7 +76,7 @@ export function resolveVillageLabel(village, fallback = DISPLAY_FALLBACK) {
 export function resolveDistrictLabel(district, fallback = DISPLAY_FALLBACK) {
   if (district == null || district === "") return fallback;
   if (typeof district === "string") return district;
-  if (typeof district === "number") return String(district);
+  if (typeof district === "number") return fallback;
   if (typeof district === "object") {
     const label = district.name ?? district.district_name ?? district.label;
     return label ? String(label) : fallback;
