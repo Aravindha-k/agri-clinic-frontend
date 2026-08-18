@@ -245,11 +245,7 @@ export function liveGpsStatusToneClass(gpsKey) {
   }
 }
 
-export function buildLiveMarkerAriaLabel({ name, code, dutyLabel, gpsLabel, relative }) {
-  const bits = [name];
-  if (code) bits.push(String(code));
-  if (dutyLabel) bits.push(String(dutyLabel));
-  if (gpsLabel) bits.push(`GPS ${gpsLabel}`);
-  if (relative) bits.push(`last updated ${relative}`);
-  return bits.join(", ");
+export function buildLiveMarkerAriaLabel({ name }) {
+  const label = pickString(name) || "Employee";
+  return `Employee location: ${label}`;
 }

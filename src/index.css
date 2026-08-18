@@ -1691,13 +1691,47 @@ textarea.input {
     pointer-events: auto !important;
 }
 
+.live-employee-marker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
+}
+
 .live-employee-marker {
     position: relative;
     width: 40px;
     height: 48px;
     display: block;
+    flex-shrink: 0;
     pointer-events: auto;
     /* Do not use transform here — Leaflet owns marker positioning transforms */
+}
+
+.live-employee-marker__label {
+    display: inline-block;
+    max-width: 160px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 9999px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+    pointer-events: none;
+}
+
+@media (max-width: 768px) {
+    .live-employee-marker__label {
+        max-width: 132px;
+        font-size: 11px;
+        padding: 5px 8px;
+    }
 }
 
 .live-employee-marker__hit {
