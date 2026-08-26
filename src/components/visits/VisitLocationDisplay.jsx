@@ -5,7 +5,7 @@ import { useVisitLocationAddress } from "../../hooks/useVisitLocationAddress";
 import AdminMapCard from "../map/AdminMapCard";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
 import { getStoredMapLocationLabel } from "../../utils/mapLocationLabel";
-import { formatRouteTimestamp } from "../../utils/employeeRoute";
+import { formatVisitConductedAt } from "../../utils/businessDate";
 import "../../utils/leafletSetup";
 
 const visitMarkerIcon = L.divIcon({
@@ -78,7 +78,7 @@ export default function VisitLocationDisplay({
                 lng={coords.lng}
                 entity={visit}
                 workStatus={visit?.crop_name ? `Crop: ${visit.crop_name}` : null}
-                lastUpdated={formatRouteTimestamp(visit?.visit_time ?? visit?.created_at)}
+                lastUpdated={formatVisitConductedAt(visit)}
               />
             </Popup>
           </Marker>
