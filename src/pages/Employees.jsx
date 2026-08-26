@@ -40,6 +40,12 @@ import { useOverlayLock } from "../utils/overlayLock";
 import { useToast } from "../components/ui/Toast";
 import { copyTextToClipboard } from "../utils/clipboard";
 import {
+  allPasswordRulesMet,
+  checkPasswordPolicy,
+  passwordsMatch,
+  adminResetPasswordErrorMessage,
+} from "../utils/passwordPolicy";
+import {
   Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
   RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
   Calendar, Shield, Building2, Briefcase, PlayCircle, StopCircle, Radio, Heart,
@@ -1086,28 +1092,118 @@ const EmployeeDrawerDetails = memo(({
 EmployeeDrawerDetails.displayName = "EmployeeDrawerDetails";
 
 /* --- Admin Reset Section (inside Password tab) --- */
+function PasswordFieldInput({ id, label, value, onChange, show, onToggleShow, disabled, autoComplete }) {
+  return (
+    <div className="employees-hr-field">
+      <label htmlFor={id}>{label}</label>
+      <div className="employees-hr-password-input-wrap">
+        <input
+          id={id}
+          type={show ? "text" : "password"}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className="employees-hr-password-input"
+        />
+        <button
+          type="button"
+          onClick={onToggleShow}
+          className="employees-hr-password-toggle"
+          aria-label={show ? "Hide password" : "Show password"}
+          disabled={disabled}
+        >
+          {show ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PasswordRequirementsChecklist({ password, confirmPassword }) {
+  const rules = checkPasswordPolicy(password);
+  const match = passwordsMatch(password, confirmPassword);
+  const showMatch = (confirmPassword ?? "").length > 0;
+
+  return (
+    <div className="employees-hr-password-checklist" aria-live="polite">
+      <p className="employees-hr-password-checklist__title">Password requirements</p>
+      <ul className="contents">
+        {rules.map((rule) => (
+          <li
+            key={rule.id}
+            className={`employees-hr-password-checklist__item ${rule.met ? "employees-hr-password-checklist__item--met" : ""}`}
+          >
+            <span className="employees-hr-password-checklist__mark" aria-hidden="true">
+              {rule.met ? "✓" : "○"}
+            </span>
+            <span>{rule.label}</span>
+          </li>
+        ))}
+        {showMatch && (
+          <li
+            className={`employees-hr-password-checklist__item ${match ? "employees-hr-password-checklist__item--met" : ""}`}
+          >
+            <span className="employees-hr-password-checklist__mark" aria-hidden="true">
+              {match ? "✓" : "○"}
+            </span>
+            <span>Passwords match</span>
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
 const AdminResetSection = memo(({ empId }) => {
+  const toast = useToast();
   const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [lastSetPass, setLastSetPass] = useState(null);
-  const [showPass, setShowPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [showLastPass, setShowLastPass] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const rulesMet = allPasswordRulesMet(newPass);
+  const matched = passwordsMatch(newPass, confirmPass);
+  const canSubmit = rulesMet && matched && !saving;
+
+  useEffect(() => {
+    setNewPass("");
+    setConfirmPass("");
+    setError(null);
+    setLastSetPass(null);
+    setShowNewPass(false);
+    setShowConfirmPass(false);
+    setShowLastPass(false);
+    setCopied(false);
+  }, [empId]);
+
+  const clearHandoff = useCallback(() => {
+    setLastSetPass(null);
+    setShowLastPass(false);
+    setCopied(false);
+  }, []);
+
   const handleReset = async (e) => {
     e.preventDefault();
-    if (newPass.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (saving || !canSubmit) return;
     setSaving(true);
     setError(null);
     try {
       await adminResetPassword({ employee_id: empId, new_password: newPass });
       setLastSetPass(newPass);
       setNewPass("");
+      setConfirmPass("");
+      setShowNewPass(false);
+      setShowConfirmPass(false);
       setShowLastPass(true);
+      toast("Password updated successfully", "success", 3500, { id: "employee-password-reset" });
     } catch (err) {
-      const d = err.response?.data;
-      setError(d?.detail ?? d?.message ?? "Reset failed.");
+      setError(adminResetPasswordErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -1121,6 +1217,17 @@ const AdminResetSection = memo(({ empId }) => {
     });
   };
 
+  const handleNewPassChange = (e) => {
+    setNewPass(e.target.value);
+    setLastSetPass(null);
+    setError(null);
+  };
+
+  const handleConfirmPassChange = (e) => {
+    setConfirmPass(e.target.value);
+    setError(null);
+  };
+
   return (
     <div className="employees-hr-form">
       <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
@@ -1132,57 +1239,86 @@ const AdminResetSection = memo(({ empId }) => {
       </div>
 
       <form onSubmit={handleReset} className="space-y-3">
-        <div className="employees-hr-field">
-          <label>
-            New Password <span className="text-red-500">*</span>
-          </label>
-          {error && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 mb-2">
-              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" /> {error}
-            </div>
-          )}
-          <div className="relative">
-            <input type={showPass ? "text" : "password"} required
-              placeholder="Min 8 characters" value={newPass}
-              onChange={e => { setNewPass(e.target.value); setLastSetPass(null); }} minLength={8} />
-            <button type="button" onClick={() => setShowPass(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              aria-label={showPass ? "Hide password" : "Show password"}>
-              {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" /> {error}
           </div>
-        </div>
-        <button type="submit" disabled={saving} className="btn btn-primary btn-md w-full">
+        )}
+
+        <PasswordFieldInput
+          id="admin-reset-new-password"
+          label={<>New Password <span className="text-red-500">*</span></>}
+          value={newPass}
+          onChange={handleNewPassChange}
+          show={showNewPass}
+          onToggleShow={() => setShowNewPass((s) => !s)}
+          disabled={saving}
+          autoComplete="new-password"
+        />
+
+        <PasswordRequirementsChecklist password={newPass} confirmPassword={confirmPass} />
+
+        <PasswordFieldInput
+          id="admin-reset-confirm-password"
+          label={<>Confirm Password <span className="text-red-500">*</span></>}
+          value={confirmPass}
+          onChange={handleConfirmPassChange}
+          show={showConfirmPass}
+          onToggleShow={() => setShowConfirmPass((s) => !s)}
+          disabled={saving}
+          autoComplete="new-password"
+        />
+
+        <button type="submit" disabled={!canSubmit} className="btn btn-primary btn-md w-full">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Key className="w-4 h-4" aria-hidden="true" />}
-          {saving ? "Setting…" : "Set Password"}
+          {saving ? "Updating\u2026" : "Update Password"}
         </button>
       </form>
 
       {lastSetPass && (
-        <div className="pt-4 border-t border-slate-100 space-y-3">
+        <div className="employees-hr-password-handoff space-y-3">
           <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
             <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-800">Password Set Successfully</p>
-              <p className="text-xs text-emerald-600 mt-0.5">Share the password below with the employee.</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-emerald-800">Password updated successfully</p>
+              <p className="text-xs text-emerald-600 mt-0.5">Share the password below with the employee, then dismiss when done.</p>
             </div>
+            <button
+              type="button"
+              onClick={clearHandoff}
+              className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors shrink-0"
+              aria-label="Dismiss password handoff"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
           </div>
           <div className="employees-hr-field">
             <label>Employee&apos;s New Password</label>
-            <div className="relative">
-              <input readOnly type={showLastPass ? "text" : "password"}
+            <div className="employees-hr-password-input-wrap">
+              <input
+                readOnly
+                type={showLastPass ? "text" : "password"}
                 value={lastSetPass}
-                className="font-mono tracking-wide pr-20" />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                <button type="button" onClick={() => setShowLastPass(s => !s)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
-                  title={showLastPass ? "Hide password" : "Show password"}>
-                  {showLastPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                className="employees-hr-password-input employees-hr-password-input--actions-wide font-mono tracking-wide"
+              />
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowLastPass((s) => !s)}
+                  className="employees-hr-password-toggle"
+                  title={showLastPass ? "Hide password" : "Show password"}
+                  aria-label={showLastPass ? "Hide password" : "Show password"}
+                >
+                  {showLastPass ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
                 </button>
-                <button type="button" onClick={handleCopy}
-                  className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
-                  title="Copy password">
-                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="employees-hr-password-toggle hover:text-emerald-600"
+                  title="Copy password"
+                  aria-label="Copy password"
+                >
+                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-500" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
                 </button>
               </div>
             </div>
