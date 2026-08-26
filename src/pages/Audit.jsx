@@ -3,6 +3,7 @@ import ErrorRetry from "../components/ui/ErrorRetry";
 import { useEffect, useMemo, useState } from "react";
 import { getAuditLogs } from "../api/audit.api";
 import { ShieldCheck, RefreshCw, Clock, Filter, Search } from "lucide-react";
+import { formatIndiaDateTime } from "../utils/businessDate";
 
 function resolveList(res) {
     if (Array.isArray(res)) return res;
@@ -244,9 +245,7 @@ export default function Audit() {
                                                     <td className="text-slate-500 text-xs max-w-xs truncate">{description}</td>
                                                     <td>
                                                         <span className="text-xs text-slate-400 font-mono tabular-nums whitespace-nowrap">
-                                                            {timestamp
-                                                                ? new Date(timestamp).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-                                                                : "—"}
+                                                            {timestamp ? formatIndiaDateTime(timestamp) : "—"}
                                                         </span>
                                                     </td>
                                                 </tr>

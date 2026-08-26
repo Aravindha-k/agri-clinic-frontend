@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import api from "../api/axios";
+import { formatIndiaDate } from "../utils/businessDate";
 
 function notifIcon(n) {
   const t = (n.notification_type || n.type || "").toLowerCase();
@@ -30,7 +31,7 @@ function fmtNotifTime(d) {
   if (min < 60) return `${min}m ago`;
   const hrs = Math.floor(min / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  return formatIndiaDate(d);
 }
 
 export default function Notifications() {

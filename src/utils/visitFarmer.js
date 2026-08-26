@@ -13,6 +13,10 @@ import {
   resolveFarmerLabel,
   resolveEmployeeLabel,
 } from "./displayValue";
+import {
+  formatIndiaDateTime,
+  visitUtcInstantFromFields,
+} from "./businessDate";
 import { resolveTalukLabel } from "./locationDisplay";
 import { resolveProfilePhotoUrl } from "./profilePhoto";
 
@@ -180,13 +184,7 @@ export function normalizeVisitList(list) {
 
 function formatVisitDateTime(d) {
   if (!d || Number.isNaN(d.getTime())) return DISPLAY_FALLBACK;
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatIndiaDateTime(d);
 }
 
 /** Visit date + optional time; falls back to created_at when visit_date is missing. */
@@ -194,20 +192,10 @@ export function visitWhenLabel(v) {
   if (!v) return DISPLAY_FALLBACK;
 
   if (v.visit_date) {
-    const d = new Date(v.visit_date);
-    if (Number.isNaN(d.getTime())) return DISPLAY_FALLBACK;
-    const datePart = d.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-    if (v.visit_time) {
-      const [h, m] = String(v.visit_time).split(":");
-      if (h !== undefined && m !== undefined) {
-        return `${datePart} ${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
-      }
+    const instant = visitUtcInstantFromFields(v.visit_date, v.visit_time);
+    if (instant && !Number.isNaN(instant.getTime())) {
+      return formatIndiaDateTime(instant);
     }
-    return datePart;
   }
 
   if (v.created_at) {

@@ -1,4 +1,5 @@
 import { resolveList } from "./apiUnwrap";
+import { formatIndiaDateTime } from "./businessDate";
 
 export const DEFAULT_POLICIES = {
   sessionTimeoutMinutes: 30,
@@ -131,13 +132,7 @@ export function normalizeAdminSecurity(payload) {
 export function formatSecurityDateTime(value) {
   const d = parseDate(value);
   if (!d) return "—";
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatIndiaDateTime(d);
 }
 
 const SECURITY_ACTION_RE =

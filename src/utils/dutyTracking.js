@@ -12,6 +12,7 @@
  */
 
 import { unwrapSuccessEnvelope, getResponseBody } from "./apiUnwrap.js";
+import { formatIndiaDateTime } from "./businessDate.js";
 
 export const DUTY_MOVING_SPEED_KMH = 1;
 
@@ -336,29 +337,15 @@ export function presenceStatusLabel(emp) {
 export function formatDutyStartedAt(emp) {
   const iso = emp?.started_at ?? emp?.duty_started_at ?? null;
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const formatted = formatIndiaDateTime(iso);
+  return formatted === "—" ? null : formatted;
 }
 
 export function formatDutyExpectedEndAt(emp) {
   const iso = emp?.expected_end_at ?? null;
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const formatted = formatIndiaDateTime(iso);
+  return formatted === "—" ? null : formatted;
 }
 
 /** Elapsed since backend started_at — stable across polls for the same start. */

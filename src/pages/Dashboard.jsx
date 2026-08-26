@@ -49,6 +49,7 @@ import AlertsPanel from "../components/dashboard/AlertsPanel";
 import OwnerControlPanel from "../components/dashboard/OwnerControlPanel";
 import { KPI_THEMES } from "../theme/brand";
 import UnifiedActivityFeed from "../components/dashboard/UnifiedActivityFeed";
+import { formatIndiaDate, formatIndiaTime } from "../utils/businessDate";
 import {
   WidgetErrorBoundary,
   DashboardShellErrorBoundary,
@@ -76,22 +77,9 @@ import {
   Paperclip,
 } from "lucide-react";
 
-const formatDate = (d) => {
-  if (!d) return "\u2014";
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
+const formatDate = (d) => formatIndiaDate(d);
 
-const formatTime = (d) => {
-  if (!d) return "\u2014";
-  return new Date(d).toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
+const formatTime = (d) => formatIndiaTime(d);
 
 const formatDuration = (s, e) => {
   if (!s || !e) return "\u2014";

@@ -3,6 +3,7 @@ import {
   asDisplayString,
   resolveCropLabel,
 } from "./displayValue";
+import { formatIndiaDate } from "./businessDate";
 
 export const VISIT_NOT_ADDED = "Not added by employee";
 export const VISIT_FIELD_NOTES_LABEL = "Observation / Field Notes";
@@ -139,11 +140,7 @@ export function resolveVisitFollowUpDate(visit) {
     return asText ?? VISIT_NOT_ADDED;
   }
 
-  return d.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatIndiaDate(d);
 }
 
 export function truncateVisitText(text, max = 72) {

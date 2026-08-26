@@ -3,6 +3,7 @@
  */
 
 import { getApiOrigin } from "../config/api";
+import { formatIndiaDateTime } from "./businessDate";
 
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"]);
 const PDF_EXT = new Set(["pdf"]);
@@ -139,16 +140,7 @@ export function formatFileSize(bytes) {
 }
 
 export function formatAttachmentDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatIndiaDateTime(value);
 }
 
 export function normalizeVisitAttachment(row) {

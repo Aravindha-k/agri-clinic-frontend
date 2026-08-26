@@ -4,6 +4,8 @@ import {
     ChevronDown, Loader2,
 } from "lucide-react";
 
+import { formatIndiaDateTime } from "../../utils/businessDate";
+
 const resolveList = (d) => {
     if (Array.isArray(d)) return d;
     if (d?.results) return d.results;
@@ -11,12 +13,7 @@ const resolveList = (d) => {
     return [];
 };
 
-const fmt = (d) => {
-    if (!d) return "\u2014";
-    const dt = new Date(d);
-    return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) +
-        " " + dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-};
+const fmt = (d) => formatIndiaDateTime(d);
 
 const TYPE_CONFIG = {
     visit: { icon: Eye, bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", label: "Visit" },

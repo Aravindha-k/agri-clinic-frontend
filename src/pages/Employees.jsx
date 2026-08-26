@@ -39,6 +39,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useOverlayLock } from "../utils/overlayLock";
 import { useToast } from "../components/ui/Toast";
 import { copyTextToClipboard } from "../utils/clipboard";
+import { formatIndiaDate, formatIndiaDateTime } from "../utils/businessDate";
 import {
   allPasswordRulesMet,
   checkPasswordPolicy,
@@ -81,18 +82,8 @@ const useCountUp = (target, duration = 1000) => {
 /* ================================================================
    HELPERS
    ================================================================ */
-const fmt = (d) => {
-  if (!d) return "\u2014";
-  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-};
-const fmtTime = (d) => {
-  if (!d) return "\u2014";
-  return new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-};
-const fmtDateTime = (d) => {
-  if (!d) return "\u2014";
-  return new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-};
+const fmt = (d) => formatIndiaDate(d);
+const fmtDateTime = (d) => formatIndiaDateTime(d);
 const fmtDurStr = (dur) => {
   if (!dur && dur !== 0) return "\u2014";
   if (typeof dur === "string") return dur;

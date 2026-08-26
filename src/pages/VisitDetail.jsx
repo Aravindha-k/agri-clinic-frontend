@@ -25,6 +25,10 @@ import {
 import { resolveLocationBlock } from "../utils/locationDisplay";
 import { resolveVisitProblems } from "../utils/visitProblems";
 import {
+    formatIndiaDateTime,
+    formatVisitConductedAt,
+} from "../utils/businessDate";
+import {
     buildVisitProblemUpdatePayload,
     extractProblemItemIdsFromVisit,
     resolveVisitCropId,
@@ -50,23 +54,6 @@ import {
     ShieldCheck,
     Image as ImageIcon,
 } from "lucide-react";
-
-const fmtDate = (d) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
-};
-
-const fmtTime = (d) => {
-    if (!d) return null;
-    if (typeof d === "string" && /^\d{2}:\d{2}/.test(d)) return d.slice(0, 5);
-    const parsed = new Date(d);
-    if (Number.isNaN(parsed.getTime())) return String(d);
-    return parsed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-};
 
 const parseCoord = (value) => {
     if (value === null || value === undefined || value === "") return null;
@@ -446,8 +433,8 @@ export default function VisitDetail(props) {
         [data?.evidence]
     );
 
-    const visitDateLabel = fmtDate(v?.visit_date ?? v?.created_at);
-    const visitTimeLabel = v?.visit_time ? fmtTime(v.visit_time) : null;
+    const visitConductedLabel = formatVisitConductedAt(v);
+    const reportRecordedLabel = v?.created_at ? formatIndiaDateTime(v.created_at) : null;
 
     if (loading) {
         return <VisitDetailSkeleton />;
@@ -499,9 +486,10 @@ export default function VisitDetail(props) {
                             <h1 className="visit-report-header__title">Visit #{v?.id ?? id}</h1>
                             <p className="visit-report-header__meta">
                                 <Calendar className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                                {visitDateLabel}
-                                {visitTimeLabel ? ` · ${visitTimeLabel}` : ""}
-                                {v?.created_at ? ` · Recorded ${fmtDate(v.created_at)}` : ""}
+                                {visitConductedLabel}
+                                {reportRecordedLabel && v?.created_at && visitConductedLabel !== reportRecordedLabel
+                                    ? ` · Recorded ${reportRecordedLabel}`
+                                    : ""}
                             </p>
                         </div>
                     </div>
@@ -590,8 +578,7 @@ export default function VisitDetail(props) {
                         <div className="visit-report-summary__cell">
                             <p className="visit-report-summary__cell-label">Visit date</p>
                             <p className="visit-report-summary__cell-value">
-                                {visitDateLabel}
-                                {visitTimeLabel ? ` · ${visitTimeLabel}` : ""}
+                                {visitConductedLabel}
                             </p>
                         </div>
                         <div className="visit-report-summary__cell">
@@ -820,8 +807,7 @@ export default function VisitDetail(props) {
                                     />
                                     <p className="visit-report-timeline__label">Visit conducted</p>
                                     <p className="visit-report-timeline__value">
-                                        {visitDateLabel}
-                                        {visitTimeLabel ? ` at ${visitTimeLabel}` : ""}
+                                        {visitConductedLabel}
                                     </p>
                                 </li>
                                 {v?.created_at && (
@@ -832,7 +818,7 @@ export default function VisitDetail(props) {
                                         />
                                         <p className="visit-report-timeline__label">Report recorded</p>
                                         <p className="visit-report-timeline__value">
-                                            {fmtDate(v.created_at)}
+                                            {reportRecordedLabel ?? formatIndiaDateTime(v.created_at)}
                                         </p>
                                     </li>
                                 )}

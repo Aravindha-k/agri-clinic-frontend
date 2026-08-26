@@ -7,6 +7,7 @@ import {
   Clock,
 } from "lucide-react";
 import { EmptyState } from "../ui/command";
+import { formatIndiaDateTime } from "../../utils/businessDate";
 
 const TYPE_CFG = {
   visit: { icon: ClipboardList, color: "bg-emerald-500", avatarBg: "linear-gradient(135deg, #16a34a, #0d9488)" },
@@ -26,23 +27,12 @@ function formatWhen(d) {
   if (min < 60) return `${min}m ago`;
   const hrs = Math.floor(min / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatIndiaDateTime(date, { year: undefined });
 }
 
 function formatAbsolute(d) {
   if (!d) return "";
-  return new Date(d).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatIndiaDateTime(d);
 }
 
 export default function UnifiedActivityFeed({ events = [] }) {
