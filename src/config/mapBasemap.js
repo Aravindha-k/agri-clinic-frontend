@@ -8,11 +8,19 @@ export const MAP_BASEMAP_TYPES = ["standard", "satellite", "hybrid"];
 /** Admin maps use street tiles (aligned with the mobile app). */
 export const DEFAULT_ADMIN_MAP_BASEMAP = "standard";
 
-const OSM_FALLBACK =
+/** Shared OpenStreetMap raster tiles — no API key required. */
+export const OSM_TILE_URL =
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-const CARTO_VOYAGER =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+export const OSM_TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+const OSM_TILE_LAYER = {
+  url: OSM_TILE_URL,
+  attribution: OSM_TILE_ATTRIBUTION,
+  subdomains: "abc",
+  maxZoom: 19,
+};
 
 const ESRI_WORLD_IMAGERY =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -53,36 +61,37 @@ export function writeStoredMapBasemapType(type) {
 
 /**
  * Tile layer definitions for admin maps.
- * Override via env without API keys (Esri + OSM/Carto are free for typical admin use).
+ * Standard street maps default to OpenStreetMap (no API key).
+ * Override via env without API keys (Esri satellite/hybrid remain optional).
  */
 export function getMapBasemapLayers(type) {
   const standardUrl =
-    import.meta.env.VITE_MAP_STANDARD_TILE_URL || CARTO_VOYAGER;
+    import.meta.env.VITE_MAP_STANDARD_TILE_URL || OSM_TILE_URL;
   const satelliteUrl =
     import.meta.env.VITE_MAP_SATELLITE_TILE_URL || ESRI_WORLD_IMAGERY;
   const labelsUrl =
     import.meta.env.VITE_MAP_LABELS_TILE_URL || ESRI_REFERENCE_LABELS;
   const fallbackUrl =
-    import.meta.env.VITE_MAP_FALLBACK_TILE_URL || OSM_FALLBACK;
+    import.meta.env.VITE_MAP_FALLBACK_TILE_URL || OSM_TILE_URL;
+
+  const osmFallback = {
+    url: fallbackUrl,
+    attribution: OSM_TILE_ATTRIBUTION,
+    subdomains: "abc",
+    maxZoom: 19,
+  };
 
   const standard = {
     key: "standard",
     layers: [
       {
         url: standardUrl,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 20,
+        attribution: OSM_TILE_ATTRIBUTION,
+        subdomains: "abc",
+        maxZoom: 19,
       },
     ],
-    fallback: {
-      url: fallbackUrl,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      subdomains: "abc",
-      maxZoom: 19,
-    },
+    fallback: osmFallback,
   };
 
   const satellite = {
@@ -95,7 +104,7 @@ export function getMapBasemapLayers(type) {
         maxZoom: 19,
       },
     ],
-    fallback: standard.fallback,
+    fallback: OSM_TILE_LAYER,
   };
 
   const hybrid = {
@@ -114,7 +123,7 @@ export function getMapBasemapLayers(type) {
         opacity: 0.88,
       },
     ],
-    fallback: standard.fallback,
+    fallback: OSM_TILE_LAYER,
   };
 
   const map = { standard, satellite, hybrid };
