@@ -13,6 +13,10 @@ function previewSrc(item) {
   return resolveAttachmentUrl(item?.file_url || item?.url || item?.thumbnail_url);
 }
 
+function fullImageSrc(item) {
+  return resolveAttachmentUrl(item?.file_url || item?.url) || previewSrc(item);
+}
+
 function ImagePreviewModal({ item, onClose }) {
   const panelRef = useRef(null);
   useOverlayLock({
@@ -23,7 +27,7 @@ function ImagePreviewModal({ item, onClose }) {
   });
 
   if (!item) return null;
-  const src = previewSrc(item);
+  const src = fullImageSrc(item);
 
   return createPortal(
     <div
@@ -32,8 +36,12 @@ function ImagePreviewModal({ item, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label="Image preview"
-      onClick={onClose}
     >
+      <div
+        className="visit-evidence-preview__backdrop"
+        aria-hidden="true"
+        onClick={onClose}
+      />
       <button
         type="button"
         onClick={onClose}

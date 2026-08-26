@@ -7843,6 +7843,18 @@ textarea.input {
     @apply w-full h-full flex items-center justify-center text-slate-300;
 }
 
+.visits-evidence-card__thumb img,
+.visit-report-photo img,
+.farmer-visit-evidence-thumb__img {
+    opacity: 1;
+    filter: none;
+}
+
+.visit-report-photo:hover img {
+    opacity: 1;
+    filter: none;
+}
+
 .visit-evidence-preview {
     position: fixed;
     inset: 0;
@@ -7852,6 +7864,13 @@ textarea.input {
     justify-content: center;
     padding: 3.5rem 1rem 1.25rem;
     overflow: hidden;
+    background: transparent;
+}
+
+.visit-evidence-preview__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
     background: rgba(15, 23, 42, 0.72);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
@@ -7861,7 +7880,7 @@ textarea.input {
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
-    z-index: 2;
+    z-index: 3;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -7885,6 +7904,9 @@ textarea.input {
 }
 
 .visit-evidence-preview__shell {
+    position: relative;
+    z-index: 2;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -7914,7 +7936,9 @@ textarea.input {
     object-fit: contain;
     border-radius: 0.75rem;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-    background: rgba(0, 0, 0, 0.18);
+    background: #ffffff;
+    opacity: 1;
+    filter: none;
 }
 
 .visit-evidence-preview__name {

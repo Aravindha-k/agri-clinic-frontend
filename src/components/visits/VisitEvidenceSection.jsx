@@ -42,6 +42,10 @@ function toneClasses(tone) {
   return map[tone] || map.slate;
 }
 
+function fullImageSrc(item) {
+  return item?.url || item?.thumbnailUrl || null;
+}
+
 function ImagePreviewModal({ item, onClose }) {
   const panelRef = useRef(null);
   useOverlayLock({
@@ -52,7 +56,7 @@ function ImagePreviewModal({ item, onClose }) {
   });
 
   if (!item) return null;
-  const src = item.url || item.thumbnailUrl;
+  const src = fullImageSrc(item);
 
   return createPortal(
     <div
@@ -61,8 +65,12 @@ function ImagePreviewModal({ item, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label="Image preview"
-      onClick={onClose}
     >
+      <div
+        className="visit-evidence-preview__backdrop"
+        aria-hidden="true"
+        onClick={onClose}
+      />
       <button
         type="button"
         onClick={onClose}
