@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useOverlayLock } from "../../utils/overlayLock";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Paperclip,
   Image as ImageIcon,
@@ -11,7 +9,6 @@ import {
   Download,
   ExternalLink,
   RefreshCw,
-  X,
   User,
   Clock,
   HardDrive,
@@ -20,6 +17,8 @@ import { getVisitAttachments } from "../../api/visit.api";
 import { EmptyState } from "../ui/command";
 import ErrorRetry from "../ui/ErrorRetry";
 import { ATTACHMENT_KIND } from "../../utils/visitAttachments";
+import { evidenceItemKey } from "../../utils/evidenceViewer";
+import EvidenceImageViewer from "./EvidenceImageViewer";
 
 const KIND_META = {
   [ATTACHMENT_KIND.IMAGE]: { label: "Photo", icon: ImageIcon, tone: "emerald" },
@@ -42,67 +41,10 @@ function toneClasses(tone) {
   return map[tone] || map.slate;
 }
 
-function fullImageSrc(item) {
-  return item?.url || item?.thumbnailUrl || null;
-}
-
-function ImagePreviewModal({ item, onClose }) {
-  const panelRef = useRef(null);
-  useOverlayLock({
-    open: Boolean(item),
-    onClose,
-    panelRef,
-    trapFocus: true,
-  });
-
-  if (!item) return null;
-  const src = fullImageSrc(item);
-
-  return createPortal(
-    <div
-      ref={panelRef}
-      className="visit-evidence-preview"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Image preview"
-    >
-      <div
-        className="visit-evidence-preview__backdrop"
-        aria-hidden="true"
-        onClick={onClose}
-      />
-      <button
-        type="button"
-        onClick={onClose}
-        className="visit-evidence-preview__close"
-        aria-label="Close image preview"
-      >
-        <X className="w-5 h-5" aria-hidden="true" />
-      </button>
-      <div
-        className="visit-evidence-preview__shell"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="visit-evidence-preview__stage">
-          {src ? (
-            <img
-              src={src}
-              alt={item.filename || "Visit evidence"}
-              className="visit-evidence-preview__img"
-            />
-          ) : (
-            <p className="visit-evidence-preview__unavailable">Preview unavailable for this file.</p>
-          )}
-        </div>
-        {item.filename ? (
-          <p className="visit-evidence-preview__name" title={item.filename}>
-            {item.filename}
-          </p>
-        ) : null}
-      </div>
-    </div>,
-    document.body
-  );
+function openPreviewIndex(items, item) {
+  const key = evidenceItemKey(item);
+  const idx = items.findIndex((row) => evidenceItemKey(row) === key);
+  return idx >= 0 ? idx : 0;
 }
 
 function AttachmentThumb({ item, broken, onBroken }) {
@@ -349,14 +291,32 @@ export default function VisitEvidenceSection({
   onCountChange,
   variant = "default",
   seedItems = null,
+  viewerContext = null,
 }) {
   const [items, setItems] = useState(() =>
     Array.isArray(seedItems) ? seedItems : []
   );
   const [loading, setLoading] = useState(!Array.isArray(seedItems));
   const [error, setError] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const closePreview = useCallback(() => setPreview(null), []);
+  const [previewIndex, setPreviewIndex] = useState(null);
+  const closePreview = useCallback(() => setPreviewIndex(null), []);
+
+  const imageItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.kind === ATTACHMENT_KIND.IMAGE &&
+          (item.url || item.thumbnailUrl)
+      ),
+    [items]
+  );
+
+  const openPreview = useCallback(
+    (item) => {
+      setPreviewIndex(openPreviewIndex(imageItems, item));
+    },
+    [imageItems]
+  );
 
   useEffect(() => {
     if (Array.isArray(seedItems)) {
@@ -403,9 +363,16 @@ export default function VisitEvidenceSection({
           loading={loading}
           error={error}
           onLoad={load}
-          onPreview={setPreview}
+          onPreview={openPreview}
         />
-        <ImagePreviewModal item={preview} onClose={closePreview} />
+        <EvidenceImageViewer
+          open={previewIndex !== null}
+          items={imageItems}
+          index={previewIndex ?? 0}
+          onIndexChange={setPreviewIndex}
+          onClose={closePreview}
+          context={viewerContext}
+        />
       </>
     );
   }
@@ -466,14 +433,21 @@ export default function VisitEvidenceSection({
               <EvidenceCard
                 key={item.id}
                 item={item}
-                onPreviewImage={setPreview}
+                onPreviewImage={openPreview}
               />
             ))}
           </div>
         )}
       </div>
 
-      <ImagePreviewModal item={preview} onClose={closePreview} />
+      <EvidenceImageViewer
+        open={previewIndex !== null}
+        items={imageItems}
+        index={previewIndex ?? 0}
+        onIndexChange={setPreviewIndex}
+        onClose={closePreview}
+        context={viewerContext}
+      />
     </section>
   );
 }

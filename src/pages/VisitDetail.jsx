@@ -436,6 +436,16 @@ export default function VisitDetail(props) {
     const visitConductedLabel = formatVisitConductedAt(v);
     const reportRecordedLabel = v?.created_at ? formatIndiaDateTime(v.created_at) : null;
 
+    const evidenceViewerContext = useMemo(
+        () => ({
+            visitId: v?.id ?? id,
+            farmerName: farmer.name !== "—" ? farmer.name : null,
+            employeeName: employee.name !== "—" ? employee.name : null,
+            location: [farmer.village, farmer.district].filter(Boolean).join(", ") || null,
+        }),
+        [v?.id, id, farmer.name, farmer.village, farmer.district, employee.name]
+    );
+
     if (loading) {
         return <VisitDetailSkeleton />;
     }
@@ -780,6 +790,7 @@ export default function VisitDetail(props) {
                                 onCountChange={setEvidenceCount}
                                 variant="report"
                                 seedItems={seedEvidence.length > 0 ? seedEvidence : null}
+                                viewerContext={evidenceViewerContext}
                             />
                         </ReportSection>
                     )}
