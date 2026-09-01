@@ -17,6 +17,7 @@ import {
   FilterActiveRow,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
+import { visitRowMatchesPrefixSearch } from "../utils/searchMatch";
 import RouteFallback from "../components/RouteFallback";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import AnalyticsBarRow from "../components/reports/AnalyticsBarRow";
@@ -349,15 +350,7 @@ export default function Reports() {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return previewRows;
-    const q = search.toLowerCase();
-    return previewRows.filter(
-      (r) =>
-        (r.farmer_name || "").toLowerCase().includes(q) ||
-        (r.crop || "").toLowerCase().includes(q) ||
-        (r.employee || "").toLowerCase().includes(q) ||
-        (r.location_name || "").toLowerCase().includes(q) ||
-        String(r.id || "").includes(q)
-    );
+    return previewRows.filter((r) => visitRowMatchesPrefixSearch(r, search));
   }, [previewRows, search]);
 
   const handleExport = async (kind) => {

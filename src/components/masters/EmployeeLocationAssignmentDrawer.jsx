@@ -35,6 +35,7 @@ import {
   toggleVillageSelection,
 } from "../../utils/employeeLocationAssignmentForm";
 import { friendlyErrorMessage } from "../../utils/friendlyError";
+import { startsWithSearch } from "../../utils/searchMatch";
 
 function empDisplayName(employee) {
   if (!employee) return "\u2014";
@@ -67,9 +68,8 @@ function VillageCheckboxList({
   );
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return assignable;
-    return assignable.filter((v) => String(v.name || "").toLowerCase().includes(q));
+    if (!search.trim()) return assignable;
+    return assignable.filter((v) => startsWithSearch(v.name, search));
   }, [assignable, search]);
 
   const selectedInTaluk = selectedIds.filter(

@@ -2,7 +2,7 @@ import { PageLoader, PageHeader, EmptyState, ErrorRetry, FilterBar, FilterField,
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
-import { Leaf, RefreshCw, Search, Wheat, X } from "lucide-react";
+import { matchesAnyFieldPrefix } from "../utils/searchMatch";
 
 /** Prefer API name fields used by Masters → Crops. */
 function cropName(crop) {
@@ -61,14 +61,11 @@ export default function Issues() {
   );
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     if (!q) return crops;
-    return crops.filter((c) => {
-      const name = cropName(c).toLowerCase();
-      const code = (cropCode(c) || "").toLowerCase();
-      const ta = String(c?.name_ta || "").toLowerCase();
-      return name.includes(q) || code.includes(q) || ta.includes(q);
-    });
+    return crops.filter((c) =>
+      matchesAnyFieldPrefix(q, [cropName(c), cropCode(c), c?.name_ta])
+    );
   }, [crops, search]);
 
   return (

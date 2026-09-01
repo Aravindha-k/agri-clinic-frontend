@@ -1,5 +1,7 @@
 /** Display helpers for Problem Items master screen — API-driven, no hardcoded rows. */
 
+import { problemItemMatchesPrefixSearch as prefixMatchProblemItem } from "./searchMatch";
+
 const MANAGED_CATEGORY_CODES = new Set([
   "pest",
   "disease",
@@ -75,17 +77,19 @@ export function resolveProblemCropsLabel(row) {
 }
 
 export function problemItemMatchesSearch(row, query) {
-  const q = String(query || "").trim().toLowerCase();
-  if (!q) return true;
-  const haystack = [
-    resolveProblemEnglishName(row),
-    resolveProblemTamilName(row),
-    resolveProblemCategoryLabel(row),
-    resolveProblemCropLabel(row),
-  ]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(q);
+  if (!String(query || "").trim()) return true;
+  return (
+    prefixMatchProblemItem(row, query) ||
+    prefixMatchProblemItem(
+      {
+        name_en: resolveProblemEnglishName(row),
+        name_ta: resolveProblemTamilName(row),
+        category_name: resolveProblemCategoryLabel(row),
+        crop_name: resolveProblemCropLabel(row),
+      },
+      query
+    )
+  );
 }
 
 export function normalizeProblemImportResult(response) {

@@ -7,6 +7,7 @@ import { EmptyState, Pagination } from "../../components/ui/DataTable";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
+import { matchesAnyFieldPrefix } from "../../utils/searchMatch";
 
 const PER_PAGE = 15;
 
@@ -49,8 +50,7 @@ export default function MasterProblemCategories() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const filtered = rows.filter((r) =>
-        (r.name || "").toLowerCase().includes(search.toLowerCase()) ||
-        (r.description || "").toLowerCase().includes(search.toLowerCase())
+        matchesAnyFieldPrefix(search, [r.name, r.description])
     );
     const totalPages = Math.ceil(filtered.length / PER_PAGE);
     const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);

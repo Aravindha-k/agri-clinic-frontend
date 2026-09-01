@@ -40,6 +40,7 @@ import { useOverlayLock } from "../utils/overlayLock";
 import { useToast } from "../components/ui/Toast";
 import { copyTextToClipboard } from "../utils/clipboard";
 import { formatIndiaDate, formatIndiaDateTime } from "../utils/businessDate";
+import { employeeMatchesPrefixSearch } from "../utils/searchMatch";
 import {
   allPasswordRulesMet,
   checkPasswordPolicy,
@@ -2165,9 +2166,7 @@ export default function Employees() {
   const filtered = useMemo(() => {
     const list = Array.isArray(employees) ? employees : [];
     return list.filter((emp) => {
-      const name = `${emp.first_name || ""} ${emp.last_name || ""} ${emp.username || ""} ${emp.employee_id || ""}`.toLowerCase();
-      const phone = emp.phone || "";
-      const matchSearch = name.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm);
+      const matchSearch = employeeMatchesPrefixSearch(emp, searchTerm);
       const matchStatus =
         statusFilter === "all" ||
         (statusFilter === "online" && emp.is_online) ||

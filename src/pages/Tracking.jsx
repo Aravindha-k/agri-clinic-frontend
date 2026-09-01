@@ -57,6 +57,7 @@ import {
 } from "../utils/mapSnapshotCache";
 import { getMapCenter, getValidEmployeeLocations, isValidTamilNaduCoordinate, TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../utils/mapCoordinates";
 import { empName } from "../utils/trackingDisplay";
+import { employeeMatchesPrefixSearch } from "../utils/searchMatch";
 import {
     Users,
     WifiOff,
@@ -688,14 +689,8 @@ export default function Tracking() {
 
     const filteredEmployees = useMemo(() => {
         return activeEmployees.filter((emp) => {
-            const name = empName(emp).toLowerCase();
-            const id = String(emp.employee_id ?? emp.employee_code ?? "").toLowerCase();
-            const district = (emp.district || "").toLowerCase();
             const matchSearch =
-                !searchTerm ||
-                name.includes(searchTerm.toLowerCase()) ||
-                id.includes(searchTerm.toLowerCase()) ||
-                district.includes(searchTerm.toLowerCase());
+                !searchTerm || employeeMatchesPrefixSearch(emp, searchTerm);
             const tracking = resolveCanonicalTrackingStatusKey(emp);
             const matchFilter =
                 filterStatus === "all" ||

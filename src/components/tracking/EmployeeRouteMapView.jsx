@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import AdminMapCard from "../map/AdminMapCard";
@@ -14,8 +14,9 @@ import {
   computeRouteSummary,
 } from "../../utils/employeeRoute";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
-import { RefreshCw, Radio, Users } from "lucide-react";
+import { RefreshCw, Radio, Search, Users } from "lucide-react";
 import { formatDistanceKm } from "../../utils/trackingStatus";
+import { employeeMatchesPrefixSearch } from "../../utils/searchMatch";
 
 const SHADOW = "0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)";
 
@@ -146,6 +147,14 @@ export default function EmployeeRouteMapView({
     [routeData, employee]
   );
 
+  const [employeeSearch, setEmployeeSearch] = useState("");
+
+  const filteredEmployees = useMemo(() => {
+    const list = Array.isArray(employees) ? employees : [];
+    if (!employeeSearch.trim()) return list;
+    return list.filter((emp) => employeeMatchesPrefixSearch(emp, employeeSearch));
+  }, [employees, employeeSearch]);
+
   const mapPoints = useMemo(
     () =>
       markers.map((m) => ({
@@ -198,6 +207,21 @@ export default function EmployeeRouteMapView({
   const workspaceToolbar = isWorkspaceVariant ? (
     <div className="route-history-workspace__toolbar">
       <div className="route-history-workspace__field">
+        <label htmlFor="page-route-employee-search">
+          <Search className="w-3.5 h-3.5" aria-hidden="true" />
+          Find employee
+        </label>
+        <input
+          id="page-route-employee-search"
+          type="search"
+          className="select"
+          value={employeeSearch}
+          onChange={(e) => setEmployeeSearch(e.target.value)}
+          placeholder="Name or employee code…"
+          aria-label="Search employees by name or code"
+        />
+      </div>
+      <div className="route-history-workspace__field">
         <label htmlFor="page-route-employee">
           <Users className="w-3.5 h-3.5" aria-hidden="true" />
           Employee
@@ -208,7 +232,7 @@ export default function EmployeeRouteMapView({
           value={selectedUserId}
           onChange={(e) => onEmployeeChange?.(e.target.value)}
         >
-          {employees.map((emp) => (
+          {filteredEmployees.map((emp) => (
             <option key={emp.user_id ?? emp.id} value={String(emp.user_id ?? emp.id)}>
               {empName(emp)}
               {emp.employee_id ? ` (${emp.employee_id})` : ""}

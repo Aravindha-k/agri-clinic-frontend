@@ -23,6 +23,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
+import { debounce } from "../utils/debounce";
 import { PageHeader, FilterBar, FilterField, EmptyState, FilterToolbarRow, FilterActiveRow } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -130,7 +131,6 @@ function FarmerRowActions({ farmerId, onView, onEdit, onDelete, deleting }) {
 
 export default function FarmersList() {
   const navigate = useNavigate();
-  const searchTimeout = useRef(null);
   const loadSeq = useRef(0);
 
   const [farmers, setFarmers] = useState([]);
@@ -233,17 +233,31 @@ export default function FarmersList() {
     loadFarmers();
   }, [loadFarmers]);
 
+  const debouncedSetSearch = useMemo(
+    () =>
+      debounce((value) => {
+        setSearch(value);
+        setPage(1);
+      }, 300),
+    []
+  );
+
+  useEffect(() => () => debouncedSetSearch.cancel?.(), [debouncedSetSearch]);
+
   const handleSearchInput = (e) => {
     const value = e.target.value;
     setSearchInput(value);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      setSearch(value);
+    if (!value.trim()) {
+      debouncedSetSearch.cancel?.();
+      setSearch("");
       setPage(1);
-    }, 350);
+      return;
+    }
+    debouncedSetSearch(value);
   };
 
   const handleClearFilters = () => {
+    debouncedSetSearch.cancel?.();
     setSearchInput("");
     setSearch("");
     setDistrictFilter("");

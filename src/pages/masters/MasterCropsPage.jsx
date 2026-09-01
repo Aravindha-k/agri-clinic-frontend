@@ -2,6 +2,7 @@ import { PageLoader, PageHeader } from "../../components/ui/command";
 import { useEffect, useState, useCallback } from "react";
 import { fetchAllMasterCrops, createCrop, updateCrop, deleteCrop } from "../../api/master.api";
 import { logApiDiagnostics } from "../../utils/apiDiagnostics";
+import { cropMatchesPrefixSearch } from "../../utils/searchMatch";
 import {
     Wheat, Search, X, RefreshCw, Edit3, Trash2, Plus, AlertCircle,
     Loader2, Leaf,
@@ -144,16 +145,7 @@ export default function MasterCropsPage() {
     const openCreate = () => { setEditTarget(null); setFormOpen(true); };
     const openEdit = (crop) => { setEditTarget(crop); setFormOpen(true); };
 
-    const filtered = crops.filter((c) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-            (c.name_en || "").toLowerCase().includes(q) ||
-            (c.name_ta || "").toLowerCase().includes(q) ||
-            (c.scientific_name || "").toLowerCase().includes(q) ||
-            (c.crop_category || "").toLowerCase().includes(q)
-        );
-    });
+    const filtered = crops.filter((c) => cropMatchesPrefixSearch(c, search));
 
     useEffect(() => {
         logApiDiagnostics({

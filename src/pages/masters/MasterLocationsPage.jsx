@@ -14,7 +14,7 @@ import { logApiDiagnostics } from "../../utils/apiDiagnostics";
 import {
     MapPin, Search, X, RefreshCw, Edit3, Trash2, Plus, AlertCircle, Loader2,
 } from "lucide-react";
-import SlidePanel from "../../components/ui/SlidePanel";
+import { startsWithSearch } from "../../utils/searchMatch";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const TABLE_PAGE_SIZE = 25;
@@ -401,8 +401,7 @@ export default function MasterLocationsPage() {
 
     const filteredDistricts = useMemo(() => {
         if (activeTab !== "districts" || !search.trim()) return districts;
-        const q = search.toLowerCase();
-        return districts.filter((item) => (item.name || "").toLowerCase().includes(q));
+        return districts.filter((item) => startsWithSearch(item.name, search));
     }, [activeTab, districts, search]);
 
     const currentList = activeTab === "districts"

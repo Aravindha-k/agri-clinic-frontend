@@ -22,6 +22,7 @@ import {
   PageHeader,
 } from "../components/ui/command";
 import { friendlyErrorMessage } from "../utils/friendlyError";
+import { matchesAnyFieldPrefix } from "../utils/searchMatch";
 import {
   formatSecurityDateTime,
   isSecurityAuditEvent,
@@ -180,22 +181,22 @@ export default function SecuritySessions() {
   }, [security.auditLogs, auditFallback]);
 
   const filteredAdmins = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     if (!q) return admins;
-    return admins.filter(
-      (row) =>
-        String(row.username || "").toLowerCase().includes(q) ||
-        String(row.name || "").toLowerCase().includes(q) ||
-        String(row.lastIp || "").toLowerCase().includes(q)
+    return admins.filter((row) =>
+      matchesAnyFieldPrefix(q, [row.username, row.name, row.lastIp])
     );
   }, [admins, query]);
 
   const filteredAudit = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     if (!q) return auditEvents;
     return auditEvents.filter((log) =>
-      [getAuditAction(log), getAuditUser(log), getAuditDescription(log)]
-        .some((v) => String(v || "").toLowerCase().includes(q))
+      matchesAnyFieldPrefix(q, [
+        getAuditAction(log),
+        getAuditUser(log),
+        getAuditDescription(log),
+      ])
     );
   }, [auditEvents, query]);
 

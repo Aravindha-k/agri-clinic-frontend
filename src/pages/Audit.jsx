@@ -3,7 +3,7 @@ import ErrorRetry from "../components/ui/ErrorRetry";
 import { useEffect, useMemo, useState } from "react";
 import { getAuditLogs } from "../api/audit.api";
 import { ShieldCheck, RefreshCw, Clock, Filter, Search } from "lucide-react";
-import { formatIndiaDateTime } from "../utils/businessDate";
+import { matchesAnyFieldPrefix } from "../utils/searchMatch";
 
 function resolveList(res) {
     if (Array.isArray(res)) return res;
@@ -90,8 +90,11 @@ export default function Audit() {
             const matchesAction = !filterLevel || getAction(log) === filterLevel;
             if (!matchesAction) return false;
             if (!normalizedQuery) return true;
-            return [getAction(log), getUser(log), getDescription(log)]
-                .some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+            return matchesAnyFieldPrefix(normalizedQuery, [
+                getAction(log),
+                getUser(log),
+                getDescription(log),
+            ]);
         });
     }, [filterLevel, logs, query]);
 

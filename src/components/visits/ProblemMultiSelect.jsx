@@ -6,6 +6,7 @@ import {
   resolveProblemEnglishName,
   resolveProblemTamilName,
 } from "../../utils/problemMasterDisplay";
+import { matchesAnyFieldPrefix } from "../../utils/searchMatch";
 
 function groupProblemsByCategory(items = []) {
   const groups = new Map();
@@ -72,18 +73,15 @@ export default function ProblemMultiSelect({
   }, [loadItems]);
 
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     if (!q) return items;
-    return items.filter((item) => {
-      const haystack = [
+    return items.filter((item) =>
+      matchesAnyFieldPrefix(q, [
         resolveProblemEnglishName(item),
         resolveProblemTamilName(item),
         resolveProblemCategoryLabel(item),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
+      ])
+    );
   }, [items, search]);
 
   const groups = useMemo(() => groupProblemsByCategory(filteredItems), [filteredItems]);
