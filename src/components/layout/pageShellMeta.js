@@ -37,7 +37,7 @@ const EXACT = {
   },
   "/masters/locations": {
     title: "Master Locations",
-    subtitle: "Manage districts and villages",
+    subtitle: "District, taluk, and village masters",
   },
   "/masters/crops": {
     title: "Master Crops",
@@ -53,7 +53,7 @@ const EXACT = {
   },
   "/masters/employee-locations": {
     title: "Employee Locations",
-    subtitle: "Reference territory assignments for field employees",
+    subtitle: "Operational village territory for field employees",
   },
   "/reports": {
     title: "Analytics & Reports",

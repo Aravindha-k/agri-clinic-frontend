@@ -26,7 +26,10 @@ import {
 } from "../api/employee.api";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
-import { getDistricts } from "../api/master.api";
+import { fetchAllEmployeeLocationAssignments, fetchEmployeeLocationAssignmentDetail } from "../api/employeeLocationAssignments.api";
+import EmployeeTerritoryModal from "../components/masters/EmployeeTerritoryModal";
+import EmployeeTerritoryTree from "../components/masters/EmployeeTerritoryTree";
+import { formatTerritorySummary, parseAssignmentGroups } from "../utils/employeeLocationAssignmentForm";
 import { getEmployeeStats, getEmployeeSummary, getEmployeeActivity } from "../api/tracking.api";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import { useAuth } from "../context/AuthContext";
@@ -52,7 +55,7 @@ import {
   RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
   Calendar, Shield, Building2, Briefcase, PlayCircle, StopCircle, Radio, Heart,
   Navigation, ToggleLeft, ToggleRight, Loader2, Plus, UserPlus, Hash,
-  Edit2, Key, Info, CheckCircle, Save, Copy, Route, Trash2, Power, Pencil,
+  Edit2, Key, Info, CheckCircle, Save, Copy, Route, Trash2, Power, Pencil, MapPinned,
 } from "lucide-react";
 
 /* ================================================================
@@ -350,6 +353,7 @@ const EmployeeRowActions = memo(({
   busy = false,
   onView,
   onEdit,
+  onTerritory,
   onToggle,
   onDelete,
 }) => {
@@ -368,6 +372,16 @@ const EmployeeRowActions = memo(({
         onClick={() => onView?.(emp)}
       >
         <Eye className="w-4 h-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="employees-action-btn employees-action-btn--edit"
+        title="Manage territory"
+        aria-label="Manage territory"
+        disabled={busy}
+        onClick={() => onTerritory?.(emp)}
+      >
+        <MapPinned className="w-4 h-4" aria-hidden="true" />
       </button>
       {canMutate && (
         <>
@@ -409,7 +423,7 @@ const EmployeeRowActions = memo(({
 EmployeeRowActions.displayName = "EmployeeRowActions";
 
 /* --- Employee Card (Grid) --- */
-const EmployeeCard = memo(({ emp, actor, busy, onView, onEdit, onToggle, onDelete }) => (
+const EmployeeCard = memo(({ emp, actor, busy, onView, onEdit, onTerritory, onToggle, onDelete }) => (
   <article
     className={`employees-hr-card group ${emp.is_online ? "employees-hr-card--online" : ""}`}
     onClick={() => onView(emp)}
@@ -450,13 +464,10 @@ const EmployeeCard = memo(({ emp, actor, busy, onView, onEdit, onToggle, onDelet
       </div>
       <div className="employees-hr-card__meta">
         <RoleBadge role={emp.role} />
-        {emp.district_name && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-semibold uppercase tracking-wide">
-            <Building2 className="w-2.5 h-2.5" aria-hidden="true" />
-            {emp.district_name}
-          </span>
-        )}
       </div>
+      <p className="emp-territory-compact">
+        Territory: {formatTerritorySummary(emp.location_assignment_summary)}
+      </p>
       <p className="employees-hr-card__seen">
         <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
         {emp.last_seen || emp.last_heartbeat
@@ -470,6 +481,7 @@ const EmployeeCard = memo(({ emp, actor, busy, onView, onEdit, onToggle, onDelet
           busy={busy}
           onView={onView}
           onEdit={onEdit}
+          onTerritory={onTerritory}
           onToggle={onToggle}
           onDelete={onDelete}
         />
@@ -487,6 +499,7 @@ const EmployeeGrid = memo(({
   busyId,
   onView,
   onEdit,
+  onTerritory,
   onToggle,
   onDelete,
   onAddEmployee,
@@ -537,6 +550,7 @@ const EmployeeGrid = memo(({
             busy={busyId === emp.id}
             onView={onView}
             onEdit={onEdit}
+            onTerritory={onTerritory}
             onToggle={onToggle}
             onDelete={onDelete}
           />
@@ -554,7 +568,7 @@ const EmployeeGrid = memo(({
               <th>Employee</th>
               <th>Phone</th>
               <th>Role</th>
-              <th>District</th>
+              <th>Territory</th>
               <th>Status</th>
               <th className="w-36 text-right">Actions</th>
             </tr>
@@ -575,7 +589,7 @@ const EmployeeGrid = memo(({
                 </td>
                 <td className="text-sm text-slate-500 font-mono tabular-nums">{emp.phone || "\u2014"}</td>
                 <td><RoleBadge role={emp.role} /></td>
-                <td className="text-sm text-slate-500">{emp.district_name || "\u2014"}</td>
+                <td className="text-sm text-slate-500">{formatTerritorySummary(emp.location_assignment_summary)}</td>
                 <td><Badge online={emp.is_online} /></td>
                 <td className="text-right">
                   <EmployeeRowActions
@@ -584,6 +598,7 @@ const EmployeeGrid = memo(({
                     busy={busyId === emp.id}
                     onView={onView}
                     onEdit={onEdit}
+                    onTerritory={onTerritory}
                     onToggle={onToggle}
                     onDelete={onDelete}
                   />
@@ -866,7 +881,10 @@ const EmployeeDrawerDetails = memo(({
   activities,
   loadingSummary,
   loadingActivity,
+  territoryGroups,
+  loadingTerritory,
   onPhotoUpdated,
+  onManageTerritory,
 }) => {
   const [timelineOpen, setTimelineOpen] = useState(false);
   const s = summary || {};
@@ -876,9 +894,6 @@ const EmployeeDrawerDetails = memo(({
   const workStart = s.workday_started_at || s.duty_started_at || s.start_time;
   const visitsToday = s.visits_today ?? s.total_visits;
   const accountActive = p.is_active !== false;
-  const district =
-    p.district_name || (typeof p.district === "object" ? p.district?.name : p.district);
-  const villages = resolveAssignedVillages(p, s);
   const routeUserId = p.user_id ?? p.user ?? p.id;
 
   const workDayLine = workStart
@@ -919,7 +934,7 @@ const EmployeeDrawerDetails = memo(({
           <UserCheck className="w-4 h-4" aria-hidden="true" />
           <div>
             <h3 id="emp-drawer-profile" className="employees-hr-drawer-block__title">Profile</h3>
-            <p className="employees-hr-drawer-block__subtitle">Identity and territory</p>
+            <p className="employees-hr-drawer-block__subtitle">Identity and account</p>
           </div>
         </header>
         <div className="employees-hr-drawer-block__body">
@@ -940,7 +955,6 @@ const EmployeeDrawerDetails = memo(({
                 { label: "Username", value: p.username },
                 { label: "Phone", value: p.phone },
                 { label: "Role", value: p.role?.replace(/_/g, " ") },
-                { label: "District", value: district || "\u2014" },
                 {
                   label: "Status",
                   value: accountActive ? (p.is_online ? "Active · Online" : "Active") : "Inactive",
@@ -956,16 +970,26 @@ const EmployeeDrawerDetails = memo(({
               ))}
             </div>
           )}
-          {villages.length > 0 ? (
-            <div className="employees-hr-villages mt-3">
-              {villages.map((v, i) => (
-                <span key={`${v}-${i}`} className="employees-hr-village-chip">
-                  <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
-                  {v}
-                </span>
-              ))}
-            </div>
-          ) : null}
+        </div>
+      </section>
+
+      <section className="employees-hr-drawer-block" aria-labelledby="emp-drawer-territory">
+        <header className="employees-hr-drawer-block__head">
+          <MapPinned className="w-4 h-4" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h3 id="emp-drawer-territory" className="employees-hr-drawer-block__title">Territory</h3>
+            <p className="employees-hr-drawer-block__subtitle">Operational villages by district and taluk</p>
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onManageTerritory?.(profile)}>
+            Manage Territory
+          </button>
+        </header>
+        <div className="employees-hr-drawer-block__body">
+          {loadingTerritory ? (
+            <p className="text-xs text-slate-500">Loading territory…</p>
+          ) : (
+            <EmployeeTerritoryTree groups={territoryGroups || []} readOnly />
+          )}
         </div>
       </section>
 
@@ -1326,7 +1350,7 @@ const AdminResetSection = memo(({ empId }) => {
 AdminResetSection.displayName = "AdminResetSection";
 
 /* --- Employee Drawer (Details / Edit / Password tabs) --- */
-const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, districts, initialTab = "details" }) => {
+const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, onManageTerritory, initialTab = "details" }) => {
   const { user: actor } = useAuth();
   const canMutate = canMutateEmployeeAccount(actor, selectedEmp);
   const canPromoteAdmin = canAssignAdminRole(actor);
@@ -1340,6 +1364,8 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
   const [activities, setActivities] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingActivity, setLoadingActivity] = useState(true);
+  const [territoryGroups, setTerritoryGroups] = useState([]);
+  const [loadingTerritory, setLoadingTerritory] = useState(false);
 
   // Edit form
   const [editForm, setEditForm] = useState({});
@@ -1411,9 +1437,10 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
     setActivities([]);
 
     const load = async () => {
-      const [sumR, actR] = await Promise.allSettled([
+      const [sumR, actR, locR] = await Promise.allSettled([
         getEmployeeSummary(userId),
         getEmployeeActivity(userId),
+        fetchEmployeeLocationAssignmentDetail(selectedEmp.id),
       ]);
       if (controller.signal.aborted) return;
       if (sumR.status === "fulfilled") setSummary(sumR.value);
@@ -1423,7 +1450,14 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
         setActivities(Array.isArray(a) ? a : a?.results || []);
       }
       setLoadingActivity(false);
+      if (locR.status === "fulfilled") {
+        setTerritoryGroups(parseAssignmentGroups(locR.value?.assignments || []));
+      } else {
+        setTerritoryGroups([]);
+      }
+      setLoadingTerritory(false);
     };
+    setLoadingTerritory(true);
     load();
     return () => controller.abort();
   }, [selectedEmp, open]);
@@ -1584,7 +1618,10 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
               activities={activities}
               loadingSummary={loadingSummary}
               loadingActivity={loadingActivity}
+              territoryGroups={territoryGroups}
+              loadingTerritory={loadingTerritory}
               onPhotoUpdated={onUpdated}
+              onManageTerritory={onManageTerritory}
             />
           )}
 
@@ -1627,28 +1664,19 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, distr
                   value={editForm.phone || ""} onChange={e => setEF("phone", e.target.value)} maxLength={15} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="employees-hr-field">
-                  <label>Role</label>
-                  <select value={editForm.role || ""} onChange={e => setEF("role", e.target.value)} disabled={!canMutate}>
-                    <option value="field_officer">Field Officer</option>
-                    <option value="supervisor">Supervisor</option>
-                    <option value="manager">Manager</option>
-                    {(canPromoteAdmin || editForm.role === "admin") && (
-                      <option value="admin">Admin</option>
-                    )}
-                  </select>
-                  {targetIsOwner && !canMutate && (
-                    <p className="text-xs text-amber-600 mt-1">Owner accounts can only be changed by another owner.</p>
+              <div className="employees-hr-field">
+                <label>Role</label>
+                <select value={editForm.role || ""} onChange={e => setEF("role", e.target.value)} disabled={!canMutate}>
+                  <option value="field_officer">Field Officer</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="manager">Manager</option>
+                  {(canPromoteAdmin || editForm.role === "admin") && (
+                    <option value="admin">Admin</option>
                   )}
-                </div>
-                <div className="employees-hr-field">
-                  <label>District</label>
-                  <select value={editForm.district || ""} onChange={e => setEF("district", e.target.value)}>
-                    <option value="">Select district</option>
-                    {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                </div>
+                </select>
+                {targetIsOwner && !canMutate && (
+                  <p className="text-xs text-amber-600 mt-1">Owner accounts can only be changed by another owner.</p>
+                )}
               </div>
 
               <div className="employees-hr-toggle-card">
@@ -1720,7 +1748,7 @@ EmployeeDrawer.displayName = "EmployeeDrawer";
 /* ================================================================
    ADD EMPLOYEE MODAL
    ================================================================ */
-const EMPTY_FORM = { first_name: "", last_name: "", phone: "", role: "field_officer", district: "" };
+const EMPTY_FORM = { first_name: "", last_name: "", phone: "", role: "field_officer" };
 
 function usernamePatternHint(firstName) {
   const cleaned = String(firstName || "")
@@ -1761,7 +1789,7 @@ function createEmployeeErrorMessage(err) {
   return detail || "Failed to create employee.";
 }
 
-const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
+const AddEmployeeModal = memo(({ open, onClose, onCreated }) => {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -1803,7 +1831,6 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
         phone: form.phone.trim(),
         role: form.role,
       };
-      if (form.district) payload.district = form.district;
 
       const res = await createEmployee(payload);
       const body = res?.data?.data ?? res?.data ?? res ?? {};
@@ -2040,21 +2067,6 @@ const AddEmployeeModal = memo(({ open, onClose, onCreated, districts }) => {
                       <option value="admin">Admin</option>
                     </select>
                   </div>
-                  <div className="employees-hr-field">
-                    <label>District</label>
-                    <select
-                      value={form.district}
-                      onChange={(e) => set("district", e.target.value)}
-                      disabled={saving}
-                    >
-                      <option value="">Select district</option>
-                      {districts.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
               </div>
               <div className="employees-hr-modal__foot">
@@ -2106,11 +2118,33 @@ export default function Employees() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitialTab, setDrawerInitialTab] = useState("details");
   const [addOpen, setAddOpen] = useState(false);
-  const [districts, setDistricts] = useState([]);
+  const [territoryEmp, setTerritoryEmp] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'delete'|'deactivate', emp }
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const mergeTerritorySummaries = useCallback(async (list) => {
+    try {
+      const data = await fetchAllEmployeeLocationAssignments();
+      const byId = new Map();
+      for (const row of data.results || []) {
+        const id = row?.employee?.id;
+        if (id != null) byId.set(Number(id), row);
+      }
+      return list.map((emp) => {
+        const row = byId.get(Number(emp.id));
+        if (!row) return emp;
+        return {
+          ...emp,
+          location_assignment_summary: row.location_assignment_summary,
+          location_assignment_preview: row.location_assignment_preview,
+        };
+      });
+    } catch {
+      return list;
+    }
+  }, []);
+
   /* --- Load employee list --- */
   const loadList = useCallback(async (signal) => {
     try {
@@ -2118,13 +2152,15 @@ export default function Employees() {
       setListError(null);
       const data = await getEmployees();
       if (signal?.aborted) return;
-      setEmployees(resolveList(data));
+      const merged = await mergeTerritorySummaries(resolveList(data));
+      if (signal?.aborted) return;
+      setEmployees(merged);
     } catch (err) {
       if (!signal?.aborted) setListError("Failed to load employees.");
     } finally {
       if (!signal?.aborted) setLoadingList(false);
     }
-  }, []);
+  }, [mergeTerritorySummaries]);
 
   /* --- Load stats --- */
   const loadStats = useCallback(async (signal) => {
@@ -2146,11 +2182,6 @@ export default function Employees() {
     const controller = new AbortController();
     loadList(controller.signal);
     loadStats(controller.signal);
-    // Load districts for Add Employee form
-    getDistricts().then((res) => {
-      const list = res.data?.data?.results ?? res.data?.results ?? res.data?.data ?? res.data ?? [];
-      setDistricts(Array.isArray(list) ? list : []);
-    }).catch(() => { });
     return () => controller.abort();
   }, [loadList, loadStats]);
 
@@ -2191,6 +2222,23 @@ export default function Employees() {
 
   const handleView = useCallback((emp) => openDrawer(emp, "details"), [openDrawer]);
   const handleEdit = useCallback((emp) => openDrawer(emp, "edit"), [openDrawer]);
+  const handleTerritory = useCallback((emp) => setTerritoryEmp(emp), []);
+
+  const handleTerritorySaved = useCallback((employeeId, summary) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === employeeId
+          ? { ...emp, location_assignment_summary: summary ?? emp.location_assignment_summary }
+          : emp
+      )
+    );
+    setDrawerEmp((prev) =>
+      prev?.id === employeeId
+        ? { ...prev, location_assignment_summary: summary ?? prev.location_assignment_summary }
+        : prev
+    );
+    loadList();
+  }, [loadList]);
 
   const handleAskToggle = useCallback((emp) => {
     if (!canMutateEmployeeAccount(actor, emp)) return;
@@ -2336,6 +2384,7 @@ export default function Employees() {
         busyId={busyId}
         onView={handleView}
         onEdit={handleEdit}
+        onTerritory={handleTerritory}
         onToggle={handleAskToggle}
         onDelete={handleAskDelete}
         onAddEmployee={() => setAddOpen(true)}
@@ -2346,11 +2395,18 @@ export default function Employees() {
         open={drawerOpen}
         onClose={closeDrawer}
         onUpdated={handleUpdated}
-        districts={districts}
+        onManageTerritory={handleTerritory}
         initialTab={drawerInitialTab}
       />
 
-      <AddEmployeeModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={handleCreated} districts={districts} />
+      <AddEmployeeModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={handleCreated} />
+
+      <EmployeeTerritoryModal
+        open={Boolean(territoryEmp)}
+        employee={territoryEmp}
+        onClose={() => setTerritoryEmp(null)}
+        onSaved={handleTerritorySaved}
+      />
 
       <ConfirmDialog
         open={!!confirmAction}

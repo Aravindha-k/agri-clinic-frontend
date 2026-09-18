@@ -34,7 +34,11 @@ export function matchesAnyFieldPrefix(query, fields) {
 function extractAssignedVillageNames(emp) {
   const profile = emp?.employee_profile ?? emp?.profile ?? emp;
   const summary = emp?.location_assignment_summary;
+  const preview = emp?.location_assignment_preview;
   const sources = [
+    preview?.villages,
+    preview?.taluks,
+    preview?.districts,
     profile?.assigned_villages,
     profile?.villages,
     summary?.assigned_villages,
@@ -69,6 +73,13 @@ export function buildEmployeeSearchFields(emp) {
     profile?.district_name ??
     (typeof profile?.district === "object" ? profile?.district?.name : profile?.district);
 
+  const previewNames = [
+    ...(emp?.location_assignment_preview?.districts || []),
+    ...(emp?.location_assignment_preview?.taluks || []),
+  ]
+    .map((d) => (typeof d === "object" ? d.name : d))
+    .filter(Boolean);
+
   return [
     fullName || emp?.username,
     emp?.username,
@@ -76,6 +87,7 @@ export function buildEmployeeSearchFields(emp) {
     emp?.employee_code,
     emp?.phone,
     district,
+    ...previewNames,
     extractAssignedVillageNames(emp),
   ];
 }

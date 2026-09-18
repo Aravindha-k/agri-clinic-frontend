@@ -1,5 +1,5 @@
 import api from "./axios";
-import { unwrapSuccessEnvelope, resolvePaginated } from "../utils/apiUnwrap";
+import { unwrapSuccessEnvelope, resolvePaginated, fetchAllPaginated } from "../utils/apiUnwrap";
 
 const TAG = "[employeeLocationAssignments.api]";
 
@@ -25,6 +25,14 @@ export async function fetchEmployeeLocationAssignments(params = {}) {
 export async function fetchEmployeeLocationAssignmentDetail(profileId) {
   const response = await api.get(`admin/employees/${profileId}/location-assignments/`);
   return unwrapSuccessEnvelope(response) ?? response?.data ?? {};
+}
+
+/** All compact assignment rows — follows pagination until exhausted. */
+export async function fetchAllEmployeeLocationAssignments(params = {}) {
+  return fetchAllPaginated(
+    (p) => fetchEmployeeLocationAssignments({ ...params, ...p }),
+    { page_size: 100, ...params }
+  );
 }
 
 /**

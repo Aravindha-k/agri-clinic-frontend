@@ -1,9 +1,323 @@
 /**
- * Form state ↔ backend hierarchy payload for Employee Location Assignments.
- * Reference-only admin metadata — not used for operational scoping.
+ * Employee operational territory is village-level.
+ * District / Taluk are grouping context derived from Village → Taluk → District.
  *
- * UI persists village-level rows only. District/taluk checkboxes are navigation.
+ * PUT /admin/employees/{id}/location-assignments/ replaces the entire set.
+ * Always build the complete desired village set before save.
  */
+
+import { matchesAnyFieldPrefix } from "./searchMatch.js";
+
+function toId(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "object") {
+    const id = value.id ?? value.pk;
+    return id == null || id === "" ? null : Number(id);
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toName(value, fallback = "") {
+  if (value == null || value === "") return fallback;
+  if (typeof value === "object") {
+    return String(value.name ?? value.village_name ?? value.taluk_name ?? value.label ?? fallback);
+  }
+  return String(value);
+}
+
+function sortByName(a, b) {
+  return String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
+    sensitivity: "base",
+  });
+}
+
+export function villageTalukId(village) {
+  if (!village || typeof village !== "object") return null;
+  if (village.taluk === null || village.taluk_id === null) return null;
+  if (village.taluk === "" || village.taluk_id === "") return null;
+  return toId(village.taluk) ?? toId(village.taluk_id);
+}
+
+export function villageDistrictId(village) {
+  if (!village || typeof village !== "object") return null;
+  return toId(village.district) ?? toId(village.district_id);
+}
+
+/** True when village is an explicit orphan (taluk missing). Omitted FK is not an orphan. */
+export function isOrphanVillage(village) {
+  if (!village || typeof village !== "object") return true;
+  if (village.taluk === null || village.taluk_id === null) return true;
+  if (village.taluk === "" || village.taluk_id === "") return true;
+  return false;
+}
+
+/**
+ * Assignable villages for operational territory.
+ * Exclude inactive and explicit orphan (no taluk) rows.
+ * Lightweight taluk-scoped rows that omit taluk FK are accepted only when expectedTalukId is known.
+ */
+export function filterAssignableVillages(villages = [], expectedTalukId = null, expectedDistrictId = null) {
+  const expectedTaluk =
+    expectedTalukId && typeof expectedTalukId === "object"
+      ? toId(expectedTalukId.expectedTalukId ?? expectedTalukId.talukId)
+      : toId(expectedTalukId);
+  const expectedDistrict =
+    expectedTalukId && typeof expectedTalukId === "object"
+      ? toId(expectedTalukId.expectedDistrictId ?? expectedTalukId.districtId)
+      : toId(expectedDistrictId);
+
+  return (villages || []).filter((v) => {
+    if (!v || v.is_active === false) return false;
+    if (isOrphanVillage(v)) return false;
+
+    const talukId = villageTalukId(v);
+    if (talukId == null) {
+      return expectedTaluk != null;
+    }
+    if (expectedTaluk != null && talukId !== expectedTaluk) return false;
+
+    const districtId = villageDistrictId(v);
+    if (expectedDistrict != null && districtId != null && districtId !== expectedDistrict) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function villageSearchFields(village) {
+  if (!village) return [];
+  return [
+    village.name,
+    village.village_name,
+    village.code,
+    village.village_code,
+    village.official_code,
+    village.tamil_name,
+    village.name_ta,
+  ].filter(Boolean);
+}
+
+export function filterVillagesByPrefix(villages = [], query = "") {
+  if (!String(query || "").trim()) return villages;
+  return villages.filter((v) => matchesAnyFieldPrefix(query, villageSearchFields(v)));
+}
+
+export function normalizeVillage(village) {
+  const id = toId(village?.id ?? village);
+  if (id == null) return null;
+  return {
+    id,
+    name: toName(village, ""),
+    code: village?.code ?? village?.village_code ?? "",
+  };
+}
+
+export function parseAssignmentGroups(assignments = []) {
+  const groups = [];
+
+  for (const group of assignments || []) {
+    const districtId = toId(group?.district) ?? toId(group?.district_id);
+    const talukId = toId(group?.taluk) ?? toId(group?.taluk_id);
+    const villages = (Array.isArray(group?.villages) ? group.villages : [])
+      .map(normalizeVillage)
+      .filter(Boolean);
+
+    if (!districtId || !talukId || villages.length === 0) continue;
+
+    groups.push({
+      district_id: districtId,
+      district_name: toName(group?.district, group?.district_name || ""),
+      taluk_id: talukId,
+      taluk_name: toName(group?.taluk, group?.taluk_name || ""),
+      villages: villages.sort(sortByName),
+    });
+  }
+
+  return mergeAssignmentGroups(groups);
+}
+
+export function mergeAssignmentGroups(groups = []) {
+  const byTaluk = new Map();
+
+  for (const group of groups) {
+    const talukId = toId(group?.taluk_id);
+    const districtId = toId(group?.district_id);
+    if (!talukId || !districtId) continue;
+
+    if (!byTaluk.has(talukId)) {
+      byTaluk.set(talukId, {
+        district_id: districtId,
+        district_name: group.district_name || "",
+        taluk_id: talukId,
+        taluk_name: group.taluk_name || "",
+        villages: [],
+      });
+    }
+
+    const target = byTaluk.get(talukId);
+    const seen = new Set(target.villages.map((v) => v.id));
+    for (const village of group.villages || []) {
+      const row = normalizeVillage(village);
+      if (!row || seen.has(row.id)) continue;
+      seen.add(row.id);
+      target.villages.push(row);
+    }
+    target.villages.sort(sortByName);
+    if (group.district_name && !target.district_name) target.district_name = group.district_name;
+    if (group.taluk_name && !target.taluk_name) target.taluk_name = group.taluk_name;
+  }
+
+  return [...byTaluk.values()].sort((a, b) => {
+    const districtCmp = sortByName(
+      { name: a.district_name },
+      { name: b.district_name }
+    );
+    if (districtCmp !== 0) return districtCmp;
+    return sortByName({ name: a.taluk_name }, { name: b.taluk_name });
+  });
+}
+
+export function nestAssignmentGroups(groups = []) {
+  const byDistrict = new Map();
+
+  for (const group of mergeAssignmentGroups(groups)) {
+    const key = group.district_id;
+    if (!byDistrict.has(key)) {
+      byDistrict.set(key, {
+        district_id: group.district_id,
+        district_name: group.district_name || "District",
+        taluks: [],
+      });
+    }
+    byDistrict.get(key).taluks.push({
+      taluk_id: group.taluk_id,
+      taluk_name: group.taluk_name || "Taluk",
+      villages: group.villages,
+    });
+  }
+
+  return [...byDistrict.values()]
+    .map((district) => ({
+      ...district,
+      village_count: district.taluks.reduce((n, t) => n + t.villages.length, 0),
+      taluks: district.taluks.sort((a, b) => sortByName({ name: a.taluk_name }, { name: b.taluk_name })),
+    }))
+    .sort((a, b) => sortByName({ name: a.district_name }, { name: b.district_name }));
+}
+
+export function villageIdsFromGroups(groups = []) {
+  const ids = [];
+  for (const group of groups) {
+    for (const village of group.villages || []) {
+      const id = toId(village?.id ?? village);
+      if (id != null) ids.push(id);
+    }
+  }
+  return [...new Set(ids)].sort((a, b) => a - b);
+}
+
+export function countsFromGroups(groups = []) {
+  const nested = nestAssignmentGroups(groups);
+  return {
+    district_count: nested.length,
+    taluk_count: groups.length,
+    village_count: villageIdsFromGroups(groups).length,
+  };
+}
+
+export function formatTerritorySummary(summary = {}) {
+  const districts = Number(summary.district_count) || 0;
+  const taluks = Number(summary.taluk_count) || 0;
+  const villages = Number(summary.village_count) || 0;
+  if (districts === 0 && taluks === 0 && villages === 0) {
+    return "No territory assigned";
+  }
+  const dLabel = districts === 1 ? "District" : "Districts";
+  const tLabel = taluks === 1 ? "Taluk" : "Taluks";
+  const vLabel = villages === 1 ? "Village" : "Villages";
+  return `${districts} ${dLabel} · ${taluks} ${tLabel} · ${villages} ${vLabel}`;
+}
+
+export function addVillagesToGroups(
+  groups = [],
+  { district_id, district_name, taluk_id, taluk_name, villages = [] } = {}
+) {
+  return mergeAssignmentGroups([
+    ...groups,
+    {
+      district_id,
+      district_name,
+      taluk_id,
+      taluk_name,
+      villages,
+    },
+  ]);
+}
+
+export function removeVillagesFromGroups(groups = [], villageIds = []) {
+  const remove = new Set((villageIds || []).map((id) => Number(id)));
+  return mergeAssignmentGroups(
+    groups
+      .map((group) => ({
+        ...group,
+        villages: (group.villages || []).filter((v) => !remove.has(Number(v.id))),
+      }))
+      .filter((group) => group.villages.length > 0)
+  );
+}
+
+export function removeTalukFromGroups(groups = [], talukId) {
+  const tid = Number(talukId);
+  return groups.filter((group) => Number(group.taluk_id) !== tid);
+}
+
+export function removeDistrictFromGroups(groups = [], districtId) {
+  const did = Number(districtId);
+  return groups.filter((group) => Number(group.district_id) !== did);
+}
+
+export function villagesInTaluk(groups = [], talukId) {
+  const tid = Number(talukId);
+  const group = groups.find((g) => Number(g.taluk_id) === tid);
+  return group?.villages || [];
+}
+
+/** Complete PUT payload — replacement semantics. Never send a partial taluk-only set. */
+export function buildAssignmentsPayloadFromGroups(groups = []) {
+  const merged = mergeAssignmentGroups(groups);
+  return {
+    assignments: merged.map((group) => ({
+      district_id: group.district_id,
+      taluk_id: group.taluk_id,
+      village_ids: group.villages.map((v) => v.id).sort((a, b) => a - b),
+    })),
+  };
+}
+
+export function diffVillageIds(originalIds = [], nextIds = []) {
+  const original = new Set((originalIds || []).map(Number));
+  const next = new Set((nextIds || []).map(Number));
+  const added = [...next].filter((id) => !original.has(id)).sort((a, b) => a - b);
+  const removed = [...original].filter((id) => !next.has(id)).sort((a, b) => a - b);
+  const unchanged = [...next].filter((id) => original.has(id)).sort((a, b) => a - b);
+  return { added, removed, unchanged };
+}
+
+export function summarizeRemoval(groups = [], villageIds = []) {
+  const remove = new Set((villageIds || []).map(Number));
+  const names = [];
+  for (const group of groups) {
+    for (const village of group.villages || []) {
+      if (remove.has(Number(village.id))) {
+        names.push(village.name || `Village ${village.id}`);
+      }
+    }
+  }
+  return names;
+}
+
+/* ── Legacy checkbox-tree helpers (kept for compatibility) ── */
 
 export function createEmptyAssignmentFormState() {
   return {
@@ -14,44 +328,34 @@ export function createEmptyAssignmentFormState() {
   };
 }
 
-/** Backend grouped assignment → editable form state (village rows only). */
 export function parseAssignmentsToFormState(assignments = []) {
+  const groups = parseAssignmentGroups(assignments);
   const state = createEmptyAssignmentFormState();
+  const villageTalukMap = {};
   const districtIds = new Set();
   const talukIds = new Set();
-  const villageIds = new Set();
-  const villageTalukMap = {};
+  const villageIds = [];
 
-  for (const group of assignments) {
-    const districtId = group?.district?.id ?? group?.district_id;
-    const talukId = group?.taluk?.id ?? group?.taluk_id;
-    const villages = Array.isArray(group?.villages) ? group.villages : [];
-
-    if (!villages.length) continue;
-
-    if (districtId) districtIds.add(Number(districtId));
-    if (talukId) talukIds.add(Number(talukId));
-
-    for (const village of villages) {
-      const vid = village?.id ?? village;
-      if (vid == null) continue;
-      villageIds.add(Number(vid));
-      if (talukId) villageTalukMap[vid] = Number(talukId);
+  for (const group of groups) {
+    districtIds.add(group.district_id);
+    talukIds.add(group.taluk_id);
+    for (const village of group.villages) {
+      villageIds.push(village.id);
+      villageTalukMap[village.id] = group.taluk_id;
     }
   }
 
   state.selectedDistrictIds = [...districtIds];
   state.selectedTalukIds = [...talukIds];
-  state.selectedVillageIds = [...villageIds];
+  state.selectedVillageIds = villageIds;
   state.villageTalukMap = villageTalukMap;
   return state;
 }
 
-/** Selected villages → backend { assignments: [...] } payload (village-only groups). */
 export function buildAssignmentsPayload(formState, talukDistrictMap = {}) {
   const byTaluk = new Map();
 
-  for (const vid of formState.selectedVillageIds.map(Number)) {
+  for (const vid of (formState?.selectedVillageIds || []).map(Number)) {
     const talukId = formState.villageTalukMap?.[vid];
     if (!talukId) continue;
     const districtId = Number(talukDistrictMap[talukId]);
@@ -67,167 +371,4 @@ export function buildAssignmentsPayload(formState, talukDistrictMap = {}) {
   }
 
   return { assignments: [...byTaluk.values()] };
-}
-
-export function toggleDistrictSelection(formState, districtId, selected, talukDistrictMap = {}) {
-  const id = Number(districtId);
-  const next = {
-    ...formState,
-    villageTalukMap: { ...(formState.villageTalukMap || {}) },
-  };
-
-  if (selected) {
-    if (!next.selectedDistrictIds.includes(id)) {
-      next.selectedDistrictIds = [...next.selectedDistrictIds, id];
-    }
-    return next;
-  }
-
-  next.selectedDistrictIds = next.selectedDistrictIds.filter((d) => d !== id);
-
-  const taluksToRemove = next.selectedTalukIds.filter(
-    (t) => Number(talukDistrictMap[t]) === id
-  );
-  next.selectedTalukIds = next.selectedTalukIds.filter(
-    (t) => Number(talukDistrictMap[t]) !== id
-  );
-
-  const villagesToRemove = new Set(
-    next.selectedVillageIds.filter((v) => taluksToRemove.includes(next.villageTalukMap?.[v]))
-  );
-  next.selectedVillageIds = next.selectedVillageIds.filter((v) => !villagesToRemove.has(v));
-  for (const vid of villagesToRemove) {
-    delete next.villageTalukMap[vid];
-  }
-
-  return next;
-}
-
-export function toggleTalukSelection(formState, talukId, districtId, selected) {
-  const tid = Number(talukId);
-  const did = Number(districtId);
-  const next = {
-    ...formState,
-    villageTalukMap: { ...(formState.villageTalukMap || {}) },
-  };
-
-  if (selected) {
-    if (!next.selectedDistrictIds.includes(did)) {
-      next.selectedDistrictIds = [...next.selectedDistrictIds, did];
-    }
-    if (!next.selectedTalukIds.includes(tid)) {
-      next.selectedTalukIds = [...next.selectedTalukIds, tid];
-    }
-    return next;
-  }
-
-  next.selectedTalukIds = next.selectedTalukIds.filter((t) => t !== tid);
-
-  const villagesToRemove = next.selectedVillageIds.filter(
-    (v) => next.villageTalukMap?.[v] === tid
-  );
-  next.selectedVillageIds = next.selectedVillageIds.filter(
-    (v) => next.villageTalukMap?.[v] !== tid
-  );
-  for (const vid of villagesToRemove) {
-    delete next.villageTalukMap[vid];
-  }
-
-  return next;
-}
-
-export function toggleVillageSelection(formState, villageId, talukId, districtId, selected) {
-  const vid = Number(villageId);
-  const tid = Number(talukId);
-  const did = Number(districtId);
-  const next = {
-    ...formState,
-    villageTalukMap: { ...(formState.villageTalukMap || {}) },
-  };
-
-  if (!next.selectedDistrictIds.includes(did)) {
-    next.selectedDistrictIds = [...next.selectedDistrictIds, did];
-  }
-  if (!next.selectedTalukIds.includes(tid)) {
-    next.selectedTalukIds = [...next.selectedTalukIds, tid];
-  }
-
-  if (selected) {
-    if (!next.selectedVillageIds.includes(vid)) {
-      next.selectedVillageIds = [...next.selectedVillageIds, vid];
-    }
-    next.villageTalukMap[vid] = tid;
-  } else {
-    next.selectedVillageIds = next.selectedVillageIds.filter((v) => v !== vid);
-    delete next.villageTalukMap[vid];
-  }
-
-  return next;
-}
-
-export function setAllVillagesForTaluk(
-  formState,
-  talukId,
-  districtId,
-  villageIds,
-  selected
-) {
-  let next = { ...formState, villageTalukMap: { ...(formState.villageTalukMap || {}) } };
-  const ids = villageIds.map(Number);
-
-  if (selected) {
-    if (!next.selectedDistrictIds.includes(Number(districtId))) {
-      next.selectedDistrictIds = [...next.selectedDistrictIds, Number(districtId)];
-    }
-    if (!next.selectedTalukIds.includes(Number(talukId))) {
-      next.selectedTalukIds = [...next.selectedTalukIds, Number(talukId)];
-    }
-    for (const vid of ids) {
-      if (!next.selectedVillageIds.includes(vid)) {
-        next.selectedVillageIds = [...next.selectedVillageIds, vid];
-      }
-      next.villageTalukMap[vid] = Number(talukId);
-    }
-  } else {
-    next.selectedVillageIds = next.selectedVillageIds.filter(
-      (v) => !ids.includes(Number(v)) || next.villageTalukMap?.[v] !== Number(talukId)
-    );
-    for (const vid of ids) {
-      if (next.villageTalukMap?.[vid] === Number(talukId)) {
-        delete next.villageTalukMap[vid];
-      }
-    }
-  }
-
-  return next;
-}
-
-export function countSelectedVillagesInTaluk(formState, talukId) {
-  const tid = Number(talukId);
-  return formState.selectedVillageIds.filter(
-    (v) => formState.villageTalukMap?.[v] === tid
-  ).length;
-}
-
-/**
- * Assignable villages for a taluk-scoped fetch.
- * Lightweight API rows omit taluk FK — accept when expectedTalukId is known.
- */
-export function filterAssignableVillages(villages = [], expectedTalukId = null) {
-  return villages.filter((v) => {
-    if (v?.is_active === false) return false;
-
-    const rawTaluk = v?.taluk ?? v?.taluk_id;
-    if (rawTaluk == null || rawTaluk === "") {
-      return expectedTalukId != null;
-    }
-
-    const talukId =
-      typeof rawTaluk === "object" && rawTaluk !== null ? rawTaluk.id : rawTaluk;
-    if (talukId == null || talukId === "") return false;
-    if (expectedTalukId != null && Number(talukId) !== Number(expectedTalukId)) {
-      return false;
-    }
-    return true;
-  });
 }

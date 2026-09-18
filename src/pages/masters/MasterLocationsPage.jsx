@@ -7,15 +7,16 @@ import {
     fetchVillagesPage,
     fetchLocationSummary,
     createDistrict, updateDistrict, deleteDistrict,
+    createTaluk, updateTaluk, deleteTaluk,
     createVillage, updateVillage, deleteVillage,
 } from "../../api/master.api";
-import { TALUK_NOT_ASSIGNED } from "../../utils/locationDisplay";
 import { logApiDiagnostics } from "../../utils/apiDiagnostics";
 import {
     MapPin, Search, X, RefreshCw, Edit3, Trash2, Plus, AlertCircle, Loader2,
 } from "lucide-react";
 import { startsWithSearch } from "../../utils/searchMatch";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import SlidePanel from "../../components/ui/SlidePanel";
 
 const TABLE_PAGE_SIZE = 25;
 const TABS = ["districts", "taluks", "villages"];
@@ -51,13 +52,14 @@ function resolveStatusLabel(item) {
     return "Active";
 }
 
-function resolveVillageTalukName(item, talukOptions = []) {
+function villageTalukMissing(item) {
     const talukId = item?.taluk ?? item?.taluk_id;
-    const talukMissing = talukId == null || talukId === "";
-    if (talukMissing) {
-        if (item?.taluk_name) return item.taluk_name;
-        return TALUK_NOT_ASSIGNED;
-    }
+    return talukId == null || talukId === "";
+}
+
+function resolveVillageTalukName(item, talukOptions = []) {
+    if (villageTalukMissing(item)) return "";
+    const talukId = item?.taluk ?? item?.taluk_id;
     const tal = talukOptions.find((t) => String(t.id) === String(talukId));
     if (tal?.name) return tal.name;
     if (item?.taluk_name) return item.taluk_name;
@@ -91,6 +93,65 @@ function DistrictForm({ initial = {}, onSubmit, onCancel, loading }) {
             </div>
             <div className="masters-admin-form__foot">
                 <button type="submit" disabled={loading || !name.trim()} className="btn btn-primary btn-md">
+                    {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                    {initial.id ? "Update" : "Create"}
+                </button>
+                {onCancel && (
+                    <button type="button" onClick={onCancel} className="btn btn-secondary btn-md">
+                        Cancel
+                    </button>
+                )}
+            </div>
+        </form>
+    );
+}
+
+function TalukForm({ initial = {}, districts = [], onSubmit, onCancel, loading }) {
+    const [name, setName] = useState(initial.name || "");
+    const [districtId, setDistrictId] = useState(
+        String(initial.district ?? initial.district_id ?? "")
+    );
+
+    return (
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                onSubmit({
+                    name: name.trim(),
+                    district: districtId ? Number(districtId) : districtId,
+                });
+            }}
+            className="masters-admin-form"
+        >
+            <div className={inputClass}>
+                <label>District *</label>
+                <select
+                    required
+                    value={districtId}
+                    onChange={(e) => setDistrictId(e.target.value)}
+                >
+                    <option value="">Select district</option>
+                    {districts.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div className={inputClass}>
+                <label>Taluk name *</label>
+                <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter taluk name"
+                />
+            </div>
+            <div className="masters-admin-form__foot">
+                <button
+                    type="submit"
+                    disabled={loading || !name.trim() || !districtId}
+                    className="btn btn-primary btn-md"
+                >
                     {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                     {initial.id ? "Update" : "Create"}
                 </button>
@@ -228,6 +289,18 @@ function LocationForm({ type, initial = {}, parents = [], onSubmit, onCancel, lo
     if (type === "villages") {
         return (
             <VillageForm
+                initial={initial}
+                districts={parents}
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+                loading={loading}
+            />
+        );
+    }
+
+    if (type === "taluks") {
+        return (
+            <TalukForm
                 initial={initial}
                 districts={parents}
                 onSubmit={onSubmit}
@@ -431,10 +504,11 @@ export default function MasterLocationsPage() {
     const villagesFiltered = activeTab === "villages" && (filterDistrict || filterTaluk || search.trim());
     const taluksFiltered = activeTab === "taluks" && (filterDistrict || search.trim());
 
-    const getParents = () => (activeTab === "villages" ? districts : []);
+    const getParents = () => (activeTab === "districts" ? [] : districts);
 
     const apiMap = {
         districts: { create: createDistrict, update: updateDistrict, remove: deleteDistrict },
+        taluks: { create: createTaluk, update: updateTaluk, remove: deleteTaluk },
         villages: { create: createVillage, update: updateVillage, remove: deleteVillage },
     };
 
@@ -465,6 +539,24 @@ export default function MasterLocationsPage() {
     const openCreate = () => { setEditTarget(null); setFormOpen(true); };
     const openEdit = (item) => { setEditTarget(item); setFormOpen(true); };
 
+    const openDistrictTaluks = (district) => {
+        setFilterDistrict(String(district.id));
+        setFilterTaluk("");
+        setSearch("");
+        setActiveTab("taluks");
+    };
+
+    const openTalukVillages = (taluk) => {
+        const did = taluk.district?.id ?? taluk.district ?? taluk.district_id;
+        if (did) setFilterDistrict(String(did));
+        setFilterTaluk(String(taluk.id));
+        setSearch("");
+        setActiveTab("villages");
+    };
+
+    const selectedDistrict = districts.find((d) => String(d.id) === String(filterDistrict));
+    const selectedTaluk = filterTaluks.find((t) => String(t.id) === String(filterTaluk));
+
     const handleTabChange = (tab) => {
         setActiveTab(tab);
         setSearch("");
@@ -492,13 +584,13 @@ export default function MasterLocationsPage() {
         });
     }, [activeTab, listTotal, currentList.length, pagedList.length, tablePage, tableTotalPages, search]);
 
-    const canMutate = activeTab !== "taluks";
+    const canMutate = true;
 
     return (
         <div className="masters-admin page-container">
             <PageHeader
                 title="Master Locations"
-                subtitle="Manage districts, taluks, and villages"
+                subtitle="District → Taluk → Village. Create operational locations before assigning employee territory."
                 badge={
                     <span className="masters-admin-header__badge">
                         <MapPin className="w-3 h-3" aria-hidden="true" />
@@ -611,6 +703,28 @@ export default function MasterLocationsPage() {
                 </div>
             )}
 
+            {(selectedDistrict || selectedTaluk) ? (
+                <nav className="masters-admin-crumb" aria-label="Location hierarchy">
+                    <button type="button" onClick={() => { setActiveTab("districts"); setFilterDistrict(""); setFilterTaluk(""); }}>
+                        Districts
+                    </button>
+                    {selectedDistrict ? (
+                        <>
+                            <span aria-hidden="true">/</span>
+                            <button type="button" onClick={() => openDistrictTaluks(selectedDistrict)}>
+                                {selectedDistrict.name}
+                            </button>
+                        </>
+                    ) : null}
+                    {selectedTaluk ? (
+                        <>
+                            <span aria-hidden="true">/</span>
+                            <span className="font-semibold text-slate-700">{selectedTaluk.name}</span>
+                        </>
+                    ) : null}
+                </nav>
+            ) : null}
+
             {loading ? (
                 <PageLoader label="Loading locations…" />
             ) : currentList.length === 0 ? (
@@ -644,6 +758,7 @@ export default function MasterLocationsPage() {
                                             <th>District</th>
                                             <th>Villages</th>
                                             <th>Status</th>
+                                            <th className="w-28 text-right">Actions</th>
                                         </>
                                     ) : null}
                                     {activeTab === "villages" ? (
@@ -668,7 +783,13 @@ export default function MasterLocationsPage() {
                                                         <div className="masters-admin-row-icon">
                                                             <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                                                         </div>
-                                                        <p className="masters-admin-row-name">{item.name}</p>
+                                                        <button
+                                                            type="button"
+                                                            className="masters-admin-row-name text-left hover:text-emerald-700"
+                                                            onClick={() => openDistrictTaluks(item)}
+                                                        >
+                                                            {item.name}
+                                                        </button>
                                                     </div>
                                                 </td>
                                                 <td className="text-sm text-slate-600 tabular-nums">
@@ -697,7 +818,13 @@ export default function MasterLocationsPage() {
                                                         <div className="masters-admin-row-icon">
                                                             <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                                                         </div>
-                                                        <p className="masters-admin-row-name break-words">{item.name}</p>
+                                                        <button
+                                                            type="button"
+                                                            className="masters-admin-row-name text-left break-words hover:text-emerald-700"
+                                                            onClick={() => openTalukVillages(item)}
+                                                        >
+                                                            {item.name}
+                                                        </button>
                                                     </div>
                                                 </td>
                                                 <td className="text-sm text-slate-600 break-words">{resolveDistrictName(item, districts)}</td>
@@ -705,6 +832,16 @@ export default function MasterLocationsPage() {
                                                     {displayCount(item, "village_count")}
                                                 </td>
                                                 <td className="text-sm text-slate-600">{resolveStatusLabel(item)}</td>
+                                                <td>
+                                                    <div className="masters-admin-actions">
+                                                        <button type="button" onClick={() => openEdit(item)} title="Edit" className="masters-admin-action-btn masters-admin-action-btn--edit" aria-label="Edit taluk">
+                                                            <Edit3 className="w-4 h-4" />
+                                                        </button>
+                                                        <button type="button" onClick={() => setDeleteTarget(item)} title="Delete" className="masters-admin-action-btn masters-admin-action-btn--delete" aria-label="Delete taluk">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
                                             </>
                                         ) : null}
                                         {activeTab === "villages" ? (
@@ -718,7 +855,11 @@ export default function MasterLocationsPage() {
                                                     </div>
                                                 </td>
                                                 <td className="text-sm text-slate-600 break-words">
-                                                    {resolveVillageTalukName(item, filterTaluks)}
+                                                    {villageTalukMissing(item) ? (
+                                                        <span className="masters-missing-taluk">Missing Taluk</span>
+                                                    ) : (
+                                                        resolveVillageTalukName(item, filterTaluks)
+                                                    )}
                                                 </td>
                                                 <td className="text-sm text-slate-600 break-words">{resolveDistrictName(item, districts)}</td>
                                                 <td className="text-sm text-slate-500 font-mono">{item.code || item.village_code || "\u2014"}</td>
@@ -772,35 +913,31 @@ export default function MasterLocationsPage() {
                 </div>
             )}
 
-            {canMutate ? (
-                <>
-                    <SlidePanel
-                        tone="masters"
-                        open={formOpen}
-                        onClose={() => { setFormOpen(false); setEditTarget(null); }}
-                        title={editTarget ? `Edit ${TAB_LABELS[activeTab].slice(0, -1)}` : `Add ${TAB_LABELS[activeTab].slice(0, -1)}`}
-                    >
-                        <LocationForm
-                            type={activeTab}
-                            initial={editTarget || {}}
-                            parents={getParents()}
-                            onSubmit={handleSave}
-                            onCancel={() => { setFormOpen(false); setEditTarget(null); }}
-                            loading={saving}
-                        />
-                    </SlidePanel>
+            <SlidePanel
+                tone="masters"
+                open={formOpen}
+                onClose={() => { setFormOpen(false); setEditTarget(null); }}
+                title={editTarget ? `Edit ${TAB_LABELS[activeTab].slice(0, -1)}` : `Add ${TAB_LABELS[activeTab].slice(0, -1)}`}
+            >
+                <LocationForm
+                    type={activeTab}
+                    initial={editTarget || {}}
+                    parents={getParents()}
+                    onSubmit={handleSave}
+                    onCancel={() => { setFormOpen(false); setEditTarget(null); }}
+                    loading={saving}
+                />
+            </SlidePanel>
 
-                    <ConfirmDialog
-                        open={!!deleteTarget}
-                        title={`Delete ${TAB_LABELS[activeTab].slice(0, -1)}`}
-                        message={`Are you sure you want to delete "${deleteTarget?.name || ""}"?`}
-                        onConfirm={handleDelete}
-                        onCancel={() => setDeleteTarget(null)}
-                        loading={deleting}
-                        variant="danger"
-                    />
-                </>
-            ) : null}
+            <ConfirmDialog
+                open={!!deleteTarget}
+                title={`Delete ${TAB_LABELS[activeTab].slice(0, -1)}`}
+                message={`Are you sure you want to delete "${deleteTarget?.name || ""}"?`}
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteTarget(null)}
+                loading={deleting}
+                variant="danger"
+            />
         </div>
     );
 }

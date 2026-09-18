@@ -151,11 +151,11 @@ export default function MasterEmployeeLocationsPage() {
     <div className="masters-admin page-container emp-loc-page">
       <PageHeader
         title="Employee Locations"
-        subtitle="Administrative reference — assign districts, taluks, and villages to field employees"
+        subtitle="Assign operational village territory to field employees"
         badge={
           <span className="masters-admin-header__badge">
             <MapPinned className="w-3 h-3" aria-hidden="true" />
-            Reference only
+            Territory
           </span>
         }
         actions={
@@ -168,8 +168,8 @@ export default function MasterEmployeeLocationsPage() {
 
       <div className="emp-loc-page__note" role="note">
         <p>
-          Location assignments are for administrative reference only and do not restrict
-          employee access, farmers, visits, or tracking.
+          Location assignments are the employee’s operational village territory.
+          District and taluk are derived from the selected villages.
         </p>
       </div>
 
@@ -332,7 +332,7 @@ export default function MasterEmployeeLocationsPage() {
                             className="btn btn-secondary btn-sm"
                             onClick={() => setDrawerEmployee(employee)}
                           >
-                            Manage
+                            Manage Territory
                           </button>
                         </div>
                       </td>

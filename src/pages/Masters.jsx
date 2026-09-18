@@ -5,7 +5,7 @@ import { PageHeader } from "../components/ui/command";
 const MASTER_SECTIONS = [
     {
         title: "Locations",
-        description: "Manage districts and villages",
+        description: "District, taluk, and village masters",
         icon: MapPin,
         color: "#0f766e",
         bg: "linear-gradient(160deg,#f0fdfa 0%,#ccfbf1 100%)",
@@ -41,7 +41,7 @@ const MASTER_SECTIONS = [
     },
     {
         title: "Employee Locations",
-        description: "Reference territory assignments for field employees",
+        description: "Assign operational village territory to field employees",
         icon: MapPinned,
         color: "#4338ca",
         bg: "linear-gradient(160deg,#eef2ff 0%,#e0e7ff 100%)",
