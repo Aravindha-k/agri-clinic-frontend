@@ -1,6 +1,4 @@
 const DEFAULT_LIMITS = {
-  districts: 2,
-  taluks: 3,
   villages: 3,
 };
 

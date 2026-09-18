@@ -4,8 +4,8 @@ import { PageHeader } from "../components/ui/command";
 
 const MASTER_SECTIONS = [
     {
-        title: "Locations",
-        description: "District, taluk, and village masters",
+        title: "Village Master",
+        description: "Manage villages used for territories, farmers and visits",
         icon: MapPin,
         color: "#0f766e",
         bg: "linear-gradient(160deg,#f0fdfa 0%,#ccfbf1 100%)",

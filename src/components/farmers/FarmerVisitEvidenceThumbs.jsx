@@ -96,7 +96,7 @@ export default function FarmerVisitEvidenceThumbs({ visit }) {
       visitId: visit?.id,
       farmerName: visit?.farmer_name,
       employeeName: visit?.employee_name ?? visit?.conducted_by_name,
-      location: visit?.village || visit?.district || null,
+      location: visit?.village_name || visit?.village || null,
     }),
     [visit]
   );

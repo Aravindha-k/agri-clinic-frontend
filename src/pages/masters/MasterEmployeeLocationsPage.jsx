@@ -22,7 +22,7 @@ import LocationPreviewCell, {
   DEFAULT_LIMITS,
 } from "../../components/masters/LocationPreviewCell";
 import { fetchEmployeeLocationAssignments } from "../../api/employeeLocationAssignments.api";
-import { fetchAllDistricts, fetchTaluksByDistrict } from "../../api/master.api";
+import { formatTerritorySummary } from "../../utils/employeeLocationAssignmentForm";
 import { friendlyErrorMessage } from "../../utils/friendlyError";
 
 const PAGE_SIZE = 25;
@@ -51,12 +51,6 @@ export default function MasterEmployeeLocationsPage() {
 
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
-  const [districtFilter, setDistrictFilter] = useState("");
-  const [talukFilter, setTalukFilter] = useState("");
-
-  const [districts, setDistricts] = useState([]);
-  const [filterTaluks, setFilterTaluks] = useState([]);
-  const [filterTaluksLoading, setFilterTaluksLoading] = useState(false);
 
   const [drawerEmployee, setDrawerEmployee] = useState(null);
   const [viewEmployee, setViewEmployee] = useState(null);
@@ -65,32 +59,6 @@ export default function MasterEmployeeLocationsPage() {
     const timer = setTimeout(() => setSearchDebounced(search.trim()), 300);
     return () => clearTimeout(timer);
   }, [search]);
-
-  useEffect(() => {
-    fetchAllDistricts({ is_active: true })
-      .then(({ results }) => setDistricts(results || []))
-      .catch(() => setDistricts([]));
-  }, []);
-
-  useEffect(() => {
-    if (!districtFilter) {
-      setFilterTaluks([]);
-      setTalukFilter("");
-      return;
-    }
-    let cancelled = false;
-    setFilterTaluksLoading(true);
-    fetchTaluksByDistrict(districtFilter, { is_active: true })
-      .then((list) => {
-        if (!cancelled) setFilterTaluks(list || []);
-      })
-      .finally(() => {
-        if (!cancelled) setFilterTaluksLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [districtFilter]);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -101,8 +69,6 @@ export default function MasterEmployeeLocationsPage() {
         page_size: PAGE_SIZE,
       };
       if (searchDebounced) params.search = searchDebounced;
-      if (districtFilter) params.district = districtFilter;
-      if (talukFilter) params.taluk = talukFilter;
 
       const data = await fetchEmployeeLocationAssignments(params);
       setRows(data.results || []);
@@ -114,7 +80,7 @@ export default function MasterEmployeeLocationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchDebounced, districtFilter, talukFilter]);
+  }, [page, searchDebounced]);
 
   useEffect(() => {
     loadRows();
@@ -122,7 +88,7 @@ export default function MasterEmployeeLocationsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchDebounced, districtFilter, talukFilter]);
+  }, [searchDebounced]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -155,7 +121,7 @@ export default function MasterEmployeeLocationsPage() {
         badge={
           <span className="masters-admin-header__badge">
             <MapPinned className="w-3 h-3" aria-hidden="true" />
-            Territory
+            Assigned Villages
           </span>
         }
         actions={
@@ -168,8 +134,7 @@ export default function MasterEmployeeLocationsPage() {
 
       <div className="emp-loc-page__note" role="note">
         <p>
-          Location assignments are the employee’s operational village territory.
-          District and taluk are derived from the selected villages.
+          Location assignments are the employee’s operational villages.
         </p>
       </div>
 
@@ -187,42 +152,6 @@ export default function MasterEmployeeLocationsPage() {
                 aria-label="Search employees"
               />
             </div>
-          </FilterField>
-          <FilterField label="District" className="min-w-[10rem]">
-            <select
-              className="select filter-toolbar__select"
-              value={districtFilter}
-              onChange={(e) => {
-                setDistrictFilter(e.target.value);
-                setTalukFilter("");
-              }}
-              aria-label="Filter by district"
-            >
-              <option value="">All districts</option>
-              {districts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </FilterField>
-          <FilterField label="Taluk" className="min-w-[10rem]">
-            <select
-              className="select filter-toolbar__select"
-              value={talukFilter}
-              onChange={(e) => setTalukFilter(e.target.value)}
-              disabled={!districtFilter || filterTaluksLoading}
-              aria-label="Filter by taluk"
-            >
-              <option value="">
-                {filterTaluksLoading ? "Loading…" : "All taluks"}
-              </option>
-              {filterTaluks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
           </FilterField>
           <FilterField>
             <button
@@ -257,9 +186,7 @@ export default function MasterEmployeeLocationsPage() {
                   <th>Employee</th>
                   <th>Employee ID</th>
                   <th>Role</th>
-                  <th>Districts</th>
-                  <th>Taluks</th>
-                  <th>Villages</th>
+                  <th>Assigned Villages</th>
                   <th>Account Status</th>
                   <th aria-label="Actions">Action</th>
                 </tr>
@@ -269,10 +196,8 @@ export default function MasterEmployeeLocationsPage() {
                   const employee = row.employee || {};
                   const summary = row.location_assignment_summary || {};
                   const preview = row.location_assignment_preview || {};
-                  const dc = summary.district_count ?? 0;
-                  const tc = summary.taluk_count ?? 0;
                   const vc = summary.village_count ?? 0;
-                  const noAssignment = dc === 0 && tc === 0 && vc === 0;
+                  const noAssignment = vc === 0;
 
                   return (
                     <tr key={employee.id ?? employee.employee_id}>
@@ -284,21 +209,8 @@ export default function MasterEmployeeLocationsPage() {
                       </td>
                       <td>{employee.employee_id || "\u2014"}</td>
                       <td>{formatRole(employee.role)}</td>
-                      <td data-label="Districts">
-                        <LocationPreviewCell
-                          items={preview.districts}
-                          totalCount={dc}
-                          limit={DEFAULT_LIMITS.districts}
-                        />
-                      </td>
-                      <td data-label="Taluks">
-                        <LocationPreviewCell
-                          items={preview.taluks}
-                          totalCount={tc}
-                          limit={DEFAULT_LIMITS.taluks}
-                        />
-                      </td>
-                      <td data-label="Villages">
+                      <td data-label="Assigned Villages">
+                        <p className="text-sm text-slate-600 mb-1">{formatTerritorySummary(summary)}</p>
                         <LocationPreviewCell
                           items={preview.villages}
                           totalCount={vc}
@@ -332,7 +244,7 @@ export default function MasterEmployeeLocationsPage() {
                             className="btn btn-secondary btn-sm"
                             onClick={() => setDrawerEmployee(employee)}
                           >
-                            Manage Territory
+                            Manage Villages
                           </button>
                         </div>
                       </td>

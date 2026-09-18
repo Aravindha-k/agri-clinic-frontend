@@ -37,8 +37,6 @@ function extractAssignedVillageNames(emp) {
   const preview = emp?.location_assignment_preview;
   const sources = [
     preview?.villages,
-    preview?.taluks,
-    preview?.districts,
     profile?.assigned_villages,
     profile?.villages,
     summary?.assigned_villages,
@@ -68,17 +66,6 @@ export function buildEmployeeSearchFields(emp) {
   if (!emp) return [];
   const profile = emp?.employee_profile ?? emp?.profile ?? emp;
   const fullName = [emp?.first_name, emp?.last_name].filter(Boolean).join(" ").trim();
-  const district =
-    emp?.district_name ??
-    profile?.district_name ??
-    (typeof profile?.district === "object" ? profile?.district?.name : profile?.district);
-
-  const previewNames = [
-    ...(emp?.location_assignment_preview?.districts || []),
-    ...(emp?.location_assignment_preview?.taluks || []),
-  ]
-    .map((d) => (typeof d === "object" ? d.name : d))
-    .filter(Boolean);
 
   return [
     fullName || emp?.username,
@@ -86,8 +73,6 @@ export function buildEmployeeSearchFields(emp) {
     emp?.employee_id,
     emp?.employee_code,
     emp?.phone,
-    district,
-    ...previewNames,
     extractAssignedVillageNames(emp),
   ];
 }
@@ -104,7 +89,7 @@ export function farmerMatchesPrefixSearch(farmer, query) {
     farmer.phone,
     farmer.farmer_code,
     farmer.village_name ?? farmer.village?.name,
-    farmer.district_name ?? farmer.district?.name,
+    farmer.village_tamil_name ?? farmer.village?.name_ta ?? farmer.village?.tamil_name,
     farmer.field_name ?? farmer.land_name,
   ]);
 }
@@ -118,7 +103,6 @@ export function visitRowMatchesPrefixSearch(row, query) {
     row.employee_code,
     row.employee_id,
     row.village_name ?? row.village,
-    row.district_name ?? row.district,
     row.crop_name ?? row.crop,
     row.id != null ? String(row.id) : null,
   ]);

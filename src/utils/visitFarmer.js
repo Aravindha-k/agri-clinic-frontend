@@ -8,7 +8,6 @@ import {
   asDisplayString,
   resolveCropLabel,
   resolveVillageLabel,
-  resolveDistrictLabel,
   resolveLandLabel,
   resolveFarmerLabel,
   resolveEmployeeLabel,
@@ -17,7 +16,6 @@ import {
   formatIndiaDateTime,
   visitUtcInstantFromFields,
 } from "./businessDate";
-import { resolveTalukLabel } from "./locationDisplay";
 import { resolveProfilePhotoUrl } from "./profilePhoto";
 
 function pickString(...candidates) {
@@ -35,7 +33,6 @@ export function resolveVisitFarmer(visit) {
       name: DISPLAY_FALLBACK,
       phone: DISPLAY_FALLBACK,
       village: DISPLAY_FALLBACK,
-      district: DISPLAY_FALLBACK,
       cropName: DISPLAY_FALLBACK,
     };
   }
@@ -56,23 +53,6 @@ export function resolveVisitFarmer(visit) {
       visit.farmer_village,
       resolveVillageLabel(f?.village, ""),
       resolveVillageLabel(visit.village, "")
-    ) ?? DISPLAY_FALLBACK;
-
-  const district =
-    pickString(
-      visit.district_name,
-      visit.farmer_district,
-      resolveDistrictLabel(f?.district, ""),
-      resolveDistrictLabel(visit.district, ""),
-      typeof visit.district === "string" ? visit.district : null
-    ) ?? DISPLAY_FALLBACK;
-
-  const talukRaw = f?.taluk ?? f?.taluk_id ?? visit.taluk ?? visit.taluk_id;
-  const taluk =
-    pickString(
-      visit.taluk_name,
-      visit.farmer_taluk,
-      resolveTalukLabel(talukRaw, { legacyNull: true })
     ) ?? DISPLAY_FALLBACK;
 
   const name =
@@ -100,8 +80,6 @@ export function resolveVisitFarmer(visit) {
     name,
     phone,
     village,
-    district,
-    taluk,
     cropName,
     profilePhotoUrl,
   };
@@ -158,10 +136,6 @@ export function normalizeVisitRecord(visit) {
       visit.farmer_village ?? (farmer.village !== DISPLAY_FALLBACK ? farmer.village : undefined),
     village_name:
       visit.village_name ?? (farmer.village !== DISPLAY_FALLBACK ? farmer.village : undefined),
-    district_name:
-      visit.district_name ?? (farmer.district !== DISPLAY_FALLBACK ? farmer.district : undefined),
-    taluk_name:
-      visit.taluk_name ?? (farmer.taluk !== DISPLAY_FALLBACK ? farmer.taluk : undefined),
     crop_name:
       visit.crop_name ?? (farmer.cropName !== DISPLAY_FALLBACK ? farmer.cropName : undefined),
     land_name: landName,

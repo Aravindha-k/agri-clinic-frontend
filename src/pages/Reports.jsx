@@ -5,7 +5,6 @@ import { getReportSummary } from "../api/report.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { getEmployeeGeo, getAdminStatus } from "../api/tracking.api";
 import { getEmployees } from "../api/employee.api";
-import { getDistricts } from "../api/master.api";
 import {
   PageLoader,
   EmptyState,
@@ -50,7 +49,6 @@ import {
   resolveFarmerLabel,
 } from "../utils/displayValue";
 import { empName } from "../utils/trackingDisplay";
-import { resolveList } from "../utils/apiUnwrap";
 import {
   BarChart3,
   Users,
@@ -92,7 +90,6 @@ function getLocationName(item) {
   return (
     item?.village_name ||
     resolveVillageLabel(item?.village) ||
-    item?.district_name ||
     "\u2014"
   );
 }
@@ -193,14 +190,12 @@ export default function Reports() {
   const [routeDistances, setRouteDistances] = useState([]);
   const [trackingEmployees, setTrackingEmployees] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [districts, setDistricts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [districtId, setDistrictId] = useState("");
   const [dateFrom, setDateFrom] = useState(() => defaultDateRange().from);
   const [dateTo, setDateTo] = useState(() => defaultDateRange().to);
   const requestSeq = useRef(0);
@@ -211,18 +206,16 @@ export default function Reports() {
     if (dateFrom) params.from = dateFrom;
     if (dateTo) params.to = dateTo;
     if (employeeId) params.employee = employeeId;
-    if (districtId) params.district = districtId;
     return params;
-  }, [dateFrom, dateTo, employeeId, districtId]);
+  }, [dateFrom, dateTo, employeeId]);
 
   const visitFilterParams = useMemo(() => {
     const params = {};
     if (dateFrom) params.start_date = dateFrom;
     if (dateTo) params.end_date = dateTo;
     if (employeeId) params.employee = employeeId;
-    if (districtId) params.district = districtId;
     return params;
-  }, [dateFrom, dateTo, employeeId, districtId]);
+  }, [dateFrom, dateTo, employeeId]);
 
   const load = useCallback(async ({ initial = false } = {}) => {
     if (dateInvalid) {
@@ -307,19 +300,15 @@ export default function Reports() {
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filter identity only
-  }, [dateFrom, dateTo, employeeId, districtId]);
+  }, [dateFrom, dateTo, employeeId]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [empRows, distRes] = await Promise.all([
-          getEmployees(),
-          getDistricts(),
-        ]);
+        const empRows = await getEmployees();
         if (cancelled) return;
         setEmployees(Array.isArray(empRows) ? empRows : []);
-        setDistricts(resolveList(distRes));
       } catch {
         /* filter dropdowns are optional */
       }
@@ -520,21 +509,6 @@ export default function Reports() {
               ))}
             </select>
           </FilterField>
-          <FilterField label="District">
-            <select
-              id="report-district"
-              className="search-input w-full"
-              value={districtId}
-              onChange={(e) => setDistrictId(e.target.value)}
-            >
-              <option value="">All districts</option>
-              {districts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </FilterField>
         </FilterToolbarRow>
         <FilterActiveRow label="Summary">
           <span className="reports-bi-filters__summary">
@@ -615,17 +589,17 @@ export default function Reports() {
 
         <ReportSection
           icon={MapPin}
-          title="Visits by District"
+          title="Visits by Village"
           subtitle="Geographic distribution of submitted visits"
-          boundaryName="VisitsByDistrict"
+          boundaryName="VisitsByVillage"
         >
-          {topEntries(analytics.visitsByDistrict).length === 0 ? (
+          {topEntries(analytics.visitsByVillage).length === 0 ? (
             <div className="reports-bi-empty-panel">
-              <EmptyState icon={MapPin} title="No district data" subtitle="District totals appear once visits include location." />
+              <EmptyState icon={MapPin} title="No village data" subtitle="Village totals appear once visits include location." />
             </div>
           ) : (
             <div className="space-y-3">
-              {topEntries(analytics.visitsByDistrict).map(([name, count]) => (
+              {topEntries(analytics.visitsByVillage).map(([name, count]) => (
                 <AnalyticsBarRow
                   key={name}
                   label={name}

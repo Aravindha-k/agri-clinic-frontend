@@ -16,7 +16,7 @@ export const getReports = () => {
 
 /**
  * Admin report aggregates — GET /api/v1/reports/summary/
- * Params: from, to, employee, district
+ * Params: from, to, employee
  */
 export async function getReportSummary(params = {}) {
   const response = await api.get("reports/summary/", { params: cleanParams(params) });

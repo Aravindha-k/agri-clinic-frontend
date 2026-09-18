@@ -73,6 +73,7 @@ export function resolveVillageLabel(village, fallback = DISPLAY_FALLBACK) {
   return fallback;
 }
 
+/** GPS reverse-geocode / stored address helper. Not used for operational Village UI. */
 export function resolveDistrictLabel(district, fallback = DISPLAY_FALLBACK) {
   if (district == null || district === "") return fallback;
   if (typeof district === "string") return district;

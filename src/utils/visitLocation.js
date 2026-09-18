@@ -1,4 +1,4 @@
-import { asDisplayString, DISPLAY_FALLBACK, resolveDistrictLabel, resolveVillageLabel } from "./displayValue";
+import { asDisplayString, DISPLAY_FALLBACK, resolveVillageLabel } from "./displayValue";
 
 /**
  * @typedef {Object} VisitLocationDisplay
@@ -45,9 +45,7 @@ export function getStoredVisitLocation(visit) {
 
   const district = pickString(
     visit.district,
-    visit.district_name,
-    resolveDistrictLabel(visit.district_ref),
-    resolveDistrictLabel(visit.farmer?.district)
+    visit.district_name
   );
 
   const state = pickString(visit.state, visit.state_name);

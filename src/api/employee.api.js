@@ -10,7 +10,6 @@ function normalizeEmployeeRow(row) {
     return {
         ...row,
         is_active: row.is_active ?? row.is_active_employee,
-        district_name: row.district_name ?? (typeof row.district === "string" ? row.district : row.district?.name),
     };
 }
 

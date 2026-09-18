@@ -33,20 +33,39 @@ async function fetchMasterPage(base, params = {}) {
   return page;
 }
 
-/** All districts — follows pagination until exhausted */
-export async function fetchAllDistricts(params = {}) {
-  return fetchAllPaginated(
-    (p) => fetchMasterPage("masters/districts", p),
-    { page_size: 500, ...params }
-  );
-}
-
 /** All villages — follows pagination until exhausted */
 export async function fetchAllVillages(params = {}) {
   return fetchAllPaginated(
     (p) => fetchMasterPage("masters/villages", p),
     { page_size: 500, ...params }
   );
+}
+
+let activeVillageCache = { key: "", data: null, promise: null };
+
+export function invalidateVillageCache() {
+  activeVillageCache = { key: "", data: null, promise: null };
+}
+
+/** Cached active villages for pickers/assignment (shared across Employees/Farmers/Visits). */
+export async function fetchCachedActiveVillages(params = {}) {
+  const key = JSON.stringify({ is_active: true, ...params });
+  if (activeVillageCache.key === key && activeVillageCache.data) {
+    return activeVillageCache.data;
+  }
+  if (activeVillageCache.key === key && activeVillageCache.promise) {
+    return activeVillageCache.promise;
+  }
+  activeVillageCache.key = key;
+  activeVillageCache.promise = fetchAllVillages({ is_active: true, ...params })
+    .then((page) => {
+      activeVillageCache.data = page;
+      return page;
+    })
+    .finally(() => {
+      activeVillageCache.promise = null;
+    });
+  return activeVillageCache.promise;
 }
 
 /** All crops from masters — follows pagination until exhausted */
@@ -57,63 +76,7 @@ export async function fetchAllMasterCrops(params = {}) {
   );
 }
 
-/* Districts */
-const districtApi = crud("masters/districts");
-export const getDistricts = districtApi.list;
-export const createDistrict = districtApi.create;
-export const updateDistrict = districtApi.update;
-export const deleteDistrict = districtApi.remove;
-
-/* Taluks */
-const talukApi = crud("masters/taluks");
-export const getTaluks = talukApi.list;
-export const createTaluk = talukApi.create;
-export const updateTaluk = talukApi.update;
-export const deleteTaluk = talukApi.remove;
-
-/** Taluks for a district — lightweight, no full-dataset fetch */
-export async function fetchTaluksByDistrict(districtId, params = {}) {
-  if (!districtId) return [];
-  const page = await fetchMasterPage("masters/taluks", {
-    district: districtId,
-    page_size: 500,
-    ...params,
-  });
-  return page.results;
-}
-
-/** Villages for a taluk — lightweight, no full-dataset fetch */
-export async function fetchVillagesByTaluk(talukId, params = {}) {
-  if (!talukId) return [];
-  const page = await fetchMasterPage("masters/villages", {
-    taluk: talukId,
-    page_size: 500,
-    ...params,
-  });
-  return page.results;
-}
-
-/** All villages for one taluk — follows pagination (assignment drawer). */
-export async function fetchAllVillagesByTaluk(talukId, params = {}) {
-  if (!talukId) return { results: [], count: 0 };
-  return fetchAllPaginated(
-    (p) =>
-      fetchMasterPage("masters/villages", {
-        taluk: talukId,
-        page_size: 500,
-        ...params,
-        ...p,
-      }),
-    { page_size: 500, is_active: true, ...params }
-  );
-}
-
-/** Paginated taluks with optional district/search filters */
-export async function fetchTaluksPage(params = {}) {
-  return fetchMasterPage("masters/taluks", params);
-}
-
-/** Paginated villages with optional district/taluk/search filters */
+/** Paginated villages with optional search filters */
 export async function fetchVillagesPage(params = {}) {
   return fetchMasterPage("masters/villages", params);
 }
@@ -144,24 +107,11 @@ function pickSummaryCount(data, ...keys) {
   return null;
 }
 
-/** Canonical active location counts — GET /masters/location-summary/ */
+/** Canonical active village counts — GET /masters/location-summary/ */
 export async function fetchLocationSummary() {
   const response = await api.get("masters/location-summary/");
   const data = unwrapSuccessEnvelope(response) ?? response?.data ?? {};
 
-  let districts = pickSummaryCount(
-    data,
-    "active_districts",
-    "district_count",
-    "districts"
-  );
-  let taluks = pickSummaryCount(
-    data,
-    "active_taluks",
-    "taluk_count",
-    "active_taluk_count",
-    "total_taluks"
-  );
   let villages = pickSummaryCount(
     data,
     "active_villages",
@@ -170,30 +120,15 @@ export async function fetchLocationSummary() {
   );
 
   if (data.counts && typeof data.counts === "object") {
-    districts ??= pickSummaryCount(data.counts, "districts", "active_districts", "district_count");
-    taluks ??= pickSummaryCount(data.counts, "taluks", "active_taluks", "taluk_count");
     villages ??= pickSummaryCount(data.counts, "villages", "active_villages", "village_count");
   }
 
-  if (districts == null) {
-    const page = await fetchMasterPage("masters/districts", { page_size: 1 });
-    districts = resolveNumericCount(page.count);
-  }
-  if (taluks == null || taluks === 0) {
-    const page = await fetchTaluksPage({ page_size: 1 });
-    const pageCount = resolveNumericCount(page.count);
-    if (pageCount != null && (taluks == null || pageCount > taluks)) {
-      taluks = pageCount;
-    }
-  }
   if (villages == null) {
     const page = await fetchVillagesPage({ page_size: 1 });
     villages = resolveNumericCount(page.count);
   }
 
   const summary = {
-    districts,
-    taluks,
     villages,
     officialImported: pickSummaryCount(data, "official_imported", "official_villages"),
     legacyPreserved: pickSummaryCount(data, "legacy_preserved", "legacy_villages"),

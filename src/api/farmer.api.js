@@ -132,7 +132,6 @@ export const getFarmerStats = async () => {
       return {
         total: page.count ?? list.length,
         active: list.length,
-        districts: new Set(list.map((f) => f.district_name || f.district).filter(Boolean)).size,
         villages: new Set(list.map((f) => f.village_name || f.village).filter(Boolean)).size,
       };
     }

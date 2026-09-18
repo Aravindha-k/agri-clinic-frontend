@@ -269,7 +269,7 @@ export function analyticsFromSummary(summary, employees = []) {
       "farmers"
     ),
     visitsByEmployee: seriesToMap(summary?.visits_by_employee, "employee_name", "count"),
-    visitsByDistrict: seriesToMap(summary?.visits_by_district, "district_name", "count"),
+    visitsByVillage: seriesToMap(summary?.visits_by_village, "village", "count"),
     gpsCompliancePct: safeNumber(t.gps_compliance_pct, 0),
     gpsCompliant: safeNumber(t.gps_compliant, 0),
     visitsWithEvidence: safeNumber(t.visits_with_evidence, 0),

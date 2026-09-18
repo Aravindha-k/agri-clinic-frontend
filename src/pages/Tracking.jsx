@@ -240,7 +240,7 @@ function EmployeeRosterCard({ emp, selected = false, onSelect, onOpenDrawer }) {
                         {empName(emp)}
                     </p>
                     <p className="tracking-emp-card__meta">
-                        {[emp.employee_code ?? emp.employee_id, emp.district].filter(Boolean).join(" · ") || "—"}
+                        {[emp.employee_code ?? emp.employee_id].filter(Boolean).join(" · ") || "—"}
                     </p>
                     <div className="tracking-emp-card__badges">
                         <DutyWorkdayBadge employee={emp} />
@@ -380,7 +380,7 @@ const EmployeeDrawer = ({ employee, isOpen, onClose, onForceEndSuccess, routeRef
                                     <div className="min-w-0">
                                         <h3 className="text-xl font-bold truncate">{empName(employee)}</h3>
                                         <p className="text-white/80 text-sm mt-0.5 truncate">
-                                            {[employee.employee_id, employee.district].filter(Boolean).join(" · ") || "—"}
+                                            {[employee.employee_id].filter(Boolean).join(" · ") || "—"}
                                         </p>
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-white/15 text-white border border-white/20">
@@ -1031,7 +1031,7 @@ export default function Tracking() {
                                 <Search className="search-icon" aria-hidden="true" />
                                 <input
                                     type="search"
-                                    placeholder="Search name, district, ID…"
+                                    placeholder="Search name, ID…"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="search-input"

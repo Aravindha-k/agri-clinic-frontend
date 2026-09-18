@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFarmers, deleteFarmer } from "../api/farmer.api";
-import {
-  fetchAllDistricts,
-  fetchTaluksByDistrict,
-  fetchVillagesByTaluk,
-} from "../api/master.api";
+import { fetchCachedActiveVillages } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import {
   Search,
@@ -32,7 +28,6 @@ import { friendlyErrorMessage } from "../utils/friendlyError";
 import {
   farmerPhone,
   farmerVillage,
-  farmerDistrict,
   farmerIsActive,
 } from "../utils/farmerListDisplay";
 
@@ -139,57 +134,21 @@ export default function FarmersList() {
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [districtFilter, setDistrictFilter] = useState("");
-  const [talukFilter, setTalukFilter] = useState("");
   const [villageFilter, setVillageFilter] = useState("");
   const [page, setPage] = useState(1);
-  const [districtOptions, setDistrictOptions] = useState([]);
-  const [talukOptions, setTalukOptions] = useState([]);
   const [villageOptions, setVillageOptions] = useState([]);
-  const [taluksLoading, setTaluksLoading] = useState(false);
   const [villagesLoading, setVillagesLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
-    fetchAllDistricts()
-      .then((pageData) => setDistrictOptions(pageData.results || []))
-      .catch(() => setDistrictOptions([]));
-  }, []);
-
-  useEffect(() => {
-    if (!districtFilter) {
-      setTalukOptions([]);
-      return;
-    }
-    setTaluksLoading(true);
-    fetchTaluksByDistrict(districtFilter)
-      .then(setTalukOptions)
-      .catch(() => setTalukOptions([]))
-      .finally(() => setTaluksLoading(false));
-  }, [districtFilter]);
-
-  useEffect(() => {
-    if (!talukFilter) {
-      setVillageOptions([]);
-      return;
-    }
     setVillagesLoading(true);
-    fetchVillagesByTaluk(talukFilter)
-      .then((rows) => {
-        setVillageOptions(rows);
-        logApiDiagnostics({
-          label: "farmers-village-dropdown",
-          url: "/api/v1/masters/villages/",
-          apiCount: rows.length,
-          rowsLoaded: rows.length,
-          extra: { taluk: talukFilter },
-        });
-      })
+    fetchCachedActiveVillages()
+      .then((pageData) => setVillageOptions(pageData.results || []))
       .catch(() => setVillageOptions([]))
       .finally(() => setVillagesLoading(false));
-  }, [talukFilter]);
+  }, []);
 
   const loadFarmers = useCallback(async () => {
     const seq = ++loadSeq.current;
@@ -260,8 +219,6 @@ export default function FarmersList() {
     debouncedSetSearch.cancel?.();
     setSearchInput("");
     setSearch("");
-    setDistrictFilter("");
-    setTalukFilter("");
     setVillageFilter("");
     setPage(1);
   };
@@ -272,13 +229,9 @@ export default function FarmersList() {
     loadFarmers();
   };
 
-  const hasActiveFilters = Boolean(
-    search.trim() || districtFilter || talukFilter || villageFilter
-  );
+  const hasActiveFilters = Boolean(search.trim() || villageFilter);
 
-  const districtLabel = districtOptions.find((d) => String(d.id) === String(districtFilter))?.name;
-  const talukLabel = talukOptions.find((t) => String(t.id) === String(talukFilter))?.name;
-  const villageLabel = villageOptions.find((v) => String(v.name) === String(villageFilter))?.name
+  const villageLabel = villageOptions.find((v) => String(v.id) === String(villageFilter))?.name
     || villageFilter;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const showingFrom = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -297,7 +250,6 @@ export default function FarmersList() {
     name: f.name ?? "",
     phone: farmerPhone(f),
     village: farmerVillage(f),
-    district: farmerDistrict(f),
     active: farmerIsActive(f) ? "Active" : "Inactive",
   }));
 
@@ -469,52 +421,6 @@ export default function FarmersList() {
               )}
             </div>
           </FilterField>
-          <FilterField label="District" className="min-w-[9rem]">
-            <select
-              className="select filter-toolbar__select"
-              value={districtFilter}
-              onChange={(e) => {
-                setDistrictFilter(e.target.value);
-                setTalukFilter("");
-                setVillageFilter("");
-                setPage(1);
-              }}
-              aria-label="Filter by district"
-            >
-              <option value="">All districts</option>
-              {districtOptions.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </FilterField>
-          <FilterField label="Taluk" className="min-w-[9rem]">
-            <select
-              className="select filter-toolbar__select"
-              value={talukFilter}
-              onChange={(e) => {
-                setTalukFilter(e.target.value);
-                setVillageFilter("");
-                setPage(1);
-              }}
-              disabled={!districtFilter || taluksLoading}
-              aria-label="Filter by taluk"
-            >
-              <option value="">
-                {!districtFilter
-                  ? "Select district first"
-                  : taluksLoading
-                    ? "Loading taluks…"
-                    : "All taluks"}
-              </option>
-              {talukOptions.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </FilterField>
           <FilterField label="Village" className="min-w-[10rem]">
             <select
               className="select filter-toolbar__select"
@@ -523,18 +429,12 @@ export default function FarmersList() {
                 setVillageFilter(e.target.value);
                 setPage(1);
               }}
-              disabled={!talukFilter || villagesLoading}
+              disabled={villagesLoading}
               aria-label="Filter by village"
             >
-              <option value="">
-                {!talukFilter
-                  ? "Select taluk first"
-                  : villagesLoading
-                    ? "Loading villages…"
-                    : "All villages"}
-              </option>
+              <option value="">{villagesLoading ? "Loading villages…" : "All villages"}</option>
               {villageOptions.map((v) => (
-                <option key={v.id} value={v.name}>
+                <option key={v.id} value={v.id}>
                   {v.name}
                 </option>
               ))}
@@ -557,16 +457,6 @@ export default function FarmersList() {
             {search.trim() && (
               <span className="filter-chip filter-chip--active capitalize">
                 Search: {search.trim()}
-              </span>
-            )}
-            {districtFilter && (
-              <span className="filter-chip filter-chip--idle">
-                District: {districtLabel || districtFilter}
-              </span>
-            )}
-            {talukFilter && (
-              <span className="filter-chip filter-chip--idle">
-                Taluk: {talukLabel || talukFilter}
               </span>
             )}
             {villageFilter && (
@@ -638,7 +528,6 @@ export default function FarmersList() {
               {farmers.map((f) => {
                 const active = farmerIsActive(f);
                 const village = farmerVillage(f) || "—";
-                const district = farmerDistrict(f) || "—";
                 const phone = farmerPhone(f) || "—";
                 return (
                   <article key={f.id} className="farmers-mobile-card">
@@ -657,10 +546,6 @@ export default function FarmersList() {
                       <div className="farmers-mobile-card__field">
                         <span className="farmers-mobile-card__label">Village</span>
                         <span className="farmers-mobile-card__value">{village}</span>
-                      </div>
-                      <div className="farmers-mobile-card__field">
-                        <span className="farmers-mobile-card__label">District</span>
-                        <span className="farmers-mobile-card__value">{district}</span>
                       </div>
                     </div>
                     <div className="farmers-mobile-card__actions" onClick={(e) => e.stopPropagation()}>
@@ -712,7 +597,6 @@ export default function FarmersList() {
                     <th>Farmer</th>
                     <th>Phone</th>
                     <th>Village</th>
-                    <th className="hidden lg:table-cell">District</th>
                     <th>Status</th>
                     <th className="w-24 text-right">Actions</th>
                   </tr>
@@ -721,7 +605,6 @@ export default function FarmersList() {
                   {farmers.map((f) => {
                     const active = farmerIsActive(f);
                     const village = farmerVillage(f) || "—";
-                    const district = farmerDistrict(f) || "—";
                     const phone = farmerPhone(f) || "—";
                     return (
                       <tr key={f.id}>
@@ -739,9 +622,6 @@ export default function FarmersList() {
                             <MapPin className="w-3 h-3 text-emerald-500" aria-hidden="true" />
                             {village}
                           </span>
-                        </td>
-                        <td className="hidden lg:table-cell">
-                          <span className="text-sm text-slate-600">{district}</span>
                         </td>
                         <td>
                           <FarmerStatusBadge active={active} />

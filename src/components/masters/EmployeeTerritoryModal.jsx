@@ -3,7 +3,6 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  MapPin,
   Search,
   Trash2,
   X,
@@ -12,29 +11,24 @@ import { createPortal } from "react-dom";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import ErrorRetry from "../ui/ErrorRetry";
 import { PageLoader } from "../ui/command";
-import {
-  fetchAllDistricts,
-  fetchAllVillagesByTaluk,
-  fetchTaluksByDistrict,
-} from "../../api/master.api";
+import { fetchCachedActiveVillages } from "../../api/master.api";
 import {
   fetchEmployeeLocationAssignmentDetail,
   updateEmployeeLocationAssignments,
 } from "../../api/employeeLocationAssignments.api";
 import {
-  addVillagesToGroups,
-  buildAssignmentsPayloadFromGroups,
-  countsFromGroups,
+  buildAssignmentsPayloadFromVillages,
+  countsFromVillages,
   diffVillageIds,
   filterAssignableVillages,
   filterVillagesByPrefix,
   formatTerritorySummary,
-  parseAssignmentGroups,
-  removeDistrictFromGroups,
-  removeTalukFromGroups,
-  removeVillagesFromGroups,
+  indexVillagesById,
+  parseAssignedVillages,
+  removeVillagesFromList,
   summarizeRemoval,
-  villageIdsFromGroups,
+  villageIdsFromList,
+  villageTamilName,
 } from "../../utils/employeeLocationAssignmentForm";
 import { friendlyErrorMessage } from "../../utils/friendlyError";
 import { useOverlayLock } from "../../utils/overlayLock";
@@ -64,255 +58,127 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
   const [saveError, setSaveError] = useState(null);
   const [saved, setSaved] = useState(false);
 
-  const [groups, setGroups] = useState([]);
+  const [masterVillages, setMasterVillages] = useState([]);
+  const [assigned, setAssigned] = useState([]);
   const [originalIds, setOriginalIds] = useState([]);
 
-  const [districts, setDistricts] = useState([]);
-  const [districtsLoading, setDistrictsLoading] = useState(false);
-  const [districtsError, setDistrictsError] = useState("");
-  const [districtId, setDistrictId] = useState("");
-
-  const [taluks, setTaluks] = useState([]);
-  const [taluksLoading, setTaluksLoading] = useState(false);
-  const [taluksError, setTaluksError] = useState("");
-  const [talukId, setTalukId] = useState("");
-
-  const [villages, setVillages] = useState([]);
-  const [villagesLoading, setVillagesLoading] = useState(false);
-  const [villagesError, setVillagesError] = useState("");
-  const [draftVillageIds, setDraftVillageIds] = useState([]);
   const [villageSearch, setVillageSearch] = useState("");
-
   const [confirm, setConfirm] = useState(null);
   const [discardOpen, setDiscardOpen] = useState(false);
 
-  const selectedDistrict = districts.find((d) => String(d.id) === String(districtId));
-  const selectedTaluk = taluks.find((t) => String(t.id) === String(talukId));
-
+  const masterById = useMemo(() => indexVillagesById(masterVillages), [masterVillages]);
   const assignableVillages = useMemo(
-    () => filterAssignableVillages(villages, talukId || null, districtId || null),
-    [villages, talukId, districtId]
+    () => filterAssignableVillages(masterVillages),
+    [masterVillages]
   );
-
   const filteredVillages = useMemo(
     () => filterVillagesByPrefix(assignableVillages, villageSearch),
     [assignableVillages, villageSearch]
   );
 
-  const assignedIds = useMemo(() => villageIdsFromGroups(groups), [groups]);
-  const dirty = useMemo(
-    () => {
-      const diff = diffVillageIds(originalIds, assignedIds);
-      return diff.added.length > 0 || diff.removed.length > 0;
-    },
-    [originalIds, assignedIds]
-  );
-
-  const summary = formatTerritorySummary(countsFromGroups(groups));
+  const assignedIds = useMemo(() => villageIdsFromList(assigned), [assigned]);
+  const dirty = useMemo(() => {
+    const diff = diffVillageIds(originalIds, assignedIds);
+    return diff.added.length > 0 || diff.removed.length > 0;
+  }, [originalIds, assignedIds]);
   const dirtyRef = useRef(false);
   dirtyRef.current = dirty;
 
-  const resetComposer = useCallback(() => {
-    setDistrictId("");
-    setTalukId("");
-    setTaluks([]);
-    setVillages([]);
-    setDraftVillageIds([]);
-    setVillageSearch("");
-    setTaluksError("");
-    setVillagesError("");
-  }, []);
+  const summary = formatTerritorySummary(countsFromVillages(assigned));
 
   const hydrate = useCallback(async () => {
     if (!employee?.id) return;
-    const requestId = hydrateRequestRef.current + 1;
-    hydrateRequestRef.current = requestId;
+    const requestId = ++hydrateRequestRef.current;
     setLoading(true);
     setLoadError(null);
-    setSaveError(null);
     setSaved(false);
-    resetComposer();
+    setSaveError(null);
     try {
-      const detail = await fetchEmployeeLocationAssignmentDetail(employee.id);
-      if (hydrateRequestRef.current !== requestId) return;
-      const parsed = parseAssignmentGroups(detail?.assignments || []);
-      setGroups(parsed);
-      setOriginalIds(villageIdsFromGroups(parsed));
+      const [masterPage, detail] = await Promise.all([
+        fetchCachedActiveVillages(),
+        fetchEmployeeLocationAssignmentDetail(employee.id),
+      ]);
+      if (requestId !== hydrateRequestRef.current) return;
+      const masters = masterPage.results || [];
+      setMasterVillages(masters);
+      const parsed = parseAssignedVillages(detail, indexVillagesById(masters));
+      setAssigned(parsed);
+      setOriginalIds(villageIdsFromList(parsed));
     } catch (err) {
-      if (hydrateRequestRef.current !== requestId) return;
-      setLoadError(friendlyErrorMessage(err, "Could not load territory assignments."));
-      setGroups([]);
+      if (requestId !== hydrateRequestRef.current) return;
+      setLoadError(friendlyErrorMessage(err, "Could not load assigned villages."));
+      setAssigned([]);
       setOriginalIds([]);
     } finally {
-      if (hydrateRequestRef.current === requestId) setLoading(false);
+      if (requestId === hydrateRequestRef.current) setLoading(false);
     }
-  }, [employee?.id, resetComposer]);
-
-  const loadDistricts = useCallback(async () => {
-    setDistrictsLoading(true);
-    setDistrictsError("");
-    try {
-      const { results } = await fetchAllDistricts({ is_active: true });
-      setDistricts((results || []).filter((d) => d.is_active !== false));
-    } catch (err) {
-      setDistrictsError(friendlyErrorMessage(err, "Could not load districts."));
-      setDistricts([]);
-    } finally {
-      setDistrictsLoading(false);
-    }
-  }, []);
+  }, [employee?.id]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open) return undefined;
+    setVillageSearch("");
+    hydrate();
+    return () => {
       hydrateRequestRef.current += 1;
-      setGroups([]);
-      setOriginalIds([]);
-      setLoadError(null);
-      setSaveError(null);
-      setSaved(false);
-      setConfirm(null);
-      setDiscardOpen(false);
-      resetComposer();
-      return;
-    }
-    loadDistricts();
-    if (employee?.id) hydrate();
-  }, [open, employee?.id, hydrate, loadDistricts, resetComposer]);
-
-  useEffect(() => {
-    if (!open || !districtId) {
-      setTaluks([]);
-      return;
-    }
-    let active = true;
-    setTaluksLoading(true);
-    setTaluksError("");
-    fetchTaluksByDistrict(districtId, { is_active: true })
-      .then((rows) => {
-        if (!active) return;
-        setTaluks((rows || []).filter((t) => t.is_active !== false));
-      })
-      .catch((err) => {
-        if (!active) return;
-        setTaluks([]);
-        setTaluksError(friendlyErrorMessage(err, "Could not load taluks."));
-      })
-      .finally(() => {
-        if (active) setTaluksLoading(false);
-      });
-    return () => {
-      active = false;
     };
-  }, [open, districtId]);
+  }, [open, employee?.id, hydrate]);
 
-  useEffect(() => {
-    if (!open || !talukId) {
-      setVillages([]);
-      return;
-    }
-    let active = true;
-    setVillagesLoading(true);
-    setVillagesError("");
-    fetchAllVillagesByTaluk(talukId, { is_active: true })
-      .then(({ results }) => {
-        if (!active) return;
-        setVillages(filterAssignableVillages(results || [], talukId, districtId));
-      })
-      .catch((err) => {
-        if (!active) return;
-        setVillages([]);
-        setVillagesError(friendlyErrorMessage(err, "Could not load villages."));
-      })
-      .finally(() => {
-        if (active) setVillagesLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [open, talukId, districtId]);
-
-  const handleDistrictChange = (value) => {
-    setDistrictId(value);
-    setTalukId("");
-    setVillages([]);
-    setDraftVillageIds([]);
-    setVillageSearch("");
-    setVillagesError("");
-    setTaluksError("");
-  };
-
-  const handleTalukChange = (value) => {
-    setTalukId(value);
-    setDraftVillageIds([]);
-    setVillageSearch("");
-    setVillagesError("");
-  };
-
-  const toggleDraftVillage = (villageId, checked) => {
-    const id = Number(villageId);
-    setDraftVillageIds((prev) => {
-      if (checked) return prev.includes(id) ? prev : [...prev, id];
-      return prev.filter((v) => v !== id);
-    });
-  };
-
-  const handleSelectAll = () => {
-    setDraftVillageIds(assignableVillages.map((v) => Number(v.id)));
-  };
-
-  const handleClearDraft = () => {
-    setDraftVillageIds([]);
-  };
-
-  const handleAddTerritory = () => {
-    if (!selectedDistrict || !selectedTaluk || draftVillageIds.length === 0) return;
-    const selectedVillages = assignableVillages.filter((v) =>
-      draftVillageIds.includes(Number(v.id))
-    );
-    setGroups((prev) =>
-      addVillagesToGroups(prev, {
-        district_id: selectedDistrict.id,
-        district_name: selectedDistrict.name,
-        taluk_id: selectedTaluk.id,
-        taluk_name: selectedTaluk.name,
-        villages: selectedVillages,
-      })
-    );
-    setDraftVillageIds([]);
-    setSaved(false);
-    setSaveError(null);
-  };
-
-  const persistGroups = async (nextGroups, { closeOnSuccess = false } = {}) => {
+  const persistVillages = async (nextVillages, { closeOnSuccess = false } = {}) => {
     if (!employee?.id) return;
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
-      const payload = buildAssignmentsPayloadFromGroups(nextGroups);
+      const payload = buildAssignmentsPayloadFromVillages(nextVillages);
       const { data } = await updateEmployeeLocationAssignments(employee.id, payload);
-      let parsed = parseAssignmentGroups(payload.assignments);
+      let parsed = nextVillages;
       try {
         const detail = await fetchEmployeeLocationAssignmentDetail(employee.id);
-        parsed = parseAssignmentGroups(detail?.assignments || payload.assignments);
+        parsed = parseAssignedVillages(detail, masterById);
       } catch {
         /* PUT succeeded — keep constructed set if refetch fails */
       }
-      setGroups(parsed);
-      setOriginalIds(villageIdsFromGroups(parsed));
+      setAssigned(parsed);
+      setOriginalIds(villageIdsFromList(parsed));
       setSaved(true);
-      onSaved?.(employee.id, data?.location_assignment_summary ?? countsFromGroups(parsed));
+      onSaved?.(employee.id, data?.location_assignment_summary ?? countsFromVillages(parsed));
       if (closeOnSuccess) {
         setTimeout(() => onClose?.(), 400);
       }
     } catch (err) {
-      setSaveError(friendlyErrorMessage(err, "Could not save territory assignments."));
+      setSaveError(friendlyErrorMessage(err, "Could not save assigned villages."));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSave = () => persistGroups(groups);
+  const toggleVillage = (village, checked) => {
+    const row = masterById.get(Number(village.id)) || village;
+    setAssigned((prev) => {
+      if (checked) {
+        if (prev.some((item) => Number(item.id) === Number(row.id))) return prev;
+        return [...prev, row].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      }
+      return prev.filter((item) => Number(item.id) !== Number(row.id));
+    });
+    setSaved(false);
+    setSaveError(null);
+  };
+
+  const handleSelectAll = () => {
+    setAssigned((prev) => {
+      const byId = new Map(prev.map((v) => [Number(v.id), v]));
+      for (const village of filteredVillages) {
+        byId.set(Number(village.id), masterById.get(Number(village.id)) || village);
+      }
+      return [...byId.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    });
+  };
+
+  const handleClearFiltered = () => {
+    const remove = new Set(filteredVillages.map((v) => Number(v.id)));
+    setAssigned((prev) => prev.filter((v) => !remove.has(Number(v.id))));
+  };
 
   const handleRequestClose = useCallback(() => {
     if (saving) return;
@@ -331,14 +197,14 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
   });
 
   const requestRemoveVillages = (villageIds, label) => {
-    const names = summarizeRemoval(groups, villageIds);
+    const names = summarizeRemoval(assigned, villageIds);
     setConfirm({
       villageIds,
-      title: "Remove territory?",
+      title: "Remove villages?",
       message:
         names.length > 0
           ? `This will remove: ${names.join(", ")}. Other assigned villages will be kept.`
-          : label || "This will remove the selected territory. Other assigned villages will be kept.",
+          : label || "This will remove the selected villages. Other assigned villages will be kept.",
     });
   };
 
@@ -347,23 +213,17 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
       setConfirm(null);
       return;
     }
-    const next = removeVillagesFromGroups(groups, confirm.villageIds);
+    const next = removeVillagesFromList(assigned, confirm.villageIds);
     setConfirm(null);
-    setGroups(next);
-    await persistGroups(next);
+    setAssigned(next);
+    await persistVillages(next);
   };
 
   if (!open) return null;
 
-  const canAdd = Boolean(selectedDistrict && selectedTaluk && draftVillageIds.length > 0 && !saving);
-
   return createPortal(
     <>
-      <div
-        className="emp-territory-backdrop"
-        onClick={handleRequestClose}
-        aria-hidden="true"
-      />
+      <div className="emp-territory-backdrop" onClick={handleRequestClose} aria-hidden="true" />
       <div className="emp-territory-overlay">
         <div
           ref={panelRef}
@@ -374,7 +234,7 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
         >
           <header className="emp-territory-modal__head">
             <div className="min-w-0">
-              <p className="emp-territory-modal__kicker">Manage Territory</p>
+              <p className="emp-territory-modal__kicker">Manage Villages</p>
               <h2 id="emp-territory-title" className="emp-territory-modal__title">
                 {empDisplayName(employee)}
                 {empCode(employee) ? <span> · {empCode(employee)}</span> : null}
@@ -397,159 +257,80 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
 
           <div className="emp-territory-modal__body">
             {loading ? (
-              <PageLoader label="Loading territory…" />
+              <PageLoader label="Loading villages…" />
             ) : loadError ? (
               <ErrorRetry message={loadError} onRetry={hydrate} />
             ) : (
               <div className="emp-territory-layout">
-                <section className="emp-territory-composer" aria-label="Add territory">
-                  <h3 className="emp-territory-section-title">Add territory</h3>
-
-                  <div className="emp-territory-field">
-                    <label htmlFor="territory-district">District</label>
-                    <select
-                      id="territory-district"
-                      className="select"
-                      value={districtId}
-                      onChange={(e) => handleDistrictChange(e.target.value)}
-                      disabled={districtsLoading || saving}
-                    >
-                      <option value="">
-                        {districtsLoading ? "Loading districts…" : "Select district"}
-                      </option>
-                      {districts.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                    {districtsError ? (
-                      <ErrorRetry compact message={districtsError} onRetry={loadDistricts} />
-                    ) : null}
-                  </div>
-
-                  <div className="emp-territory-field">
-                    <label htmlFor="territory-taluk">Taluk</label>
-                    <select
-                      id="territory-taluk"
-                      className="select"
-                      value={talukId}
-                      onChange={(e) => handleTalukChange(e.target.value)}
-                      disabled={!districtId || taluksLoading || saving}
-                    >
-                      <option value="">
-                        {!districtId
-                          ? "Select district first"
-                          : taluksLoading
-                            ? "Loading taluks…"
-                            : taluks.length === 0
-                              ? "No taluks in this district"
-                              : "Select taluk"}
-                      </option>
-                      {taluks.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    {taluksError ? (
-                      <p className="emp-territory-inline-error">{taluksError}</p>
-                    ) : districtId && !taluksLoading && taluks.length === 0 ? (
-                      <p className="emp-territory-hint">No taluks in this district.</p>
-                    ) : null}
-                  </div>
-
-                  <div className="emp-territory-field">
-                    <label>Villages</label>
-                    {!talukId ? (
-                      <p className="emp-territory-hint">Select taluk first</p>
-                    ) : villagesLoading ? (
-                      <div className="emp-loc-inline-loading" aria-busy="true">
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                        Loading villages…
+                <section className="emp-territory-composer" aria-label="Select villages">
+                  <h3 className="emp-territory-section-title">Villages</h3>
+                  <div className="emp-territory-village-panel">
+                    <div className="emp-territory-village-panel__toolbar">
+                      <div className="search-wrapper emp-territory-village-panel__search">
+                        <Search className="search-icon" aria-hidden="true" />
+                        <input
+                          type="search"
+                          className="search-input"
+                          value={villageSearch}
+                          onChange={(e) => setVillageSearch(e.target.value)}
+                          placeholder="Search villages…"
+                          aria-label="Search villages"
+                        />
                       </div>
-                    ) : villagesError ? (
-                      <p className="emp-territory-inline-error">{villagesError}</p>
-                    ) : assignableVillages.length === 0 ? (
-                      <p className="emp-territory-hint">No villages in this taluk.</p>
+                      <span className="emp-territory-village-panel__count">
+                        Selected: {assignedIds.length}
+                      </span>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={handleSelectAll}>
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={handleClearFiltered}
+                        disabled={filteredVillages.every((v) => !assignedIds.includes(Number(v.id)))}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    {assignableVillages.length === 0 ? (
+                      <p className="emp-territory-hint">
+                        No villages created yet. Create villages before assigning employees.
+                      </p>
+                    ) : filteredVillages.length === 0 ? (
+                      <p className="emp-territory-hint">No villages found.</p>
                     ) : (
-                      <div className="emp-territory-village-panel">
-                        <div className="emp-territory-village-panel__toolbar">
-                          <div className="search-wrapper emp-territory-village-panel__search">
-                            <Search className="search-icon" aria-hidden="true" />
-                            <input
-                              type="search"
-                              className="search-input"
-                              value={villageSearch}
-                              onChange={(e) => setVillageSearch(e.target.value)}
-                              placeholder="Search villages…"
-                              aria-label={`Search villages in ${selectedTaluk?.name || "taluk"}`}
-                            />
-                          </div>
-                          <span className="emp-territory-village-panel__count">
-                            Selected: {draftVillageIds.length}{" "}
-                            {draftVillageIds.length === 1 ? "village" : "villages"}
-                          </span>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={handleSelectAll}
-                          >
-                            Select all
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={handleClearDraft}
-                            disabled={draftVillageIds.length === 0}
-                          >
-                            Clear
-                          </button>
-                        </div>
-                        {filteredVillages.length === 0 ? (
-                          <p className="emp-territory-hint">Search returned no villages.</p>
-                        ) : (
-                          <ul className="emp-territory-village-list" role="group">
-                            {filteredVillages.map((village) => {
-                              const vid = Number(village.id);
-                              const already = assignedIds.includes(vid);
-                              return (
-                                <li key={vid}>
-                                  <label className="emp-loc-check-row">
-                                    <input
-                                      type="checkbox"
-                                      checked={draftVillageIds.includes(vid)}
-                                      onChange={(e) => toggleDraftVillage(vid, e.target.checked)}
-                                    />
-                                    <span>{village.name}</span>
-                                    {already ? (
-                                      <span className="emp-territory-assigned-tag">Assigned</span>
-                                    ) : null}
-                                  </label>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </div>
+                      <ul className="emp-territory-village-list" role="group">
+                        {filteredVillages.map((village) => {
+                          const vid = Number(village.id);
+                          const tamil = villageTamilName(village);
+                          return (
+                            <li key={vid}>
+                              <label className="emp-loc-check-row">
+                                <input
+                                  type="checkbox"
+                                  checked={assignedIds.includes(vid)}
+                                  onChange={(e) => toggleVillage(village, e.target.checked)}
+                                  disabled={saving}
+                                />
+                                <span>
+                                  {village.name}
+                                  {tamil ? (
+                                    <span className="village-picker__tamil"> · {tamil}</span>
+                                  ) : null}
+                                </span>
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     )}
                   </div>
-
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-md"
-                    onClick={handleAddTerritory}
-                    disabled={!canAdd}
-                  >
-                    <MapPin className="w-4 h-4" aria-hidden="true" />
-                    Add territory
-                  </button>
                 </section>
 
-                <section className="emp-territory-review" aria-label="Assigned territory">
+                <section className="emp-territory-review" aria-label="Assigned villages">
                   <div className="emp-territory-review__head">
-                    <h3 className="emp-territory-section-title">Assigned territory</h3>
-                    {groups.length > 0 ? (
+                    <h3 className="emp-territory-section-title">Assigned Villages</h3>
+                    {assigned.length > 0 ? (
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm text-red-600"
@@ -567,26 +348,8 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
                     ) : null}
                   </div>
                   <EmployeeTerritoryTree
-                    groups={groups}
-                    onEditTaluk={(group) => {
-                      setDistrictId(String(group.district_id));
-                      setTalukId(String(group.taluk_id));
-                      setDraftVillageIds([]);
-                      setVillageSearch("");
-                    }}
+                    villages={assigned}
                     onRemoveVillage={(village) => requestRemoveVillages([village.id])}
-                    onRemoveTaluk={(taluk) =>
-                      requestRemoveVillages(
-                        (taluk.villages || []).map((v) => v.id),
-                        `Remove all villages in ${taluk.taluk_name}? Other taluks will be kept.`
-                      )
-                    }
-                    onRemoveDistrict={(district) =>
-                      requestRemoveVillages(
-                        district.taluks.flatMap((t) => t.villages.map((v) => v.id)),
-                        `Remove all villages in ${district.district_name}? Other districts will be kept.`
-                      )
-                    }
                   />
                 </section>
               </div>
@@ -611,7 +374,7 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
           {saved ? (
             <p className="emp-territory-success" role="status">
               <CheckCircle className="w-4 h-4" aria-hidden="true" />
-              Territory saved
+              Villages saved
             </p>
           ) : null}
 
@@ -627,11 +390,11 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
             <button
               type="button"
               className="btn btn-primary btn-md"
-              onClick={handleSave}
+              onClick={() => persistVillages(assigned)}
               disabled={saving || loading || Boolean(loadError)}
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : null}
-              {saving ? "Saving…" : "Save territory"}
+              {saving ? "Saving…" : "Save Assigned Villages"}
             </button>
           </footer>
         </div>
@@ -639,7 +402,7 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
 
       <ConfirmDialog
         open={Boolean(confirm)}
-        title={confirm?.title || "Remove territory?"}
+        title={confirm?.title || "Remove villages?"}
         message={confirm?.message}
         onConfirm={handleConfirmRemove}
         onCancel={() => setConfirm(null)}
@@ -649,8 +412,8 @@ export default function EmployeeTerritoryModal({ open, employee, onClose, onSave
       />
       <ConfirmDialog
         open={discardOpen}
-        title="Discard unsaved territory?"
-        message="You have territory changes that have not been saved."
+        title="Discard unsaved villages?"
+        message="You have village assignment changes that have not been saved."
         onConfirm={() => {
           setDiscardOpen(false);
           onClose?.();

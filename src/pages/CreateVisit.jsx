@@ -23,10 +23,6 @@ const EMPTY_FORM = {
   farmer_id: null,
   farmer_name: "",
   farmer_phone: "",
-  district: "",
-  district_name: "",
-  taluk: "",
-  taluk_name: "",
   village: "",
   village_name: "",
   crop: null,
@@ -127,7 +123,6 @@ export default function CreateVisit() {
   const [cropLoading, setCropLoading] = useState(true);
 
   const isExistingFarmer = form.farmer_mode === "existing";
-  const locationDefaultDistrict = isExistingFarmer ? null : "Villupuram";
 
   useEffect(() => {
     setCropLoading(true);
@@ -177,10 +172,6 @@ export default function CreateVisit() {
   const handleLocationChange = (loc) => {
     setForm((prev) => ({
       ...prev,
-      district: loc.district || "",
-      district_name: loc.district_name || "",
-      taluk: loc.taluk || "",
-      taluk_name: loc.taluk_name || "",
       village: loc.village || "",
       village_name: loc.village_name || "",
     }));
@@ -331,18 +322,10 @@ export default function CreateVisit() {
           </div>
 
           <div className="create-visit-field mt-4">
-            <p className="form-label">
-              Location
-              <span className="form-required" aria-hidden="true"> *</span>
-            </p>
             <LocationSelector
-              value={{
-                district: form.district,
-                taluk: form.taluk,
-                village: form.village,
-              }}
+              value={{ village: form.village }}
               onChange={handleLocationChange}
-              defaultDistrictName={locationDefaultDistrict}
+              required
             />
             {errors.village ? <p className="form-error">{errors.village}</p> : null}
           </div>

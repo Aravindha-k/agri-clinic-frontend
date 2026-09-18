@@ -37,7 +37,7 @@ export async function fetchAllEmployeeLocationAssignments(params = {}) {
 
 /**
  * PUT /api/v1/admin/employees/{profileId}/location-assignments/
- * Atomic replacement — submitted assignments become the exact final set.
+ * Atomic replacement. Body: { village_ids: number[] }.
  */
 export async function updateEmployeeLocationAssignments(profileId, payload) {
   const response = await api.put(`admin/employees/${profileId}/location-assignments/`, payload);

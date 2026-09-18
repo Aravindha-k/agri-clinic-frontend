@@ -34,7 +34,7 @@ assert.equal(employeeMatchesPrefixSearch(fixture, "Ara"), true);
 assert.equal(employeeMatchesPrefixSearch(fixture, "ARAV"), true);
 assert.equal(employeeMatchesPrefixSearch(fixture, "KAC"), true);
 assert.equal(employeeMatchesPrefixSearch(fixture, "Ked"), true);
-assert.equal(employeeMatchesPrefixSearch(fixture, "Vill"), true);
+assert.equal(employeeMatchesPrefixSearch(fixture, "Vill"), false);
 assert.equal(employeeMatchesPrefixSearch(fixture, "962"), true);
 
 assert.equal(employeeMatchesPrefixSearch(fixture, "rav"), false);

@@ -32,16 +32,6 @@ export function farmerRecordToVisitForm(farmer) {
     farmer_id: farmer.id,
     farmer_name: String(farmer.name ?? farmer.farmer_name ?? "").trim(),
     farmer_phone: resolveFarmerPhone(farmer),
-    district: toId(farmer.district ?? farmer.district_id),
-    district_name:
-      farmer.district_name ||
-      (typeof farmer.district === "object" ? farmer.district?.name : "") ||
-      "",
-    taluk: toId(farmer.taluk ?? farmer.taluk_id),
-    taluk_name:
-      farmer.taluk_name ||
-      (typeof farmer.taluk === "object" ? farmer.taluk?.name : "") ||
-      "",
     village: resolveFarmerVillageId(farmer) || toId(farmer.village ?? farmer.village_id),
     village_name:
       farmer.village_name ||

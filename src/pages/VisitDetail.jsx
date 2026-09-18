@@ -22,7 +22,6 @@ import {
     VISIT_FIELD_NOTES_LABEL,
     VISIT_NOT_ADDED,
 } from "../utils/visitDisplay";
-import { resolveLocationBlock } from "../utils/locationDisplay";
 import { resolveVisitProblems } from "../utils/visitProblems";
 import {
     formatIndiaDateTime,
@@ -204,19 +203,13 @@ function getEmployeeBlock(v) {
 function getFarmerBlock(v) {
     const resolved = resolveVisitFarmer(v);
     const f = v?.farmer ?? v?.farmer_info;
-    const location = resolveLocationBlock({
-        ...f,
-        ...v,
-        district_name: v?.district_name ?? v?.farmer_district ?? resolved.district,
-        village_name: v?.village_name ?? v?.farmer_village ?? resolved.village,
-        taluk_name: v?.taluk_name ?? v?.farmer_taluk ?? resolved.taluk,
-    });
+    const location = {
+        village: resolved.village,
+    };
     return {
         name: resolved.name,
         phone: resolved.phone,
         village: location.village,
-        district: location.district,
-        taluk: location.taluk,
         code: f?.farmer_code,
         photoUrl: resolved.profilePhotoUrl,
         entity: f ?? v,
@@ -441,9 +434,9 @@ export default function VisitDetail(props) {
             visitId: v?.id ?? id,
             farmerName: farmer.name !== "—" ? farmer.name : null,
             employeeName: employee.name !== "—" ? employee.name : null,
-            location: [farmer.village, farmer.district].filter(Boolean).join(", ") || null,
+            location: farmer.village || null,
         }),
-        [v?.id, id, farmer.name, farmer.village, farmer.district, employee.name]
+        [v?.id, id, farmer.name, farmer.village, employee.name]
     );
 
     if (loading) {
@@ -564,14 +557,6 @@ export default function VisitDetail(props) {
                         <div className="visit-report-summary__cell">
                             <p className="visit-report-summary__cell-label">Farmer</p>
                             <p className="visit-report-summary__cell-value">{farmer.name}</p>
-                        </div>
-                        <div className="visit-report-summary__cell">
-                            <p className="visit-report-summary__cell-label">District</p>
-                            <p className="visit-report-summary__cell-value">{farmer.district}</p>
-                        </div>
-                        <div className="visit-report-summary__cell">
-                            <p className="visit-report-summary__cell-label">Taluk</p>
-                            <p className="visit-report-summary__cell-value">{farmer.taluk}</p>
                         </div>
                         <div className="visit-report-summary__cell">
                             <p className="visit-report-summary__cell-label">Village</p>

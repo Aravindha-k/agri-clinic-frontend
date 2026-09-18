@@ -17,7 +17,7 @@ export default function AgriNewsTicker() {
                 // }
                 // For demo, use curated Tamil Nadu headlines
                 setNews([
-                    { title: "Heavy rainfall predicted in southern Tamil Nadu districts." },
+                    { title: "Heavy rainfall predicted in southern Tamil Nadu." },
                     { title: "Tamil Nadu government launches new agri subsidy scheme." },
                     { title: "Farmers in Thanjavur adopt organic methods." },
                     { title: "Cotton prices surge in Madurai market." },
@@ -25,7 +25,7 @@ export default function AgriNewsTicker() {
                 ]);
             } catch {
                 setNews([
-                    { title: "Heavy rainfall predicted in southern Tamil Nadu districts." },
+                    { title: "Heavy rainfall predicted in southern Tamil Nadu." },
                     { title: "Tamil Nadu government launches new agri subsidy scheme." },
                     { title: "Farmers in Thanjavur adopt organic methods." },
                     { title: "Cotton prices surge in Madurai market." },

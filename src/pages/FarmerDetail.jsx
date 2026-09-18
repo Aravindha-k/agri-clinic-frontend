@@ -15,10 +15,8 @@ import FarmerVisitEvidenceThumbs from "../components/farmers/FarmerVisitEvidence
 const FarmerVisitTrendChart = lazy(() => import("../components/farmers/FarmerVisitTrendChart"));
 import { resolveVisitCropDisplay, resolveVisitFieldNotes } from "../utils/visitDisplay";
 import { VisitProblemsSummaryLine } from "../components/visits/VisitProblemsPanel";
-import { resolveLocationBlock } from "../utils/locationDisplay";
 import {
     resolveVillageLabel,
-    resolveDistrictLabel,
 } from "../utils/displayValue";
 import { GpsIndicator, EmptyState } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
@@ -161,7 +159,7 @@ function generatePDF(farmer, fields, visits) {
     doc.setFontSize(18).setFont("helvetica", "bold");
     doc.text(name, 20, 52);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(75, 85, 99);
-    doc.text(`Phone: ${farmer.phone || "—"}   District: ${farmer.district_name || resolveDistrictLabel(farmer.district)}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
+    doc.text(`Phone: ${farmer.phone || "—"}   Village: ${farmer.village_name || resolveVillageLabel(farmer.village)}`, 20, 64);
 
     /* stats row */
     const stats = [
@@ -189,7 +187,6 @@ function generatePDF(farmer, fields, visits) {
         body: [
             ["Full Name", farmer.name || "—"],
             ["Phone", farmer.phone || "—"],
-            ["District", farmer.district_name || farmer.district || "—"],
             ["Village", farmer.village_name || farmer.village || "—"],
             ["Total Land Area", farmer.total_land_area ? `${farmer.total_land_area} acres` : "—"],
             ["Soil Type", farmer.soil_type || "—"],
@@ -302,7 +299,7 @@ function generateWord(farmer, fields, visits) {
 <p class="meta">Generated: ${new Date().toLocaleDateString("en-IN")} &nbsp;|&nbsp; AgriAdmin Enterprise</p>
 
 <h2>${esc(farmer.name)}</h2>
-<p>Phone: <strong>${esc(farmer.phone)}</strong> &nbsp;|&nbsp; District: <strong>${esc(farmer.district_name || resolveDistrictLabel(farmer.district))}</strong> &nbsp;|&nbsp; Village: <strong>${esc(farmer.village_name || resolveVillageLabel(farmer.village))}</strong></p>
+<p>Phone: <strong>${esc(farmer.phone)}</strong> &nbsp;|&nbsp; Village: <strong>${esc(farmer.village_name || resolveVillageLabel(farmer.village))}</strong></p>
 
 <div class="stat-row">
   <div class="stat"><div class="stat-val">${fields.length}</div><div class="stat-lbl">Fields</div></div>
@@ -316,7 +313,6 @@ function generateWord(farmer, fields, visits) {
 <tr style="background:#16a34a;color:white"><th>Field</th><th>Value</th></tr>
 ${row("Full Name", farmer.name)}
 ${row("Phone", farmer.phone)}
-${row("District", farmer.district_name || farmer.district)}
 ${row("Village", farmer.village_name || resolveVillageLabel(farmer.village))}
 ${row("Total Land Area", farmer.total_land_area ? farmer.total_land_area + " acres" : null)}
 ${row("Soil Type", farmer.soil_type)}
@@ -453,7 +449,7 @@ export default function FarmerDetail() {
     }
 
     const gpsVisits = visits.filter(visitHasGps).length;
-    const location = resolveLocationBlock(farmer);
+    const villageLabel = farmer.village_name || resolveVillageLabel(farmer.village);
     const acreage = totalAcreage(fields);
     const lastVisitLabel =
         visits.length > 0
@@ -635,9 +631,7 @@ export default function FarmerDetail() {
 
                     <div className="farmer-detail-card">
                         <h3 className="farmer-detail-card__title">Location</h3>
-                        <InfoRow icon={MapPin} label="District" value={location.district} />
-                        <InfoRow icon={MapPin} label="Taluk" value={location.taluk} />
-                        <InfoRow icon={MapPin} label="Village" value={location.village} />
+                        <InfoRow icon={MapPin} label="Village" value={villageLabel} />
                     </div>
 
                     <div className="farmer-detail-card">

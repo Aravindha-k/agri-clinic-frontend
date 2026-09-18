@@ -29,7 +29,7 @@ import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
 import { fetchAllEmployeeLocationAssignments, fetchEmployeeLocationAssignmentDetail } from "../api/employeeLocationAssignments.api";
 import EmployeeTerritoryModal from "../components/masters/EmployeeTerritoryModal";
 import EmployeeTerritoryTree from "../components/masters/EmployeeTerritoryTree";
-import { formatTerritorySummary, parseAssignmentGroups } from "../utils/employeeLocationAssignmentForm";
+import { formatTerritorySummary, parseAssignedVillages } from "../utils/employeeLocationAssignmentForm";
 import { getEmployeeStats, getEmployeeSummary, getEmployeeActivity } from "../api/tracking.api";
 import EmployeeDeviceInfoSection from "../components/tracking/EmployeeDeviceInfoSection";
 import { useAuth } from "../context/AuthContext";
@@ -282,7 +282,7 @@ const EmployeeFilters = memo(({ searchTerm, setSearchTerm, statusFilter, setStat
           <Search className="search-icon" aria-hidden="true" />
           <input
             type="search"
-            placeholder="Search name, username, phone, ID…"
+            placeholder="Search name, username, phone, ID, village…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -376,8 +376,8 @@ const EmployeeRowActions = memo(({
       <button
         type="button"
         className="employees-action-btn employees-action-btn--edit"
-        title="Manage territory"
-        aria-label="Manage territory"
+        title="Manage villages"
+        aria-label="Manage villages"
         disabled={busy}
         onClick={() => onTerritory?.(emp)}
       >
@@ -466,7 +466,7 @@ const EmployeeCard = memo(({ emp, actor, busy, onView, onEdit, onTerritory, onTo
         <RoleBadge role={emp.role} />
       </div>
       <p className="emp-territory-compact">
-        Territory: {formatTerritorySummary(emp.location_assignment_summary)}
+        {formatTerritorySummary(emp.location_assignment_summary)}
       </p>
       <p className="employees-hr-card__seen">
         <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -568,7 +568,7 @@ const EmployeeGrid = memo(({
               <th>Employee</th>
               <th>Phone</th>
               <th>Role</th>
-              <th>Territory</th>
+              <th>Assigned Villages</th>
               <th>Status</th>
               <th className="w-36 text-right">Actions</th>
             </tr>
@@ -724,7 +724,6 @@ const EmployeeSummary = memo(({ summary, profile, loading: isLoading }) => {
     { label: "Today Duration", value: fmtDurStr(s.today_duration), icon: Timer },
     { label: "GPS Accuracy", value: s.gps_accuracy ? `\u00b1${s.gps_accuracy}m` : "\u2014", icon: MapPin },
     { label: "On Field", value: s.is_on_field ? "Yes" : "No", icon: Briefcase, highlight: s.is_on_field },
-    { label: "District", value: p.district_name || (typeof p.district === "object" ? p.district?.name : p.district) || "\u2014", icon: Building2 },
     { label: "Joined", value: fmt(p.date_joined || p.created_at), icon: Calendar },
   ];
 
@@ -849,9 +848,6 @@ const AssignedVillagesSection = memo(({ profile, summary, loading: isLoading }) 
   }
 
   const villages = resolveAssignedVillages(profile, summary);
-  const district =
-    profile?.district_name ||
-    (typeof profile?.district === "object" ? profile?.district?.name : profile?.district);
 
   return (
     <HrSection icon={MapPin} title="Assigned villages" subtitle="Territory coverage">
@@ -865,9 +861,7 @@ const AssignedVillagesSection = memo(({ profile, summary, loading: isLoading }) 
           ))}
         </div>
       ) : (
-        <p className="text-xs text-slate-500">
-          {district ? `No villages listed for ${district} district.` : "No villages assigned yet."}
-        </p>
+        <p className="text-xs text-slate-500">No villages assigned yet.</p>
       )}
     </HrSection>
   );
@@ -977,18 +971,18 @@ const EmployeeDrawerDetails = memo(({
         <header className="employees-hr-drawer-block__head">
           <MapPinned className="w-4 h-4" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <h3 id="emp-drawer-territory" className="employees-hr-drawer-block__title">Territory</h3>
-            <p className="employees-hr-drawer-block__subtitle">Operational villages by district and taluk</p>
+            <h3 id="emp-drawer-territory" className="employees-hr-drawer-block__title">Assigned Villages</h3>
+            <p className="employees-hr-drawer-block__subtitle">Operational villages for this employee</p>
           </div>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => onManageTerritory?.(profile)}>
-            Manage Territory
+            Manage Villages
           </button>
         </header>
         <div className="employees-hr-drawer-block__body">
           {loadingTerritory ? (
             <p className="text-xs text-slate-500">Loading territory…</p>
           ) : (
-            <EmployeeTerritoryTree groups={territoryGroups || []} readOnly />
+            <EmployeeTerritoryTree villages={territoryGroups || []} readOnly />
           )}
         </div>
       </section>
@@ -1397,7 +1391,6 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, onMan
         last_name: derivedLast,
         phone: selectedEmp.phone || "",
         role: selectedEmp.role || "field_officer",
-        district: selectedEmp.district?.id ?? selectedEmp.district ?? "",
         is_active: selectedEmp.is_active !== false,
       });
       setSaveError(null);
@@ -1451,7 +1444,7 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, onMan
       }
       setLoadingActivity(false);
       if (locR.status === "fulfilled") {
-        setTerritoryGroups(parseAssignmentGroups(locR.value?.assignments || []));
+        setTerritoryGroups(parseAssignedVillages(locR.value));
       } else {
         setTerritoryGroups([]);
       }
@@ -1510,7 +1503,12 @@ const EmployeeDrawer = memo(({ emp: selectedEmp, open, onClose, onUpdated, onMan
     setSaveSuccess(false);
     try {
       const payload = { ...editForm };
-      if (!payload.district) delete payload.district;
+      delete payload.district;
+      delete payload.district_id;
+      delete payload.taluk;
+      delete payload.taluk_id;
+      delete payload.firka;
+      delete payload.firka_name;
       const res = await updateEmployee(selectedEmp.id, payload);
       const updated = res.data?.data ?? res.data ?? {};
       onUpdated({ ...selectedEmp, ...payload, ...(updated.id ? updated : {}) });

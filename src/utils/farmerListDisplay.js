@@ -1,4 +1,4 @@
-import { asDisplayString, resolveDistrictLabel, resolveVillageLabel } from "./displayValue";
+import { asDisplayString, resolveVillageLabel } from "./displayValue";
 
 export function farmerPhone(f) {
   return asDisplayString(f?.mobile ?? f?.phone, "");
@@ -6,10 +6,6 @@ export function farmerPhone(f) {
 
 export function farmerVillage(f) {
   return asDisplayString(f?.village_name ?? resolveVillageLabel(f?.village), "");
-}
-
-export function farmerDistrict(f) {
-  return asDisplayString(f?.district_name ?? resolveDistrictLabel(f?.district), "");
 }
 
 export function farmerState(f) {
