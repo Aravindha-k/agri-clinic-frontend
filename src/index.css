@@ -12257,3 +12257,239 @@ textarea.input {
 .visit-report-additional__title {
   @apply text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2;
 }
+
+/* ── Village Excel import ── */
+.village-import-backdrop {
+  @apply fixed inset-0 z-[10040] bg-slate-900/45 backdrop-blur-sm;
+}
+
+.village-import-overlay {
+  @apply fixed inset-0 z-[10050] flex items-center justify-center p-3 sm:p-5 pointer-events-none;
+}
+
+.village-import-modal {
+  @apply pointer-events-auto bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col min-w-0;
+  max-width: 72rem;
+  max-height: min(92dvh, calc(100vh - 1.5rem));
+}
+
+.village-import-modal__head {
+  @apply flex items-start justify-between gap-3 px-5 py-4 border-b shrink-0 min-w-0;
+  border-color: rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%);
+}
+
+.village-import-modal__kicker {
+  @apply text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800 m-0;
+}
+
+.village-import-modal__title {
+  @apply text-lg font-bold text-slate-900 m-0 mt-1 break-words;
+}
+
+.village-import-modal__summary {
+  @apply text-sm text-slate-500 m-0 mt-1;
+}
+
+.village-import-modal__body {
+  @apply flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-5 py-4 space-y-4;
+}
+
+.village-import-modal__foot {
+  @apply px-5 py-4 border-t border-slate-100 bg-white flex items-center justify-end gap-3 shrink-0;
+}
+
+.village-import-format {
+  @apply rounded-xl border border-slate-100 bg-slate-50/70 p-4 space-y-3;
+}
+
+.village-import-format__cols {
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-3;
+}
+
+.village-import-label {
+  @apply text-[11px] font-bold uppercase tracking-wide text-slate-500 m-0 mb-1;
+}
+
+.village-import-help {
+  @apply m-0 pl-4 text-sm text-slate-600 space-y-1;
+}
+
+.village-import-actions {
+  @apply flex flex-wrap gap-2;
+}
+
+.village-import-drop {
+  @apply flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 px-4 py-8 text-center text-sm font-semibold text-slate-700;
+}
+
+.village-import-drop--over {
+  @apply border-emerald-500 bg-emerald-50;
+}
+
+.village-import-drop__or {
+  @apply text-xs font-medium text-slate-400 m-0;
+}
+
+.village-import-drop__hint {
+  @apply text-xs font-medium text-slate-500 m-0;
+}
+
+.village-import-file {
+  @apply flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 min-w-0;
+}
+
+.village-import-file__name {
+  @apply m-0 font-semibold text-slate-900 break-all;
+}
+
+.village-import-file__meta {
+  @apply m-0 text-xs text-slate-500;
+}
+
+.village-import-file__actions {
+  @apply flex flex-wrap gap-2 sm:ml-auto;
+}
+
+.village-import-error {
+  @apply m-0 text-sm font-semibold text-red-700;
+}
+
+.village-import-loading {
+  @apply m-0 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800;
+}
+
+.village-import-preview {
+  @apply space-y-5 min-w-0;
+}
+
+.village-import-cards {
+  @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3;
+}
+
+.village-import-card {
+  @apply rounded-xl border border-slate-100 bg-white px-3 py-3 min-w-0;
+  box-shadow: var(--shadow-xs);
+}
+
+.village-import-card__label {
+  @apply m-0 text-[11px] font-bold uppercase tracking-wide text-slate-500;
+}
+
+.village-import-card__value {
+  @apply m-0 mt-1 text-xl font-bold text-slate-900 tabular-nums;
+}
+
+.village-import-section-title {
+  @apply text-sm font-bold text-slate-800 m-0 mb-2;
+}
+
+.village-import-employees {
+  @apply m-0 p-0 list-none divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white;
+}
+
+.village-import-employees li {
+  @apply flex items-center justify-between gap-3 px-3 py-2.5 text-sm text-slate-700;
+}
+
+.village-import-employees li span:last-child {
+  @apply font-semibold text-slate-900 tabular-nums shrink-0;
+}
+
+.village-import-unassigned,
+.village-import-muted {
+  @apply text-sm text-slate-500 m-0 mt-2;
+}
+
+.village-import-errors {
+  @apply rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-3;
+}
+
+.village-import-error-card {
+  @apply flex items-start gap-2 text-sm text-red-800;
+}
+
+.village-import-error-card__title {
+  @apply m-0 font-bold text-red-900;
+}
+
+.village-import-error-card__action {
+  @apply m-0 mt-2 font-semibold;
+}
+
+.village-import-warnings {
+  @apply rounded-xl border border-amber-200 bg-amber-50 px-4 py-3;
+}
+
+.village-import-warnings ul {
+  @apply m-0 pl-4 text-sm text-amber-900 space-y-1;
+}
+
+.village-import-preview-head {
+  @apply flex flex-col sm:flex-row sm:items-center gap-2 justify-between;
+}
+
+.village-import-row-search {
+  @apply w-full sm:max-w-xs;
+}
+
+.village-import-table-wrap {
+  @apply mt-2 overflow-auto rounded-xl border border-slate-100;
+  max-height: min(22rem, 42dvh);
+}
+
+.village-import-table {
+  @apply w-full text-sm text-left min-w-[40rem];
+}
+
+.village-import-table th {
+  @apply sticky top-0 bg-slate-50 px-3 py-2 font-semibold text-slate-600 whitespace-nowrap;
+}
+
+.village-import-table td {
+  @apply px-3 py-2 border-t border-slate-100 text-slate-700 break-words;
+}
+
+.village-import-status {
+  @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold;
+}
+
+.village-import-status--ready {
+  @apply bg-emerald-50 text-emerald-800;
+}
+
+.village-import-status--warning {
+  @apply bg-amber-50 text-amber-800;
+}
+
+.village-import-status--error {
+  @apply bg-red-50 text-red-800;
+}
+
+.village-import-success {
+  @apply flex flex-col items-center text-center gap-3 py-8;
+}
+
+.village-import-success h3 {
+  @apply m-0 text-lg font-bold text-slate-900;
+}
+
+.village-import-success ul {
+  @apply m-0 p-0 list-none text-sm text-slate-600 space-y-1;
+}
+
+.village-import-confirm-summary {
+  display: block;
+  margin-top: 0.75rem;
+  white-space: pre-line;
+}
+
+@media (max-width: 640px) {
+  .village-import-modal {
+    max-height: min(96dvh, calc(100vh - 0.75rem));
+  }
+
+  .village-import-table-wrap {
+    max-height: 16rem;
+  }
+}

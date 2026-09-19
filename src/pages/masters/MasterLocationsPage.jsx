@@ -12,10 +12,12 @@ import { matchesAnyFieldPrefix } from "../../utils/searchMatch";
 import { logApiDiagnostics } from "../../utils/apiDiagnostics";
 import { friendlyErrorMessage } from "../../utils/friendlyError";
 import {
-    MapPin, Search, RefreshCw, Edit3, Trash2, Plus, AlertCircle, Loader2,
+    MapPin, Search, RefreshCw, Edit3, Trash2, Plus, AlertCircle, Loader2, Upload,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import VillageImportModal from "../../components/masters/VillageImportModal";
+import { IMPORT_BUTTON_LABEL } from "../../utils/villageImport";
 
 const inputClass = "masters-admin-field";
 const TABLE_PAGE_SIZE = 25;
@@ -100,6 +102,7 @@ export default function MasterLocationsPage() {
     const [saveError, setSaveError] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
 
     const fetchVillages = useCallback(async () => {
         setLoading(true);
@@ -190,6 +193,13 @@ export default function MasterLocationsPage() {
                 }
                 actions={
                     <>
+                        <button
+                            type="button"
+                            onClick={() => setImportOpen(true)}
+                            className="btn btn-secondary btn-md"
+                        >
+                            <Upload className="w-4 h-4" aria-hidden="true" /> {IMPORT_BUTTON_LABEL}
+                        </button>
                         <button
                             type="button"
                             onClick={() => { setEditTarget(null); setSaveError(null); setFormOpen(true); }}
@@ -323,6 +333,12 @@ export default function MasterLocationsPage() {
                     saveError={saveError}
                 />
             </SlidePanel>
+
+            <VillageImportModal
+                open={importOpen}
+                onClose={() => setImportOpen(false)}
+                onImported={fetchVillages}
+            />
 
             <ConfirmDialog
                 open={Boolean(deleteTarget)}
