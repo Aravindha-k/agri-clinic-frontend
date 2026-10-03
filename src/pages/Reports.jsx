@@ -39,6 +39,12 @@ import {
   analyticsFromSummary,
 } from "../utils/reportsAnalytics";
 import {
+  buildReportSummaryParams,
+  buildVisitFilterParams,
+  employeesForReportSelect,
+  reportEmployeeOptionValue,
+} from "../utils/reportsEmployeeFilter";
+import {
   resolveTrackingEmployeeList,
   normalizeTrackingEmployee,
 } from "../utils/trackingNormalize";
@@ -195,27 +201,38 @@ export default function Reports() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
+  /** Canonical Visit.employee filter: AUTH User PK string (never EmployeeProfile.pk). */
+  const [employeeUserId, setEmployeeUserId] = useState("");
   const [dateFrom, setDateFrom] = useState(() => defaultDateRange().from);
   const [dateTo, setDateTo] = useState(() => defaultDateRange().to);
   const requestSeq = useRef(0);
   const dateInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo);
+  const employeeFilterActive = Boolean(String(employeeUserId || "").trim());
 
-  const reportParams = useMemo(() => {
-    const params = {};
-    if (dateFrom) params.from = dateFrom;
-    if (dateTo) params.to = dateTo;
-    if (employeeId) params.employee = employeeId;
-    return params;
-  }, [dateFrom, dateTo, employeeId]);
+  const reportParams = useMemo(
+    () =>
+      buildReportSummaryParams({
+        from: dateFrom,
+        to: dateTo,
+        employeeUserId,
+      }),
+    [dateFrom, dateTo, employeeUserId]
+  );
 
-  const visitFilterParams = useMemo(() => {
-    const params = {};
-    if (dateFrom) params.start_date = dateFrom;
-    if (dateTo) params.end_date = dateTo;
-    if (employeeId) params.employee = employeeId;
-    return params;
-  }, [dateFrom, dateTo, employeeId]);
+  const visitFilterParams = useMemo(
+    () =>
+      buildVisitFilterParams({
+        start_date: dateFrom,
+        end_date: dateTo,
+        employeeUserId,
+      }),
+    [dateFrom, dateTo, employeeUserId]
+  );
+
+  const reportEmployees = useMemo(
+    () => employeesForReportSelect(employees),
+    [employees]
+  );
 
   const load = useCallback(async ({ initial = false } = {}) => {
     if (dateInvalid) {
@@ -224,6 +241,9 @@ export default function Reports() {
     }
     const seq = ++requestSeq.current;
     setError(null);
+    // Prevent previous All/Employee scope from masquerading as the new filter.
+    setSummary(null);
+    setPreviewRows([]);
     if (initial) setLoading(true);
     else setRefreshing(true);
     try {
@@ -235,6 +255,8 @@ export default function Reports() {
       if (seq !== requestSeq.current) return;
 
       if (summaryR.status !== "fulfilled") {
+        setSummary(null);
+        setPreviewRows([]);
         throw summaryR.reason;
       }
       setSummary(summaryR.value);
@@ -277,6 +299,8 @@ export default function Reports() {
       }
     } catch (err) {
       if (seq !== requestSeq.current) return;
+      setSummary(null);
+      setPreviewRows([]);
       setError(err.message || "Failed to load reports");
     } finally {
       if (seq === requestSeq.current) {
@@ -300,7 +324,7 @@ export default function Reports() {
     }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- filter identity only
-  }, [dateFrom, dateTo, employeeId]);
+  }, [dateFrom, dateTo, employeeUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +332,17 @@ export default function Reports() {
       try {
         const empRows = await getEmployees();
         if (cancelled) return;
-        setEmployees(Array.isArray(empRows) ? empRows : []);
+        const rows = Array.isArray(empRows) ? empRows : [];
+        if (import.meta.env?.DEV) {
+          const missing = rows.filter((e) => reportEmployeeOptionValue(e) == null);
+          if (missing.length) {
+            console.warn(
+              "[Reports] employees missing user_id omitted from filter:",
+              missing.map((e) => e?.employee_id ?? e?.id)
+            );
+          }
+        }
+        setEmployees(rows);
       } catch {
         /* filter dropdowns are optional */
       }
@@ -407,7 +441,8 @@ export default function Reports() {
     },
   ];
 
-  if (loading && !summary) {
+  // While a filter change clears summary, show skeleton so old-scope KPIs never flash.
+  if ((loading || refreshing) && !summary) {
     return <ReportsLoadingSkeleton />;
   }
 
@@ -498,15 +533,22 @@ export default function Reports() {
             <select
               id="report-employee"
               className="search-input w-full"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
+              value={employeeUserId}
+              onChange={(e) => setEmployeeUserId(e.target.value)}
             >
               <option value="">All employees</option>
-              {employees.map((emp) => (
-                <option key={emp.id ?? emp.employee_id} value={emp.id ?? emp.employee_id}>
-                  {empName(emp)}
-                </option>
-              ))}
+              {reportEmployees.map((emp) => {
+                const userPk = reportEmployeeOptionValue(emp);
+                return (
+                  <option
+                    key={userPk}
+                    value={userPk}
+                  >
+                    {empName(emp)}
+                    {emp.employee_id ? ` (${emp.employee_id})` : ""}
+                  </option>
+                );
+              })}
             </select>
           </FilterField>
         </FilterToolbarRow>
@@ -669,7 +711,11 @@ export default function Reports() {
         <ReportSection
           icon={ShieldCheck}
           title="GPS Compliance Report"
-          subtitle={`${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS location proof`}
+          subtitle={
+            employeeFilterActive
+              ? `${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS · live incidents: All employees — today`
+              : `${analytics.gpsCompliant} of ${analytics.totalVisits} visits include GPS location proof`
+          }
           boundaryName="GpsCompliance"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-2">
@@ -719,7 +765,11 @@ export default function Reports() {
       <ReportSection
         icon={Route}
         title="Route Analytics"
-        subtitle="Today's tracked field travel based on employee GPS routes"
+        subtitle={
+          employeeFilterActive
+            ? "All employees — today (not filtered by the selected employee)"
+            : "Today's tracked field travel based on employee GPS routes"
+        }
         boundaryName="RouteAnalytics"
         action={
           <Link to="/tracking/routes" className="btn btn-secondary btn-sm">
