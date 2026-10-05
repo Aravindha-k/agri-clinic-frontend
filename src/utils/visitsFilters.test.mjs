@@ -5,6 +5,9 @@ import {
   applyPeriodChange,
   applySearchChange,
   applyClearVisitFilters,
+  applyActivityEmployeeDrillDown,
+  applyAllEmployeesFromActivity,
+  activityPeriodRange,
   visitsScopeKey,
   visitResultsViewState,
   visitRecordsCountFromResponse,
@@ -13,6 +16,7 @@ import {
   visitRecordsEmptyCopy,
   dateRangeForChip,
   CLEARED_VISIT_RECORD_FILTERS,
+  DATE_CHIPS,
 } from "./visitsFilters.js";
 import { activityEmployeeUserId } from "./visitsActivity.js";
 
@@ -197,5 +201,30 @@ const activityErrorDoesNotBlockRecords = visitResultsViewState({
   error: "",
 });
 assert.equal(activityErrorDoesNotBlockRecords, "ready");
+
+assert.deepEqual(
+  DATE_CHIPS.map((c) => c.id),
+  ["all", "today", "week", "month"]
+);
+assert.equal(DATE_CHIPS.some((c) => c.id === "all"), true);
+assert.equal(activityPeriodRange("month", TODAY).start_date, "2026-10-01");
+assert.notEqual(activityPeriodRange("today", TODAY).start_date, null);
+
+const afterDrill = applyActivityEmployeeDrillDown(
+  { employeeUserId: "", dateChip: "all", search: "x", page: 2 },
+  "30",
+  "week"
+);
+assert.equal(afterDrill.employeeUserId, "30");
+assert.equal(afterDrill.dateChip, "week");
+assert.equal(afterDrill.search, "x");
+const afterAll = applyAllEmployeesFromActivity({ ...afterDrill, activityPeriod: "week" });
+assert.equal(afterAll.employeeUserId, "");
+assert.equal(afterAll.dateChip, "week");
+assert.equal(afterAll.activityPeriod, "week");
+
+const lowerOnly = applyPeriodChange({ employeeUserId: "30", dateChip: "week", page: 1 }, "all");
+assert.equal(lowerOnly.dateChip, "all");
+assert.equal(lowerOnly.employeeUserId, "30");
 
 console.log("visitsFilters checks OK");

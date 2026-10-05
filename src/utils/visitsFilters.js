@@ -10,6 +10,7 @@ import { buildVisitFilterParams } from "./reportsEmployeeFilter.js";
 import {
   visitEmployeeCode,
   visitEmployeeDisplayName,
+  normalizeActivityPeriod,
 } from "./visitsActivity.js";
 
 export const PAGE_SIZE = 12;
@@ -48,6 +49,27 @@ export function dateRangeForChip(chip, today = todayIsoDate()) {
     return { start_date: start, end_date: end };
   }
   return null;
+}
+
+/** Upper activity snapshot never uses All time. */
+export function activityPeriodRange(period, today = todayIsoDate()) {
+  const chip = normalizeActivityPeriod(period);
+  return dateRangeForChip(chip, today);
+}
+
+/** Card drill-down: sync Visit Records employee + the same period chip. */
+export function applyActivityEmployeeDrillDown(state, employeeUserId, activityPeriod) {
+  return {
+    ...state,
+    employeeUserId: String(employeeUserId ?? ""),
+    dateChip: normalizeActivityPeriod(activityPeriod),
+    page: 1,
+  };
+}
+
+/** Clear employee without changing Visit Records period or upper activity period. */
+export function applyAllEmployeesFromActivity(state) {
+  return { ...state, employeeUserId: "", page: 1 };
 }
 
 export function dateChipLabel(chip) {

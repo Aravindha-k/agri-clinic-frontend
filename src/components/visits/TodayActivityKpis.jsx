@@ -29,8 +29,8 @@ export function TodayActivityKpiSkeleton() {
   );
 }
 
-export default function TodayActivityKpis({ summary }) {
-  const kpis = todayActivityKpis(summary);
+export default function TodayActivityKpis({ summary, period = "today" }) {
+  const kpis = todayActivityKpis(summary, period);
   const gpsFull =
     Number(summary?.total_visits) > 0 &&
     gpsVerifiedPercent(summary?.gps_verified, summary?.total_visits) === 100;

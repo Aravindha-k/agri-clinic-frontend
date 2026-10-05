@@ -7130,6 +7130,22 @@ textarea.input {
     box-shadow: none;
 }
 
+.visits-ops-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.visits-activity-period {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
 .visits-ops-heading__title {
     @apply text-sm tracking-tight;
     font-weight: 700;

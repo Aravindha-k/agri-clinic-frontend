@@ -107,18 +107,24 @@ export async function fetchAllVisits(params = {}) {
 }
 
 /**
- * Today's field activity snapshot — GET /admin/visits/activity-summary/?date=YYYY-MM-DD
+ * Field activity snapshot — GET /admin/visits/activity-summary/?start_date=&end_date=
  * Unwraps { success, message, data }. Employee rows use user_id (AUTH User PK).
+ * Range params are preferred; `date` remains only as a fallback for older callers.
  */
 export const getVisitActivitySummary = async (params = {}) => {
-  const date = params.date || todayIsoDate();
+  const startDate = params.startDate || params.start_date;
+  const endDate = params.endDate || params.end_date;
+  const query =
+    startDate && endDate
+      ? { start_date: startDate, end_date: endDate }
+      : { date: params.date || todayIsoDate() };
   try {
-    const response = await api.get("admin/visits/activity-summary/", { params: { date } });
+    const response = await api.get("admin/visits/activity-summary/", { params: query });
     const unwrapped = unwrapSuccessEnvelope(response) ?? response.data;
     return normalizeVisitActivitySummary(unwrapped);
   } catch (err) {
     console.error(TAG, "getVisitActivitySummary failed:", err.response?.status, err.message);
-    throw formatVisitError(err, "Unable to load today's activity.");
+    throw formatVisitError(err, "Unable to load field activity.");
   }
 };
 

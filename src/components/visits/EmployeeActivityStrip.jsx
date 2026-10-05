@@ -28,6 +28,7 @@ export default function EmployeeActivityStrip({
   selectedUserId,
   onSelectEmployee,
   onSelectAll,
+  period = "today",
 }) {
   const selected = String(selectedUserId || "");
 
@@ -48,7 +49,7 @@ export default function EmployeeActivityStrip({
           const userId = activityEmployeeUserId(emp);
           const name = visitEmployeeDisplayName(emp);
           const code = visitEmployeeCode(emp);
-          const meta = employeeActivityMeta(emp);
+          const meta = employeeActivityMeta(emp, period);
           const isSelected = Boolean(userId && userId === selected);
           const a11y = employeeActivityCardA11y({
             selected: isSelected,

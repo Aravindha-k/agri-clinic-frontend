@@ -39,15 +39,24 @@ import EmployeeActivityStrip, {
   EmployeeActivitySkeleton,
 } from "../components/visits/EmployeeActivityStrip";
 import {
+  ACTIVITY_PERIODS,
+  DEFAULT_ACTIVITY_PERIOD,
   activityEmployeeUserId,
+  activityErrorMessage,
+  activitySectionCopy,
+  activityViewState,
   employeesForVisitSelect,
   findEmployeeByUserId,
+  normalizeActivityPeriod,
   visitEmployeeDisplayName,
   visitEmployeeOptionLabel,
 } from "../utils/visitsActivity";
 import {
   PAGE_SIZE,
   DATE_CHIPS,
+  activityPeriodRange,
+  applyActivityEmployeeDrillDown,
+  applyAllEmployeesFromActivity,
   buildVisitsQueryParams,
   applyClearVisitFilters,
   visitsScopeKey,
@@ -252,10 +261,19 @@ export default function Visits() {
   const visitsRequestSeq = useRef(0);
 
   const [activity, setActivity] = useState(null);
+  const [activityPeriod, setActivityPeriod] = useState(DEFAULT_ACTIVITY_PERIOD);
+  const [loadedActivityPeriod, setLoadedActivityPeriod] = useState("");
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
   const activityRequestSeq = useRef(0);
   const [fallbackEmployees, setFallbackEmployees] = useState([]);
+  const activityCopy = activitySectionCopy(activityPeriod);
+  const activityView = activityViewState({
+    loading: activityLoading,
+    period: activityPeriod,
+    loadedPeriod: loadedActivityPeriod,
+    error: activityError,
+  });
 
   const currentScope = visitsScopeKey({ employeeUserId, dateChip, search, page });
   const visitsView = visitResultsViewState({
@@ -266,21 +284,28 @@ export default function Visits() {
   });
 
   const loadActivity = useCallback(async () => {
+    const period = normalizeActivityPeriod(activityPeriod);
     const seq = ++activityRequestSeq.current;
+    const range = activityPeriodRange(period, todayIsoDate());
     setActivityLoading(true);
     setActivityError("");
     try {
-      const data = await getVisitActivitySummary({ date: todayIsoDate() });
+      const data = await getVisitActivitySummary({
+        startDate: range.start_date,
+        endDate: range.end_date,
+      });
       if (seq !== activityRequestSeq.current) return;
       setActivity(data);
+      setLoadedActivityPeriod(period);
     } catch (err) {
       if (seq !== activityRequestSeq.current) return;
-      setActivityError(err?.message || "Unable to load today's activity.");
+      setActivityError(activityErrorMessage(period));
       setActivity(null);
+      setLoadedActivityPeriod(period);
     } finally {
       if (seq === activityRequestSeq.current) setActivityLoading(false);
     }
-  }, []);
+  }, [activityPeriod]);
 
   const loadVisits = useCallback(
     async (pageNum = 1) => {
@@ -390,11 +415,39 @@ export default function Visits() {
     setPage(1);
   };
 
+  const handleActivityPeriod = (periodId) => {
+    const next = normalizeActivityPeriod(periodId);
+    if (next === activityPeriod) return;
+    setActivityPeriod(next);
+    setActivity(null);
+    setActivityError("");
+    setActivityLoading(true);
+    setLoadedActivityPeriod("");
+  };
+
   const handleEmployeeChange = (userId) => {
     const next = String(userId ?? "");
     if (next === String(employeeUserId)) return;
     setEmployeeUserId(next);
     setPage(1);
+  };
+
+  const handleActivityCardSelect = (userId) => {
+    const drilled = applyActivityEmployeeDrillDown(
+      { employeeUserId, dateChip, page },
+      userId,
+      activityPeriod
+    );
+    if (drilled.employeeUserId === String(employeeUserId) && drilled.dateChip === dateChip) return;
+    setEmployeeUserId(drilled.employeeUserId);
+    setDateChip(drilled.dateChip);
+    setPage(drilled.page);
+  };
+
+  const handleActivitySelectAll = () => {
+    const next = applyAllEmployeesFromActivity({ employeeUserId, dateChip, page });
+    setEmployeeUserId(next.employeeUserId);
+    setPage(next.page);
   };
 
   const handleClearFilters = () => {
@@ -484,21 +537,36 @@ export default function Visits() {
         <header className="visits-ops-heading">
           <div>
             <h2 id="visits-today-heading" className="visits-ops-heading__title">
-              Today&apos;s Field Activity
+              {activityCopy.title}
             </h2>
-            <p className="visits-ops-heading__sub">Operational snapshot for today — independent of Visit Records filters</p>
+            <p className="visits-ops-heading__sub">{activityCopy.subtitle}</p>
+          </div>
+          <div className="visits-activity-period" role="group" aria-label="Field activity period">
+            {ACTIVITY_PERIODS.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => handleActivityPeriod(chip.id)}
+                className={`filter-chip ${
+                  activityPeriod === chip.id ? "filter-chip--active" : "filter-chip--idle"
+                }`}
+                aria-pressed={activityPeriod === chip.id}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
         </header>
-        {activityError ? (
+        {activityView === "error" ? (
           <ErrorRetry
             compact
-            message={friendlyErrorMessage(activityError, "Unable to load today's activity.")}
+            message={friendlyErrorMessage(activityError, activityErrorMessage(activityPeriod))}
             onRetry={loadActivity}
           />
-        ) : activityLoading ? (
+        ) : activityView === "loading" ? (
           <TodayActivityKpiSkeleton />
         ) : (
-          <TodayActivityKpis summary={activity} />
+          <TodayActivityKpis summary={activity} period={activityPeriod} />
         )}
       </section>
 
@@ -506,21 +574,22 @@ export default function Visits() {
         <header className="visits-ops-heading">
           <div>
             <h2 id="visits-emp-heading" className="visits-ops-heading__title">
-              Employee Activity — Today
+              {activityCopy.employeeTitle}
             </h2>
-            <p className="visits-ops-heading__sub">Today&apos;s submitted field visits by employee</p>
+            <p className="visits-ops-heading__sub">{activityCopy.employeeSubtitle}</p>
           </div>
         </header>
-        {activityError ? null : activityLoading ? (
+        {activityView === "error" ? null : activityView === "loading" ? (
           <EmployeeActivitySkeleton />
         ) : activityEmployees.length === 0 ? (
-          <p className="visits-emp-empty">No eligible field employees in today&apos;s activity snapshot.</p>
+          <p className="visits-emp-empty">{activityCopy.emptyEmployees}</p>
         ) : (
           <EmployeeActivityStrip
             employees={activityEmployees}
             selectedUserId={employeeUserId}
-            onSelectEmployee={handleEmployeeChange}
-            onSelectAll={() => handleEmployeeChange("")}
+            period={activityPeriod}
+            onSelectEmployee={handleActivityCardSelect}
+            onSelectAll={handleActivitySelectAll}
           />
         )}
       </section>
