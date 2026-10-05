@@ -11,6 +11,8 @@ import { normalizeVisitRecord, normalizeVisitList, logVisitFarmerBlock } from ".
 import { isUnreachableError, backendUnavailableMessage } from "../utils/apiBackoff";
 import { reverseGeocodeSafe } from "../utils/reverseGeocode";
 import { locationFieldsForPayload } from "../utils/visitLocation";
+import { todayIsoDate } from "../utils/businessDate";
+import { normalizeVisitActivitySummary } from "../utils/visitsActivity";
 
 const TAG = "[visit.api]";
 
@@ -103,6 +105,22 @@ export const getVisits = async (params = {}) => {
 export async function fetchAllVisits(params = {}) {
   return fetchAllPaginated(getVisits, { page_size: 100, ordering: "-created_at", ...params });
 }
+
+/**
+ * Today's field activity snapshot — GET /admin/visits/activity-summary/?date=YYYY-MM-DD
+ * Unwraps { success, message, data }. Employee rows use user_id (AUTH User PK).
+ */
+export const getVisitActivitySummary = async (params = {}) => {
+  const date = params.date || todayIsoDate();
+  try {
+    const response = await api.get("admin/visits/activity-summary/", { params: { date } });
+    const unwrapped = unwrapSuccessEnvelope(response) ?? response.data;
+    return normalizeVisitActivitySummary(unwrapped);
+  } catch (err) {
+    console.error(TAG, "getVisitActivitySummary failed:", err.response?.status, err.message);
+    throw formatVisitError(err, "Unable to load today's activity.");
+  }
+};
 
 // List visit evidence — GET /admin/visits/{id}/attachments/
 export const getVisitAttachments = async (visitId) => {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { getVisits, deleteVisit } from "../api/visit.api";
+import { getVisits, getVisitActivitySummary, deleteVisit } from "../api/visit.api";
+import { getEmployees } from "../api/employee.api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { todayIsoDate } from "../utils/businessDate";
 import { debounce } from "../utils/debounce";
@@ -33,6 +34,29 @@ import ErrorRetry from "../components/ui/ErrorRetry";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import VisitListCard from "../components/visits/VisitListCard";
+import TodayActivityKpis, { TodayActivityKpiSkeleton } from "../components/visits/TodayActivityKpis";
+import EmployeeActivityStrip, {
+  EmployeeActivitySkeleton,
+} from "../components/visits/EmployeeActivityStrip";
+import {
+  activityEmployeeUserId,
+  employeesForVisitSelect,
+  findEmployeeByUserId,
+  visitEmployeeDisplayName,
+  visitEmployeeOptionLabel,
+} from "../utils/visitsActivity";
+import {
+  PAGE_SIZE,
+  DATE_CHIPS,
+  buildVisitsQueryParams,
+  applyClearVisitFilters,
+  visitsScopeKey,
+  visitResultsViewState,
+  visitRecordsCountFromResponse,
+  visitRecordsScopeLine,
+  visitRecordsCountLine,
+  visitRecordsEmptyCopy,
+} from "../utils/visitsFilters";
 import {
   Search,
   Calendar,
@@ -47,40 +71,8 @@ import {
   List,
   Paperclip,
   Plus,
-  ClipboardList,
 } from "lucide-react";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
-
-const PAGE_SIZE = 12;
-
-const DATE_CHIPS = [
-  { id: "all", label: "All time" },
-  { id: "today", label: "Today" },
-  { id: "week", label: "This week" },
-  { id: "month", label: "This month" },
-];
-
-/** Build start_date/end_date (YYYY-MM-DD) for admin/visits — inclusive Asia/Kolkata dates. */
-function dateRangeForChip(chip) {
-  if (!chip || chip === "all") return null;
-  const end = todayIsoDate();
-  if (chip === "today") {
-    return { start_date: end, end_date: end };
-  }
-  if (chip === "week") {
-    const endDate = new Date(`${end}T12:00:00`);
-    if (Number.isNaN(endDate.getTime())) return null;
-    const weekday = endDate.getDay();
-    const mondayOffset = weekday === 0 ? 6 : weekday - 1;
-    endDate.setDate(endDate.getDate() - mondayOffset);
-    return { start_date: todayIsoDate(endDate), end_date: end };
-  }
-  if (chip === "month") {
-    const start = `${end.slice(0, 7)}-01`;
-    return { start_date: start, end_date: end };
-  }
-  return null;
-}
 
 function VisitsTableSkeleton() {
   return (
@@ -242,50 +234,90 @@ function VisitRow({ v, onView, onEdit, onDelete }) {
 
 export default function Visits() {
   const [visits, setVisits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [visitsLoading, setVisitsLoading] = useState(true);
+  const [visitsError, setVisitsError] = useState("");
+  const [loadedScope, setLoadedScope] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const navigate = useNavigate();
   const location = useLocation();
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(null);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [dateChip, setDateChip] = useState("all");
+  const [dateChip, setDateChip] = useState("today");
+  const [employeeUserId, setEmployeeUserId] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const requestSeq = useRef(0);
+  const visitsRequestSeq = useRef(0);
+
+  const [activity, setActivity] = useState(null);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState("");
+  const activityRequestSeq = useRef(0);
+  const [fallbackEmployees, setFallbackEmployees] = useState([]);
+
+  const currentScope = visitsScopeKey({ employeeUserId, dateChip, search, page });
+  const visitsView = visitResultsViewState({
+    currentScope,
+    loadedScope,
+    loading: visitsLoading,
+    error: visitsError,
+  });
+
+  const loadActivity = useCallback(async () => {
+    const seq = ++activityRequestSeq.current;
+    setActivityLoading(true);
+    setActivityError("");
+    try {
+      const data = await getVisitActivitySummary({ date: todayIsoDate() });
+      if (seq !== activityRequestSeq.current) return;
+      setActivity(data);
+    } catch (err) {
+      if (seq !== activityRequestSeq.current) return;
+      setActivityError(err?.message || "Unable to load today's activity.");
+      setActivity(null);
+    } finally {
+      if (seq === activityRequestSeq.current) setActivityLoading(false);
+    }
+  }, []);
 
   const loadVisits = useCallback(
     async (pageNum = 1) => {
-      const seq = ++requestSeq.current;
-      setLoading(true);
-      setError("");
+      const seq = ++visitsRequestSeq.current;
+      const scope = visitsScopeKey({ employeeUserId, dateChip, search, page: pageNum });
+      setVisitsLoading(true);
+      setVisitsError("");
       try {
-        const params = { page: pageNum, page_size: PAGE_SIZE };
-        if (search.trim()) params.search = search.trim();
-        const range = dateRangeForChip(dateChip);
-        if (range) {
-          params.start_date = range.start_date;
-          params.end_date = range.end_date;
-        }
+        const params = buildVisitsQueryParams({
+          page: pageNum,
+          pageSize: PAGE_SIZE,
+          search,
+          dateChip,
+          employeeUserId,
+        });
         const data = await getVisits(params);
-        if (seq !== requestSeq.current) return;
+        if (seq !== visitsRequestSeq.current) return;
         const list = normalizeVisitList(data?.results ?? []);
         setVisits(list);
-        setTotal(typeof data?.count === "number" ? data.count : list.length);
+        setTotal(visitRecordsCountFromResponse(data, list.length));
+        setLoadedScope(scope);
       } catch (err) {
-        if (seq !== requestSeq.current) return;
-        setError(err?.message || "Failed to load visits");
+        if (seq !== visitsRequestSeq.current) return;
+        setVisitsError(err?.message || "Failed to load visits");
         setVisits([]);
-        setTotal(0);
+        setTotal(null);
+        setLoadedScope(scope);
       } finally {
-        if (seq === requestSeq.current) setLoading(false);
+        if (seq === visitsRequestSeq.current) setVisitsLoading(false);
       }
     },
-    [search, dateChip]
+    [search, dateChip, employeeUserId]
   );
+
+  useEffect(() => {
+    loadActivity();
+  }, [loadActivity, location.key]);
 
   useEffect(() => {
     loadVisits(page);
@@ -293,10 +325,42 @@ export default function Visits() {
 
   useEffect(() => {
     if (location.state?.refreshVisits) {
+      loadActivity();
       loadVisits(page);
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state?.refreshVisits, loadVisits, page, navigate, location.pathname]);
+  }, [location.state?.refreshVisits, loadActivity, loadVisits, page, navigate, location.pathname]);
+
+  const activityEmployees = activity?.employees ?? [];
+  const selectableFromActivity = useMemo(
+    () => employeesForVisitSelect(activityEmployees),
+    [activityEmployees]
+  );
+
+  useEffect(() => {
+    if (selectableFromActivity.length > 0) return undefined;
+    if (activityLoading) return undefined;
+    let cancelled = false;
+    getEmployees()
+      .then((rows) => {
+        if (cancelled) return;
+        setFallbackEmployees(employeesForVisitSelect(rows));
+      })
+      .catch(() => {
+        if (!cancelled) setFallbackEmployees([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectableFromActivity.length, activityLoading]);
+
+  const selectorEmployees = selectableFromActivity.length > 0
+    ? selectableFromActivity
+    : fallbackEmployees;
+
+  const selectedEmployee =
+    findEmployeeByUserId(selectorEmployees, employeeUserId) ||
+    findEmployeeByUserId(activityEmployees, employeeUserId);
 
   const debouncedSetSearch = useMemo(
     () =>
@@ -326,6 +390,28 @@ export default function Visits() {
     setPage(1);
   };
 
+  const handleEmployeeChange = (userId) => {
+    const next = String(userId ?? "");
+    if (next === String(employeeUserId)) return;
+    setEmployeeUserId(next);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    const cleared = applyClearVisitFilters();
+    debouncedSetSearch.cancel?.();
+    setSearchInput("");
+    setSearch(cleared.search);
+    setDateChip(cleared.dateChip);
+    setEmployeeUserId(cleared.employeeUserId);
+    setPage(cleared.page);
+  };
+
+  const handleRefresh = () => {
+    loadActivity();
+    loadVisits(page);
+  };
+
   const handleView = (id) => navigate(`/visits/${id}`);
   const handleEdit = (id) => navigate(`/visits/${id}/edit`);
   const handleAskDelete = (visit) => {
@@ -339,7 +425,7 @@ export default function Visits() {
     try {
       await deleteVisit(deleteTarget.id);
       setDeleteTarget(null);
-      await loadVisits(page);
+      await Promise.all([loadVisits(page), loadActivity()]);
     } catch (err) {
       setDeleteError(friendlyErrorMessage(err, "Failed to delete visit."));
     } finally {
@@ -347,8 +433,7 @@ export default function Visits() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
+  const totalPages = Math.max(1, Math.ceil((typeof total === "number" ? total : 0) / PAGE_SIZE));
   const pageNums = (() => {
     const pages = [];
     const start = Math.max(1, page - 2);
@@ -357,19 +442,27 @@ export default function Visits() {
     return pages;
   })();
 
-  const showingFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const showingTo = Math.min(page * PAGE_SIZE, total);
-  const hasActiveFilters = Boolean(search.trim()) || dateChip !== "all";
+  const safeTotal = typeof total === "number" ? total : 0;
+  const showingFrom = safeTotal === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingTo = Math.min(page * PAGE_SIZE, safeTotal);
+  const hasActiveFilters =
+    Boolean(search.trim()) || dateChip !== "all" || Boolean(employeeUserId);
+  const emptyCopy = visitRecordsEmptyCopy({
+    hasSearch: Boolean(search.trim()),
+    dateChip,
+    employeeName: visitEmployeeDisplayName(selectedEmployee),
+  });
+  const scopeLine = visitRecordsScopeLine({ employee: selectedEmployee, dateChip });
+  const countLine = visitsView === "ready" ? visitRecordsCountLine(total) : null;
+  const showVisitSkeleton = visitsView === "loading";
+  const showVisitList = visitsView === "ready" && visits.length > 0;
+  const showVisitEmpty = visitsView === "ready" && visits.length === 0;
 
   return (
     <div className="page-container page-container--visits">
       <PageHeader
         title="Field Visits"
-        subtitle={
-          loading
-            ? "Loading submitted field visits…"
-            : "Submitted field visits across all employees"
-        }
+        subtitle="Monitor daily field activity and review submitted visits"
         badge={
           <span className="command-hero-badge">
             <Calendar className="w-3 h-3" aria-hidden="true" /> Submitted only
@@ -386,295 +479,334 @@ export default function Visits() {
         }
       />
 
-      {!loading && total > 0 && (
-        <div className="visits-kpi-strip">
-          <div className="visits-kpi-pill visits-kpi-pill--accent">
-            <ClipboardList className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="visits-kpi-pill__value">{total}</p>
-              <p className="visits-kpi-pill__label">Submitted visits</p>
-            </div>
+      <section className="visits-ops-section" aria-labelledby="visits-today-heading">
+        <header className="visits-ops-heading">
+          <div>
+            <h2 id="visits-today-heading" className="visits-ops-heading__title">
+              Today&apos;s Field Activity
+            </h2>
+            <p className="visits-ops-heading__sub">Operational snapshot for today — independent of Visit Records filters</p>
           </div>
-          <div className="visits-kpi-pill">
-            <div>
-              <p className="visits-kpi-pill__value">{visits.length}</p>
-              <p className="visits-kpi-pill__label">On this page</p>
-            </div>
+        </header>
+        {activityError ? (
+          <ErrorRetry
+            compact
+            message={friendlyErrorMessage(activityError, "Unable to load today's activity.")}
+            onRetry={loadActivity}
+          />
+        ) : activityLoading ? (
+          <TodayActivityKpiSkeleton />
+        ) : (
+          <TodayActivityKpis summary={activity} />
+        )}
+      </section>
+
+      <section className="visits-ops-section" aria-labelledby="visits-emp-heading">
+        <header className="visits-ops-heading">
+          <div>
+            <h2 id="visits-emp-heading" className="visits-ops-heading__title">
+              Employee Activity — Today
+            </h2>
+            <p className="visits-ops-heading__sub">Today&apos;s submitted field visits by employee</p>
           </div>
-          {hasActiveFilters && (
-            <div className="visits-kpi-pill">
-              <div>
-                <p className="visits-kpi-pill__value">Filtered</p>
-                <p className="visits-kpi-pill__label">Active search or date</p>
+        </header>
+        {activityError ? null : activityLoading ? (
+          <EmployeeActivitySkeleton />
+        ) : activityEmployees.length === 0 ? (
+          <p className="visits-emp-empty">No eligible field employees in today&apos;s activity snapshot.</p>
+        ) : (
+          <EmployeeActivityStrip
+            employees={activityEmployees}
+            selectedUserId={employeeUserId}
+            onSelectEmployee={handleEmployeeChange}
+            onSelectAll={() => handleEmployeeChange("")}
+          />
+        )}
+      </section>
+
+      <section className="visits-records-section" aria-labelledby="visits-records-heading">
+        <header className="visits-ops-heading">
+          <div>
+            <h2 id="visits-records-heading" className="visits-ops-heading__title">
+              Visit Records
+            </h2>
+            <p className="visits-ops-heading__sub">Inspect submitted visits for the selected employee and period</p>
+          </div>
+        </header>
+
+        <FilterBar className="visits-filters">
+          <FilterToolbarRow className="visits-filters__row visits-filters__row--primary">
+            <FilterField label="Employee">
+              <select
+                id="visits-employee"
+                className="search-input w-full visits-employee-select"
+                value={employeeUserId}
+                onChange={(e) => handleEmployeeChange(e.target.value)}
+                aria-label="Filter visits by employee"
+              >
+                <option value="">All Employees</option>
+                {selectorEmployees.map((emp) => {
+                  const userPk = activityEmployeeUserId(emp);
+                  return (
+                    <option key={userPk} value={userPk}>
+                      {visitEmployeeOptionLabel(emp)}
+                    </option>
+                  );
+                })}
+              </select>
+            </FilterField>
+            <FilterField label="Period">
+              <div className="visits-date-chips" role="group" aria-label="Visit period">
+                {DATE_CHIPS.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => handleDateChip(chip.id)}
+                    className={`filter-chip ${
+                      dateChip === chip.id ? "filter-chip--active" : "filter-chip--idle"
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            </FilterField>
+          </FilterToolbarRow>
 
-      <FilterBar className="visits-filters">
-        <div className="visits-date-chips">
-          {DATE_CHIPS.map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => handleDateChip(chip.id)}
-              className={`filter-chip ${
-                dateChip === chip.id ? "filter-chip--active" : "filter-chip--idle"
-              }`}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
+          <FilterToolbarRow className="visits-filters__row">
+            <FilterField spacer className="filter-toolbar__grow">
+              <div className="search-wrapper">
+                <Search className="search-icon" aria-hidden="true" />
+                <input
+                  type="search"
+                  placeholder="Search farmer, mobile, village, crop, land, employee…"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="search-input"
+                  aria-label="Search visits"
+                />
+                {searchInput ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      debouncedSetSearch.cancel?.();
+                      setSearchInput("");
+                      setSearch("");
+                      setPage(1);
+                    }}
+                    className="search-clear-btn"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : null}
+              </div>
+            </FilterField>
 
-        <FilterToolbarRow className="visits-filters__row">
-          <FilterField spacer className="filter-toolbar__grow">
-            <div className="search-wrapper">
-              <Search className="search-icon" aria-hidden="true" />
-              <input
-                type="search"
-                placeholder="Search farmer, mobile, village, crop, land, employee…"
-                value={searchInput}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="search-input"
-                aria-label="Search visits"
-              />
-              {searchInput ? (
+            <FilterField spacer>
+              <div className="visits-view-toggle" role="group" aria-label="View mode">
                 <button
                   type="button"
-                  onClick={() => {
-                    debouncedSetSearch.cancel?.();
-                    setSearchInput("");
-                    setSearch("");
-                    setPage(1);
-                  }}
-                  className="search-clear-btn"
-                  aria-label="Clear search"
+                  onClick={() => setViewMode("grid")}
+                  className={`visits-view-toggle__btn ${
+                    viewMode === "grid" ? "visits-view-toggle__btn--active" : ""
+                  }`}
+                  title="Grid view"
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === "grid"}
                 >
-                  <X className="w-4 h-4" />
+                  <LayoutGrid className="w-4 h-4" />
                 </button>
-              ) : null}
-            </div>
-          </FilterField>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`visits-view-toggle__btn ${
+                    viewMode === "list" ? "visits-view-toggle__btn--active" : ""
+                  }`}
+                  title="List view"
+                  aria-label="List view"
+                  aria-pressed={viewMode === "list"}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+            </FilterField>
 
-          <FilterField spacer>
-            <div className="visits-view-toggle" role="group" aria-label="View mode">
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className={`visits-view-toggle__btn ${
-                  viewMode === "grid" ? "visits-view-toggle__btn--active" : ""
-                }`}
-                title="Grid view"
-                aria-label="Grid view"
-                aria-pressed={viewMode === "grid"}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("list")}
-                className={`visits-view-toggle__btn ${
-                  viewMode === "list" ? "visits-view-toggle__btn--active" : ""
-                }`}
-                title="List view"
-                aria-label="List view"
-                aria-pressed={viewMode === "list"}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </FilterField>
-
-          <FilterField spacer>
-            <button
-              type="button"
-              onClick={() => loadVisits(page)}
-              className="btn btn-secondary btn-md filter-toolbar__clear"
-              aria-label="Refresh visits"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </FilterField>
-
-          {hasActiveFilters ? (
             <FilterField spacer>
               <button
                 type="button"
-                onClick={() => {
-                  debouncedSetSearch.cancel?.();
-                  setSearchInput("");
-                  setSearch("");
-                  setDateChip("all");
-                  setPage(1);
-                }}
-                className="btn btn-ghost btn-md filter-toolbar__clear"
+                onClick={handleRefresh}
+                className="btn btn-secondary btn-md filter-toolbar__clear"
+                aria-label="Refresh visits and today's activity"
               >
-                <X className="w-4 h-4" aria-hidden="true" /> Clear filters
+                <RefreshCw className="w-4 h-4" />
               </button>
             </FilterField>
-          ) : null}
-        </FilterToolbarRow>
 
-        {hasActiveFilters ? (
-          <FilterActiveRow>
-            {search.trim() ? (
-              <span className="filter-chip filter-chip--active capitalize">
-                Search: {search.trim()}
-              </span>
-            ) : null}
-            {dateChip !== "all" ? (
-              <span className="filter-chip filter-chip--idle">
-                Date: {DATE_CHIPS.find((c) => c.id === dateChip)?.label || dateChip}
-              </span>
-            ) : null}
-          </FilterActiveRow>
-        ) : null}
-      </FilterBar>
-
-      {error && (
-        <ErrorRetry
-          compact
-          message={friendlyErrorMessage(error, "Couldn't load visits. Please try again.")}
-          onRetry={() => loadVisits(page)}
-        />
-      )}
-
-      {loading ? (
-        viewMode === "grid" ? (
-          <VisitsGridSkeleton />
-        ) : (
-          <div className="visits-table-card">
-            <VisitsTableSkeleton />
-          </div>
-        )
-      ) : visits.length === 0 ? (
-        <div className="dashboard-section-card">
-          <EmptyState
-            icon={Calendar}
-            title={hasActiveFilters ? "No visits match your filters" : "No field visits yet"}
-            subtitle={
-              hasActiveFilters
-                ? "Try a different search term or date range."
-                : "Visits appear here when field agents submit them from the mobile app."
-            }
-            action={
-              hasActiveFilters ? (
+            {hasActiveFilters ? (
+              <FilterField spacer>
                 <button
                   type="button"
-                  onClick={() => {
-                    debouncedSetSearch.cancel?.();
-                    setSearchInput("");
-                    setSearch("");
-                    setDateChip("all");
-                    setPage(1);
-                  }}
-                  className="btn btn-secondary btn-md"
+                  onClick={handleClearFilters}
+                  className="btn btn-ghost btn-md filter-toolbar__clear"
                 >
                   <X className="w-4 h-4" aria-hidden="true" /> Clear filters
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigate("/tracking")}
-                  className="btn btn-primary btn-md"
-                >
-                  Open live tracking
-                </button>
-              )
-            }
-          />
-        </div>
-      ) : viewMode === "grid" ? (
-        <div className="visits-grid">
-          {visits.map((v) => (
-            <VisitListCard
-              key={`visit-${v.id}`}
-              visit={v}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleAskDelete}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="visits-table-card">
-          <div className="visits-table-wrap">
-            <table className="data-table compact-table visits-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Farmer / Mobile</th>
-                  <th>Village</th>
-                  <th>Crop</th>
-                  <th className="hidden xl:table-cell">{VISIT_FIELD_NOTES_LABEL}</th>
-                  <th className="hidden lg:table-cell">Problem</th>
-                  <th className="hidden lg:table-cell">Action</th>
-                  <th className="hidden md:table-cell">Follow-up</th>
-                  <th className="hidden lg:table-cell">Land</th>
-                  <th className="hidden md:table-cell">Employee</th>
-                  <th>Date</th>
-                  <th>GPS</th>
-                  <th className="w-28 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visits.map((v) => (
-                  <VisitRow
-                    key={`visit-${v.id}`}
-                    v={v}
-                    onView={handleView}
-                    onEdit={handleEdit}
-                    onDelete={handleAskDelete}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </FilterField>
+            ) : null}
+          </FilterToolbarRow>
 
-      {!loading && visits.length > 0 && (
-        <div className="pagination visits-pagination">
-          <span className="pagination-info">
-            Showing <span className="font-semibold text-slate-700">{showingFrom}–{showingTo}</span> of{" "}
-            <span className="font-semibold text-slate-700">{total}</span> visits · Page {page} of {totalPages}
-          </span>
-          <div className="pagination-controls">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="pagination-btn disabled:opacity-30"
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            {pageNums.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPage(p)}
-                className={`pagination-btn ${p === page ? "pagination-btn-active" : ""}`}
-                aria-label={`Page ${p}`}
-                aria-current={p === page ? "page" : undefined}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="pagination-btn disabled:opacity-30"
-              aria-label="Next page"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          {search.trim() ? (
+            <FilterActiveRow>
+              <span className="filter-chip filter-chip--active capitalize">
+                Search: {search.trim()}
+              </span>
+            </FilterActiveRow>
+          ) : null}
+        </FilterBar>
+
+        <div className="visits-scope" aria-live="polite">
+          <p className="visits-scope__line">{scopeLine}</p>
+          {visitsView === "loading" ? (
+            <p className="visits-scope__count">Loading submitted visits…</p>
+          ) : visitsView === "error" ? null : (
+            <p className="visits-scope__count">{countLine}</p>
+          )}
         </div>
-      )}
+
+        {visitsError && (
+          <ErrorRetry
+            compact
+            message={friendlyErrorMessage(visitsError, "Couldn't load visits. Please try again.")}
+            onRetry={() => loadVisits(page)}
+          />
+        )}
+
+        {showVisitSkeleton ? (
+          viewMode === "grid" ? (
+            <VisitsGridSkeleton />
+          ) : (
+            <div className="visits-table-card">
+              <VisitsTableSkeleton />
+            </div>
+          )
+        ) : showVisitEmpty ? (
+          <div className="dashboard-section-card">
+            <EmptyState
+              icon={Calendar}
+              title={emptyCopy.title}
+              subtitle={emptyCopy.subtitle}
+              action={
+                hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="btn btn-secondary btn-md"
+                  >
+                    <X className="w-4 h-4" aria-hidden="true" /> Clear filters
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/tracking")}
+                    className="btn btn-primary btn-md"
+                  >
+                    Open live tracking
+                  </button>
+                )
+              }
+            />
+          </div>
+        ) : showVisitList && viewMode === "grid" ? (
+          <div className="visits-grid">
+            {visits.map((v) => (
+              <VisitListCard
+                key={`visit-${v.id}`}
+                visit={v}
+                onView={handleView}
+                onEdit={handleEdit}
+                onDelete={handleAskDelete}
+              />
+            ))}
+          </div>
+        ) : showVisitList ? (
+          <div className="visits-table-card">
+            <div className="visits-table-wrap">
+              <table className="data-table compact-table visits-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Farmer / Mobile</th>
+                    <th>Village</th>
+                    <th>Crop</th>
+                    <th className="hidden xl:table-cell">{VISIT_FIELD_NOTES_LABEL}</th>
+                    <th className="hidden lg:table-cell">Problem</th>
+                    <th className="hidden lg:table-cell">Action</th>
+                    <th className="hidden md:table-cell">Follow-up</th>
+                    <th className="hidden lg:table-cell">Land</th>
+                    <th className="hidden md:table-cell">Employee</th>
+                    <th>Date</th>
+                    <th>GPS</th>
+                    <th className="w-28 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visits.map((v) => (
+                    <VisitRow
+                      key={`visit-${v.id}`}
+                      v={v}
+                      onView={handleView}
+                      onEdit={handleEdit}
+                      onDelete={handleAskDelete}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+
+        {showVisitList && (
+          <div className="pagination visits-pagination">
+            <span className="pagination-info">
+              Showing <span className="font-semibold text-slate-700">{showingFrom}–{showingTo}</span> of{" "}
+              <span className="font-semibold text-slate-700">{safeTotal}</span> visits · Page {page} of {totalPages}
+            </span>
+            <div className="pagination-controls">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="pagination-btn disabled:opacity-30"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {pageNums.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className={`pagination-btn ${p === page ? "pagination-btn-active" : ""}`}
+                  aria-label={`Page ${p}`}
+                  aria-current={p === page ? "page" : undefined}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="pagination-btn disabled:opacity-30"
+                aria-label="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
