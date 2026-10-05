@@ -59,7 +59,7 @@ export default function EmployeeActivityStrip({
           const className = [
             "visits-emp-card",
             isSelected ? "visits-emp-card--selected" : "",
-            meta.zero ? "visits-emp-card--zero" : "",
+            meta.zero ? "visits-emp-card--zero" : "visits-emp-card--active",
             userId ? "" : "visits-emp-card--disabled",
           ]
             .filter(Boolean)

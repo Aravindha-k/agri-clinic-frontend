@@ -479,6 +479,7 @@ export default function Visits() {
         }
       />
 
+      <div className="visits-today-bundle">
       <section className="visits-ops-section" aria-labelledby="visits-today-heading">
         <header className="visits-ops-heading">
           <div>
@@ -523,6 +524,7 @@ export default function Visits() {
           />
         )}
       </section>
+      </div>
 
       <section className="visits-records-section" aria-labelledby="visits-records-heading">
         <header className="visits-ops-heading">
@@ -555,7 +557,7 @@ export default function Visits() {
                 })}
               </select>
             </FilterField>
-            <FilterField label="Period">
+            <FilterField label="Period" className="visits-filters__period">
               <div className="visits-date-chips" role="group" aria-label="Visit period">
                 {DATE_CHIPS.map((chip) => (
                   <button
@@ -571,9 +573,20 @@ export default function Visits() {
                 ))}
               </div>
             </FilterField>
+            {hasActiveFilters ? (
+              <FilterField spacer>
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="btn btn-ghost btn-md filter-toolbar__clear"
+                >
+                  <X className="w-4 h-4" aria-hidden="true" /> Clear filters
+                </button>
+              </FilterField>
+            ) : null}
           </FilterToolbarRow>
 
-          <FilterToolbarRow className="visits-filters__row">
+          <FilterToolbarRow className="visits-filters__row visits-filters__row--search">
             <FilterField spacer className="filter-toolbar__grow">
               <div className="search-wrapper">
                 <Search className="search-icon" aria-hidden="true" />
@@ -642,18 +655,6 @@ export default function Visits() {
                 <RefreshCw className="w-4 h-4" />
               </button>
             </FilterField>
-
-            {hasActiveFilters ? (
-              <FilterField spacer>
-                <button
-                  type="button"
-                  onClick={handleClearFilters}
-                  className="btn btn-ghost btn-md filter-toolbar__clear"
-                >
-                  <X className="w-4 h-4" aria-hidden="true" /> Clear filters
-                </button>
-              </FilterField>
-            ) : null}
           </FilterToolbarRow>
 
           {search.trim() ? (
