@@ -7417,13 +7417,19 @@ textarea.input {
     color: var(--neutral-500);
 }
 
+.visits-emp-card__detail--after-duty {
+    margin-top: 0.4rem;
+    padding-top: 0.2rem;
+}
+
 .visits-emp-card--with-duty {
     min-height: 0;
-    gap: 0.2rem;
+    gap: 0.15rem;
 }
 
 .visits-emp-duty {
-    @apply flex flex-col gap-0.5 mt-0.5;
+    @apply flex flex-col mt-0.5;
+    gap: 0.2rem;
     min-width: 0;
 }
 
@@ -7445,19 +7451,19 @@ textarea.input {
 }
 
 .visits-emp-duty__status--ended {
-    color: var(--neutral-600);
+    color: #1a5c3a;
 }
 
 .visits-emp-duty__status--ended .visits-emp-duty__mark {
-    background: var(--neutral-400);
+    background: #2d6a4f;
 }
 
 .visits-emp-duty__status--auto {
-    color: #b45309;
+    color: #92400e;
 }
 
 .visits-emp-duty__status--auto .visits-emp-duty__mark {
-    background: #d97706;
+    background: #b45309;
 }
 
 .visits-emp-duty__status--muted {
@@ -7467,28 +7473,74 @@ textarea.input {
 
 .visits-emp-duty__status--muted .visits-emp-duty__mark {
     background: var(--neutral-400);
-    opacity: 0.7;
+    opacity: 0.85;
 }
 
 .visits-emp-duty__rows {
-    @apply flex flex-col gap-px;
+    @apply flex flex-col;
+    gap: 0.125rem;
     min-width: 0;
 }
 
 .visits-emp-duty__row {
-    @apply flex items-baseline justify-between gap-2 text-[10px] leading-snug tabular-nums;
-    color: var(--neutral-600);
+    @apply flex items-baseline justify-between gap-2 text-[10px] leading-snug;
+    min-width: 0;
 }
 
 .visits-emp-duty__label {
     color: var(--neutral-500);
-    font-weight: 500;
+    font-weight: 400;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .visits-emp-duty__value {
+    flex: 0 0 auto;
     font-weight: 600;
-    color: var(--neutral-700);
+    color: var(--brand-ink);
     text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Start / End clock values — dark charcoal, semibold */
+.visits-emp-duty__row--start .visits-emp-duty__value,
+.visits-emp-duty__row--end .visits-emp-duty__value {
+    color: var(--brand-ink);
+    font-weight: 600;
+}
+
+/* Duty duration — strongest value in duty block */
+.visits-emp-duty__row--duty .visits-emp-duty__value {
+    color: var(--brand-primary-dark);
+    font-weight: 700;
+    min-width: 4.75ch;
+}
+
+/* Last visit — visit meta, secondary to duty */
+.visits-emp-card__visit-row {
+    @apply flex items-baseline justify-between gap-2 text-[10px] leading-snug;
+    min-width: 0;
+}
+
+.visits-emp-card__visit-row--after-duty {
+    margin-top: 0.35rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.visits-emp-card__visit-label {
+    color: var(--neutral-500);
+    font-weight: 400;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.visits-emp-card__visit-value {
+    flex: 0 0 auto;
+    color: var(--neutral-700);
+    font-weight: 500;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .visits-emp-card__selected-mark {

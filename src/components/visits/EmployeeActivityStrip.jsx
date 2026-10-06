@@ -41,13 +41,44 @@ function DutyRows({ presentation }) {
   return (
     <span className="visits-emp-duty__rows">
       {presentation.rows.map((row) => (
-        <span key={row.key} className="visits-emp-duty__row">
+        <span
+          key={row.key}
+          className={`visits-emp-duty__row visits-emp-duty__row--${row.key}`}
+        >
           <span className="visits-emp-duty__label">{row.label}</span>
           <span className="visits-emp-duty__value">{row.value}</span>
         </span>
       ))}
     </span>
   );
+}
+
+/** Visit meta line — two-column when "Last visit · …", muted plain text for zero-visit copy. */
+function VisitDetailLine({ meta, withDuty }) {
+  if (!meta?.detail) return null;
+  const visitClass = [
+    "visits-emp-card__detail",
+    withDuty ? "visits-emp-card__detail--after-duty" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (meta.zero) {
+    return <span className={visitClass}>{meta.detail}</span>;
+  }
+
+  const sep = " · ";
+  const idx = meta.detail.indexOf(sep);
+  if (meta.detail.startsWith("Last visit") && idx > 0) {
+    return (
+      <span className={`visits-emp-card__visit-row${withDuty ? " visits-emp-card__visit-row--after-duty" : ""}`}>
+        <span className="visits-emp-card__visit-label">Last visit</span>
+        <span className="visits-emp-card__visit-value">{meta.detail.slice(idx + sep.length)}</span>
+      </span>
+    );
+  }
+
+  return <span className={visitClass}>{meta.detail}</span>;
 }
 
 export default function EmployeeActivityStrip({
@@ -132,7 +163,7 @@ export default function EmployeeActivityStrip({
                   <DutyRows presentation={dutyPresentation} />
                 </span>
               ) : null}
-              <span className="visits-emp-card__detail">{meta.detail}</span>
+              <VisitDetailLine meta={meta} withDuty={Boolean(dutyPresentation)} />
             </>
           );
 
