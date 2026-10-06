@@ -263,6 +263,7 @@ export default function Visits() {
   const [activity, setActivity] = useState(null);
   const [activityPeriod, setActivityPeriod] = useState(DEFAULT_ACTIVITY_PERIOD);
   const [loadedActivityPeriod, setLoadedActivityPeriod] = useState("");
+  const [activityFetchedAtMs, setActivityFetchedAtMs] = useState(null);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
   const activityRequestSeq = useRef(0);
@@ -297,11 +298,13 @@ export default function Visits() {
       if (seq !== activityRequestSeq.current) return;
       setActivity(data);
       setLoadedActivityPeriod(period);
+      setActivityFetchedAtMs(Date.now());
     } catch (err) {
       if (seq !== activityRequestSeq.current) return;
       setActivityError(activityErrorMessage(period));
       setActivity(null);
       setLoadedActivityPeriod(period);
+      setActivityFetchedAtMs(null);
     } finally {
       if (seq === activityRequestSeq.current) setActivityLoading(false);
     }
@@ -423,6 +426,7 @@ export default function Visits() {
     setActivityError("");
     setActivityLoading(true);
     setLoadedActivityPeriod("");
+    setActivityFetchedAtMs(null);
   };
 
   const handleEmployeeChange = (userId) => {
@@ -588,6 +592,7 @@ export default function Visits() {
             employees={activityEmployees}
             selectedUserId={employeeUserId}
             period={activityPeriod}
+            dutyFetchedAtMs={activityFetchedAtMs}
             onSelectEmployee={handleActivityCardSelect}
             onSelectAll={handleActivitySelectAll}
           />

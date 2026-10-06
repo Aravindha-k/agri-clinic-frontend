@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import {
   activityEmployeeUserId,
+  activityShowsDuty,
   employeeActivityCardA11y,
   employeeActivityMeta,
+  employeeDutyPresentation,
   visitEmployeeCode,
   visitEmployeeDisplayName,
   visitEmployeeOptionLabel,
@@ -23,14 +26,51 @@ export function EmployeeActivitySkeleton() {
   );
 }
 
+function DutyStatusLine({ presentation }) {
+  if (!presentation) return null;
+  return (
+    <span className={`visits-emp-duty__status visits-emp-duty__status--${presentation.tone}`}>
+      <span className="visits-emp-duty__mark" aria-hidden="true" />
+      <span>{presentation.statusLabel}</span>
+    </span>
+  );
+}
+
+function DutyRows({ presentation }) {
+  if (!presentation?.rows?.length) return null;
+  return (
+    <span className="visits-emp-duty__rows">
+      {presentation.rows.map((row) => (
+        <span key={row.key} className="visits-emp-duty__row">
+          <span className="visits-emp-duty__label">{row.label}</span>
+          <span className="visits-emp-duty__value">{row.value}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export default function EmployeeActivityStrip({
   employees,
   selectedUserId,
   onSelectEmployee,
   onSelectAll,
   period = "today",
+  dutyFetchedAtMs = null,
 }) {
   const selected = String(selectedUserId || "");
+  const showDuty = activityShowsDuty(period);
+  const [tickNow, setTickNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!showDuty) return undefined;
+    const hasOnDuty = (employees || []).some(
+      (emp) => emp?.duty?.status === "ON_DUTY"
+    );
+    if (!hasOnDuty) return undefined;
+    const id = window.setInterval(() => setTickNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, [showDuty, employees]);
 
   return (
     <div className="visits-emp-panel">
@@ -50,6 +90,13 @@ export default function EmployeeActivityStrip({
           const name = visitEmployeeDisplayName(emp);
           const code = visitEmployeeCode(emp);
           const meta = employeeActivityMeta(emp, period);
+          const dutyPresentation = showDuty
+            ? employeeDutyPresentation(emp?.duty, {
+                period,
+                fetchedAtMs: dutyFetchedAtMs,
+                nowMs: tickNow,
+              })
+            : null;
           const isSelected = Boolean(userId && userId === selected);
           const a11y = employeeActivityCardA11y({
             selected: isSelected,
@@ -62,17 +109,37 @@ export default function EmployeeActivityStrip({
             isSelected ? "visits-emp-card--selected" : "",
             meta.zero ? "visits-emp-card--zero" : "visits-emp-card--active",
             userId ? "" : "visits-emp-card--disabled",
+            showDuty ? "visits-emp-card--with-duty" : "",
           ]
             .filter(Boolean)
             .join(" ");
 
+          const body = (
+            <>
+              <span className="visits-emp-card__top">
+                <span className="visits-emp-card__name">{name || visitEmployeeOptionLabel(emp)}</span>
+                {isSelected ? (
+                  <span className="visits-emp-card__selected-mark" aria-hidden="true">
+                    <Check className="w-3.5 h-3.5" />
+                  </span>
+                ) : null}
+              </span>
+              {code ? <span className="visits-emp-card__code">{code}</span> : null}
+              <span className="visits-emp-card__count">{meta.visitsLabel}</span>
+              {dutyPresentation ? (
+                <span className="visits-emp-duty">
+                  <DutyStatusLine presentation={dutyPresentation} />
+                  <DutyRows presentation={dutyPresentation} />
+                </span>
+              ) : null}
+              <span className="visits-emp-card__detail">{meta.detail}</span>
+            </>
+          );
+
           if (!userId) {
             return (
               <div key={key} className={className}>
-                <p className="visits-emp-card__name">{name || "Employee"}</p>
-                {code ? <p className="visits-emp-card__code">{code}</p> : null}
-                <p className="visits-emp-card__count">{meta.visitsLabel}</p>
-                <p className="visits-emp-card__detail">{meta.detail}</p>
+                {body}
               </div>
             );
           }
@@ -84,17 +151,7 @@ export default function EmployeeActivityStrip({
               className={className}
               onClick={() => onSelectEmployee(userId)}
             >
-              <span className="visits-emp-card__top">
-                <span className="visits-emp-card__name">{name || visitEmployeeOptionLabel(emp)}</span>
-                {isSelected ? (
-                  <span className="visits-emp-card__selected-mark" aria-hidden="true">
-                    <Check className="w-3.5 h-3.5" />
-                  </span>
-                ) : null}
-              </span>
-              {code ? <span className="visits-emp-card__code">{code}</span> : null}
-              <span className="visits-emp-card__count">{meta.visitsLabel}</span>
-              <span className="visits-emp-card__detail">{meta.detail}</span>
+              {body}
             </button>
           );
         })}

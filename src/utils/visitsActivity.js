@@ -49,6 +49,53 @@ function toNonNegInt(value) {
   return Math.round(n);
 }
 
+export const DUTY_STATUS = {
+  ON_DUTY: "ON_DUTY",
+  ENDED: "ENDED",
+  AUTO_ENDED: "AUTO_ENDED",
+  NOT_STARTED: "NOT_STARTED",
+};
+
+/** Duty rows are authoritative only for the Today activity period. */
+export function activityShowsDuty(period = DEFAULT_ACTIVITY_PERIOD) {
+  return normalizeActivityPeriod(period) === "today";
+}
+
+export function normalizeEmployeeDuty(raw) {
+  if (raw == null || typeof raw !== "object") return null;
+  const statusRaw = String(raw.status || "").toUpperCase();
+  const status =
+    statusRaw === DUTY_STATUS.ON_DUTY ||
+    statusRaw === DUTY_STATUS.ENDED ||
+    statusRaw === DUTY_STATUS.AUTO_ENDED ||
+    statusRaw === DUTY_STATUS.NOT_STARTED
+      ? statusRaw
+      : DUTY_STATUS.NOT_STARTED;
+  const durationLimit = toNonNegInt(raw.duration_limit_seconds);
+  return {
+    status,
+    start_time: raw.start_time == null || raw.start_time === "" ? null : String(raw.start_time),
+    end_time: raw.end_time == null || raw.end_time === "" ? null : String(raw.end_time),
+    duration_seconds: toNonNegInt(raw.duration_seconds),
+    completion_reason:
+      raw.completion_reason == null || raw.completion_reason === ""
+        ? null
+        : String(raw.completion_reason),
+    session_count: toNonNegInt(raw.session_count),
+    duration_limit_seconds: durationLimit > 0 ? durationLimit : 32400,
+  };
+}
+
+export function normalizeActivityEmployee(emp) {
+  if (emp == null || typeof emp !== "object") return emp;
+  return {
+    ...emp,
+    duty: Object.prototype.hasOwnProperty.call(emp, "duty")
+      ? normalizeEmployeeDuty(emp.duty)
+      : null,
+  };
+}
+
 export function normalizeVisitActivitySummary(payload) {
   const data = unwrapActivityPayload(payload);
   if (!data) {
@@ -63,11 +110,108 @@ export function normalizeVisitActivitySummary(payload) {
   }
   return {
     date: data.date == null ? "" : String(data.date),
+    start_date: data.start_date == null ? "" : String(data.start_date),
+    end_date: data.end_date == null ? "" : String(data.end_date),
     total_visits: toNonNegInt(data.total_visits),
     active_staff: toNonNegInt(data.active_staff),
     no_visits: toNonNegInt(data.no_visits),
     gps_verified: toNonNegInt(data.gps_verified),
-    employees: Array.isArray(data.employees) ? data.employees : [],
+    employees: Array.isArray(data.employees)
+      ? data.employees.map(normalizeActivityEmployee)
+      : [],
+  };
+}
+
+/** Format duty duration seconds for compact cards. */
+export function formatDutyDuration(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (hours <= 0) return `${minutes}m`;
+  return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+}
+
+export function formatDutyClock(iso) {
+  return formatLatestVisitClock(iso);
+}
+
+/**
+ * Live ON_DUTY duration from snapshot seconds + elapsed wall time since fetch.
+ * Caps at duration_limit_seconds * session_count when known.
+ */
+export function liveDutyDurationSeconds(duty, fetchedAtMs, nowMs = Date.now()) {
+  if (!duty || duty.status !== DUTY_STATUS.ON_DUTY) {
+    return toNonNegInt(duty?.duration_seconds);
+  }
+  const base = toNonNegInt(duty.duration_seconds);
+  const fetched = Number(fetchedAtMs);
+  if (!Number.isFinite(fetched)) return base;
+  const elapsed = Math.max(0, Math.floor((Number(nowMs) - fetched) / 1000));
+  const sessions = Math.max(1, toNonNegInt(duty.session_count) || 1);
+  const limitPer = toNonNegInt(duty.duration_limit_seconds) || 32400;
+  const cap = limitPer * sessions;
+  return Math.min(base + elapsed, cap);
+}
+
+/**
+ * Compact duty presentation for Today employee cards.
+ * Visit zero/active colors stay independent — duty is secondary.
+ */
+export function employeeDutyPresentation(duty, { period = DEFAULT_ACTIVITY_PERIOD, fetchedAtMs, nowMs } = {}) {
+  if (!activityShowsDuty(period) || duty == null) return null;
+  const status = duty.status || DUTY_STATUS.NOT_STARTED;
+  const startLabel = formatDutyClock(duty.start_time);
+  const endLabel = formatDutyClock(duty.end_time);
+  const durationSeconds = liveDutyDurationSeconds(duty, fetchedAtMs, nowMs);
+  const durationLabel = formatDutyDuration(durationSeconds);
+
+  if (status === DUTY_STATUS.NOT_STARTED) {
+    return {
+      status,
+      statusLabel: "Duty not started",
+      tone: "muted",
+      rows: [],
+      showAutoEndedNote: false,
+    };
+  }
+
+  if (status === DUTY_STATUS.ON_DUTY) {
+    return {
+      status,
+      statusLabel: "On duty",
+      tone: "on",
+      rows: [
+        startLabel ? { key: "start", label: "Start", value: startLabel } : null,
+        { key: "duty", label: "Duty so far", value: durationLabel },
+      ].filter(Boolean),
+      showAutoEndedNote: false,
+    };
+  }
+
+  if (status === DUTY_STATUS.AUTO_ENDED) {
+    return {
+      status,
+      statusLabel: "Auto-ended",
+      tone: "auto",
+      rows: [
+        startLabel ? { key: "start", label: "Start", value: startLabel } : null,
+        endLabel ? { key: "end", label: "End", value: endLabel } : null,
+        { key: "duty", label: "Duty", value: durationLabel },
+      ].filter(Boolean),
+      showAutoEndedNote: true,
+    };
+  }
+
+  return {
+    status: DUTY_STATUS.ENDED,
+    statusLabel: "Duty ended",
+    tone: "ended",
+    rows: [
+      startLabel ? { key: "start", label: "Start", value: startLabel } : null,
+      endLabel ? { key: "end", label: "End", value: endLabel } : null,
+      { key: "duty", label: "Duty", value: durationLabel },
+    ].filter(Boolean),
+    showAutoEndedNote: false,
   };
 }
 

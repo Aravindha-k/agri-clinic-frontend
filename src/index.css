@@ -7417,6 +7417,80 @@ textarea.input {
     color: var(--neutral-500);
 }
 
+.visits-emp-card--with-duty {
+    min-height: 0;
+    gap: 0.2rem;
+}
+
+.visits-emp-duty {
+    @apply flex flex-col gap-0.5 mt-0.5;
+    min-width: 0;
+}
+
+.visits-emp-duty__status {
+    @apply inline-flex items-center gap-1 text-[10px] font-semibold leading-none tracking-tight;
+}
+
+.visits-emp-duty__mark {
+    @apply inline-block w-1.5 h-1.5 rounded-full shrink-0;
+    background: currentColor;
+}
+
+.visits-emp-duty__status--on {
+    color: var(--brand-primary-dark);
+}
+
+.visits-emp-duty__status--on .visits-emp-duty__mark {
+    background: var(--brand-primary);
+}
+
+.visits-emp-duty__status--ended {
+    color: var(--neutral-600);
+}
+
+.visits-emp-duty__status--ended .visits-emp-duty__mark {
+    background: var(--neutral-400);
+}
+
+.visits-emp-duty__status--auto {
+    color: #b45309;
+}
+
+.visits-emp-duty__status--auto .visits-emp-duty__mark {
+    background: #d97706;
+}
+
+.visits-emp-duty__status--muted {
+    color: var(--neutral-500);
+    font-weight: 500;
+}
+
+.visits-emp-duty__status--muted .visits-emp-duty__mark {
+    background: var(--neutral-400);
+    opacity: 0.7;
+}
+
+.visits-emp-duty__rows {
+    @apply flex flex-col gap-px;
+    min-width: 0;
+}
+
+.visits-emp-duty__row {
+    @apply flex items-baseline justify-between gap-2 text-[10px] leading-snug tabular-nums;
+    color: var(--neutral-600);
+}
+
+.visits-emp-duty__label {
+    color: var(--neutral-500);
+    font-weight: 500;
+}
+
+.visits-emp-duty__value {
+    font-weight: 600;
+    color: var(--neutral-700);
+    text-align: right;
+}
+
 .visits-emp-card__selected-mark {
     @apply inline-flex items-center justify-center w-4 h-4 rounded-full shrink-0;
     background: var(--brand-primary);

@@ -24,6 +24,12 @@ import {
   activityErrorMessage,
   activitySectionCopy,
   zeroVisitDetail,
+  activityShowsDuty,
+  formatDutyDuration,
+  normalizeEmployeeDuty,
+  employeeDutyPresentation,
+  liveDutyDurationSeconds,
+  DUTY_STATUS,
 } from "./visitsActivity.js";
 import {
   activityPeriodRange,
@@ -296,5 +302,145 @@ assert.equal("page_size" in drillQuery, true);
 
 const zeroVisible = summary.employees.some((e) => Number(e.visit_count) === 0);
 assert.equal(zeroVisible, true);
+
+assert.equal(activityShowsDuty("today"), true);
+assert.equal(activityShowsDuty("week"), false);
+assert.equal(activityShowsDuty("month"), false);
+assert.equal(formatDutyDuration(0), "0m");
+assert.equal(formatDutyDuration(35 * 60), "35m");
+assert.equal(formatDutyDuration(2 * 3600 + 35 * 60), "2h 35m");
+assert.equal(formatDutyDuration(9 * 3600), "9h 00m");
+
+assert.equal(normalizeEmployeeDuty(null), null);
+assert.equal(normalizeEmployeeDuty({ status: "ON_DUTY", duration_seconds: 10 }).status, DUTY_STATUS.ON_DUTY);
+
+const onDuty = employeeDutyPresentation(
+  {
+    status: "ON_DUTY",
+    start_time: "2026-10-05T08:42:00+05:30",
+    end_time: null,
+    duration_seconds: 2 * 3600 + 35 * 60,
+    session_count: 1,
+    duration_limit_seconds: 32400,
+  },
+  { period: "today", fetchedAtMs: Date.now(), nowMs: Date.now() }
+);
+assert.equal(onDuty.statusLabel, "On duty");
+assert.equal(onDuty.tone, "on");
+assert.ok(onDuty.rows.some((r) => r.label === "Duty so far"));
+
+const ended = employeeDutyPresentation(
+  {
+    status: "ENDED",
+    start_time: "2026-10-05T08:42:00+05:30",
+    end_time: "2026-10-05T17:48:00+05:30",
+    duration_seconds: 9 * 3600 + 6 * 60,
+    session_count: 1,
+  },
+  { period: "today" }
+);
+assert.equal(ended.statusLabel, "Duty ended");
+assert.ok(ended.rows.some((r) => r.label === "End"));
+
+const autoEnded = employeeDutyPresentation(
+  {
+    status: "AUTO_ENDED",
+    start_time: "2026-10-05T08:42:00+05:30",
+    end_time: "2026-10-05T17:42:00+05:30",
+    duration_seconds: 9 * 3600,
+    completion_reason: "AUTO_EXPIRED",
+    session_count: 1,
+  },
+  { period: "today" }
+);
+assert.equal(autoEnded.statusLabel, "Auto-ended");
+assert.equal(autoEnded.showAutoEndedNote, true);
+
+const notStarted = employeeDutyPresentation(
+  { status: "NOT_STARTED", duration_seconds: 0, session_count: 0 },
+  { period: "today" }
+);
+assert.equal(notStarted.statusLabel, "Duty not started");
+assert.equal(notStarted.rows.length, 0);
+
+assert.equal(
+  employeeDutyPresentation(
+    { status: "ON_DUTY", duration_seconds: 100, start_time: "2026-10-05T08:00:00+05:30" },
+    { period: "week" }
+  ),
+  null
+);
+assert.equal(
+  employeeDutyPresentation(
+    { status: "ON_DUTY", duration_seconds: 100, start_time: "2026-10-05T08:00:00+05:30" },
+    { period: "month" }
+  ),
+  null
+);
+
+const fetched = 1_000_000;
+assert.equal(
+  liveDutyDurationSeconds(
+    { status: "ON_DUTY", duration_seconds: 60, duration_limit_seconds: 32400, session_count: 1 },
+    fetched,
+    fetched + 60_000
+  ),
+  120
+);
+assert.equal(
+  liveDutyDurationSeconds(
+    { status: "ENDED", duration_seconds: 3600, duration_limit_seconds: 32400, session_count: 1 },
+    fetched,
+    fetched + 60_000
+  ),
+  3600
+);
+
+const multiDuty = normalizeEmployeeDuty({
+  status: "ON_DUTY",
+  start_time: "2026-10-05T08:00:00+05:30",
+  end_time: null,
+  duration_seconds: 5400,
+  session_count: 2,
+  duration_limit_seconds: 32400,
+});
+assert.equal(multiDuty.session_count, 2);
+const multiPres = employeeDutyPresentation(multiDuty, { period: "today" });
+assert.equal(multiPres.status, "ON_DUTY");
+
+const withDutySummary = normalizeVisitActivitySummary({
+  date: "2026-10-05",
+  total_visits: 1,
+  active_staff: 1,
+  no_visits: 0,
+  gps_verified: 1,
+  employees: [
+    {
+      user_id: 30,
+      employee_id: "KAC-0003",
+      name: "Kavi",
+      visit_count: 1,
+      latest_visit_at: null,
+      duty: {
+        status: "ON_DUTY",
+        start_time: "2026-10-05T08:42:00+05:30",
+        duration_seconds: 100,
+        session_count: 1,
+      },
+    },
+    {
+      user_id: 31,
+      employee_id: "KAC-0004",
+      name: "Sasi",
+      visit_count: 0,
+      latest_visit_at: null,
+      duty: null,
+    },
+  ],
+});
+assert.equal(withDutySummary.employees[0].duty.status, "ON_DUTY");
+assert.equal(withDutySummary.employees[1].duty, null);
+assert.equal(activityEmployeeUserId(withDutySummary.employees[0]), "30");
+assert.equal(employeeActivityMeta(withDutySummary.employees[1], "today").zero, true);
 
 console.log("visitsActivity checks OK");
