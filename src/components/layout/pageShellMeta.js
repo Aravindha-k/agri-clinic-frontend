@@ -41,7 +41,7 @@ const EXACT = {
   },
   "/masters/crops": {
     title: "Master Crops",
-    subtitle: "Crop types, varieties and seasons",
+    subtitle: "Crop Pest & Disease mappings",
   },
   "/masters/problem-categories": {
     title: "Problem Categories",
@@ -83,6 +83,9 @@ export function resolvePageShellMeta(pathname) {
   if (/^\/visits\/create/.test(pathname)) return { title: "Create Visit", subtitle: "Log a field visit" };
   if (/^\/visits\/\d+\/edit/.test(pathname)) return { title: "Edit Visit", subtitle: "Update visit record" };
   if (/^\/visits\/\d+/.test(pathname)) return { title: "Visit Detail", subtitle: "Visit report" };
+  if (/^\/masters\/crops\/\d+\/problems/.test(pathname)) {
+    return { title: "Crop Pest & Disease", subtitle: "Manage Pest and Disease mappings" };
+  }
 
   return null;
 }

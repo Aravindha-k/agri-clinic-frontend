@@ -9,6 +9,7 @@ import Notifications from "./pages/Notifications";
 import Masters from "./pages/Masters";
 import MasterLocationsPage from "./pages/masters/MasterLocationsPage";
 import MasterCropsPage from "./pages/masters/MasterCropsPage";
+import MasterCropPestDiseasePage from "./pages/masters/MasterCropPestDiseasePage";
 import MasterProblemCategories from "./pages/masters/MasterProblemCategories";
 import MasterProblemItems from "./pages/masters/MasterProblemItems";
 import MasterEmployeeLocationsPage from "./pages/masters/MasterEmployeeLocationsPage";
@@ -128,6 +129,7 @@ function App() {
           <Route path="masters" element={<Masters />} />
           <Route path="masters/locations" element={<MasterLocationsPage />} />
           <Route path="masters/crops" element={<MasterCropsPage />} />
+          <Route path="masters/crops/:cropId/problems" element={<MasterCropPestDiseasePage />} />
           <Route path="masters/problem-categories" element={<MasterProblemCategories />} />
           <Route path="masters/problem-items" element={<MasterProblemItems />} />
           <Route path="masters/employee-locations" element={<MasterEmployeeLocationsPage />} />

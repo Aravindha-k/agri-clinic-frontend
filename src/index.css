@@ -10186,9 +10186,199 @@ textarea.input {
     @apply text-red-600 bg-red-50;
 }
 
+.masters-admin-action-btn--manage {
+    @apply text-teal-700;
+}
+
+.masters-admin-action-btn--manage:hover {
+    @apply text-teal-800 bg-teal-50;
+}
+
 .masters-admin-action-btn:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
+}
+
+/* ── Crop Pest / Disease mapping ── */
+.cpd-count-badge {
+    @apply inline-flex items-center justify-center min-w-[2rem] h-7 px-2 rounded-lg text-sm font-bold tabular-nums border;
+}
+
+.cpd-count-badge--pest {
+    @apply bg-emerald-50 text-emerald-800 border-emerald-200;
+}
+
+.cpd-count-badge--disease {
+    @apply bg-slate-50 text-slate-700 border-slate-200;
+}
+
+.cpd-skeleton-card {
+    @apply p-4 space-y-3;
+}
+
+.cpd-skeleton-row {
+    @apply grid grid-cols-[1.5fr_0.5fr_0.5fr_0.7fr_0.8fr] gap-3 items-center;
+}
+
+.cpd-crops-cards {
+    @apply hidden;
+}
+
+@media (max-width: 767px) {
+    .cpd-crops-table-card {
+        display: none;
+    }
+
+    .cpd-crops-cards {
+        @apply grid gap-3;
+    }
+}
+
+.cpd-crop-card {
+    @apply dashboard-section-card p-4 flex flex-col gap-3;
+}
+
+.cpd-crop-card__head {
+    @apply flex items-start justify-between gap-3;
+}
+
+.cpd-crop-card__counts {
+    @apply flex items-center gap-4;
+}
+
+.cpd-crop-card__label {
+    @apply block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1;
+}
+
+.cpd-crop-card__actions {
+    @apply flex flex-wrap gap-2 pt-1;
+}
+
+.cpd-detail-hero {
+    @apply dashboard-section-card p-4 sm:p-5 flex items-start gap-4 mb-4;
+}
+
+.cpd-detail-hero__icon {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center shrink-0;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: var(--brand-primary-dark);
+}
+
+.cpd-detail-hero__title {
+    @apply text-xl font-bold text-slate-900 leading-tight;
+}
+
+.cpd-detail-hero__ta {
+    @apply text-sm text-slate-500 mt-0.5;
+}
+
+.cpd-detail-hero__meta {
+    @apply flex flex-wrap items-center gap-2 mt-2.5;
+}
+
+.cpd-stat {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100;
+}
+
+.cpd-stat strong {
+    @apply text-slate-900 tabular-nums;
+}
+
+.cpd-tabs {
+    @apply mb-3;
+}
+
+.cpd-disease-notice {
+    @apply flex items-start gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3 text-sm text-amber-900 mb-4;
+}
+
+.cpd-mapped-panel {
+    @apply dashboard-section-card p-4 sm:p-5;
+}
+
+.cpd-mapped-panel__toolbar {
+    @apply flex flex-col sm:flex-row sm:items-center gap-3 mb-4;
+}
+
+.cpd-mapped-search {
+    @apply flex-1 w-full;
+}
+
+.cpd-master-list {
+    @apply list-none m-0 p-0 divide-y divide-slate-100;
+}
+
+.cpd-master-row {
+    @apply flex flex-col sm:flex-row sm:items-center gap-3 py-3.5;
+}
+
+.cpd-master-row__name {
+    @apply text-sm font-semibold text-slate-900;
+}
+
+.cpd-master-row__ta {
+    @apply text-xs text-slate-500 mt-0.5 break-words;
+}
+
+.cpd-master-row__meta {
+    @apply flex flex-wrap items-center gap-2 sm:ml-auto;
+}
+
+.cpd-mapped-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border bg-emerald-50 text-emerald-700 border-emerald-200;
+}
+
+.cpd-available-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border bg-sky-50 text-sky-700 border-sky-200;
+}
+
+.cpd-unmap-btn {
+    @apply text-slate-600;
+}
+
+.cpd-empty {
+    @apply !p-8;
+}
+
+.cpd-add-panel__hint {
+    @apply text-sm text-slate-500 mb-4;
+}
+
+.cpd-search-clear {
+    @apply absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-600;
+}
+
+.cpd-available-block__title {
+    @apply text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2;
+}
+
+.cpd-available-loading,
+.cpd-available-empty {
+    @apply text-sm text-slate-500 py-3;
+}
+
+.cpd-available-loading {
+    @apply inline-flex items-center gap-2;
+}
+
+.cpd-available-list {
+    @apply list-none m-0 p-0 max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-xl;
+}
+
+.cpd-available-row {
+    @apply flex items-center gap-3 px-3 py-2.5;
+}
+
+.cpd-create-divider {
+    @apply mt-5 pt-4 border-t border-slate-100;
+}
+
+.cpd-create-fixed-cat {
+    @apply text-xs text-slate-500;
+}
+
+.cpd-detail-skeleton {
+    @apply dashboard-section-card p-5;
 }
 
 .masters-admin-action-btn:disabled {
