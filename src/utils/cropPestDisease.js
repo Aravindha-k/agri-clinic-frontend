@@ -183,7 +183,7 @@ export function unmapConfirmCopy({ masterName, cropName }) {
     title: "Remove mapping",
     message: `Remove ${master} from ${crop}?`,
     support:
-      "This removes the crop mapping only. It does not delete the Pest master or historical visit data.",
+      "This removes the mapping from this crop only. It does not delete the master or historical visit data.",
   };
 }
 

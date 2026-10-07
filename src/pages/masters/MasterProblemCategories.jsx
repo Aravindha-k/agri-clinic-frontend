@@ -41,7 +41,7 @@ export default function MasterProblemCategories() {
             const records = unwrapResponse(res.data);
             setRows(Array.isArray(records) ? records : []);
         } catch {
-            toast("Failed to load problem categories", "error");
+            toast("Failed to load visit problem types", "error");
         } finally {
             setLoading(false);
         }
@@ -68,13 +68,13 @@ export default function MasterProblemCategories() {
             if (panel.mode === "edit") {
                 const categoryId = getProblemCategoryId(panel.item);
                 if (categoryId == null) {
-                    throw new Error("Missing problem category identifier");
+                    throw new Error("Missing visit problem type identifier");
                 }
                 await updateProblemCategory(categoryId, payload);
-                toast("Problem category updated");
+                toast("Visit problem type updated successfully.");
             } else {
                 await createProblemCategory(payload);
-                toast("Problem category created");
+                toast("Visit problem type created successfully.");
             }
             setPanel({ open: false, mode: "add", item: null });
             fetchData();
@@ -90,10 +90,10 @@ export default function MasterProblemCategories() {
             setSaving(true);
             const categoryId = getProblemCategoryId(confirm.item);
             if (categoryId == null) {
-                throw new Error("Missing problem category identifier");
+                throw new Error("Missing visit problem type identifier");
             }
             await deleteProblemCategory(categoryId);
-            toast("Problem category deleted");
+            toast("Visit problem type deleted");
             setConfirm({ open: false, item: null });
             fetchData();
         } catch (err) {
@@ -106,22 +106,22 @@ export default function MasterProblemCategories() {
     return (
         <div className="masters-admin page-container">
             <PageHeader
-                title="Problem Categories"
-                subtitle={`${filtered.length} records`}
+                title="Visit Problem Types"
+                subtitle={`Manage visit types such as Pest, Disease, Nutrient Deficiency and Others · ${filtered.length} records`}
                 badge={
                     <span className="masters-admin-header__badge">
                         <Tag className="w-3 h-3" aria-hidden="true" />
-                        Problem taxonomy
+                        Visit types
                     </span>
                 }
                 actions={
                     <button type="button" onClick={() => setPanel({ open: true, mode: "add", item: null })} className="btn btn-primary btn-md">
-                        <Plus className="w-4 h-4" aria-hidden="true" /> Add Category
+                        <Plus className="w-4 h-4" aria-hidden="true" /> Add Visit Problem Type
                     </button>
                 }
             />
 
-            <section className="masters-admin-filters" aria-label="Search categories">
+            <section className="masters-admin-filters" aria-label="Search visit problem types">
                 <div className="masters-admin-filters__row">
                     <div className="masters-admin-search max-w-md">
                         <Search className="search-icon" aria-hidden="true" />
@@ -129,9 +129,9 @@ export default function MasterProblemCategories() {
                             type="search"
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            placeholder="Search categories…"
+                            placeholder="Search visit problem types…"
                             className="search-input"
-                            aria-label="Search categories"
+                            aria-label="Search visit problem types"
                         />
                     </div>
                     {search && (
@@ -144,10 +144,10 @@ export default function MasterProblemCategories() {
 
             <div className="masters-admin-table-card">
                 {loading ? (
-                    <PageLoader label="Loading categories…" />
+                    <PageLoader label="Loading visit problem types…" />
                 ) : paginated.length === 0 ? (
                     <div className="masters-admin-empty">
-                        <EmptyState icon={Bug} title="No categories found" subtitle="Add your first problem category above" />
+                        <EmptyState icon={Bug} title="No visit problem types found." subtitle="Add a visit problem type using the button above." />
                     </div>
                 ) : (
                     <div className="masters-admin-table-wrap">
@@ -192,7 +192,7 @@ export default function MasterProblemCategories() {
                 tone="masters"
                 open={panel.open}
                 onClose={() => setPanel({ open: false, mode: "add", item: null })}
-                title={panel.mode === "edit" ? "Edit Category" : "Add Category"}
+                title={panel.mode === "edit" ? "Edit Visit Problem Type" : "Add Visit Problem Type"}
             >
                 <form onSubmit={handleSave} className="masters-admin-form">
                     <div className="masters-admin-field">
@@ -218,7 +218,7 @@ export default function MasterProblemCategories() {
 
             <ConfirmDialog
                 open={confirm.open}
-                title="Delete Category"
+                title="Delete Visit Problem Type"
                 message={`Delete "${confirm.item?.name}"? This cannot be undone.`}
                 onConfirm={handleDelete}
                 onCancel={() => setConfirm({ open: false, item: null })}

@@ -74,7 +74,7 @@ export default function MasterEmployeeLocationsPage() {
       setRows(data.results || []);
       setTotal(data.count ?? 0);
     } catch (err) {
-      setError(friendlyErrorMessage(err, "Could not load employee location assignments."));
+      setError(friendlyErrorMessage(err, "Could not load employee territories."));
       setRows([]);
       setTotal(0);
     } finally {
@@ -116,8 +116,8 @@ export default function MasterEmployeeLocationsPage() {
   return (
     <div className="masters-admin page-container emp-loc-page">
       <PageHeader
-        title="Employee Locations"
-        subtitle="Assign operational village territory to field employees"
+        title="Employee Territories"
+        subtitle="Assign villages and operational areas to field employees"
         badge={
           <span className="masters-admin-header__badge">
             <MapPinned className="w-3 h-3" aria-hidden="true" />
@@ -169,7 +169,7 @@ export default function MasterEmployeeLocationsPage() {
       </FilterBar>
 
       {loading && rows.length === 0 ? (
-        <PageLoader label="Loading employee locations…" />
+        <PageLoader label="Loading employee territories…" />
       ) : error ? (
         <ErrorRetry message={error} onRetry={loadRows} />
       ) : rows.length === 0 ? (

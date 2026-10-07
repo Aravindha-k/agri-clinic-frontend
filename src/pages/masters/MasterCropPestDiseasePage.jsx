@@ -6,6 +6,7 @@ import {
   Bug,
   Check,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -17,7 +18,7 @@ import { PageHeader } from "../../components/ui/command";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
-import { fetchProblemCategories } from "../../api/master.api";
+import { fetchProblemCategories, updateProblemMaster } from "../../api/master.api";
 import {
   createAdminProblemMaster,
   getCropPestDiseaseDetail,
@@ -63,7 +64,7 @@ function MappedBadge() {
   );
 }
 
-function MasterRow({ item, onUnmap, busyId }) {
+function MasterRow({ item, sectionLabel, onEdit, onUnmap, busyId }) {
   return (
     <li className="cpd-master-row">
       <div className="cpd-master-row__text min-w-0">
@@ -75,10 +76,22 @@ function MasterRow({ item, onUnmap, busyId }) {
         <MappedBadge />
         <button
           type="button"
+          className="btn btn-secondary btn-sm cpd-edit-master-btn"
+          onClick={() => onEdit(item)}
+          disabled={busyId === item.id}
+          aria-label={`Edit ${sectionLabel} ${item.name}`}
+          title={`Edit ${sectionLabel} master`}
+        >
+          <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+          Edit
+        </button>
+        <button
+          type="button"
           className="btn btn-ghost btn-sm cpd-unmap-btn"
           onClick={() => onUnmap(item)}
           disabled={busyId === item.id}
           aria-label={`Remove mapping for ${item.name}`}
+          title="Remove mapping from this crop only"
         >
           {busyId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Remove mapping"}
         </button>
@@ -114,6 +127,13 @@ export default function MasterCropPestDiseasePage() {
 
   const [unmapTarget, setUnmapTarget] = useState(null);
   const [unmapping, setUnmapping] = useState(false);
+
+  const [editMaster, setEditMaster] = useState(null);
+  const [editNameEn, setEditNameEn] = useState("");
+  const [editTamil, setEditTamil] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState(null);
 
   const numericCropId = Number(cropId);
 
@@ -254,6 +274,58 @@ export default function MasterCropPestDiseasePage() {
     }
   };
 
+  const openEditMaster = (item) => {
+    if (!item?.id) return;
+    const nameEn =
+      String(item.name_en ?? item.name ?? "").trim() || String(item.name ?? "").trim();
+    setEditMaster(item);
+    setEditNameEn(nameEn);
+    setEditTamil(String(item.tamil_name ?? item.name_ta ?? "").trim());
+    setEditActive(item.is_active !== false);
+    setEditError(null);
+  };
+
+  const closeEditMaster = () => {
+    if (editSaving) return;
+    setEditMaster(null);
+    setEditError(null);
+  };
+
+  const handleEditMasterSave = async (e) => {
+    e.preventDefault();
+    if (!editMaster?.id) return;
+    const nameEn = editNameEn.trim();
+    if (!nameEn) {
+      setEditError("English name is required.");
+      return;
+    }
+    const nameTa = editTamil.trim();
+    const payload = {
+      name: nameEn,
+      name_en: nameEn,
+      name_ta: nameTa || undefined,
+      tamil_name: nameTa || "",
+      is_active: editActive,
+    };
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await updateProblemMaster(editMaster.id, payload);
+      toast(`${sectionLabel} master updated`, "success");
+      setEditMaster(null);
+      await loadDetail();
+    } catch (err) {
+      setEditError(
+        err?.response?.data?.message ||
+          err?.response?.data?.detail ||
+          Object.values(err?.response?.data?.errors || {}).flat().join(" ") ||
+          "Update failed"
+      );
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     const name = createName.trim();
@@ -332,7 +404,7 @@ export default function MasterCropPestDiseasePage() {
         actions={
           <>
             <Link to="/masters/crops" className="btn btn-secondary btn-md">
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back to Crops
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back to Crops &amp; Pest/Disease
             </Link>
             <button type="button" onClick={loadDetail} className="btn btn-secondary btn-md" disabled={loading}>
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
@@ -457,8 +529,15 @@ export default function MasterCropPestDiseasePage() {
                   <MasterRow
                     key={item.id}
                     item={item}
+                    sectionLabel={sectionLabel}
+                    onEdit={openEditMaster}
                     onUnmap={setUnmapTarget}
-                    busyId={unmapping ? unmapTarget?.id : null}
+                    busyId={
+                      (editSaving && editMaster?.id === item.id) ||
+                      (unmapping && unmapTarget?.id === item.id)
+                        ? item.id
+                        : null
+                    }
                   />
                 ))}
               </ul>
@@ -618,6 +697,73 @@ export default function MasterCropPestDiseasePage() {
         </div>
       </SlidePanel>
 
+      <SlidePanel
+        tone="masters"
+        open={!!editMaster}
+        onClose={closeEditMaster}
+        title={editMaster ? `Edit ${sectionLabel}` : "Edit master"}
+      >
+        {editMaster ? (
+          <form className="masters-admin-form" onSubmit={handleEditMasterSave}>
+            <div className="masters-admin-alert masters-admin-alert--info mb-3" role="status">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span>
+                Changes to this master will appear for every crop where it is used.
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Master ID <strong>{editMaster.id}</strong> · type fixed to{" "}
+              <strong>{sectionLabel}</strong>
+            </p>
+            <div className="masters-admin-field">
+              <label htmlFor="cpd-edit-en">
+                English Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="cpd-edit-en"
+                type="text"
+                required
+                value={editNameEn}
+                onChange={(e) => setEditNameEn(e.target.value)}
+              />
+            </div>
+            <div className="masters-admin-field">
+              <label htmlFor="cpd-edit-ta">Tamil Name</label>
+              <input
+                id="cpd-edit-ta"
+                type="text"
+                value={editTamil}
+                onChange={(e) => setEditTamil(e.target.value)}
+                placeholder="Leave blank if not available"
+              />
+            </div>
+            <label className="masters-admin-check">
+              <input
+                type="checkbox"
+                checked={editActive}
+                onChange={(e) => setEditActive(e.target.checked)}
+              />
+              Active
+            </label>
+            {editError && (
+              <div className="masters-admin-alert masters-admin-alert--error mt-3">
+                <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                <span>{editError}</span>
+              </div>
+            )}
+            <div className="masters-admin-form__foot">
+              <button type="button" className="btn btn-secondary btn-md" onClick={closeEditMaster} disabled={editSaving}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary btn-md" disabled={editSaving}>
+                {editSaving && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                Save master
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </SlidePanel>
+
       <ConfirmDialog
         open={!!unmapTarget}
         title={unmapCopy.title}
@@ -633,7 +779,7 @@ export default function MasterCropPestDiseasePage() {
         <div className="masters-admin-empty">
           <p className="text-base font-semibold text-slate-600">Crop not found</p>
           <button type="button" className="btn btn-secondary btn-md mt-3" onClick={() => navigate("/masters/crops")}>
-            Back to Crops
+            Back to Crops &amp; Pest/Disease
           </button>
         </div>
       ) : null}

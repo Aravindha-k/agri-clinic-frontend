@@ -10433,8 +10433,12 @@ textarea.input {
     @apply inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border bg-sky-50 text-sky-700 border-sky-200;
 }
 
+.cpd-edit-master-btn {
+    @apply shrink-0 font-semibold;
+}
+
 .cpd-unmap-btn {
-    @apply text-slate-600;
+    @apply text-slate-600 shrink-0;
 }
 
 .cpd-empty {

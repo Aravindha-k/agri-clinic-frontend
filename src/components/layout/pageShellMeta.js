@@ -33,27 +33,27 @@ const EXACT = {
   },
   "/masters": {
     title: "Master Data",
-    subtitle: "Villages, crops, and problem catalogues",
+    subtitle: "Villages, crops, Pest/Disease masters, and field territories",
   },
   "/masters/locations": {
     title: "Village Master",
     subtitle: "Manage villages used for employee territories, farmers and visits",
   },
   "/masters/crops": {
-    title: "Master Crops",
-    subtitle: "Crop Pest & Disease mappings",
+    title: "Crops & Pest/Disease",
+    subtitle: "Manage crops and their Pest & Disease mappings",
   },
   "/masters/problem-categories": {
-    title: "Problem Categories",
-    subtitle: "Pest, disease, nutrient and other types",
+    title: "Visit Problem Types",
+    subtitle: "Pest, Disease, Nutrient Deficiency and Others",
   },
   "/masters/problem-items": {
-    title: "Problem Items",
-    subtitle: "Dropdown options for field problems",
+    title: "Pest, Disease & Nutrient Master",
+    subtitle: "Manage Pest, Disease and Nutrient Deficiency master names",
   },
   "/masters/employee-locations": {
-    title: "Employee Locations",
-    subtitle: "Assigned villages for field employees",
+    title: "Employee Territories",
+    subtitle: "Assign villages and operational areas to field employees",
   },
   "/reports": {
     title: "Analytics & Reports",

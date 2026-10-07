@@ -178,7 +178,7 @@ export default function MasterProblemItems() {
         setTotalCount(0);
       }
     } catch {
-      toast("Failed to load problem items", "error");
+      toast("Failed to load Pest, Disease & Nutrient masters", "error");
       setRows([]);
     } finally {
       setLoading(false);
@@ -225,10 +225,10 @@ export default function MasterProblemItems() {
       setSaving(true);
       if (panel.mode === "edit") {
         await updateProblemMaster(panel.item.id, payload);
-        toast("Problem item updated");
+        toast("Master updated");
       } else {
         await createProblemMaster(payload);
-        toast("Problem item created");
+        toast("Master created");
       }
       setPanel({ open: false, mode: "add", item: null });
       load();
@@ -243,7 +243,7 @@ export default function MasterProblemItems() {
     try {
       setSaving(true);
       await deleteProblemMaster(confirm.item.id);
-      toast("Problem item deleted");
+      toast("Master deleted");
       setConfirm({ open: false, item: null });
       load();
     } catch (err) {
@@ -336,14 +336,14 @@ export default function MasterProblemItems() {
     return (
       <div className="masters-admin page-container max-w-3xl">
         <PageHeader
-          title="Problem Items"
-          subtitle="Manage Pest, Disease, and Nutrient Issue dropdown options for Add Visit."
+          title="Pest, Disease & Nutrient Master"
+          subtitle="Manage Pest, Disease and Nutrient Deficiency master names."
         />
         <div className="masters-admin-empty">
           <EmptyState
             icon={Bug}
-            title="Problem items API not available"
-            subtitle="The backend endpoint masters/problem-masters/ is not deployed yet. Problem categories can still be managed under Problem Categories."
+            title="Master API not available"
+            subtitle="The backend endpoint masters/problem-masters/ is not deployed yet. Visit Problem Types can still be managed separately."
           />
         </div>
       </div>
@@ -361,10 +361,10 @@ export default function MasterProblemItems() {
       />
 
       <PageHeader
-        title="Problem Items"
+        title="Pest, Disease & Nutrient Master"
         subtitle={
           <>
-            Pest, Disease, and Nutrient Issue options for the Add Visit form
+            Manage Pest, Disease and Nutrient Deficiency master names
             {!loading && (
               <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>
             )}
@@ -373,7 +373,7 @@ export default function MasterProblemItems() {
         badge={
           <span className="masters-admin-header__badge">
             <Bug className="w-3 h-3" aria-hidden="true" />
-            Visit form options
+            Master names
           </span>
         }
         actions={
@@ -400,7 +400,7 @@ export default function MasterProblemItems() {
               onClick={() => setPanel({ open: true, mode: "add", item: null })}
               className="btn btn-primary btn-md"
             >
-              <Plus className="w-4 h-4" aria-hidden="true" /> Add Item
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add Master
             </button>
           </>
         }
@@ -410,7 +410,7 @@ export default function MasterProblemItems() {
         <div className="masters-admin-alert masters-admin-alert--import mb-0">
           <Loader2 className="w-5 h-5 text-teal-600 animate-spin flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900">Importing problem items…</p>
+            <p className="text-sm font-medium text-slate-900">Importing masters…</p>
             <div className="masters-admin-import-bar mt-2">
               <div
                 className="masters-admin-import-bar__fill"
@@ -435,7 +435,7 @@ export default function MasterProblemItems() {
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search English, Tamil, crop, category…"
                   className="search-input"
-                  aria-label="Search problem items"
+                  aria-label="Search Pest, Disease and Nutrient masters"
                 />
               </div>
             </FilterField>
@@ -510,16 +510,16 @@ export default function MasterProblemItems() {
         </div>
 
         {loading ? (
-          <PageLoader label="Loading problem items…" />
+          <PageLoader label="Loading masters…" />
         ) : filtered.length === 0 ? (
           <div className="masters-admin-empty">
             <EmptyState
               icon={Bug}
-              title="No problem items"
+              title="No masters found"
               subtitle={
                 search || filterCategory || filterCrop
-                  ? "No items match your filters"
-                  : "Add pests, diseases, or nutrient issues — or import from Excel"
+                  ? "No masters match your filters"
+                  : "Add Pest, Disease, or Nutrient Deficiency masters — or import from Excel"
               }
             />
           </div>
@@ -528,27 +528,28 @@ export default function MasterProblemItems() {
             <table className="data-table compact-table masters-admin-table w-full">
               <thead>
                 <tr>
-                  <th>Crop</th>
-                  <th>Category</th>
-                  <th>English name</th>
-                  <th>Tamil name</th>
-                  <th>Status</th>
-                  <th className="w-28 text-right">Actions</th>
+                  <th>NAME</th>
+                  <th>TAMIL NAME</th>
+                  <th>TYPE</th>
+                  <th>STATUS</th>
+                  <th className="w-28 text-right">ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row) => (
                   <tr key={row.id}>
-                    <td className="text-sm text-slate-600">{resolveProblemCropLabel(row)}</td>
-                    <td className="text-sm text-slate-700">{resolveProblemCategoryLabel(row)}</td>
                     <td className="font-semibold text-slate-900 min-w-0">
-                      <div className="min-w-0">
-                        <p>{resolveProblemEnglishName(row) || "—"}</p>
-                      </div>
+                      <p>{resolveProblemEnglishName(row) || "—"}</p>
+                      {resolveProblemCropLabel(row) && resolveProblemCropLabel(row) !== "—" ? (
+                        <p className="text-xs font-normal text-slate-500 mt-0.5">
+                          Crop link: {resolveProblemCropLabel(row)}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="text-sm text-slate-600 min-w-0" lang="ta">
                       {resolveProblemTamilName(row) || "—"}
                     </td>
+                    <td className="text-sm text-slate-700">{resolveProblemCategoryLabel(row)}</td>
                     <td>
                       <MastersStatus active={row.is_active} />
                     </td>
@@ -558,15 +559,18 @@ export default function MasterProblemItems() {
                           type="button"
                           className="masters-admin-action-btn masters-admin-action-btn--edit"
                           onClick={() => setPanel({ open: true, mode: "edit", item: row })}
-                          aria-label="Edit"
+                          aria-label={`Edit ${resolveProblemEnglishName(row) || "master"}`}
+                          title="Edit"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" aria-hidden="true" />
+                          <span className="sr-only">Edit</span>
                         </button>
                         <button
                           type="button"
                           className="masters-admin-action-btn masters-admin-action-btn--delete"
                           onClick={() => setConfirm({ open: true, item: row })}
-                          aria-label="Delete"
+                          aria-label={`Delete ${resolveProblemEnglishName(row) || "master"}`}
+                          title="Delete master"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -584,9 +588,21 @@ export default function MasterProblemItems() {
         tone="masters"
         open={panel.open}
         onClose={() => setPanel({ open: false, mode: "add", item: null })}
-        title={panel.mode === "edit" ? "Edit problem item" : "Add problem item"}
+        title={
+          panel.mode === "edit"
+            ? `Edit ${resolveProblemCategoryLabel(panel.item) || "Master"}`
+            : "Add Pest, Disease or Nutrient Master"
+        }
       >
         <form onSubmit={handleSave} className="masters-admin-form">
+          {panel.mode === "edit" ? (
+            <div className="masters-admin-alert masters-admin-alert--info mb-3" role="status">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span>
+                Changes to this master will appear for every crop where it is used.
+              </span>
+            </div>
+          ) : null}
           <div className={inputClass}>
             <label>
               English Name <span className="text-red-500">*</span>
@@ -608,14 +624,14 @@ export default function MasterProblemItems() {
           </div>
           <div className={inputClass}>
             <label>
-              Category <span className="text-red-500">*</span>
+              Type <span className="text-red-500">*</span>
             </label>
             <select
               name="category"
               required
               defaultValue={panel.item?.category ?? panel.item?.category_id ?? ""}
             >
-              <option value="">Select category</option>
+              <option value="">Select type</option>
               {managedCategories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -654,8 +670,8 @@ export default function MasterProblemItems() {
 
       <ConfirmDialog
         open={confirm.open}
-        title="Delete problem item"
-        message={`Delete "${resolveProblemEnglishName(confirm.item)}"?`}
+        title="Delete Master"
+        message={`Delete master "${resolveProblemEnglishName(confirm.item)}"? This is separate from crop mapping.`}
         onConfirm={handleDelete}
         onCancel={() => setConfirm({ open: false, item: null })}
         loading={saving}

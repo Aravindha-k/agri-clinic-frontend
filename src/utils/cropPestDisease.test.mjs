@@ -27,6 +27,14 @@ const apiSrc = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "../api/cropPestDisease.api.js"),
   "utf8"
 );
+const cpdPageSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../pages/masters/MasterCropPestDiseasePage.jsx"),
+  "utf8"
+);
+const masterApiSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../api/master.api.js"),
+  "utf8"
+);
 
 /* Dedicated CPD paths — never call legacy crop_id filter for mapped lists */
 assert.match(apiSrc, /admin\/crop-pest-disease/);
@@ -169,5 +177,12 @@ assert.equal(extractCreatedMasterId({ name: "x" }), null);
 assert.equal(cropDisplayName(detail.crop), "Tomato");
 assert.equal(CPD_CATEGORY.PEST, "pest");
 assert.equal(CPD_CATEGORY.DISEASE, "disease");
+
+/* ProblemMaster update + crop mapping edit UX */
+assert.match(masterApiSrc, /api\.patch\(`\$\{PROBLEM_MASTER_BASE\}\/\$\{id\}\/`/);
+assert.match(cpdPageSrc, /updateProblemMaster\(editMaster\.id, payload\)/);
+assert.match(cpdPageSrc, /Changes to this master will appear for every crop where it is used/);
+assert.match(cpdPageSrc, /Remove mapping/);
+assert.doesNotMatch(cpdPageSrc, /Delete Master/);
 
 console.log("cropPestDisease checks OK");

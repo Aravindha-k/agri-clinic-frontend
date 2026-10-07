@@ -378,10 +378,10 @@ export default function MasterCropsPage() {
   return (
     <div className="masters-admin page-container">
       <PageHeader
-        title="Master Crops"
+        title="Crops & Pest/Disease"
         subtitle={
           <>
-            Crop Pest &amp; Disease mappings for field operations
+            Manage crops and their Pest &amp; Disease mappings
             {!loading && (
               <span className="ml-2 font-semibold text-teal-700">{totalCount} total</span>
             )}
@@ -390,7 +390,7 @@ export default function MasterCropsPage() {
         badge={
           <span className="masters-admin-header__badge">
             <Wheat className="w-3 h-3" aria-hidden="true" />
-            Crops
+            Crops &amp; Mapping
           </span>
         }
         actions={

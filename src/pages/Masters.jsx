@@ -13,8 +13,8 @@ const MASTER_SECTIONS = [
         path: "/masters/locations",
     },
     {
-        title: "Crops",
-        description: "Manage crop types, varieties & seasons",
+        title: "Crops & Pest/Disease",
+        description: "Manage crops and their Pest & Disease mappings",
         icon: Wheat,
         color: "#1E8449",
         bg: "linear-gradient(160deg,#ecfdf5 0%,#d1fae5 100%)",
@@ -22,8 +22,8 @@ const MASTER_SECTIONS = [
         path: "/masters/crops",
     },
     {
-        title: "Problem Categories",
-        description: "Pest, disease, nutrient & other types",
+        title: "Visit Problem Types",
+        description: "Manage visit types such as Pest, Disease, Nutrient Deficiency and Others",
         icon: Tag,
         color: "#0e7490",
         bg: "linear-gradient(160deg,#ecfeff 0%,#cffafe 100%)",
@@ -31,8 +31,8 @@ const MASTER_SECTIONS = [
         path: "/masters/problem-categories",
     },
     {
-        title: "Problem Items",
-        description: "Pest, disease & nutrient dropdown options",
+        title: "Pest, Disease & Nutrient Master",
+        description: "Manage Pest, Disease and Nutrient Deficiency master names",
         icon: Bug,
         color: "#b45309",
         bg: "linear-gradient(160deg,#fffbeb 0%,#fef3c7 100%)",
@@ -40,8 +40,8 @@ const MASTER_SECTIONS = [
         path: "/masters/problem-items",
     },
     {
-        title: "Employee Locations",
-        description: "Assign operational village territory to field employees",
+        title: "Employee Territories",
+        description: "Assign villages and operational areas to field employees",
         icon: MapPinned,
         color: "#4338ca",
         bg: "linear-gradient(160deg,#eef2ff 0%,#e0e7ff 100%)",
