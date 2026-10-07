@@ -1,5 +1,5 @@
 import { PageHeader } from "../../components/ui/command";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { createCrop, updateCrop, deleteCrop } from "../../api/master.api";
 import { getCropPestDiseaseList } from "../../api/cropPestDisease.api";
@@ -21,11 +21,146 @@ import {
   Loader2,
   Leaf,
   Bug,
+  MoreVertical,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const inputClass = "masters-admin-field";
+
+function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const cropName = crop?.name_en || `crop ${crop?.id ?? ""}`;
+  const managePath = cropProblemsPath(crop.id);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
+  if (layout === "card") {
+    return (
+      <div className="cpd-crop-card__actions">
+        <Link
+          to={managePath}
+          className="btn btn-primary btn-sm cpd-manage-btn"
+          title="Manage Pest & Disease"
+          aria-label={`Manage Pest and Disease for ${cropName}`}
+        >
+          <Bug className="w-3.5 h-3.5" aria-hidden="true" />
+          Manage Pest &amp; Disease
+        </Link>
+        <button
+          type="button"
+          onClick={() => onEdit(crop)}
+          className="btn btn-secondary btn-sm"
+          title="Edit Crop"
+          aria-label={`Edit Crop ${cropName}`}
+        >
+          <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
+          Edit Crop
+        </button>
+        <div className="cpd-more-menu" ref={menuRef}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm cpd-more-trigger"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={`More actions for ${cropName}`}
+            title="More actions"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <MoreVertical className="w-4 h-4" aria-hidden="true" />
+          </button>
+          {menuOpen ? (
+            <div className="cpd-more-menu__panel" role="menu" aria-label={`More actions for ${cropName}`}>
+              <button
+                type="button"
+                role="menuitem"
+                className="cpd-more-menu__item cpd-more-menu__item--danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDeleteRequest(crop);
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                Delete Crop
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="cpd-row-actions">
+      <Link
+        to={managePath}
+        className="cpd-action-link"
+        title="Manage Pest & Disease"
+        aria-label={`Manage Pest and Disease for ${cropName}`}
+      >
+        <Bug className="w-3.5 h-3.5" aria-hidden="true" />
+        <span className="cpd-action-link__full">Manage Pest &amp; Disease</span>
+        <span className="cpd-action-link__short" aria-hidden="true">Manage</span>
+      </Link>
+      <button
+        type="button"
+        onClick={() => onEdit(crop)}
+        className="cpd-action-btn"
+        title="Edit Crop"
+        aria-label={`Edit Crop ${cropName}`}
+      >
+        <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
+        Edit
+      </button>
+      <div className="cpd-more-menu" ref={menuRef}>
+        <button
+          type="button"
+          className="cpd-more-trigger"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label={`More actions for ${cropName}`}
+          title="More actions"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <MoreVertical className="w-4 h-4" aria-hidden="true" />
+        </button>
+        {menuOpen ? (
+          <div className="cpd-more-menu__panel" role="menu" aria-label={`More actions for ${cropName}`}>
+            <button
+              type="button"
+              role="menuitem"
+              className="cpd-more-menu__item cpd-more-menu__item--danger"
+              onClick={() => {
+                setMenuOpen(false);
+                onDeleteRequest(crop);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              Delete Crop
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState({
@@ -336,7 +471,7 @@ export default function MasterCropsPage() {
                     <th className="text-center">Pests</th>
                     <th className="text-center">Diseases</th>
                     <th>Status</th>
-                    <th className="w-36 text-right">Actions</th>
+                    <th className="cpd-actions-col text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -373,35 +508,13 @@ export default function MasterCropsPage() {
                           {c.is_active !== false ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td>
-                        <div className="masters-admin-actions">
-                          <Link
-                            to={cropProblemsPath(c.id)}
-                            className="masters-admin-action-btn masters-admin-action-btn--manage"
-                            title="Manage Pest & Disease"
-                            aria-label={`Manage Pest and Disease for ${c.name_en || `crop ${c.id}`}`}
-                          >
-                            <Bug className="w-4 h-4" aria-hidden="true" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(c)}
-                            title="Edit"
-                            className="masters-admin-action-btn masters-admin-action-btn--edit"
-                            aria-label={`Edit ${c.name_en || "crop"}`}
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(c)}
-                            title="Delete"
-                            className="masters-admin-action-btn masters-admin-action-btn--delete"
-                            aria-label={`Delete ${c.name_en || "crop"}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="text-right">
+                        <CropRowActions
+                          crop={c}
+                          onEdit={openEdit}
+                          onDeleteRequest={setDeleteTarget}
+                          layout="table"
+                        />
                       </td>
                     </tr>
                   ))}
@@ -441,15 +554,12 @@ export default function MasterCropsPage() {
                     <CountBadge value={c.disease_count} kind="disease" />
                   </div>
                 </div>
-                <div className="cpd-crop-card__actions">
-                  <Link to={cropProblemsPath(c.id)} className="btn btn-primary btn-sm">
-                    <Bug className="w-3.5 h-3.5" aria-hidden="true" />
-                    Manage Pest &amp; Disease
-                  </Link>
-                  <button type="button" onClick={() => openEdit(c)} className="btn btn-secondary btn-sm">
-                    Edit
-                  </button>
-                </div>
+                <CropRowActions
+                  crop={c}
+                  onEdit={openEdit}
+                  onDeleteRequest={setDeleteTarget}
+                  layout="card"
+                />
               </article>
             ))}
           </div>
@@ -490,7 +600,7 @@ export default function MasterCropsPage() {
         message={
           deleteError
             ? deleteError
-            : `Are you sure you want to delete "${deleteTarget?.name_en || "this crop"}"?`
+            : `Delete crop "${deleteTarget?.name_en || "this crop"}"? This cannot be undone from this screen.`
         }
         onConfirm={handleDelete}
         onCancel={() => {

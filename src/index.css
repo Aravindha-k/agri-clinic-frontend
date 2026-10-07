@@ -10251,7 +10251,108 @@ textarea.input {
 }
 
 .cpd-crop-card__actions {
-    @apply flex flex-wrap gap-2 pt-1;
+    @apply flex flex-wrap items-center gap-2 pt-1;
+}
+
+.cpd-actions-col {
+    min-width: 15.5rem;
+}
+
+.cpd-row-actions {
+    @apply inline-flex items-center justify-end gap-1.5 flex-wrap;
+}
+
+.cpd-action-link,
+.cpd-action-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition-colors;
+    min-height: 2rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.cpd-action-link {
+    @apply border-emerald-200 bg-white text-emerald-800 no-underline;
+}
+
+.cpd-action-link:hover {
+    @apply border-emerald-300 bg-emerald-50 text-emerald-900;
+}
+
+.cpd-action-link:focus-visible,
+.cpd-action-btn:focus-visible,
+.cpd-more-trigger:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.cpd-action-link__full {
+    display: inline;
+}
+
+.cpd-action-link__short {
+    display: none;
+}
+
+.cpd-action-btn {
+    @apply border-slate-200 bg-white text-slate-700;
+}
+
+.cpd-action-btn:hover {
+    @apply border-slate-300 bg-slate-50 text-slate-900;
+}
+
+.cpd-more-menu {
+    @apply relative inline-flex;
+}
+
+.cpd-more-trigger {
+    @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors;
+    min-width: 2rem;
+    min-height: 2rem;
+}
+
+.cpd-more-trigger:hover,
+.cpd-more-trigger[aria-expanded="true"] {
+    @apply border-slate-300 bg-slate-50 text-slate-800;
+}
+
+.cpd-more-menu__panel {
+    @apply absolute right-0 z-30 mt-1 min-w-[10.5rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg;
+}
+
+.cpd-more-menu__item {
+    @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors;
+}
+
+.cpd-more-menu__item:hover,
+.cpd-more-menu__item:focus-visible {
+    @apply bg-slate-50 text-slate-900 outline-none;
+}
+
+.cpd-more-menu__item--danger {
+    @apply text-red-600;
+}
+
+.cpd-more-menu__item--danger:hover,
+.cpd-more-menu__item--danger:focus-visible {
+    @apply bg-red-50 text-red-700;
+}
+
+.cpd-manage-btn {
+    @apply inline-flex items-center gap-1.5;
+}
+
+@media (max-width: 1280px) and (min-width: 768px) {
+    .cpd-action-link__full {
+        display: none;
+    }
+
+    .cpd-action-link__short {
+        display: inline;
+    }
+
+    .cpd-actions-col {
+        min-width: 11.5rem;
+    }
 }
 
 .cpd-detail-hero {
