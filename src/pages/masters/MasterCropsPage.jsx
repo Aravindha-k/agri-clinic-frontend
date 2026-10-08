@@ -167,8 +167,6 @@ function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
     name_en: initial.name_en || "",
     name_ta: initial.name_ta || "",
     scientific_name: initial.scientific_name || "",
-    crop_category: initial.crop_category || "",
-    typical_season: initial.typical_season || "",
     is_active: initial.is_active !== false,
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -208,28 +206,6 @@ function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
           onChange={(e) => set("scientific_name", e.target.value)}
           placeholder="e.g. Oryza sativa"
         />
-      </div>
-      <div className={inputClass}>
-        <label>Category</label>
-        <select value={form.crop_category} onChange={(e) => set("crop_category", e.target.value)}>
-          <option value="">Select Category</option>
-          {["cereal", "vegetable", "fruit", "pulse", "oilseed", "spice", "other"].map((s) => (
-            <option key={s} value={s}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className={inputClass}>
-        <label>Typical Season</label>
-        <select value={form.typical_season} onChange={(e) => set("typical_season", e.target.value)}>
-          <option value="">Select Season</option>
-          {["kharif", "rabi", "zaid", "all_season"].map((s) => (
-            <option key={s} value={s}>
-              {s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-            </option>
-          ))}
-        </select>
       </div>
       <label className="masters-admin-check">
         <input
@@ -284,7 +260,7 @@ export default function MasterCropsPage() {
     setLoading(true);
     setError(null);
     try {
-      const payload = await getCropPestDiseaseList();
+      const payload = await getCropPestDiseaseList({ is_active: true });
       const normalized = normalizeCropPestDiseaseList(payload);
       setCrops(normalized.results);
       setTotalCount(normalized.count);
@@ -315,8 +291,16 @@ export default function MasterCropsPage() {
     setSaveError(null);
     setSaving(true);
     try {
-      if (editTarget?.id) await updateCrop(editTarget.id, data);
-      else await createCrop(data);
+      if (editTarget?.id) {
+        /* updateCrop is PUT — preserve hidden legacy fields so they aren't cleared. */
+        const preserved = {};
+        for (const key of ["crop_category", "typical_season"]) {
+          if (editTarget[key] !== undefined) preserved[key] = editTarget[key];
+        }
+        await updateCrop(editTarget.id, { ...preserved, ...data });
+      } else {
+        await createCrop(data);
+      }
       setFormOpen(false);
       setEditTarget(null);
       fetchCrops();
@@ -378,7 +362,7 @@ export default function MasterCropsPage() {
   return (
     <div className="masters-admin page-container">
       <PageHeader
-        title="Crops & Pest/Disease"
+        title="Crop / Pest / Disease Master"
         subtitle={
           <>
             Manage crops and their Pest &amp; Disease mappings
@@ -390,7 +374,7 @@ export default function MasterCropsPage() {
         badge={
           <span className="masters-admin-header__badge">
             <Wheat className="w-3 h-3" aria-hidden="true" />
-            Crops &amp; Mapping
+            Crop Health
           </span>
         }
         actions={

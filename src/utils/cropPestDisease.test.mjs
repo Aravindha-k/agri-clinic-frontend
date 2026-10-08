@@ -5,7 +5,6 @@ import { dirname, join } from "node:path";
 import {
   CPD_CATEGORY,
   CPD_CATEGORY_ID,
-  DISEASE_FIELD_NOTICE,
   TAMIL_PENDING,
   cropDisplayName,
   cropMatchesMappingSearch,
@@ -35,6 +34,18 @@ const masterApiSrc = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "../api/master.api.js"),
   "utf8"
 );
+const mastersHubSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../pages/Masters.jsx"),
+  "utf8"
+);
+const cropsPageSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../pages/masters/MasterCropsPage.jsx"),
+  "utf8"
+);
+const appSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../App.jsx"),
+  "utf8"
+);
 
 /* Dedicated CPD paths — never call legacy crop_id filter for mapped lists */
 assert.match(apiSrc, /admin\/crop-pest-disease/);
@@ -47,9 +58,37 @@ assert.match(apiSrc, /\.post\(`\$\{BASE\}\/\$\{id\}\/map\/`, \{ problem_master_i
 assert.match(apiSrc, /\.post\(`\$\{BASE\}\/\$\{id\}\/unmap\/`, \{ problem_master_id \}\)/);
 assert.match(apiSrc, /api\.post\(`\$\{ADMIN_PROBLEM_MASTERS\}\/`, payload\)/);
 
+/* ── Masters hub — 3 business-facing cards, legacy pages hidden ── */
+assert.match(mastersHubSrc, /Crop \/ Pest \/ Disease Master/);
+assert.doesNotMatch(mastersHubSrc, /problem-categories/);
+assert.doesNotMatch(mastersHubSrc, /problem-items/);
+assert.doesNotMatch(mastersHubSrc, /Visit Problem Types/);
+assert.doesNotMatch(mastersHubSrc, /Nutrient Master/);
+const hubPaths = mastersHubSrc.match(/path: "\/masters\//g) || [];
+assert.equal(hubPaths.length, 3);
+
+/* Legacy routes retained (hidden, not deleted) */
+assert.match(appSrc, /masters\/problem-categories/);
+assert.match(appSrc, /masters\/problem-items/);
+assert.match(appSrc, /masters\/crops\/:cropId\/problems/);
+
+/* Crop list page — renamed + requests active crops only */
+assert.match(cropsPageSrc, /Crop \/ Pest \/ Disease Master/);
+assert.match(cropsPageSrc, /getCropPestDiseaseList\(\{ is_active: true \}\)/);
+assert.doesNotMatch(cropsPageSrc, /<label>Category<\/label>/);
+assert.doesNotMatch(cropsPageSrc, /Typical Season/);
+
+/* Detail page — no disease-disabled notice, no internal Master ID */
+assert.doesNotMatch(cpdPageSrc, /DISEASE_FIELD_NOTICE/);
+assert.doesNotMatch(cpdPageSrc, /disease-notice/);
+assert.doesNotMatch(cpdPageSrc, /not yet enabled for field use/i);
+assert.doesNotMatch(cpdPageSrc, /Master ID/);
+assert.doesNotMatch(cpdPageSrc, /integer IDs/);
+assert.match(cpdPageSrc, /Back to Crop \/ Pest \/ Disease/);
+
 /* ── List counts from backend ── */
 const list = normalizeCropPestDiseaseList({
-  count: 2,
+  count: 3,
   results: [
     {
       id: 10,
@@ -68,14 +107,24 @@ const list = normalizeCropPestDiseaseList({
       pest_count: 10,
       disease_count: 8,
     },
+    {
+      id: 12,
+      name_en: "Legacy Crop",
+      is_active: false,
+      pest_count: 1,
+      disease_count: 0,
+    },
   ],
 });
+/* Inactive crops hidden; displayed count matches visible rows */
+assert.equal(list.results.length, 2);
 assert.equal(list.count, 2);
 assert.equal(list.results[0].pest_count, 9);
 assert.equal(list.results[0].disease_count, 11);
 assert.equal(list.results[1].pest_count, 10);
 assert.equal(list.results[1].disease_count, 8);
 assert.equal(list.results[0].id, 10);
+assert.equal(list.results.every((c) => c.is_active !== false), true);
 
 /* Search English + Tamil */
 assert.equal(cropMatchesMappingSearch(list.results[0], "tom"), true);
@@ -87,7 +136,7 @@ assert.equal(cropProblemsPath(10), "/masters/crops/10/problems");
 assert.equal(cropProblemsPath("12"), "/masters/crops/12/problems");
 assert.equal(cropProblemsPath("x"), "/masters/crops");
 
-/* Detail: pest + disease + inactive disease still listed */
+/* Detail: active pests + diseases listed; inactive legacy masters hidden */
 const detail = normalizeCropPestDiseaseDetail({
   crop: {
     id: 10,
@@ -99,12 +148,14 @@ const detail = normalizeCropPestDiseaseDetail({
   pests: [
     { id: 1, name: "Fruit Borer", tamil_name: "காய்ப்புழு", is_active: true, category_code: "pest" },
     { id: 2, name: "Thrips", tamil_name: "", is_active: true, category_code: "pest" },
+    { id: 7, name: "Legacy Pest", tamil_name: "", is_active: false, category_code: "pest" },
   ],
   diseases: [
     { id: 3, name: "Bacterial Wilt", tamil_name: "", is_active: true, category_code: "disease" },
+    { id: 8, name: "Old Blight", tamil_name: "", is_active: false, category_code: "disease" },
   ],
-  pest_count: 2,
-  disease_count: 1,
+  pest_count: 3,
+  disease_count: 2,
 });
 assert.equal(detail.crop.id, 10);
 assert.equal(detail.crop.name_en, "Tomato");
@@ -112,8 +163,11 @@ assert.equal(detail.crop.name_ta || detail.crop.tamil_name, "தக்காள�
 assert.equal(detail.pests.length, 2);
 assert.equal(detail.diseases.length, 1);
 assert.equal(detail.diseases[0].name, "Bacterial Wilt");
+/* Counts match the visible active arrays, not hidden inactive rows */
 assert.equal(detail.pest_count, 2);
 assert.equal(detail.disease_count, 1);
+assert.equal(detail.pests.every((m) => m.is_active !== false), true);
+assert.equal(detail.diseases.every((m) => m.is_active !== false), true);
 
 /* Tamil fallback — never invent */
 assert.equal(displayTamilName(""), TAMIL_PENDING);
@@ -122,18 +176,19 @@ assert.equal(displayTamilName("  "), TAMIL_PENDING);
 assert.equal(displayTamilName("காய்ப்புழு"), "காய்ப்புழு");
 assert.equal(displayTamilName(detail.diseases[0].tamil_name), TAMIL_PENDING);
 
-/* Disease notice constant */
-assert.match(DISEASE_FIELD_NOTICE, /not yet enabled for field use/i);
-
-/* Available search normalize */
+/* Available search normalize — active masters only */
 const available = normalizeAvailableMasters({
   crop_id: 10,
   category: "pest",
-  count: 1,
-  results: [{ id: 99, name: "Aphid", tamil_name: "", already_mapped: false, category_code: "pest" }],
+  count: 2,
+  results: [
+    { id: 99, name: "Aphid", tamil_name: "", already_mapped: false, category_code: "pest", is_active: true },
+    { id: 98, name: "Retired Pest", tamil_name: "", already_mapped: false, category_code: "pest", is_active: false },
+  ],
 });
 assert.equal(available.crop_id, 10);
 assert.equal(available.category, "pest");
+assert.equal(available.results.length, 1);
 assert.equal(available.results[0].id, 99);
 assert.equal(available.results[0].already_mapped, false);
 

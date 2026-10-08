@@ -1,19 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { MapPin, Wheat, Tag, Bug, ChevronRight, Database, MapPinned } from "lucide-react";
+import { MapPin, Wheat, ChevronRight, Database, MapPinned } from "lucide-react";
 import { PageHeader } from "../components/ui/command";
 
 const MASTER_SECTIONS = [
     {
-        title: "Village Master",
-        description: "Manage villages used for territories, farmers and visits",
-        icon: MapPin,
-        color: "#0f766e",
-        bg: "linear-gradient(160deg,#f0fdfa 0%,#ccfbf1 100%)",
-        iconBg: "#99f6e4",
-        path: "/masters/locations",
-    },
-    {
-        title: "Crops & Pest/Disease",
+        title: "Crop / Pest / Disease Master",
         description: "Manage crops and their Pest & Disease mappings",
         icon: Wheat,
         color: "#1E8449",
@@ -22,22 +13,13 @@ const MASTER_SECTIONS = [
         path: "/masters/crops",
     },
     {
-        title: "Visit Problem Types",
-        description: "Manage visit types such as Pest, Disease, Nutrient Deficiency and Others",
-        icon: Tag,
-        color: "#0e7490",
-        bg: "linear-gradient(160deg,#ecfeff 0%,#cffafe 100%)",
-        iconBg: "#a5f3fc",
-        path: "/masters/problem-categories",
-    },
-    {
-        title: "Pest, Disease & Nutrient Master",
-        description: "Manage Pest, Disease and Nutrient Deficiency master names",
-        icon: Bug,
-        color: "#b45309",
-        bg: "linear-gradient(160deg,#fffbeb 0%,#fef3c7 100%)",
-        iconBg: "#fde68a",
-        path: "/masters/problem-items",
+        title: "Village Master",
+        description: "Manage villages used for territories, farmers and visits",
+        icon: MapPin,
+        color: "#0f766e",
+        bg: "linear-gradient(160deg,#f0fdfa 0%,#ccfbf1 100%)",
+        iconBg: "#99f6e4",
+        path: "/masters/locations",
     },
     {
         title: "Employee Territories",

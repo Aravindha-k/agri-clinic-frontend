@@ -14,9 +14,6 @@ export const CPD_CATEGORY_ID = {
   DISEASE: 17,
 };
 
-export const DISEASE_FIELD_NOTICE =
-  "Disease master data is prepared but not yet enabled for field use.";
-
 export const TAMIL_PENDING = "—";
 
 export function toNonNegInt(value) {
@@ -63,12 +60,19 @@ export function normalizeCropPestDiseaseRow(raw) {
     name_en: String(raw.name_en || raw.name || "").trim(),
     name_ta: String(raw.name_ta || raw.tamil_name || "").trim(),
     tamil_name: String(raw.tamil_name || raw.name_ta || "").trim(),
+    scientific_name: String(raw.scientific_name || "").trim(),
+    crop_category: raw.crop_category ?? "",
+    typical_season: raw.typical_season ?? "",
     is_active: raw.is_active !== false,
     pest_count: toNonNegInt(raw.pest_count),
     disease_count: toNonNegInt(raw.disease_count),
   };
 }
 
+/**
+ * Normal UI shows active crops only. When the backend is_active filter is
+ * honored the array is already active; the filter here is the safe fallback.
+ */
 export function normalizeCropPestDiseaseList(payload) {
   const data = payload?.results ? payload : payload?.data ?? payload ?? {};
   const results = Array.isArray(data.results)
@@ -76,9 +80,12 @@ export function normalizeCropPestDiseaseList(payload) {
     : Array.isArray(data)
       ? data
       : [];
-  const rows = results.map(normalizeCropPestDiseaseRow).filter(Boolean);
+  const allRows = results.map(normalizeCropPestDiseaseRow).filter(Boolean);
+  const rows = allRows.filter((r) => r.is_active !== false);
+  const hidden = allRows.length - rows.length;
+  const apiCount = typeof data.count === "number" ? data.count : null;
   return {
-    count: typeof data.count === "number" ? data.count : rows.length,
+    count: apiCount == null ? rows.length : hidden > 0 ? rows.length : apiCount,
     results: rows,
   };
 }
@@ -98,16 +105,19 @@ export function normalizeMappedMaster(raw) {
   };
 }
 
+function toActiveMasters(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeMappedMaster)
+    .filter((m) => m != null && m.is_active !== false);
+}
+
 export function normalizeCropPestDiseaseDetail(payload) {
   const data = payload?.crop ? payload : payload?.data ?? payload ?? {};
   const cropRaw = data.crop || {};
   const cropId = toPositiveIntOrNull(cropRaw.id);
-  const pests = (Array.isArray(data.pests) ? data.pests : [])
-    .map(normalizeMappedMaster)
-    .filter(Boolean);
-  const diseases = (Array.isArray(data.diseases) ? data.diseases : [])
-    .map(normalizeMappedMaster)
-    .filter(Boolean);
+  /* Inactive legacy masters stay backend-only — never rendered in normal UI. */
+  const pests = toActiveMasters(data.pests);
+  const diseases = toActiveMasters(data.diseases);
   return {
     crop: {
       id: cropId,
@@ -118,10 +128,15 @@ export function normalizeCropPestDiseaseDetail(payload) {
     },
     pests,
     diseases,
-    pest_count:
-      typeof data.pest_count === "number" ? toNonNegInt(data.pest_count) : pests.length,
-    disease_count:
-      typeof data.disease_count === "number"
+    /* Counts must match the visible active arrays, not hidden legacy rows. */
+    pest_count: Array.isArray(data.pests)
+      ? pests.length
+      : typeof data.pest_count === "number"
+        ? toNonNegInt(data.pest_count)
+        : pests.length,
+    disease_count: Array.isArray(data.diseases)
+      ? diseases.length
+      : typeof data.disease_count === "number"
         ? toNonNegInt(data.disease_count)
         : diseases.length,
   };
@@ -129,9 +144,7 @@ export function normalizeCropPestDiseaseDetail(payload) {
 
 export function normalizeAvailableMasters(payload) {
   const data = payload?.results ? payload : payload?.data ?? payload ?? {};
-  const results = (Array.isArray(data.results) ? data.results : [])
-    .map(normalizeMappedMaster)
-    .filter(Boolean);
+  const results = toActiveMasters(data.results);
   return {
     crop_id: toPositiveIntOrNull(data.crop_id),
     category: String(data.category || "").toLowerCase(),

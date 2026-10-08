@@ -10,7 +10,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  ShieldAlert,
   Sprout,
   X,
 } from "lucide-react";
@@ -29,7 +28,6 @@ import {
 import {
   CPD_CATEGORY,
   CPD_CATEGORY_ID,
-  DISEASE_FIELD_NOTICE,
   cropDisplayName,
   displayTamilName,
   extractCreatedMasterId,
@@ -311,7 +309,7 @@ export default function MasterCropPestDiseasePage() {
     setEditError(null);
     try {
       await updateProblemMaster(editMaster.id, payload);
-      toast(`${sectionLabel} master updated`, "success");
+      toast(`${sectionLabel} updated`, "success");
       setEditMaster(null);
       await loadDetail();
     } catch (err) {
@@ -389,7 +387,7 @@ export default function MasterCropPestDiseasePage() {
   return (
     <div className="masters-admin page-container cpd-detail-page">
       <PageHeader
-        title={loading ? "Crop Pest & Disease" : cropName}
+        title={loading ? "Crop / Pest / Disease" : cropName}
         subtitle={
           loading
             ? "Loading mappings…"
@@ -398,13 +396,14 @@ export default function MasterCropPestDiseasePage() {
         badge={
           <span className="masters-admin-header__badge">
             <Bug className="w-3 h-3" aria-hidden="true" />
-            Mapping
+            Crop Health
           </span>
         }
         actions={
           <>
             <Link to="/masters/crops" className="btn btn-secondary btn-md">
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back to Crops &amp; Pest/Disease
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back to Crop / Pest / Disease
+              Master
             </Link>
             <button type="button" onClick={loadDetail} className="btn btn-secondary btn-md" disabled={loading}>
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
@@ -462,7 +461,9 @@ export default function MasterCropPestDiseasePage() {
             <button
               type="button"
               role="tab"
+              id="cpd-tab-pest"
               aria-selected={tab === CPD_CATEGORY.PEST}
+              aria-controls="cpd-panel-pest"
               className={`masters-admin-tab ${tab === CPD_CATEGORY.PEST ? "masters-admin-tab--active" : ""}`}
               onClick={() => {
                 setTab(CPD_CATEGORY.PEST);
@@ -475,7 +476,9 @@ export default function MasterCropPestDiseasePage() {
             <button
               type="button"
               role="tab"
+              id="cpd-tab-disease"
               aria-selected={tab === CPD_CATEGORY.DISEASE}
+              aria-controls="cpd-panel-disease"
               className={`masters-admin-tab ${tab === CPD_CATEGORY.DISEASE ? "masters-admin-tab--active" : ""}`}
               onClick={() => {
                 setTab(CPD_CATEGORY.DISEASE);
@@ -487,14 +490,13 @@ export default function MasterCropPestDiseasePage() {
             </button>
           </div>
 
-          {tab === CPD_CATEGORY.DISEASE && (
-            <div className="cpd-disease-notice" role="status">
-              <ShieldAlert className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-              <p>{DISEASE_FIELD_NOTICE}</p>
-            </div>
-          )}
-
-          <section className="cpd-mapped-panel" aria-label={`Mapped ${sectionLabel}s`}>
+          <section
+            className="cpd-mapped-panel"
+            role="tabpanel"
+            id={`cpd-panel-${tab}`}
+            aria-labelledby={`cpd-tab-${tab}`}
+            aria-label={`Mapped ${sectionLabel}s`}
+          >
             <div className="cpd-mapped-panel__toolbar">
               <div className="masters-admin-search cpd-mapped-search">
                 <Search className="search-icon" aria-hidden="true" />
@@ -558,8 +560,7 @@ export default function MasterCropPestDiseasePage() {
       >
         <div className="cpd-add-panel">
           <p className="cpd-add-panel__hint">
-            Search existing {sectionLabel.toLowerCase()} masters, or create a new one. Mapping uses
-            integer IDs only.
+            Search existing {sectionLabel.toLowerCase()} masters, or create a new one for this crop.
           </p>
 
           <div className="masters-admin-search">
@@ -675,10 +676,7 @@ export default function MasterCropPestDiseasePage() {
                 />
               </div>
               <p className="cpd-create-fixed-cat">
-                Category fixed to <strong>{sectionLabel}</strong>
-                {tab === CPD_CATEGORY.DISEASE
-                  ? " (field use remains disabled)."
-                  : "."}
+                This will be saved as a <strong>{sectionLabel}</strong> and mapped to {cropName}.
               </p>
               {createError && (
                 <div className="masters-admin-alert masters-admin-alert--error">
@@ -711,10 +709,6 @@ export default function MasterCropPestDiseasePage() {
                 Changes to this master will appear for every crop where it is used.
               </span>
             </div>
-            <p className="text-xs text-slate-500 mb-3">
-              Master ID <strong>{editMaster.id}</strong> · type fixed to{" "}
-              <strong>{sectionLabel}</strong>
-            </p>
             <div className="masters-admin-field">
               <label htmlFor="cpd-edit-en">
                 English Name <span className="text-red-500">*</span>
@@ -779,7 +773,7 @@ export default function MasterCropPestDiseasePage() {
         <div className="masters-admin-empty">
           <p className="text-base font-semibold text-slate-600">Crop not found</p>
           <button type="button" className="btn btn-secondary btn-md mt-3" onClick={() => navigate("/masters/crops")}>
-            Back to Crops &amp; Pest/Disease
+            Back to Crop / Pest / Disease Master
           </button>
         </div>
       ) : null}

@@ -33,14 +33,14 @@ const EXACT = {
   },
   "/masters": {
     title: "Master Data",
-    subtitle: "Villages, crops, Pest/Disease masters, and field territories",
+    subtitle: "Crop health, villages, and field territories",
   },
   "/masters/locations": {
     title: "Village Master",
     subtitle: "Manage villages used for employee territories, farmers and visits",
   },
   "/masters/crops": {
-    title: "Crops & Pest/Disease",
+    title: "Crop / Pest / Disease Master",
     subtitle: "Manage crops and their Pest & Disease mappings",
   },
   "/masters/problem-categories": {
@@ -84,7 +84,7 @@ export function resolvePageShellMeta(pathname) {
   if (/^\/visits\/\d+\/edit/.test(pathname)) return { title: "Edit Visit", subtitle: "Update visit record" };
   if (/^\/visits\/\d+/.test(pathname)) return { title: "Visit Detail", subtitle: "Visit report" };
   if (/^\/masters\/crops\/\d+\/problems/.test(pathname)) {
-    return { title: "Crop Pest & Disease", subtitle: "Manage Pest and Disease mappings" };
+    return { title: "Crop / Pest / Disease", subtitle: "Manage Pest and Disease mappings" };
   }
 
   return null;

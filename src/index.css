@@ -10389,10 +10389,6 @@ textarea.input {
     @apply mb-3;
 }
 
-.cpd-disease-notice {
-    @apply flex items-start gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3 text-sm text-amber-900 mb-4;
-}
-
 .cpd-mapped-panel {
     @apply dashboard-section-card p-4 sm:p-5;
 }
