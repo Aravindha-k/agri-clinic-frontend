@@ -181,7 +181,7 @@ export default function MasterLocationsPage() {
     };
 
     return (
-        <div className="masters-admin page-container">
+        <div className="masters-admin page-container master-locations-page">
             <PageHeader
                 title="Village Master"
                 subtitle="Manage villages used for employee territories, farmers and visits."

@@ -116,16 +116,16 @@
     --filter-label-height: 1rem;
     --filter-row-gap: 0.75rem;
 
-    /* Typography scale — V2: larger, clearer hierarchy */
-    --text-page-title: 1.875rem;    /* 30px */
-    --text-section-title: 1.1875rem; /* 19px */
-    --text-card-title: 1.0625rem;    /* 17px */
-    --text-metric: 2rem;             /* 32px */
-    --text-body: 0.9375rem;          /* 15px */
-    --text-secondary-size: 0.875rem; /* 14px */
-    --text-caption: 0.8125rem;       /* 13px */
-    --text-table-head: 0.6875rem;    /* 11px */
-    --text-label: 0.8125rem;         /* 13px */
+    /* Typography scale — V3: stronger readable hierarchy */
+    --text-page-title: 2.125rem;     /* ~32px shell title floor */
+    --text-section-title: 1.25rem;   /* 20px */
+    --text-card-title: 1.1875rem;    /* 19px */
+    --text-metric: 2.25rem;          /* 36px */
+    --text-body: 1rem;               /* 15px */
+    --text-secondary-size: 0.9375rem;/* 14px */
+    --text-caption: 0.875rem;        /* 13.5px */
+    --text-table-head: 0.75rem;      /* ~11.7px */
+    --text-label: 0.875rem;          /* 13.5px */
 }
 
 /* ── Base: App background ── */
@@ -139,7 +139,7 @@ body {
     background: var(--app-bg);
     color: var(--neutral-900);
     font-family: 'Inter', 'Noto Sans Tamil', system-ui, -apple-system, sans-serif;
-    font-size: 0.875rem;
+    font-size: var(--text-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -338,14 +338,23 @@ body {
 }
 
 .app-header__crumb {
-    margin: 0 0 0.15rem;
-    font-size: 0.625rem;
+    margin: 0 0 0.2rem;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--brand-primary);
-    opacity: 0.75;
+    opacity: 0.85;
 }
+
+/* Semantic eyebrow tint per route tone */
+.app-header__eyebrow--teal { color: #0f766e; }
+.app-header__eyebrow--cyan { color: #0e7490; }
+.app-header__eyebrow--amber { color: #b45309; }
+.app-header__eyebrow--indigo { color: #4338ca; }
+.app-header__eyebrow--slate { color: #475569; }
+.app-header__eyebrow--forest { color: #166534; }
+.app-header__eyebrow--red { color: #b91c1c; }
 
 .app-header__title-row {
     display: flex;
@@ -384,37 +393,43 @@ body {
 
 .app-header__title {
     margin: 0;
-    font-size: 1.75rem; /* 28px */
+    font-size: 1.625rem; /* ~26px mobile/tablet floor */
     font-weight: 700;
     letter-spacing: -0.03em; /* ~-0.5px */
     line-height: 1.15;
     color: #0f172a;
 }
 
+@media (min-width: 768px) {
+    .app-header__title {
+        font-size: 1.875rem; /* 28px */
+    }
+}
+
 @media (min-width: 1280px) {
     .app-header__title {
-        font-size: 1.875rem; /* 30px */
+        font-size: 2.25rem; /* 34px */
     }
 }
 
 @media (max-width: 639px) {
     .app-header__title {
-        font-size: 1.25rem;
+        font-size: 1.625rem;
     }
 }
 
 .app-header__subtitle {
-    margin: 0.3rem 0 0; /* ~5px */
-    max-width: 40rem;
-    font-size: 0.875rem; /* 14px */
+    margin: 0.35rem 0 0;
+    max-width: 44rem;
+    font-size: 1rem; /* 15px */
     font-weight: 500;
-    line-height: 1.4;
+    line-height: 1.45;
     color: #64748b;
 }
 
 @media (min-width: 1280px) {
     .app-header__subtitle {
-        font-size: 0.9375rem; /* 15px */
+        font-size: 1.0625rem; /* ~16px */
     }
 }
 
@@ -438,10 +453,10 @@ body {
     align-items: center;
     align-self: center;
     gap: 0.3rem;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.625rem; /* 10px */
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.75rem; /* ~11.7px */
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     line-height: 1.2;
     border-radius: 999px;
@@ -479,7 +494,7 @@ body {
 }
 
 .app-header__clock-time {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     font-weight: 700;
     color: #1e293b;
     font-variant-numeric: tabular-nums;
@@ -487,7 +502,7 @@ body {
 
 .app-header__clock-date {
     margin-top: 0.1rem;
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: #94a3b8;
 }
@@ -1077,15 +1092,15 @@ table tbody tr {
 }
 
 .btn-sm {
-    @apply px-3 py-1.5 text-xs min-h-[2rem];
+    @apply px-3 py-1.5 text-[0.8125rem] min-h-[2rem];
 }
 
 .btn-md {
-    @apply px-4 py-2 text-xs min-h-[2.25rem];
+    @apply px-4 py-2 text-[0.9375rem] min-h-[2.75rem];
 }
 
 .btn-lg {
-    @apply px-6 py-3 text-sm min-h-[2.75rem];
+    @apply px-6 py-3 text-base min-h-[3rem];
 }
 
 .btn-primary {
@@ -1246,7 +1261,7 @@ textarea.input {
 }
 
 .data-table tbody td {
-    @apply px-4 py-3 text-[0.9375rem];
+    @apply px-4 py-3.5 text-[0.9375rem];
     color: var(--text-secondary);
     vertical-align: middle;
 }
@@ -1461,7 +1476,7 @@ textarea.input {
 }
 
 .search-input {
-    @apply w-full pl-9 pr-9 text-sm bg-white border border-gray-200 rounded-xl transition-all focus:outline-none placeholder:text-gray-400;
+    @apply w-full pl-9 pr-9 text-[0.9375rem] bg-white border border-gray-200 rounded-xl transition-all focus:outline-none placeholder:text-gray-400;
     box-sizing: border-box;
     height: var(--control-height-md);
     min-height: var(--control-height-md);
@@ -7090,8 +7105,8 @@ textarea.input {
 }
 
 .sidebar-nav-label {
-    @apply px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em];
-    color: rgba(255, 255, 255, 0.32);
+    @apply px-3 mb-1.5 text-[12px] font-semibold uppercase tracking-[0.12em];
+    color: rgba(255, 255, 255, 0.34);
 }
 
 .sidebar-user-card {
@@ -7133,9 +7148,9 @@ textarea.input {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.6rem;
     flex-shrink: 0;
     transition:
         background-color var(--transition-fast),
@@ -7293,7 +7308,7 @@ textarea.input {
 }
 
 .header-profile-avatar {
-    @apply w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0;
+    @apply w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0;
     background: var(--grad-primary);
     box-shadow: 0 4px 12px rgba(30, 132, 73, 0.28), 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 0 0 3px rgba(30, 132, 73, 0.16);
 }
@@ -9344,7 +9359,7 @@ textarea.input {
 }
 
 .employees-hr-status {
-    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.75rem] font-bold uppercase tracking-wide border;
 }
 
 .employees-hr-status--online {
@@ -9840,8 +9855,11 @@ textarea.input {
 
 .reports-bi-export {
     @apply relative rounded-2xl overflow-hidden;
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 48%, #4338ca 100%);
-    box-shadow: 0 14px 40px rgba(49, 46, 129, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background:
+        radial-gradient(ellipse at 88% -30%, rgba(196, 181, 253, 0.16) 0%, transparent 55%),
+        linear-gradient(135deg, #231a3a 0%, #2e1f4d 52%, #3b2a63 100%);
+    border: 1px solid rgba(196, 181, 253, 0.14);
+    box-shadow: 0 14px 40px rgba(35, 26, 58, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .reports-bi-export__inner {
@@ -9853,7 +9871,8 @@ textarea.input {
 }
 
 .reports-bi-export__label {
-    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-200;
+    @apply text-[11px] font-bold uppercase tracking-[0.16em];
+    color: #c4b5fd;
 }
 
 .reports-bi-export__title {
@@ -9861,11 +9880,13 @@ textarea.input {
 }
 
 .reports-bi-export__range {
-    @apply text-[13px] font-semibold text-indigo-200 mt-1 tabular-nums;
+    @apply text-[13px] font-semibold mt-1 tabular-nums;
+    color: #ddd6fe;
 }
 
 .reports-bi-export__hint {
-    @apply text-xs text-indigo-200/90 mt-1.5;
+    @apply text-xs mt-1.5;
+    color: rgba(221, 214, 254, 0.75);
 }
 
 .reports-bi-export__actions {
@@ -10883,7 +10904,7 @@ textarea.input {
 }
 
 .masters-admin-status {
-    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[0.75rem] font-bold uppercase tracking-wide border;
 }
 
 .masters-admin-status--active {
@@ -11035,6 +11056,19 @@ textarea.input {
 .masters-admin-hub-card__desc {
     @apply text-[0.875rem] text-slate-500 mt-1.5 leading-relaxed;
 }
+
+.masters-admin-hub-card__stat {
+    @apply mt-2.5 text-[0.8125rem] font-medium text-slate-500;
+}
+
+.masters-admin-hub-card__stat strong {
+    @apply font-bold;
+    font-size: 1.0625rem;
+}
+
+.masters-admin-hub-card__stat--emerald strong { color: #15803d; }
+.masters-admin-hub-card__stat--teal strong { color: #0f766e; }
+.masters-admin-hub-card__stat--forest strong { color: #166534; }
 
 .masters-admin-hub-card__action {
     @apply mt-auto pt-4 inline-flex items-center gap-1 text-[0.8125rem] font-bold;
@@ -12295,7 +12329,7 @@ textarea.input {
 }
 
 .filter-chip {
-    @apply px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200;
+    @apply px-3.5 py-1.5 rounded-lg text-[0.8125rem] font-semibold transition-all duration-200;
     border: 1px solid transparent;
 }
 
@@ -12311,6 +12345,29 @@ textarea.input {
     background: var(--grad-primary);
     @apply text-white;
     box-shadow: 0 4px 12px rgba(30, 132, 73, 0.22);
+}
+
+/* ── Semantic page-identity accents — thin brand edge on primary panels ── */
+.page-container--farmers .filters-bar,
+.page-container--visits .filters-bar {
+    border-top: 3px solid rgba(30, 132, 73, 0.55);
+}
+
+.route-history-page .filters-bar,
+.route-history-page .route-history-filters {
+    border-top: 3px solid rgba(8, 145, 178, 0.55);
+}
+
+.master-locations-page .masters-admin-filters {
+    border-top: 3px solid rgba(8, 145, 178, 0.55);
+}
+
+.emp-loc-page .filters-bar {
+    border-top: 3px solid rgba(13, 148, 136, 0.55);
+}
+
+.notifications-page .notifications-shell-card {
+    border-top: 3px solid rgba(217, 119, 6, 0.55);
 }
 
 .premium-kpi--clickable:focus-visible {

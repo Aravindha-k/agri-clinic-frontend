@@ -66,7 +66,7 @@ export default function SidebarNavItem({ item, onClose }) {
         to={path}
         onClick={onClose}
         className={({ isActive }) =>
-          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-all duration-200 group border border-transparent
+          `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[16px] font-medium transition-all duration-200 group border border-transparent
           ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90 hover:bg-white/[0.04]"}`
         }
       >
@@ -85,14 +85,14 @@ export default function SidebarNavItem({ item, onClose }) {
               aria-hidden="true"
             >
               <SafeIcon
-                className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${
+                className={`w-[19px] h-[19px] flex-shrink-0 transition-all duration-200 ${
                   isActive
                     ? "text-emerald-400"
                     : "text-white/40 group-hover:text-emerald-400/70"
                 }`}
               />
             </span>
-            <span className="flex-1 transition-all">{label}</span>
+            <span className="flex-1 min-w-0 truncate transition-all">{label}</span>
             {isActive && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 opacity-80" />
             )}

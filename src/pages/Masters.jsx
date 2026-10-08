@@ -1,6 +1,10 @@
+import { useEffect, useState } from "react";
 import { PageHeader } from "../components/ui/command";
 import { Link } from "react-router-dom";
 import { ChevronRight, MapPin, MapPinned, Wheat } from "lucide-react";
+import { getCropPestDiseaseList } from "../api/cropPestDisease.api";
+import { fetchLocationSummary } from "../api/master.api";
+import { fetchEmployeeLocationAssignments } from "../api/employeeLocationAssignments.api";
 
 /**
  * Masters hub — canonical business-facing sections only.
@@ -17,6 +21,7 @@ const MASTER_SECTIONS = [
         path: "/masters/crops",
         icon: Wheat,
         tint: "emerald",
+        statKey: "crops",
     },
     {
         title: "Village Master",
@@ -24,6 +29,7 @@ const MASTER_SECTIONS = [
         path: "/masters/locations",
         icon: MapPin,
         tint: "teal",
+        statKey: "villages",
     },
     {
         title: "Employee Territories",
@@ -31,10 +37,40 @@ const MASTER_SECTIONS = [
         path: "/masters/employee-locations",
         icon: MapPinned,
         tint: "forest",
+        statKey: "employees",
     },
 ];
 
 export default function Masters() {
+    const [stats, setStats] = useState({ crops: null, villages: null, employees: null });
+
+    useEffect(() => {
+        let active = true;
+        const safe = (promise, key, pick) =>
+            promise
+                .then((res) => {
+                    if (!active) return;
+                    const n = pick(res);
+                    if (typeof n === "number" && Number.isFinite(n)) {
+                        setStats((prev) => (prev[key] === n ? prev : { ...prev, [key]: n }));
+                    }
+                })
+                .catch(() => {
+                    /* hub stats are decorative — hide on failure */
+                });
+
+        safe(getCropPestDiseaseList({ is_active: true, page_size: 1 }), "crops", (r) => r?.count);
+        safe(fetchLocationSummary(), "villages", (r) => r?.villages);
+        safe(
+            fetchEmployeeLocationAssignments({ page_size: 1 }),
+            "employees",
+            (r) => r?.count,
+        );
+        return () => {
+            active = false;
+        };
+    }, []);
+
     return (
         <div className="masters-admin">
             <PageHeader
@@ -44,7 +80,7 @@ export default function Masters() {
 
             <div className="masters-admin-hub-grid" role="list">
                 {MASTER_SECTIONS.map(
-                    ({ title, desc, path, icon: Icon, tint }) => (
+                    ({ title, desc, path, icon: Icon, tint, statKey }) => (
                         <Link
                             key={path}
                             to={path}
@@ -57,6 +93,16 @@ export default function Masters() {
                             <div className="min-w-0">
                                 <h3 className="masters-admin-hub-card__title">{title}</h3>
                                 <p className="masters-admin-hub-card__desc">{desc}</p>
+                                {typeof stats[statKey] === "number" ? (
+                                    <p className={`masters-admin-hub-card__stat masters-admin-hub-card__stat--${tint}`}>
+                                        <strong className="tabular-nums">{stats[statKey]}</strong>
+                                        {statKey === "crops"
+                                            ? " active crops"
+                                            : statKey === "villages"
+                                              ? " villages"
+                                              : " employees"}
+                                    </p>
+                                ) : null}
                             </div>
                             <span className={`masters-admin-hub-card__action masters-admin-hub-card__action--${tint}`}>
                                 Manage

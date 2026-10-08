@@ -81,6 +81,7 @@ export default function Header({ onMenuClick }) {
   const hasChrome = Boolean(title);
   const PageIcon = chrome?.icon ?? routeMeta?.icon ?? null;
   const pageTone = chrome?.tone ?? routeMeta?.tone ?? "emerald";
+  const eyebrow = routeMeta?.crumb ?? routeMeta?.eyebrow ?? null;
 
   return (
     <header
@@ -104,9 +105,12 @@ export default function Header({ onMenuClick }) {
 
             {hasChrome && (
               <div className={`app-header__chrome min-w-0 ${chrome?.className || ""}`}>
-                {routeMeta?.crumb ? (
-                  <nav className="app-header__crumb" aria-label="Breadcrumb">
-                    {routeMeta.crumb}
+                {eyebrow ? (
+                  <nav
+                    className={`app-header__crumb app-header__eyebrow--${pageTone}`}
+                    aria-label="Breadcrumb"
+                  >
+                    {eyebrow}
                   </nav>
                 ) : null}
                 <div className="app-header__title-row">
@@ -179,10 +183,10 @@ export default function Header({ onMenuClick }) {
                   >
                     <div className="header-profile-avatar" aria-hidden="true">{initials}</div>
                     <div className="hidden md:block text-left min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[120px]">
+                      <p className="text-sm font-semibold text-slate-900 truncate leading-tight max-w-[140px]">
                         {displayName}
                       </p>
-                      <p className="text-[10px] text-slate-500 leading-tight capitalize">
+                      <p className="text-[11px] text-slate-500 leading-tight capitalize font-semibold tracking-wide uppercase">
                         {user?.is_superuser
                           ? "Owner"
                           : user?.is_staff
