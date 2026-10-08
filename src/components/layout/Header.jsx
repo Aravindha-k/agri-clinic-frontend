@@ -183,10 +183,10 @@ export default function Header({ onMenuClick }) {
                   >
                     <div className="header-profile-avatar" aria-hidden="true">{initials}</div>
                     <div className="hidden md:block text-left min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate leading-tight max-w-[140px]">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[140px]">
                         {displayName}
                       </p>
-                      <p className="text-[11px] text-slate-500 leading-tight capitalize font-semibold tracking-wide uppercase">
+                      <p className="text-[10.5px] text-slate-500 leading-tight capitalize font-semibold tracking-wide">
                         {user?.is_superuser
                           ? "Owner"
                           : user?.is_staff
