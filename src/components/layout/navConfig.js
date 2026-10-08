@@ -3,7 +3,7 @@ import {
   Users,
   Sprout,
   Leaf,
-  AlertTriangle,
+  Wheat,
   MapPin,
   Route,
   BarChart3,
@@ -27,7 +27,7 @@ export const NAV_SECTIONS = [
     label: "Field Operations",
     items: [
       { label: "Visits", icon: Leaf, path: "/visits" },
-      { label: "Crop Directory", icon: AlertTriangle, path: "/crop-issues" },
+      { label: "Crop Directory", icon: Wheat, path: "/crop-issues" },
       { label: "Live Tracking", icon: MapPin, path: "/tracking" },
       { label: "Route History", icon: Route, path: "/tracking/routes" },
     ],

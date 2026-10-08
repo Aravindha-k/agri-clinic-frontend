@@ -18,7 +18,8 @@ export default {
       },
       fontFamily: {
         display: ["Sora", "system-ui", "sans-serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
+        body: ["Inter", "Noto Sans Tamil", "system-ui", "sans-serif"],
+        tamil: ["Noto Sans Tamil", "Inter", "system-ui", "sans-serif"],
       },
       boxShadow: {
         card: "0 0 0 1px rgba(15,118,110,0.06), 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)",

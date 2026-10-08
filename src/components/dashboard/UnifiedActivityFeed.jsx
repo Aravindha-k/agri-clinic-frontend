@@ -11,10 +11,10 @@ import { formatIndiaDateTime } from "../../utils/businessDate";
 
 const TYPE_CFG = {
   visit: { icon: ClipboardList, color: "bg-emerald-500", avatarBg: "linear-gradient(135deg, #16a34a, #0d9488)" },
-  evidence: { icon: Paperclip, color: "bg-violet-500", avatarBg: "linear-gradient(135deg, #7c3aed, #6366f1)" },
-  workday_start: { icon: PlayCircle, color: "bg-sky-500", avatarBg: "linear-gradient(135deg, #0284c7, #0ea5e9)" },
+  evidence: { icon: Paperclip, color: "bg-amber-500", avatarBg: "linear-gradient(135deg, #d97706, #f59e0b)" },
+  workday_start: { icon: PlayCircle, color: "bg-teal-500", avatarBg: "linear-gradient(135deg, #0d9488, #14b8a6)" },
   workday_end: { icon: StopCircle, color: "bg-slate-400", avatarBg: "linear-gradient(135deg, #64748b, #94a3b8)" },
-  farmer: { icon: Sprout, color: "bg-teal-500", avatarBg: "linear-gradient(135deg, #0d9488, #14b8a6)" },
+  farmer: { icon: Sprout, color: "bg-emerald-600", avatarBg: "linear-gradient(135deg, #145A32, #1E8449)" },
 };
 
 function formatWhen(d) {

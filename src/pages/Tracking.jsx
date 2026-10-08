@@ -89,37 +89,8 @@ import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
 
 const REFRESH_INTERVAL = LIVE_TRACKING_POLL_MS;
 
-const useCountUp = (target, duration = 900) => {
-    const [val, setVal] = useState(0);
-    const prev = useRef(0);
-    useEffect(() => {
-        const reducedMotion =
-            typeof window !== "undefined" &&
-            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const e = Number(target) || 0;
-        if (reducedMotion) {
-            setVal(e);
-            prev.current = e;
-            return undefined;
-        }
-        const s = prev.current;
-        if (s === e) {
-            setVal(e);
-            return undefined;
-        }
-        const t0 = performance.now();
-        let raf;
-        const step = (now) => {
-            const p = Math.min((now - t0) / duration, 1);
-            setVal(Math.round(s + (e - s) * (1 - Math.pow(1 - p, 3))));
-            if (p < 1) raf = requestAnimationFrame(step);
-            else prev.current = e;
-        };
-        raf = requestAnimationFrame(step);
-        return () => cancelAnimationFrame(raf);
-    }, [target, duration]);
-    return val;
-};
+/* Shared count-up (reduced-motion aware) lives in utils/motion.js */
+import { useCountUp } from "../utils/motion";
 
 const StatCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
     const animVal = useCountUp(value);

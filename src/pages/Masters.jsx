@@ -1,75 +1,71 @@
-import { useNavigate } from "react-router-dom";
-import { MapPin, Wheat, ChevronRight, Database, MapPinned } from "lucide-react";
 import { PageHeader } from "../components/ui/command";
+import { Link } from "react-router-dom";
+import { ChevronRight, MapPin, MapPinned, Wheat } from "lucide-react";
+
+/**
+ * Masters hub — canonical business-facing sections only.
+ *
+ * Legacy Problem Category and global Problem Master pages stay registered
+ * under /masters/problem-* for internal/ops use (Excel import, debugging,
+ * Visit compatibility) but are intentionally not linked from this hub.
+ */
 
 const MASTER_SECTIONS = [
     {
         title: "Crop / Pest / Disease Master",
-        description: "Manage crops and their Pest & Disease mappings",
-        icon: Wheat,
-        color: "#1E8449",
-        bg: "linear-gradient(160deg,#ecfdf5 0%,#d1fae5 100%)",
-        iconBg: "#a7f3d0",
+        desc: "Manage crops and their Pest & Disease mappings",
         path: "/masters/crops",
+        icon: Wheat,
+        tint: "emerald",
     },
     {
         title: "Village Master",
-        description: "Manage villages used for territories, farmers and visits",
-        icon: MapPin,
-        color: "#0f766e",
-        bg: "linear-gradient(160deg,#f0fdfa 0%,#ccfbf1 100%)",
-        iconBg: "#99f6e4",
+        desc: "Manage villages for employee territories, farmers and visits",
         path: "/masters/locations",
+        icon: MapPin,
+        tint: "teal",
     },
     {
         title: "Employee Territories",
-        description: "Assign villages and operational areas to field employees",
-        icon: MapPinned,
-        color: "#4338ca",
-        bg: "linear-gradient(160deg,#eef2ff 0%,#e0e7ff 100%)",
-        iconBg: "#c7d2fe",
+        desc: "Assign villages and operational areas to field employees",
         path: "/masters/employee-locations",
+        icon: MapPinned,
+        tint: "forest",
     },
 ];
 
 export default function Masters() {
-    const navigate = useNavigate();
-
     return (
-        <div className="masters-admin page-container">
+        <div className="masters-admin">
             <PageHeader
                 title="Master Data"
-                subtitle="Manage reference data used across visits, farmers, and field operations"
-                badge={
-                    <span className="masters-admin-header__badge">
-                        <Database className="w-3 h-3" aria-hidden="true" />
-                        Reference data
-                    </span>
-                }
+                subtitle="Crops, villages and field territories that power daily operations"
             />
 
-            <div className="masters-admin-hub-grid">
-                {MASTER_SECTIONS.map((section) => (
-                    <button
-                        key={section.path}
-                        type="button"
-                        onClick={() => navigate(section.path)}
-                        className="masters-admin-hub-card group"
-                        style={{ background: section.bg }}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div
-                                className="masters-admin-hub-card__icon"
-                                style={{ background: section.iconBg }}
-                            >
-                                <section.icon className="w-4 h-4" style={{ color: section.color }} aria-hidden="true" />
+            <div className="masters-admin-hub-grid" role="list">
+                {MASTER_SECTIONS.map(
+                    ({ title, desc, path, icon: Icon, tint }) => (
+                        <Link
+                            key={path}
+                            to={path}
+                            className="masters-admin-hub-card"
+                            role="listitem"
+                        >
+                            <div className={`raised-icon-well raised-icon-well--${tint} masters-admin-hub-card__icon`}>
+                                <Icon strokeWidth={2.25} aria-hidden="true" />
                             </div>
-                            <ChevronRight className="masters-admin-hub-card__arrow" aria-hidden="true" />
-                        </div>
-                        <h3 className="masters-admin-hub-card__title">{section.title}</h3>
-                        <p className="masters-admin-hub-card__desc">{section.description}</p>
-                    </button>
-                ))}
+                            <div className="min-w-0">
+                                <h3 className="masters-admin-hub-card__title">{title}</h3>
+                                <p className="masters-admin-hub-card__desc">{desc}</p>
+                            </div>
+                            <ChevronRight
+                                className="masters-admin-hub-card__chevron"
+                                strokeWidth={2}
+                                aria-hidden="true"
+                            />
+                        </Link>
+                    ),
+                )}
             </div>
         </div>
     );

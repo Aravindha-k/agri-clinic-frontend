@@ -11,9 +11,10 @@ import {
   RefreshCw,
   Search,
   Sprout,
+  Stethoscope,
   X,
 } from "lucide-react";
-import { PageHeader } from "../../components/ui/command";
+import { EmptyState, PageHeader } from "../../components/ui/command";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
@@ -67,7 +68,7 @@ function MasterRow({ item, sectionLabel, onEdit, onUnmap, busyId }) {
     <li className="cpd-master-row">
       <div className="cpd-master-row__text min-w-0">
         <p className="cpd-master-row__name">{item.name || "\u2014"}</p>
-        <p className="cpd-master-row__ta">{displayTamilName(item.tamil_name)}</p>
+        <p className="cpd-master-row__ta" lang="ta">{displayTamilName(item.tamil_name)}</p>
       </div>
       <div className="cpd-master-row__meta">
         <StatusPill active={item.is_active} />
@@ -436,13 +437,13 @@ export default function MasterCropPestDiseasePage() {
         <>
           <section className="cpd-detail-hero" aria-labelledby="cpd-crop-heading">
             <div className="cpd-detail-hero__icon" aria-hidden="true">
-              <Sprout className="w-6 h-6" />
+              <Sprout className="w-6 h-6" strokeWidth={2.25} />
             </div>
             <div className="min-w-0">
               <h2 id="cpd-crop-heading" className="cpd-detail-hero__title">
                 {detail.crop.name_en || cropName}
               </h2>
-              <p className="cpd-detail-hero__ta">
+              <p className="cpd-detail-hero__ta" lang="ta">
                 {displayTamilName(detail.crop.tamil_name || detail.crop.name_ta)}
               </p>
               <div className="cpd-detail-hero__meta">
@@ -470,8 +471,9 @@ export default function MasterCropPestDiseasePage() {
                 setMappedSearch("");
               }}
             >
+              <Bug className="w-3.5 h-3.5" aria-hidden="true" />
               Pests
-              <span className="masters-admin-tab__count">{detail.pest_count}</span>
+              <span key={`pest-${detail.pest_count}`} className="masters-admin-tab__count">{detail.pest_count}</span>
             </button>
             <button
               type="button"
@@ -485,8 +487,9 @@ export default function MasterCropPestDiseasePage() {
                 setMappedSearch("");
               }}
             >
+              <Stethoscope className="w-3.5 h-3.5" aria-hidden="true" />
               Diseases
-              <span className="masters-admin-tab__count">{detail.disease_count}</span>
+              <span key={`disease-${detail.disease_count}`} className="masters-admin-tab__count">{detail.disease_count}</span>
             </button>
           </div>
 
@@ -517,13 +520,22 @@ export default function MasterCropPestDiseasePage() {
 
             {filteredMapped.length === 0 ? (
               <div className="masters-admin-empty cpd-empty">
-                <p className="text-base font-semibold text-slate-600">
-                  {mappedSearch.trim()
-                    ? `No matching ${sectionLabel.toLowerCase()} masters found.`
-                    : tab === CPD_CATEGORY.PEST
-                      ? "No pests mapped to this crop."
-                      : "No diseases mapped to this crop."}
-                </p>
+                <EmptyState
+                  icon={tab === CPD_CATEGORY.PEST ? Bug : Stethoscope}
+                  title={
+                    mappedSearch.trim()
+                      ? `No matching ${sectionLabel.toLowerCase()} masters found.`
+                      : tab === CPD_CATEGORY.PEST
+                        ? "No pests mapped to this crop."
+                        : "No diseases mapped to this crop."
+                  }
+                  subtitle={
+                    mappedSearch.trim()
+                      ? "Try a different English or Tamil name."
+                      : `Use “Add ${sectionLabel}” to map an existing master or create a new one.`
+                  }
+                  className="py-10"
+                />
               </div>
             ) : (
               <ul className="cpd-master-list">

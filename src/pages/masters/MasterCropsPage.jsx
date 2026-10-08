@@ -19,8 +19,8 @@ import {
   Plus,
   AlertCircle,
   Loader2,
-  Leaf,
   Bug,
+  Stethoscope,
   MoreVertical,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
@@ -232,8 +232,10 @@ function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
 }
 
 function CountBadge({ value, kind }) {
+  const Icon = kind === "pest" ? Bug : Stethoscope;
   return (
     <span className={`cpd-count-badge cpd-count-badge--${kind}`} title={`${value} ${kind}`}>
+      <Icon className="cpd-count-badge__icon" aria-hidden="true" />
       <span className="cpd-count-badge__value">{value}</span>
       <span className="sr-only">
         {kind === "pest" ? "pests" : "diseases"}
@@ -463,13 +465,13 @@ export default function MasterCropsPage() {
                     <tr key={c.id}>
                       <td>
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="masters-admin-row-icon">
-                            <Leaf className="w-3.5 h-3.5" aria-hidden="true" />
+                          <div className="masters-admin-row-icon raised-icon-well raised-icon-well--emerald">
+                            <Wheat className="w-3.5 h-3.5" aria-hidden="true" />
                           </div>
                           <div className="min-w-0">
                             <p className="masters-admin-row-name">{c.name_en || "\u2014"}</p>
                             {c.name_ta || c.tamil_name ? (
-                              <p className="masters-admin-row-sub">{c.name_ta || c.tamil_name}</p>
+                              <p className="masters-admin-row-sub" lang="ta">{c.name_ta || c.tamil_name}</p>
                             ) : null}
                           </div>
                         </div>
@@ -514,7 +516,7 @@ export default function MasterCropsPage() {
                   <div className="min-w-0">
                     <p className="masters-admin-row-name">{c.name_en || "\u2014"}</p>
                     {c.name_ta || c.tamil_name ? (
-                      <p className="masters-admin-row-sub">{c.name_ta || c.tamil_name}</p>
+                      <p className="masters-admin-row-sub" lang="ta">{c.name_ta || c.tamil_name}</p>
                     ) : null}
                   </div>
                   <span

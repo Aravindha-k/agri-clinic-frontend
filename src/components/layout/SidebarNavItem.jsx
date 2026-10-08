@@ -78,13 +78,15 @@ export default function SidebarNavItem({ item, onClose }) {
                 aria-hidden="true"
               />
             )}
-            <SafeIcon
-              className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${
-                isActive
-                  ? "text-emerald-400"
-                  : "text-white/40 group-hover:text-emerald-400/70"
-              }`}
-            />
+            <span className="sidebar-nav-item__icon" aria-hidden="true">
+              <SafeIcon
+                className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${
+                  isActive
+                    ? "text-emerald-400"
+                    : "text-white/40 group-hover:text-emerald-400/70"
+                }`}
+              />
+            </span>
             <span className="flex-1 transition-all">{label}</span>
             {isActive && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 opacity-80" />

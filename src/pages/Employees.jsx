@@ -2,6 +2,7 @@ import { EmptyState, PageHeader, FilterBar, FilterField, FilterToolbarRow } from
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import { BRAND } from "../theme/brand";
+import { useCountUp } from "../utils/motion";
 function resolveList(res) {
   const raw = res?.data?.data ?? res?.data ?? res;
   if (Array.isArray(raw)) return raw;
@@ -59,29 +60,8 @@ import {
 } from "lucide-react";
 
 /* ================================================================
-   HOOKS
+   HOOKS — shared count-up lives in utils/motion.js
    ================================================================ */
-const useCountUp = (target, duration = 1000) => {
-  const [val, setVal] = useState(0);
-  const prev = useRef(0);
-  useEffect(() => {
-    const start = prev.current;
-    const end = Number(target) || 0;
-    if (start === end) { setVal(end); return; }
-    const t0 = performance.now();
-    let raf;
-    const step = (now) => {
-      const p = Math.min((now - t0) / duration, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      setVal(Math.round(start + (end - start) * ease));
-      if (p < 1) raf = requestAnimationFrame(step);
-      else prev.current = end;
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-  return val;
-};
 
 /* ================================================================
    HELPERS

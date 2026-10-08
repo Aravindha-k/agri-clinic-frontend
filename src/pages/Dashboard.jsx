@@ -79,6 +79,13 @@ import {
 
 const formatDate = (d) => formatIndiaDate(d);
 
+const opsGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
+
 const formatTime = (d) => formatIndiaTime(d);
 
 const formatDuration = (s, e) => {
@@ -487,6 +494,34 @@ const Dashboard = () => {
       )}
 
       <div className="dashboard-bento">
+      <div className="dashboard-ops-band">
+        <div className="dashboard-ops-band__lead">
+          <div className="raised-icon-well raised-icon-well--emerald dashboard-ops-band__icon">
+            <Sprout className="w-5 h-5" strokeWidth={2.25} aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="dashboard-ops-band__greeting">{opsGreeting()}</p>
+            <h2 className="dashboard-ops-band__title">Kavya Agri Clinic Operations</h2>
+            <p className="dashboard-ops-band__sub">Today&apos;s field activity is live</p>
+          </div>
+        </div>
+        {(stats.workingNow > 0 || stats.onlineNow > 0) && (
+          <div className="dashboard-ops-band__status">
+            <button
+              type="button"
+              onClick={() => navigate("/tracking")}
+              className="dashboard-ops-band__live"
+            >
+              <Radio className="w-3.5 h-3.5" aria-hidden="true" />
+              LIVE
+            </button>
+            <span className="dashboard-ops-band__meta">
+              {stats.workingNow} working · {stats.onlineNow} GPS online
+            </span>
+          </div>
+        )}
+      </div>
+
       <div className="dashboard-kpi-row">
         <PremiumKpiCard
           icon={Sprout}
@@ -759,7 +794,8 @@ const Dashboard = () => {
                   return (
                   <tr
                     key={v.id || i}
-                    className="hover:bg-emerald-50/30 transition-colors duration-150 cursor-pointer group"
+                    className="dashboard-visit-row hover:bg-emerald-50/30 transition-colors duration-150 cursor-pointer group"
+                    style={{ "--row-i": Math.min(i, 7) }}
                     onClick={() => navigate(`/visits/${v.id}`)}
                   >
                     <td className="px-5 py-3.5">

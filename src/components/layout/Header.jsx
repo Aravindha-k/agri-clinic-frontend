@@ -102,6 +102,11 @@ export default function Header({ onMenuClick }) {
 
             {hasChrome && (
               <div className={`app-header__chrome min-w-0 ${chrome?.className || ""}`}>
+                {routeMeta?.crumb ? (
+                  <nav className="app-header__crumb" aria-label="Breadcrumb">
+                    {routeMeta.crumb}
+                  </nav>
+                ) : null}
                 <div className="app-header__title-row">
                   <h1 className="app-header__title">{title}</h1>
                   {badge}
