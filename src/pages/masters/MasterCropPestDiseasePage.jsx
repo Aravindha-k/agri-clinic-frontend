@@ -465,7 +465,7 @@ export default function MasterCropPestDiseasePage() {
               id="cpd-tab-pest"
               aria-selected={tab === CPD_CATEGORY.PEST}
               aria-controls="cpd-panel-pest"
-              className={`masters-admin-tab ${tab === CPD_CATEGORY.PEST ? "masters-admin-tab--active" : ""}`}
+              className={`masters-admin-tab masters-admin-tab--pest ${tab === CPD_CATEGORY.PEST ? "masters-admin-tab--active" : ""}`}
               onClick={() => {
                 setTab(CPD_CATEGORY.PEST);
                 setMappedSearch("");
@@ -481,7 +481,7 @@ export default function MasterCropPestDiseasePage() {
               id="cpd-tab-disease"
               aria-selected={tab === CPD_CATEGORY.DISEASE}
               aria-controls="cpd-panel-disease"
-              className={`masters-admin-tab ${tab === CPD_CATEGORY.DISEASE ? "masters-admin-tab--active" : ""}`}
+              className={`masters-admin-tab masters-admin-tab--disease ${tab === CPD_CATEGORY.DISEASE ? "masters-admin-tab--active" : ""}`}
               onClick={() => {
                 setTab(CPD_CATEGORY.DISEASE);
                 setMappedSearch("");

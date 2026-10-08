@@ -5,18 +5,18 @@ import { usePageChrome } from "../../../context/PageChromeContext";
  * Publishes page title chrome into the shared shell Header.
  * Renders nothing in-page when the shell provider is present (avoids duplicate titles).
  */
-export default function PageHeader({ title, subtitle, badge, actions, className = "" }) {
+export default function PageHeader({ title, subtitle, badge, actions, icon, tone, className = "" }) {
   const ctx = usePageChrome();
   const setChrome = ctx?.setChrome;
   const clearChrome = ctx?.clearChrome;
 
   useLayoutEffect(() => {
     if (!setChrome) return undefined;
-    setChrome({ title, subtitle, badge, actions, className });
+    setChrome({ title, subtitle, badge, actions, icon, tone, className });
     return () => {
       clearChrome?.();
     };
-  }, [setChrome, clearChrome, title, subtitle, badge, actions, className]);
+  }, [setChrome, clearChrome, title, subtitle, badge, actions, icon, tone, className]);
 
   /* Fallback if ever used outside Layout (e.g. isolated tests) */
   if (!ctx) {

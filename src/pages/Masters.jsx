@@ -58,11 +58,10 @@ export default function Masters() {
                                 <h3 className="masters-admin-hub-card__title">{title}</h3>
                                 <p className="masters-admin-hub-card__desc">{desc}</p>
                             </div>
-                            <ChevronRight
-                                className="masters-admin-hub-card__chevron"
-                                strokeWidth={2}
-                                aria-hidden="true"
-                            />
+                            <span className={`masters-admin-hub-card__action masters-admin-hub-card__action--${tint}`}>
+                                Manage
+                                <ChevronRight className="w-4 h-4" strokeWidth={2.25} aria-hidden="true" />
+                            </span>
                         </Link>
                     ),
                 )}

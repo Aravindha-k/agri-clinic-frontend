@@ -437,7 +437,7 @@ export default function Reports() {
       value: analytics.visitsWithEvidence,
       description: `${analytics.evidenceRatePct}% of visits include uploaded photos or files`,
       accent: BRAND.accent,
-      iconBg: "#ede9fe",
+      iconBg: "#fef3c7",
     },
   ];
 
@@ -483,6 +483,9 @@ export default function Reports() {
             <p className="reports-bi-export__label">Export center</p>
             <p className="reports-bi-export__title">
               {visitTotal} visit{visitTotal === 1 ? "" : "s"} in this range
+            </p>
+            <p className="reports-bi-export__range">
+              {dateFrom} → {dateTo}
             </p>
             <p className="reports-bi-export__hint">
               Export downloads matching rows. Opening this page does not load every visit.

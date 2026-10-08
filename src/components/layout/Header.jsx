@@ -79,6 +79,8 @@ export default function Header({ onMenuClick }) {
   const badge = chrome?.badge ?? null;
   const actions = chrome?.actions ?? null;
   const hasChrome = Boolean(title);
+  const PageIcon = chrome?.icon ?? routeMeta?.icon ?? null;
+  const pageTone = chrome?.tone ?? routeMeta?.tone ?? "emerald";
 
   return (
     <header
@@ -108,6 +110,14 @@ export default function Header({ onMenuClick }) {
                   </nav>
                 ) : null}
                 <div className="app-header__title-row">
+                  {PageIcon ? (
+                    <span
+                      className={`app-header__icon raised-icon-well raised-icon-well--${pageTone}`}
+                      aria-hidden="true"
+                    >
+                      <PageIcon strokeWidth={2.1} />
+                    </span>
+                  ) : null}
                   <h1 className="app-header__title">{title}</h1>
                   {badge}
                 </div>
