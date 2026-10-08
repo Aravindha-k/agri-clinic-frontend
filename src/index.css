@@ -234,6 +234,22 @@ body {
     --well-shadow: rgba(220, 38, 38, 0.12);
 }
 
+.raised-icon-well--cyan {
+    --well-tint: #ecfeff;
+    --well-tint-deep: #cffafe;
+    --well-border: rgba(8, 145, 178, 0.16);
+    --well-fg: #0e7490;
+    --well-shadow: rgba(8, 145, 178, 0.14);
+}
+
+.raised-icon-well--indigo {
+    --well-tint: #eef2ff;
+    --well-tint-deep: #e0e7ff;
+    --well-border: rgba(99, 102, 241, 0.16);
+    --well-fg: #4338ca;
+    --well-shadow: rgba(99, 102, 241, 0.13);
+}
+
 .raised-icon-well--slate {
     --well-tint: #f8fafc;
     --well-tint-deep: #e2e8f0;
@@ -7045,10 +7061,7 @@ textarea.input {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Avatar ring */
-.sidebar-user-card .w-8.h-8 {
-    box-shadow: 0 0 0 1.5px rgba(52, 211, 153, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
-}
+/* Avatar ring — inline style on the avatar carries the ring now */
 
 .sidebar-nav-item {
     transition:
@@ -12727,9 +12740,13 @@ textarea.input {
 }
 
 .crop-issues-crop-cell__icon {
-    @apply w-8 h-8 rounded-lg flex items-center justify-center shrink-0;
-    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    @apply w-8 h-8 rounded-xl flex items-center justify-center shrink-0;
+    background: linear-gradient(145deg, #ffffff 0%, #ecfdf5 55%, #d1fae5 100%);
+    border: 1px solid rgba(16, 185, 129, 0.16);
     color: var(--brand-primary-dark);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 3px 8px rgba(30, 132, 73, 0.1);
 }
 
 .crop-issues-crop-cell__name {

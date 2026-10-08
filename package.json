@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "node -e \"console.log('No TypeScript in this project; use npm run build for validation.')\"",
-    "test:hardening": "node src/utils/reportsEmployeeFilter.test.mjs && node src/utils/visitsActivity.test.mjs && node src/utils/visitsFilters.test.mjs && node src/utils/cropPestDisease.test.mjs"
+    "test:hardening": "node src/utils/reportsEmployeeFilter.test.mjs && node src/utils/visitsActivity.test.mjs && node src/utils/visitsFilters.test.mjs && node src/utils/cropPestDisease.test.mjs && node src/utils/adminUx.test.mjs"
   },
   "dependencies": {
     "axios": "^1.13.5",

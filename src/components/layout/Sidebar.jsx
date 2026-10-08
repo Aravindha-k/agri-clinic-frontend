@@ -45,7 +45,8 @@ function SidebarUserCard({ user, loading }) {
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs text-white"
         style={{
           background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+          boxShadow:
+            "0 2px 6px rgba(0,0,0,0.25), 0 0 0 1.5px rgba(52,211,153,0.35)",
         }}
       >
         {loading ? (

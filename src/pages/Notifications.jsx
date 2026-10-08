@@ -20,7 +20,7 @@ function notifIcon(n) {
     return <CheckCircle className="w-4 h-4 text-emerald-500" />;
   if (t.includes("error") || t.includes("fail"))
     return <AlertCircle className="w-4 h-4 text-red-500" />;
-  return <Info className="w-4 h-4 text-sky-500" />;
+  return <Info className="w-4 h-4 text-teal-600" />;
 }
 
 function fmtNotifTime(d) {

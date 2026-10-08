@@ -20,6 +20,7 @@ import Layout from "./components/layout/Layout";
 import CreateVisit from "./pages/CreateVisit";
 import FarmerEditor from "./pages/FarmerEditor";
 import EditVisit from "./pages/EditVisit";
+import NotFound from "./pages/NotFound";
 import RouteFallback from "./components/RouteFallback";
 
 const Reports = lazy(() => import("./pages/Reports"));
@@ -133,6 +134,7 @@ function App() {
           <Route path="masters/problem-categories" element={<MasterProblemCategories />} />
           <Route path="masters/problem-items" element={<MasterProblemItems />} />
           <Route path="masters/employee-locations" element={<MasterEmployeeLocationsPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </Router>
