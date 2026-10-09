@@ -16,7 +16,6 @@ import {
   normalizeTrackingEmployee,
 } from "../utils/trackingNormalize";
 import {
-  buildLiveOpsStats,
   buildOpsAlerts,
   buildUnifiedActivityFeed,
 } from "../utils/dashboardOps";
@@ -44,9 +43,7 @@ import {
   getMapCenter,
 } from "../utils/mapCoordinates";
 import QuickActions from "../components/dashboard/QuickActions";
-import LiveOperationsPanel from "../components/dashboard/LiveOperationsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
-import OwnerControlPanel from "../components/dashboard/OwnerControlPanel";
 import { KPI_THEMES } from "../theme/brand";
 import UnifiedActivityFeed from "../components/dashboard/UnifiedActivityFeed";
 import { formatIndiaDate, formatIndiaTime } from "../utils/businessDate";
@@ -55,7 +52,6 @@ import {
   DashboardShellErrorBoundary,
 } from "../components/dashboard/WidgetErrorBoundary";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
-import { formatEvidenceRateLabel } from "../utils/analyticsLabels";
 
 import PremiumKpiCard from "../components/ui/PremiumKpiCard";
 const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
@@ -64,7 +60,6 @@ import {
   Leaf,
   Calendar,
   RefreshCw,
-  Clock,
   Radio,
   Sprout,
   LandPlot,
@@ -73,8 +68,6 @@ import {
   CalendarCheck,
   ChevronRight,
   Eye,
-  Route,
-  Paperclip,
   Search,
   Satellite,
 } from "lucide-react";
@@ -437,14 +430,6 @@ const Dashboard = () => {
         ? "No valid employee GPS location available yet."
         : null;
 
-  const liveOps = useMemo(() => {
-    try {
-      return buildLiveOpsStats(stats ?? {}, trackingEmployees ?? [], workdays ?? []);
-    } catch (err) {
-      if (import.meta.env.DEV) console.error("[Dashboard] liveOps build failed:", err);
-      return {};
-    }
-  }, [stats, trackingEmployees, workdays]);
   const opsAlerts = useMemo(() => {
     try {
       return buildOpsAlerts(trackingEmployees ?? [], workdays ?? []);
@@ -499,24 +484,6 @@ const Dashboard = () => {
     const q = quickSearch.trim();
     navigate(q ? `/farmers?search=${encodeURIComponent(q)}` : "/farmers");
   };
-
-  const recentUploads = useMemo(() => {
-    return (feedVisits ?? [])
-      .map((v) => {
-        const count = resolveVisitAttachmentCount(v);
-        if (!count || count <= 0) return null;
-        const farmer = resolveVisitFarmer(v);
-        return {
-          id: `upload-${v.id}`,
-          title: `${count} file${count === 1 ? "" : "s"} uploaded`,
-          detail: `${farmer.name !== "—" ? farmer.name : "Farmer"} · Visit #${v.id}`,
-          at: v.visit_date ?? v.created_at,
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.at) - new Date(a.at))
-      .slice(0, 6);
-  }, [feedVisits]);
 
   /* ---- Loading state ---- */
   if (loading) {
@@ -723,95 +690,13 @@ const Dashboard = () => {
         />
       </div>
 
-      <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
-        <div className="dashboard-alerts-primary">
-          <AlertsPanel alerts={opsAlerts ?? []} />
-        </div>
-      </WidgetErrorBoundary>
-
-      {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
-        <div className="dashboard-status-strip">
-          <button
-            type="button"
-            onClick={() => navigate("/tracking")}
-            className="dashboard-status-chip dashboard-status-chip--live"
-          >
-            <Radio className="w-4 h-4" />
-            {stats.workingNow} working now · {stats.onlineNow} GPS online
-          </button>
-          {stats.gpsIssues > 0 && (
-            <span className="dashboard-status-chip dashboard-status-chip--alert">
-              <AlertTriangle className="w-4 h-4" />
-              {stats.gpsIssues} GPS issue{stats.gpsIssues !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-      )}
-
       <div className="dashboard-main-row">
-        <WidgetErrorBoundary name="OwnerControl" title="Owner Control unavailable">
-          <OwnerControlPanel
-            activeEmployees={stats.activeEmployees ?? stats.workingNow ?? 0}
-            gpsIssues={stats.gpsIssues ?? 0}
-            pendingSyncs={liveOps?.pendingSyncs ?? 0}
-            employees={trackingEmployees ?? []}
-            recentUploads={recentUploads}
-          />
+        <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
+          <AlertsPanel alerts={opsAlerts ?? []} />
         </WidgetErrorBoundary>
         <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
           <QuickActions />
         </WidgetErrorBoundary>
-      </div>
-
-      <div className="dashboard-insight-row">
-        <button
-          type="button"
-          onClick={() => navigate("/tracking/routes")}
-          className="dashboard-insight-widget group"
-        >
-          <div className="flex items-start gap-3.5">
-            <div className="dashboard-insight-widget__icon bg-emerald-50 text-emerald-700">
-              <Route className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="dashboard-insight-widget__title">Route Tracking Summary</p>
-              <p className="dashboard-insight-widget__body">
-                {stats.workingNow} employee{stats.workingNow !== 1 ? "s" : ""} working today
-                <br />
-                {stats.onlineNow} with live GPS tracking
-                <br />
-                {mappedGeoCount} shown on route map
-              </p>
-              <span className="dashboard-insight-widget__link text-emerald-700">
-                View route history <ChevronRight className="w-3.5 h-3.5" />
-              </span>
-            </div>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate("/visits")}
-          className="dashboard-insight-widget group"
-        >
-          <div className="flex items-start gap-3.5">
-            <div className="dashboard-insight-widget__icon bg-teal-50 text-teal-700">
-              <Paperclip className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="dashboard-insight-widget__title">Evidence Upload Summary</p>
-              <p className="dashboard-insight-widget__body">
-                {evidenceStats.withEvidence} visits include uploaded evidence
-                <br />
-                {evidenceStats.totalAttachments} file{evidenceStats.totalAttachments !== 1 ? "s" : ""} uploaded
-                <br />
-                {formatEvidenceRateLabel(evidenceStats.rate)}
-              </p>
-              <span className="dashboard-insight-widget__link text-teal-700">
-                Browse visits <ChevronRight className="w-3.5 h-3.5" />
-              </span>
-            </div>
-          </div>
-        </button>
       </div>
 
       <div className="dashboard-perf-row">
@@ -909,10 +794,6 @@ const Dashboard = () => {
           </button>
         </div>
       </div>
-
-      <WidgetErrorBoundary name="LiveOperations" title="Live Operations unavailable">
-        <LiveOperationsPanel ops={liveOps ?? {}} />
-      </WidgetErrorBoundary>
 
       <div className="dashboard-main-row">
         <WidgetErrorBoundary
