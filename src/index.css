@@ -872,6 +872,12 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+    /* dashboard-bento is animated by framer-motion (canvas entrance) —
+       exclude it so CSS and framer never fight over the same transform. */
+    .page-enter > .page-container > .dashboard-bento {
+        animation: none;
+    }
+
     .page-enter > .page-container > *,
     .page-enter > .ops-page > *,
     .page-enter > .employees-hr > *,
@@ -14982,19 +14988,9 @@ textarea:focus-visible {
 
 .dashboard-perf-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
     align-items: stretch;
-}
-
-@media (min-width: 1024px) and (max-width: 1360px) {
-    .dashboard-perf-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .dashboard-perf-card--accent {
-        grid-column: span 2;
-    }
 }
 
 @media (max-width: 1023px) {

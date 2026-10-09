@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { motion, useReducedMotion, useMotionValue, useTransform, animate } from "framer-motion";
-import { CINE_EASE, SlideIn } from "../components/motion/Cinematic";
+import { motion, useReducedMotion } from "framer-motion";
+import { CINE_EASE, SlideIn, useEntrancePlayed } from "../components/motion/Cinematic";
 import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getDashboardChartStats } from "../api/dashboard.api";
@@ -64,14 +64,13 @@ import {
   RefreshCw,
   Radio,
   Sprout,
-  LandPlot,
   AlertTriangle,
   Users,
   CalendarCheck,
   ChevronRight,
   Eye,
   Search,
-  Satellite,
+  FileCheck2,
 } from "lucide-react";
 
 const formatDate = (d) => formatIndiaDate(d);
@@ -152,8 +151,7 @@ const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
 const Dashboard = () => {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
-  const donutProgress = useMotionValue(0);
-  const donutPctText = useTransform(donutProgress, (v) => `${Math.round(v)}%`);
+  const entrancePlayed = useEntrancePlayed();
   // Add new stats for visit dashboard, keep old for existing cards
   const [stats, setStats] = useState({
     farmers: 0,
@@ -442,32 +440,23 @@ const Dashboard = () => {
       .slice(0, 4);
   }, [trackingEmployees]);
 
-  const gpsCompliancePct = useMemo(() => {
-    const base = stats.workingNow > 0 ? stats.workingNow : stats.activeEmployees;
-    if (!base || base <= 0) return stats.onlineNow > 0 ? 100 : 0;
-    return Math.min(100, Math.round((stats.onlineNow / base) * 100));
-  }, [stats.workingNow, stats.activeEmployees, stats.onlineNow]);
+  const farmersVisitedToday = useMemo(() => {
+    const today = new Date().toDateString();
+    const ids = new Set();
+    (feedVisits ?? []).forEach((v) => {
+      const d = new Date(v.visit_date ?? v.created_at);
+      if (!Number.isFinite(d.getTime()) || d.toDateString() !== today) return;
+      const key = v.farmer_id ?? v.farmer?.id ?? resolveVisitFarmer(v).name;
+      if (key && key !== "—") ids.add(String(key));
+    });
+    return ids.size;
+  }, [feedVisits]);
 
   const handleQuickSearch = (e) => {
     e.preventDefault();
     const q = quickSearch.trim();
     navigate(q ? `/farmers?search=${encodeURIComponent(q)}` : "/farmers");
   };
-
-  // Evidence donut sweep — draws the ring while the right column settles.
-  useEffect(() => {
-    const target = Math.min(100, Math.max(0, evidenceStats.rate));
-    if (reduceMotion) {
-      donutProgress.set(target);
-      return undefined;
-    }
-    const controls = animate(donutProgress, target, {
-      delay: 0.4,
-      duration: 1.3,
-      ease: CINE_EASE,
-    });
-    return () => controls.stop();
-  }, [evidenceStats.rate, reduceMotion, donutProgress]);
 
   /* ---- Loading state ---- */
   if (loading) {
@@ -513,10 +502,12 @@ const Dashboard = () => {
         initial={
           reduceMotion
             ? false
-            : { scale: 1.15, x: 50, y: 40, filter: "blur(4px)" }
+            : entrancePlayed
+              ? { opacity: 0, y: 12, filter: "blur(2px)" }
+              : { scale: 1.15, x: 50, y: 40, filter: "blur(4px)" }
         }
-        animate={{ scale: 1, x: 0, y: 0, filter: "blur(0px)" }}
-        transition={{ duration: 1.4, ease: CINE_EASE }}
+        animate={{ scale: 1, x: 0, y: 0, opacity: 1, filter: "blur(0px)" }}
+        transition={{ duration: entrancePlayed ? 0.55 : 1.4, ease: CINE_EASE }}
       >
       <div className="dashboard-ops-band">
         <div className="dashboard-ops-band__lead">
@@ -583,64 +574,6 @@ const Dashboard = () => {
 
       <div className="dashboard-kpi-row">
         <PremiumKpiCard
-          icon={Sprout}
-          label="All Farmers"
-          value={stats.farmers}
-          gradient={KPI_THEMES.farmers.gradient}
-          iconBg={KPI_THEMES.farmers.iconBg}
-          iconColor={KPI_THEMES.farmers.iconColor}
-          onClick={() => navigate("/farmers")}
-          trend={{ direction: "neutral", text: "Registry total" }}
-        />
-        <PremiumKpiCard
-          icon={LandPlot}
-          label="Total Fields"
-          value={stats.fields}
-          gradient={KPI_THEMES.fields.gradient}
-          iconBg={KPI_THEMES.fields.iconBg}
-          iconColor={KPI_THEMES.fields.iconColor}
-          trend={{ direction: "neutral", text: "Mapped fields" }}
-        />
-        <PremiumKpiCard
-          icon={Calendar}
-          label="Total Visits"
-          value={stats.totalVisits}
-          gradient={KPI_THEMES.visits.gradient}
-          iconBg={KPI_THEMES.visits.iconBg}
-          iconColor={KPI_THEMES.visits.iconColor}
-          onClick={() => navigate("/visits")}
-          subValue={stats.todayVisits > 0 ? `${stats.todayVisits} today` : undefined}
-          trend={{ direction: "neutral", text: "All-time total" }}
-        />
-        <PremiumKpiCard
-          icon={AlertTriangle}
-          label="Open Issues"
-          value={stats.issues_open}
-          gradient={KPI_THEMES.issues.gradient}
-          iconBg={KPI_THEMES.issues.iconBg}
-          iconColor={KPI_THEMES.issues.iconColor}
-          onClick={() => navigate("/crop-issues")}
-          trend={
-            stats.issues_open > 0
-              ? { direction: "neutral", text: "Open now" }
-              : { direction: "neutral", text: "None open" }
-          }
-        />
-        <PremiumKpiCard
-          icon={CalendarCheck}
-          label="Today's Visits"
-          value={stats.todayVisits}
-          gradient={KPI_THEMES.today.gradient}
-          iconBg={KPI_THEMES.today.iconBg}
-          iconColor={KPI_THEMES.today.iconColor}
-          onClick={() => navigate("/visits")}
-          trend={
-            stats.todayVisits > 0
-              ? { direction: "neutral", text: "Submitted today" }
-              : { direction: "neutral", text: "No visits yet" }
-          }
-        />
-        <PremiumKpiCard
           icon={Users}
           label="Working Now"
           value={stats.workingNow}
@@ -663,7 +596,7 @@ const Dashboard = () => {
         />
         <PremiumKpiCard
           icon={Radio}
-          label="GPS Compliance"
+          label="GPS Online"
           value={stats.onlineNow}
           gradient={KPI_THEMES.gps.gradient}
           iconBg={KPI_THEMES.gps.iconBg}
@@ -671,7 +604,7 @@ const Dashboard = () => {
           onClick={() => navigate("/tracking")}
           subValue={
             stats.workingNow > 0
-              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% online`
+              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% of working`
               : mappedGeoCount > 0
                 ? `${mappedGeoCount} on map`
                 : "Live GPS status"
@@ -682,6 +615,63 @@ const Dashboard = () => {
               : { direction: "neutral", text: "Live snapshot" }
           }
         />
+        <PremiumKpiCard
+          icon={CalendarCheck}
+          label="Today's Visits"
+          value={stats.todayVisits}
+          gradient={KPI_THEMES.today.gradient}
+          iconBg={KPI_THEMES.today.iconBg}
+          iconColor={KPI_THEMES.today.iconColor}
+          onClick={() => navigate("/visits")}
+          trend={
+            stats.todayVisits > 0
+              ? { direction: "neutral", text: "Submitted today" }
+              : { direction: "neutral", text: "No visits yet" }
+          }
+        />
+        <PremiumKpiCard
+          icon={Sprout}
+          label="Farmers Visited Today"
+          value={farmersVisitedToday}
+          gradient={KPI_THEMES.farmers.gradient}
+          iconBg={KPI_THEMES.farmers.iconBg}
+          iconColor={KPI_THEMES.farmers.iconColor}
+          onClick={() => navigate("/visits")}
+          trend={{
+            direction: "neutral",
+            text:
+              farmersVisitedToday > 0 ? "Unique farmers" : "No visits yet",
+          }}
+        />
+        <PremiumKpiCard
+          icon={FileCheck2}
+          label="Visits with Evidence"
+          value={evidenceStats.withEvidence}
+          gradient={KPI_THEMES.fields.gradient}
+          iconBg={KPI_THEMES.fields.iconBg}
+          iconColor={KPI_THEMES.fields.iconColor}
+          onClick={() => navigate("/visits")}
+          subValue={
+            feedVisits?.length > 0
+              ? `${Math.round(evidenceStats.rate)}% of latest ${feedVisits.length}`
+              : undefined
+          }
+          trend={{ direction: "neutral", text: "Photo/file proof" }}
+        />
+        <PremiumKpiCard
+          icon={AlertTriangle}
+          label="Open Issues"
+          value={stats.issues_open}
+          gradient={KPI_THEMES.issues.gradient}
+          iconBg={KPI_THEMES.issues.iconBg}
+          iconColor={KPI_THEMES.issues.iconColor}
+          onClick={() => navigate("/crop-issues")}
+          trend={
+            stats.issues_open > 0
+              ? { direction: "neutral", text: "Need attention" }
+              : { direction: "neutral", text: "None open" }
+          }
+        />
       </div>
 
       <div className="dashboard-main-row">
@@ -689,27 +679,6 @@ const Dashboard = () => {
           <AlertsPanel alerts={opsAlerts ?? []} />
         </WidgetErrorBoundary>
         <SlideIn className="dashboard-stack">
-          <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--accent">
-            <div className="dashboard-perf-card__head">
-              <p className="dashboard-perf-card__title dashboard-perf-card__title--light">
-                GPS Compliance
-              </p>
-              <Satellite className="w-5 h-5 dashboard-accent__icon" aria-hidden="true" />
-            </div>
-            <p className="dashboard-accent__value">{gpsCompliancePct}%</p>
-            <p className="dashboard-accent__meta">
-              {stats.onlineNow} of {stats.workingNow || stats.activeEmployees || 0} staff
-              GPS online
-            </p>
-            <SegmentedBar pct={gpsCompliancePct / 100} light />
-            <button
-              type="button"
-              className="dashboard-accent__cta"
-              onClick={() => navigate("/tracking")}
-            >
-              Open live map <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-          </div>
           <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
             <QuickActions />
           </WidgetErrorBoundary>
@@ -717,34 +686,6 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-perf-row">
-        <div className="dashboard-section-card dashboard-perf-card">
-          <div className="dashboard-perf-card__head">
-            <p className="dashboard-perf-card__title">Visit Evidence</p>
-            <span className="dashboard-perf-card__chip">Latest visits</span>
-          </div>
-          <motion.div
-            className="dashboard-donut"
-            style={{ "--p": donutProgress }}
-          >
-            <div className="dashboard-donut__center">
-              <motion.span className="dashboard-donut__value">
-                {donutPctText}
-              </motion.span>
-              <span className="dashboard-donut__label">with evidence</span>
-            </div>
-          </motion.div>
-          <div className="dashboard-donut__legend">
-            <span>
-              <i className="dashboard-dot dashboard-dot--emerald" aria-hidden />
-              {evidenceStats.withEvidence} with files
-            </span>
-            <span>
-              <i className="dashboard-dot dashboard-dot--slate" aria-hidden />
-              {Math.max(0, (feedVisits?.length ?? 0) - evidenceStats.withEvidence)} without
-            </span>
-          </div>
-        </div>
-
         <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--team">
           <div className="dashboard-perf-card__head">
             <p className="dashboard-perf-card__title">Field Team Performance</p>

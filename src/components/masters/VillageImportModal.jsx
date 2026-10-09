@@ -391,6 +391,30 @@ export default function VillageImportModal({ open, onClose, onImported }) {
                       ) : null}
                     </section>
 
+                    {preview.sharedVillages?.length > 0 ? (
+                      <section aria-label="Shared villages">
+                        <h3 className="village-import-section-title">Shared villages</h3>
+                        <ul className="village-import-employees">
+                          {preview.sharedVillages.map((item) => (
+                            <li key={item.village}>
+                              <span>
+                                {item.village}
+                                {item.employees.length > 0 ? (
+                                  <>
+                                    <br />
+                                    <span className="village-import-muted">
+                                      Assigned employees: {item.employees.join(", ")}
+                                    </span>
+                                  </>
+                                ) : null}
+                              </span>
+                              <span>{formatCount(item.employees.length || null, "employee", "employees")}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
+
                     {preview.errors.length > 0 ? (
                       <section className="village-import-errors" aria-label="Blocking errors">
                         <h3 className="village-import-section-title">Errors</h3>
@@ -412,9 +436,7 @@ export default function VillageImportModal({ open, onClose, onImported }) {
                                   {row.name_ta || row.message}
                                 </p>
                               ))}
-                              {err.message && err.code === "TAMIL_NAME_CONFLICT" ? null : err.message && err.code ? (
-                                <p>{err.message}</p>
-                              ) : null}
+                              {err.message && err.code ? <p>{err.message}</p> : null}
                               <p className="village-import-error-card__action">
                                 Correct the Excel file and upload it again.
                               </p>
@@ -424,11 +446,37 @@ export default function VillageImportModal({ open, onClose, onImported }) {
                       </section>
                     ) : null}
 
-                    {preview.warnings.length > 0 ? (
+                    {preview.tamilConflicts?.length > 0 ? (
+                      <section className="village-import-warnings" aria-label="Skippable Tamil name conflicts">
+                        <h3 className="village-import-section-title">Tamil name conflicts (will be skipped)</h3>
+                        {preview.tamilConflicts.map((err, index) => (
+                          <article key={`tamil-${err.village}-${index}`}>
+                            <p className="village-import-error-card__title">
+                              {errorTitle(err.code, "Tamil name conflict")}
+                            </p>
+                            {err.village ? <p>Village: {err.village}</p> : null}
+                            {err.employee_name ? <p>{err.employee_name}</p> : null}
+                            {err.rows.map((row) => (
+                              <p key={`${row.row}-${row.name_ta}`}>
+                                {row.row != null ? `Row ${row.row}: ` : ""}
+                                {row.name_ta || row.message}
+                              </p>
+                            ))}
+                            <p className="village-import-muted">
+                              This village will not be imported. Other valid rows can still be confirmed.
+                            </p>
+                          </article>
+                        ))}
+                      </section>
+                    ) : null}
+
+                    {preview.warnings.filter((warn) => warn.code !== "TAMIL_NAME_CONFLICT").length > 0 ? (
                       <section className="village-import-warnings" aria-label="Warnings">
                         <h3 className="village-import-section-title">Warnings</h3>
                         <ul>
-                          {preview.warnings.map((warn, index) => (
+                          {preview.warnings
+                            .filter((warn) => warn.code !== "TAMIL_NAME_CONFLICT")
+                            .map((warn, index) => (
                             <li key={`${warn.code}-${index}`}>
                               {warn.row != null ? `Row ${warn.row}: ` : ""}
                               {warn.message || warn.code}

@@ -132,7 +132,7 @@ assert.equal(blocked.rows[3].status, "Village Only");
 assert.equal(blocked.rows[4].status, "Existing Village");
 assert.equal(blocked.rows[5].status, "Warning");
 assert.equal(blocked.rows[6].status, "Missing village");
-assert.equal(blocked.rows[6].statusKind, "error");
+assert.equal(blocked.rows[6].statusKind, "warning");
 assert.equal(blocked.errors[0].code, "EMPLOYEE_NOT_FOUND");
 assert.equal(errorTitle("EMPLOYEE_NOT_FOUND"), "Employee not found");
 assert.equal(blocked.warnings[0].message, "Blank Tamil name");
@@ -142,22 +142,24 @@ const emptyCards = buildSummaryCards({ summary: {} });
 assert.deepEqual(emptyCards, []);
 
 const tamil = normalizeValidateResponse({
-  can_confirm: false,
-  errors: [
+  can_confirm: true,
+  import_token: "tok-tamil",
+  blocking_errors: [],
+  skippable_errors: ["TAMIL_NAME_CONFLICT"],
+  tamil_name_conflicts: [
     {
-      code: "TAMIL_NAME_CONFLICT",
       village: "Manaveli",
-      conflicts: [
-        { row: 36, name_ta: "மனவெளி" },
-        { row: 182, name_ta: "மணவெளி" },
-      ],
+      tamil_values: ["மனவெளி", "மணவெளி"],
+      excel_rows: [36, 182],
     },
   ],
 });
-assert.equal(errorTitle(tamil.errors[0].code), "Tamil name conflict");
-assert.equal(tamil.errors[0].village, "Manaveli");
-assert.equal(tamil.errors[0].rows[0].row, 36);
-assert.equal(tamil.errors[0].rows[1].row, 182);
+assert.equal(tamil.errors.length, 0);
+assert.equal(canConfirmImport(tamil), true);
+assert.equal(errorTitle(tamil.tamilConflicts[0].code), "Tamil name conflict (skipped)");
+assert.equal(tamil.tamilConflicts[0].village, "Manaveli");
+assert.equal(tamil.tamilConflicts[0].rows[0].row, 36);
+assert.equal(tamil.tamilConflicts[0].rows[1].row, 182);
 assert.match(modalSrc, /Tamil name conflict|errorTitle/);
 assert.match(modalSrc, /Correct the Excel file and upload it again/);
 assert.match(modalSrc, /village-import-warnings/);
@@ -214,5 +216,122 @@ assert.equal(success.rowsProcessed, 28);
 assert.match(modalSrc, /Import completed successfully/);
 assert.match(modalSrc, /onClick=\{handleDone\}/);
 assert.match(modalSrc, /Done/);
+
+// Backend preview_dict contract — shared village is not a duplicate.
+const uniqueRows = normalizeValidateResponse({
+  can_confirm: true,
+  import_token: "tok-unique",
+  total_rows: 2,
+  unique_villages: 2,
+  villages_to_create: 2,
+  villages_existing: 0,
+  assignments_to_create: 2,
+  blocking_errors: [],
+  errors: [],
+  row_results: [
+    { excel_row: 2, employee_id: "KAC-0008", employee_name: "Rajiv Gandhi", village: "Village A", status: "ok", matched_employee_id: "KAC-0008" },
+    { excel_row: 3, employee_id: "KAC-0008", employee_name: "Rajiv Gandhi", village: "Village B", status: "ok", matched_employee_id: "KAC-0008" },
+  ],
+});
+assert.equal(canConfirmImport(uniqueRows), true);
+assert.equal(uniqueRows.rows.length, 2);
+
+const sharedKollaar = normalizeValidateResponse({
+  can_confirm: true,
+  import_token: "tok-shared",
+  unique_villages: 1,
+  assignments_to_create: 2,
+  blocking_errors: [],
+  errors: [],
+  employees_matched: ["KAC-0008 (Rajiv Gandhi)", "KAC-0009 (Uthiramoorthi)"],
+  shared_villages: [
+    { village: "Kollaar", employees: ["KAC-0008 (Rajiv Gandhi)", "KAC-0009 (Uthiramoorthi)"] },
+  ],
+  row_results: [
+    { excel_row: 2, employee_id: "KAC-0008", employee_name: "Rajiv Gandhi", village: "Kollaar", village_tamil_name: "கொள்ளார்", status: "ok", matched_employee_id: "KAC-0008" },
+    { excel_row: 3, employee_id: "KAC-0009", employee_name: "Uthiramoorthi", village: "Kollaar", village_tamil_name: "கொள்ளார்", status: "ok", matched_employee_id: "KAC-0009" },
+  ],
+});
+assert.equal(canConfirmImport(sharedKollaar), true);
+assert.equal(sharedKollaar.errors.length, 0);
+assert.equal(sharedKollaar.rows.length, 2);
+assert.equal(sharedKollaar.sharedVillages[0].village, "Kollaar");
+assert.equal(sharedKollaar.sharedVillages[0].employees.length, 2);
+assert.equal(sharedKollaar.employees[0].employee_id, "KAC-0008");
+assert.notEqual(sharedKollaar.rows[0].key, sharedKollaar.rows[1].key);
+
+const duplicateAasur = normalizeValidateResponse({
+  can_confirm: true,
+  import_token: "tok-dup",
+  assignments_to_create: 1,
+  unique_villages: 1,
+  blocking_errors: [],
+  errors: [],
+  row_results: [
+    { excel_row: 2, employee_id: "KAC-0008", village: "Aasur", status: "ok", matched_employee_id: "KAC-0008" },
+    { excel_row: 3, employee_id: "KAC-0008", village: "Aasur", status: "ok", matched_employee_id: "KAC-0008" },
+  ],
+});
+assert.equal(canConfirmImport(duplicateAasur), true);
+assert.equal(duplicateAasur.summary.employeeAssignments, 1);
+assert.equal(duplicateAasur.rows.length, 2);
+
+const combo = normalizeValidateResponse({
+  can_confirm: true,
+  import_token: "tok-combo",
+  unique_villages: 2,
+  assignments_to_create: 3,
+  blocking_errors: [],
+  errors: [],
+  shared_villages: [{ village: "Kollaar", employees: ["KAC-0008 (Rajiv Gandhi)", "KAC-0009 (Uthiramoorthi)"] }],
+  row_results: [
+    { excel_row: 2, employee_id: "KAC-0008", village: "Aasur", status: "ok", matched_employee_id: "KAC-0008" },
+    { excel_row: 3, employee_id: "KAC-0008", village: "Aasur", status: "ok", matched_employee_id: "KAC-0008" },
+    { excel_row: 4, employee_id: "KAC-0008", village: "Kollaar", status: "ok", matched_employee_id: "KAC-0008" },
+    { excel_row: 5, employee_id: "KAC-0009", village: "Kollaar", status: "ok", matched_employee_id: "KAC-0009" },
+  ],
+});
+assert.equal(canConfirmImport(combo), true);
+assert.equal(combo.sharedVillages[0].village, "Kollaar");
+assert.equal(combo.rows.filter((row) => row.village === "Kollaar").length, 2);
+assert.equal(combo.errors.length, 0);
+
+const invalidEmployee = normalizeValidateResponse({
+  can_confirm: false,
+  import_token: null,
+  blocking_errors: ["EMPLOYEE_NOT_FOUND"],
+  errors: ["Excel row 2: EMPLOYEE_NOT_FOUND employee_id='UNKNOWN-ID'"],
+  employees_not_found: ["UNKNOWN-ID"],
+  row_results: [
+    { excel_row: 2, employee_id: "UNKNOWN-ID", village: "Village A", status: "error", messages: ["EMPLOYEE_NOT_FOUND"] },
+  ],
+});
+assert.equal(canConfirmImport(invalidEmployee), false);
+assert.equal(invalidEmployee.errors[0].code, "EMPLOYEE_NOT_FOUND");
+assert.equal(invalidEmployee.errors[0].row, 2);
+
+assert.match(
+  validateRequestErrorMessage({ response: { status: 400, data: { code: "MISSING_HEADERS", message: "Required column 'Village' was not found." } } }),
+  /Missing headers/
+);
+
+assert.equal(
+  isExpiredImportError({
+    response: { status: 400, data: { code: "TOKEN_INVALID", message: "Import token is invalid or expired." } },
+  }),
+  true
+);
+assert.equal(
+  isConsumedImportError({
+    response: { status: 400, data: { code: "TOKEN_REPLAY", message: "Import token was already used." } },
+  }),
+  true
+);
+assert.match(
+  confirmRequestErrorMessage({
+    response: { status: 400, data: { code: "TOKEN_REPLAY", message: "Import token was already used." } },
+  }),
+  /already completed/
+);
 
 console.log("village import checks OK");
