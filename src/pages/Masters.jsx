@@ -90,7 +90,7 @@ export default function Masters() {
                             <div className={`raised-icon-well raised-icon-well--${tint} masters-admin-hub-card__icon`}>
                                 <Icon strokeWidth={2.25} aria-hidden="true" />
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                                 <h3 className="masters-admin-hub-card__title">{title}</h3>
                                 <p className="masters-admin-hub-card__desc">{desc}</p>
                                 {typeof stats[statKey] === "number" ? (
@@ -104,9 +104,8 @@ export default function Masters() {
                                     </p>
                                 ) : null}
                             </div>
-                            <span className={`masters-admin-hub-card__action masters-admin-hub-card__action--${tint}`}>
-                                Manage
-                                <ChevronRight className="w-4 h-4" strokeWidth={2.25} aria-hidden="true" />
+                            <span className={`masters-admin-hub-card__action masters-admin-hub-card__action--${tint}`} aria-hidden="true">
+                                <ChevronRight className="w-4 h-4" strokeWidth={2.25} />
                             </span>
                         </Link>
                     ),

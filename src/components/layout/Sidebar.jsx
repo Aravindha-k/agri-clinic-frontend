@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside
         className={`fixed lg:sticky lg:top-0 left-0 top-0 z-40 flex flex-col flex-shrink-0
-          h-screen h-dvh w-[260px] min-w-[260px] max-w-[260px]
+          h-screen h-dvh w-[248px] min-w-[248px] max-w-[248px]
           transition-transform duration-300 ease-in-out select-none
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0`}

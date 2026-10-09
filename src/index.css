@@ -116,11 +116,11 @@
     --filter-label-height: 1rem;
     --filter-row-gap: 0.75rem;
 
-    /* Typography scale — V4: compact professional hierarchy */
-    --text-page-title: 1.875rem;     /* 30px fallback */
-    --text-section-title: 1.125rem;  /* ~18px */
-    --text-card-title: 1.0625rem;    /* ~17px */
-    --text-metric: 1.9375rem;        /* ~29px */
+    /* Typography scale — V5: compact enterprise hierarchy */
+    --text-page-title: 1.625rem;     /* ~26px fallback */
+    --text-section-title: 1.0625rem; /* ~17px */
+    --text-card-title: 1rem;         /* 15.5px */
+    --text-metric: 1.75rem;          /* ~26px */
     --text-body: 0.9375rem;          /* 14px */
     --text-secondary-size: 0.875rem; /* ~13.5px */
     --text-caption: 0.8125rem;       /* ~13px */
@@ -297,12 +297,12 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding: 0.75rem 1.25rem; /* 12px — compact band (~82–96px total) */
+    padding: 0.6rem 1.25rem; /* compact band ~70px */
 }
 
 @media (min-width: 1024px) {
     .app-header__body {
-        padding: 0.875rem 1.5rem; /* 14px */
+        padding: 0.7rem 1.5rem;
     }
 }
 
@@ -366,56 +366,55 @@ body {
 
 /* Semantic page icon well — tinted per route tone */
 .app-header__icon {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.7rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.625rem;
     align-self: center;
     flex-shrink: 0;
 }
 
 .app-header__icon svg {
-    width: 1.15rem;
-    height: 1.15rem;
+    width: 1.05rem;
+    height: 1.05rem;
 }
 
 @media (max-width: 639px) {
     .app-header__icon {
-        width: 2rem;
-        height: 2rem;
-        border-radius: 0.6rem;
+        width: 1.875rem;
+        height: 1.875rem;
     }
 
     .app-header__icon svg {
-        width: 1.05rem;
-        height: 1.05rem;
+        width: 1rem;
+        height: 1rem;
     }
 }
 
 .app-header__title {
     margin: 0;
-    font-size: 1.5rem; /* ~24px mobile floor */
+    font-size: 1.375rem; /* ~21px mobile floor */
     font-weight: 700;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     line-height: 1.15;
     color: #0f172a;
 }
 
 @media (min-width: 768px) {
     .app-header__title {
-        font-size: 1.75rem; /* ~28px */
+        font-size: 1.5rem; /* ~23px */
     }
 }
 
 @media (min-width: 1280px) {
     .app-header__title {
-        font-size: 2rem; /* 30px */
+        font-size: 1.75rem; /* ~26px */
     }
 }
 
 .app-header__subtitle {
-    margin: 0.25rem 0 0;
+    margin: 0.2rem 0 0;
     max-width: 44rem;
-    font-size: 0.9375rem; /* ~14.5px */
+    font-size: 0.875rem; /* ~13.5px */
     font-weight: 500;
     line-height: 1.4;
     color: #64748b;
@@ -2054,7 +2053,7 @@ textarea.input {
 }
 
 .tracking-stat-card__value {
-    @apply text-2xl font-bold tabular-nums text-slate-900 leading-none mt-2;
+    @apply text-[1.375rem] font-bold tabular-nums text-slate-900 leading-none mt-1.5;
 }
 
 .tracking-stat-card__label {
@@ -5868,7 +5867,7 @@ textarea.input {
 }
 
 .dashboard-live-ops-metric__value {
-    @apply text-2xl font-bold tabular-nums tracking-tight;
+    @apply text-xl font-bold tabular-nums tracking-tight;
 }
 
 /* Chart */
@@ -6767,13 +6766,15 @@ textarea.input {
 .premium-kpi {
     position: relative;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 0.75rem;
-    min-height: 7.25rem;
-    padding: 1rem 1rem 1.125rem;
-    border-radius: 1rem;
+    min-height: 4.5rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.875rem;
     border: 1px solid rgba(15, 23, 42, 0.06);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+    border-left: 3px solid var(--kpi-accent, var(--brand-primary));
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(15, 23, 42, 0.04);
     overflow: hidden;
     transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
@@ -6812,13 +6813,13 @@ textarea.input {
 
 .premium-kpi__top {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
     gap: 0.5rem;
 }
 
 .premium-kpi__icon-wrap {
-    @apply w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0;
+    @apply w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0;
     border: 1px solid rgba(15, 23, 42, 0.04);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.75),
@@ -6833,24 +6834,24 @@ textarea.input {
 }
 
 .premium-kpi__value {
-    font-size: 1.875rem;
+    font-size: 1.625rem;
     font-weight: 800;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.03em;
     line-height: 1;
     color: var(--neutral-900);
     font-variant-numeric: tabular-nums;
 }
 
 .premium-kpi__label {
-    margin-top: 0.35rem;
+    margin-top: 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--neutral-500);
-    line-height: 1.3;
+    line-height: 1.25;
 }
 
 .premium-kpi__sub {
-    margin-top: 0.25rem;
+    margin-top: 0.2rem;
     font-size: 0.6875rem;
     font-weight: 600;
     color: var(--kpi-accent, var(--brand-primary));
@@ -6858,6 +6859,9 @@ textarea.input {
 }
 
 .premium-kpi__trend {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.625rem;
     @apply inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap;
 }
 
@@ -7165,12 +7169,8 @@ textarea.input {
 .sidebar-nav-item__icon--indigo svg { color: #a5b4fc; }
 .sidebar-nav-item__icon--slate svg { color: #cbd5e1; }
 
-.sidebar-nav-item__icon--emerald { background: rgba(16, 185, 129, 0.12); }
-.sidebar-nav-item__icon--teal { background: rgba(20, 184, 166, 0.12); }
-.sidebar-nav-item__icon--cyan { background: rgba(6, 182, 212, 0.12); }
-.sidebar-nav-item__icon--amber { background: rgba(245, 158, 11, 0.12); }
-.sidebar-nav-item__icon--indigo { background: rgba(99, 102, 241, 0.12); }
-.sidebar-nav-item__icon--slate { background: rgba(148, 163, 184, 0.12); }
+/* Idle icons are tinted glyphs only — no colored square per item */
+.sidebar-nav-item__icon { background: transparent; }
 
 .sidebar-nav-item--active .sidebar-nav-item__icon--emerald { background: rgba(16, 185, 129, 0.24); }
 .sidebar-nav-item--active .sidebar-nav-item__icon--teal { background: rgba(20, 184, 166, 0.24); }
@@ -9183,7 +9183,7 @@ textarea.input {
 }
 
 .employees-hr-stat__value {
-    @apply text-2xl font-bold tabular-nums text-slate-900 leading-none mt-2;
+    @apply text-[1.375rem] font-bold tabular-nums text-slate-900 leading-none mt-1.5;
 }
 
 .employees-hr-stat__label {
@@ -10987,10 +10987,10 @@ textarea.input {
 }
 
 .masters-admin-hub-card {
-    @apply relative flex flex-col p-5 rounded-2xl bg-white;
+    @apply relative flex items-start gap-4 px-4 py-4 rounded-xl bg-white;
     border: 1px solid rgba(15, 23, 42, 0.07);
     box-shadow: var(--elev-1);
-    min-height: 9.25rem;
+    min-height: 0;
     overflow: hidden;
     transition:
         transform var(--transition-normal),
@@ -11028,9 +11028,9 @@ textarea.input {
 }
 
 .masters-admin-hub-card__icon {
-    width: 2.75rem;
-    height: 2.75rem;
-    border-radius: 0.875rem;
+    width: 2.625rem;
+    height: 2.625rem;
+    border-radius: 0.75rem;
 }
 
 .masters-admin-hub-card__icon svg {
@@ -11038,7 +11038,7 @@ textarea.input {
 }
 
 .masters-admin-hub-card__title {
-    @apply text-[1.0625rem] font-bold text-slate-900 tracking-tight mt-3.5;
+    @apply text-[0.9375rem] font-bold text-slate-900 tracking-tight;
 }
 
 .masters-admin-hub-card__desc {
@@ -11059,8 +11059,8 @@ textarea.input {
 .masters-admin-hub-card__stat--forest strong { color: #166534; }
 
 .masters-admin-hub-card__action {
-    @apply mt-auto pt-4 inline-flex items-center gap-1 text-[0.8125rem] font-bold;
-    transition: gap var(--transition-fast);
+    @apply inline-flex items-center gap-1 self-center flex-shrink-0;
+    transition: transform var(--transition-fast);
 }
 
 .masters-admin-hub-card__action--emerald { color: #15803d; }
@@ -11068,7 +11068,7 @@ textarea.input {
 .masters-admin-hub-card__action--forest { color: #166534; }
 
 .masters-admin-hub-card:hover .masters-admin-hub-card__action {
-    gap: 0.5rem;
+    transform: translateX(2px);
 }
 
 .masters-admin-hub-card__chevron {
@@ -13784,7 +13784,7 @@ textarea.input {
 /* Dashboard operations greeting band — white card + subtle green glow */
 /* Ops greeting band — dark forest command surface (Kavya field-agent style) */
 .dashboard-ops-band {
-    @apply flex items-center justify-between gap-4 px-5 py-4 mb-4 rounded-2xl;
+    @apply flex items-center justify-between gap-4 px-4 py-3 mb-4 rounded-xl;
     position: relative;
     overflow: hidden;
     background:
@@ -13814,9 +13814,9 @@ textarea.input {
 }
 
 .dashboard-ops-band__icon {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 0.95rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
     background: rgba(255, 255, 255, 0.1) !important;
     border: 1px solid rgba(255, 255, 255, 0.16) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 4px 12px rgba(0, 0, 0, 0.2) !important;
