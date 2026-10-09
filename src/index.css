@@ -11182,6 +11182,14 @@ textarea.input {
     @apply border-slate-300 bg-slate-50 text-slate-900;
 }
 
+.cpd-action-btn--danger {
+    @apply border-red-200 text-red-600;
+}
+
+.cpd-action-btn--danger:hover {
+    @apply border-red-300 bg-red-50 text-red-700;
+}
+
 .cpd-more-menu {
     @apply relative inline-flex;
 }

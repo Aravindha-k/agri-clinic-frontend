@@ -1,5 +1,5 @@
 import { PageHeader } from "../../components/ui/command";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { createCrop, updateCrop, deleteCrop } from "../../api/master.api";
 import { getCropPestDiseaseList } from "../../api/cropPestDisease.api";
@@ -21,7 +21,6 @@ import {
   Loader2,
   Bug,
   Stethoscope,
-  MoreVertical,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -29,28 +28,8 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 const inputClass = "masters-admin-field";
 
 function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
   const cropName = crop?.name_en || `crop ${crop?.id ?? ""}`;
   const managePath = cropProblemsPath(crop.id);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onPointerDown = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
-    };
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [menuOpen]);
 
   if (layout === "card") {
     return (
@@ -74,35 +53,16 @@ function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
           <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
           Edit Crop
         </button>
-        <div className="cpd-more-menu" ref={menuRef}>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm cpd-more-trigger"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            aria-label={`More actions for ${cropName}`}
-            title="More actions"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <MoreVertical className="w-4 h-4" aria-hidden="true" />
-          </button>
-          {menuOpen ? (
-            <div className="cpd-more-menu__panel" role="menu" aria-label={`More actions for ${cropName}`}>
-              <button
-                type="button"
-                role="menuitem"
-                className="cpd-more-menu__item cpd-more-menu__item--danger"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDeleteRequest(crop);
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                Delete Crop
-              </button>
-            </div>
-          ) : null}
-        </div>
+        <button
+          type="button"
+          onClick={() => onDeleteRequest(crop)}
+          className="btn btn-danger btn-sm"
+          title="Delete Crop"
+          aria-label={`Delete Crop ${cropName}`}
+        >
+          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+          Delete
+        </button>
       </div>
     );
   }
@@ -129,35 +89,16 @@ function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
         <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
         Edit
       </button>
-      <div className="cpd-more-menu" ref={menuRef}>
-        <button
-          type="button"
-          className="cpd-more-trigger"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label={`More actions for ${cropName}`}
-          title="More actions"
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          <MoreVertical className="w-4 h-4" aria-hidden="true" />
-        </button>
-        {menuOpen ? (
-          <div className="cpd-more-menu__panel" role="menu" aria-label={`More actions for ${cropName}`}>
-            <button
-              type="button"
-              role="menuitem"
-              className="cpd-more-menu__item cpd-more-menu__item--danger"
-              onClick={() => {
-                setMenuOpen(false);
-                onDeleteRequest(crop);
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-              Delete Crop
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <button
+        type="button"
+        onClick={() => onDeleteRequest(crop)}
+        className="cpd-action-btn cpd-action-btn--danger"
+        title="Delete Crop"
+        aria-label={`Delete Crop ${cropName}`}
+      >
+        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+        Delete
+      </button>
     </div>
   );
 }

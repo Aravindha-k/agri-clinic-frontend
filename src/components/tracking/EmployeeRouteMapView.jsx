@@ -107,7 +107,7 @@ function routeIcon(color, size = 18) {
   return L.divIcon({
     className: "",
     html: `<div style="position:relative;width:${size + 8}px;height:${size + 8}px;display:flex;align-items:center;justify-content:center;">
-      <div style="width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 3px 10px rgba(0,0,0,.45)"></div>
+      <div style="width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:radial-gradient(circle at 32% 28%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.12) 45%, transparent 62%), ${color};border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 3px 10px rgba(0,0,0,.45)"></div>
     </div>`,
     iconSize: [size + 8, size + 8],
     iconAnchor: [(size + 8) / 2, size + 4],

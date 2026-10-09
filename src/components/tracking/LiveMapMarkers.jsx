@@ -30,11 +30,11 @@ const MARKER_PIN_H = 48;
 const MARKER_LABEL_GAP = 6;
 
 const markerColors = {
-  green: BRAND.primaryLight,
-  orange: "#f97316",
-  red: BRAND.danger,
-  gray: "#9ca3af",
-  slate: "#64748b",
+  green: { base: BRAND.primary, light: "#4ade80" },
+  orange: { base: "#f97316", light: "#fdba74" },
+  red: { base: BRAND.danger, light: "#f87171" },
+  gray: { base: "#9ca3af", light: "#d1d5db" },
+  slate: { base: "#64748b", light: "#94a3b8" },
 };
 
 function escapeHtml(value) {
@@ -54,7 +54,10 @@ const createColoredIcon = (
   { pulse = false, muted = false, selected = false } = {}
 ) => {
   const opacity = muted ? MUTED_MARKER_OPACITY : 1;
-  const fill = muted ? markerColors.slate : color;
+  const pair = muted ? markerColors.slate : color;
+  const fill = pair.base;
+  const light = pair.light;
+  const gradId = `pin-grad-${fill.replace("#", "")}`;
   const stroke = "#ffffff";
   const selectedClass = selected ? " live-employee-marker--selected" : "";
   const scale = selected ? 1.1 : 1;
@@ -71,7 +74,7 @@ const createColoredIcon = (
           <span class="live-employee-marker__hit" aria-hidden="true"></span>
           ${
             pulse
-              ? `<span class="live-employee-marker__pulse" style="background:${color};" aria-hidden="true"></span>`
+              ? `<span class="live-employee-marker__pulse" style="background:${fill};" aria-hidden="true"></span>`
               : ""
           }
           ${
@@ -80,13 +83,26 @@ const createColoredIcon = (
               : ""
           }
           <svg class="live-employee-marker__pin" width="${w}" height="${h}" viewBox="0 0 40 48" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="${gradId}" x1="0" y1="0" x2="0.35" y2="1">
+                <stop offset="0" stop-color="${light}" />
+                <stop offset="0.55" stop-color="${fill}" />
+                <stop offset="1" stop-color="${fill}" />
+              </linearGradient>
+            </defs>
             <path
               d="M20 46C20 46 6 30.5 6 18.5C6 10.5 12.3 4 20 4C27.7 4 34 10.5 34 18.5C34 30.5 20 46 20 46Z"
-              fill="${fill}"
+              fill="url(#${gradId})"
               stroke="${stroke}"
               stroke-width="2.5"
             />
-            <circle cx="20" cy="18.5" r="5" fill="${stroke}" opacity="0.95" />
+            <ellipse cx="16" cy="11" rx="7" ry="4.2" fill="#ffffff" opacity="0.32" />
+            <circle cx="20" cy="18.5" r="6.4" fill="${stroke}" opacity="0.95" />
+            <path
+              d="M20 14.4 C23.2 16 23.2 20 20 22.7 C16.8 20 16.8 16 20 14.4 Z"
+              fill="${fill}"
+            />
+            <path d="M20 15.4 L20 21.8" stroke="${stroke}" stroke-width="0.7" stroke-linecap="round" opacity="0.85" />
           </svg>
         </div>
         <span class="live-employee-marker__label" title="${safeName}">${safeName}</span>
@@ -105,7 +121,7 @@ function getMarkerIcon(emp, displayName, selected = false) {
   const colorKey = getDutyStatusColor(emp);
   const muted = gps === "gps_stale" || gps === "gps_offline";
   const pulse = colorKey === "green" && gps === "gps_active" && !selected;
-  const cacheKey = `${colorKey}-${pulse}-${muted}-${selected ? "sel" : "base"}-${displayName}-v5`;
+  const cacheKey = `${colorKey}-${pulse}-${muted}-${selected ? "sel" : "base"}-${displayName}-v6`;
   if (!iconCache.has(cacheKey)) {
     iconCache.set(
       cacheKey,
