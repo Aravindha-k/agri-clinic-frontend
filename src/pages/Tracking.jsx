@@ -2,7 +2,7 @@ import { EmptyState, PageHeader } from "../components/ui/command";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayLock } from "../utils/overlayLock";
 import AdminMapCard from "../components/map/AdminMapCard";
@@ -85,32 +85,11 @@ import { forceEndEmployeeDuty, getTrackingLive } from "../api/adminTracking.api"
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { normalizeForceEndError } from "../utils/apiErrorNormalize";
 import { LIVE_TRACKING_POLL_MS } from "../utils/trackingPoll";
-import { BRAND, BRAND_GRADIENTS } from "../theme/brand";
+
 
 const REFRESH_INTERVAL = LIVE_TRACKING_POLL_MS;
 
 /* Shared count-up (reduced-motion aware) lives in utils/motion.js */
-import { useCountUp } from "../utils/motion";
-
-const StatCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) => {
-    const animVal = useCountUp(value);
-    return (
-        <div className="tracking-stat-card group">
-            <div className="tracking-stat-card__accent" style={{ background: accent }} aria-hidden="true" />
-            <div className="flex items-start gap-3">
-                <div className="tracking-stat-card__icon" style={{ background: iconBg, color: accent }}>
-                    <Icon className="w-4 h-4" aria-hidden="true" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <p className="tracking-stat-card__value" style={{ color: accent }}>{animVal}</p>
-                    <p className="tracking-stat-card__label">{label}</p>
-                </div>
-            </div>
-        </div>
-    );
-});
-StatCard.displayName = "StatCard";
-
 function TrackingSkeleton() {
     return (
         <div className="tracking-command" aria-busy="true" aria-label="Loading live tracking">
@@ -755,49 +734,6 @@ export default function Tracking() {
         [loadData]
     );
 
-    const statCards = [
-        {
-            icon: Users,
-            label: "Working",
-            value: dutyStats.working,
-            accent: BRAND.primary,
-            gradient: BRAND_GRADIENTS.cardGreen,
-            iconBg: "#dcfce7",
-        },
-        {
-            icon: MapPin,
-            label: "Fresh GPS",
-            value: dutyStats.gps_active,
-            accent: BRAND.primaryDark,
-            gradient: "linear-gradient(135deg,#fff 0%,#ecfdf5 100%)",
-            iconBg: "#d1fae5",
-        },
-        {
-            icon: Clock,
-            label: "Delayed",
-            value: dutyStats.gps_stale,
-            accent: BRAND.warning,
-            gradient: BRAND_GRADIENTS.cardAccent,
-            iconBg: BRAND.warningLight,
-        },
-        {
-            icon: WifiOff,
-            label: "Lost GPS",
-            value: dutyStats.gps_offline,
-            accent: "#64748b",
-            gradient: "linear-gradient(135deg,#fff 0%,#f8fafc 100%)",
-            iconBg: "#e2e8f0",
-        },
-        {
-            icon: AlertTriangle,
-            label: "No GPS",
-            value: dutyStats.no_location,
-            accent: BRAND.danger,
-            gradient: "linear-gradient(135deg,#fff 0%,#fef2f2 100%)",
-            iconBg: BRAND.dangerLight,
-        },
-    ];
-
     const filterOptions = [
         { key: "all", label: "All active", count: activeEmployees.length },
         { key: "working", label: "Working", count: dutyStats.working },
@@ -808,12 +744,12 @@ export default function Tracking() {
     ];
 
     const todaySummary = [
-        { label: "Working", value: dutyStats.working },
-        { label: "Fresh", value: dutyStats.gps_active },
-        { label: "Delayed", value: dutyStats.gps_stale },
-        { label: "Lost", value: dutyStats.gps_offline },
-        { label: "On map", value: mapEmployees.length },
-        { label: "No GPS", value: dutyStats.no_location },
+        { label: "Working", value: dutyStats.working, icon: Users, accent: "#4ade80", iconBg: "rgba(74, 222, 128, 0.16)" },
+        { label: "Fresh", value: dutyStats.gps_active, icon: MapPin, accent: "#5eead4", iconBg: "rgba(94, 234, 212, 0.14)" },
+        { label: "Delayed", value: dutyStats.gps_stale, icon: Clock, accent: "#fcd34d", iconBg: "rgba(252, 211, 77, 0.15)" },
+        { label: "Lost", value: dutyStats.gps_offline, icon: WifiOff, accent: "#94a3b8", iconBg: "rgba(148, 163, 184, 0.18)" },
+        { label: "On map", value: mapEmployees.length, icon: Navigation, accent: "#67e8f9", iconBg: "rgba(103, 232, 249, 0.14)" },
+        { label: "No GPS", value: dutyStats.no_location, icon: AlertTriangle, accent: "#fca5a5", iconBg: "rgba(252, 165, 165, 0.16)" },
     ];
 
     if (loading && employees.length === 0) {
@@ -867,20 +803,25 @@ export default function Tracking() {
                         <p className="tracking-today-summary__label">Today&apos;s field operations</p>
                         <div className="tracking-today-summary__grid">
                             {todaySummary.map((cell) => (
-                                <div key={cell.label} className="visit-report-summary__cell">
-                                    <p className="visit-report-summary__cell-label">{cell.label}</p>
-                                    <p className="visit-report-summary__cell-value tabular-nums">{cell.value}</p>
+                                <div key={cell.label} className="visit-report-summary__cell tracking-today-cell">
+                                    <span
+                                        className="tracking-today-cell__icon"
+                                        style={{ background: cell.iconBg, color: cell.accent }}
+                                        aria-hidden="true"
+                                    >
+                                        <cell.icon className="w-3.5 h-3.5" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="visit-report-summary__cell-label">{cell.label}</p>
+                                        <p className="visit-report-summary__cell-value tabular-nums" style={{ color: cell.accent }}>
+                                            {cell.value}
+                                        </p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </section>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {statCards.map((card) => (
-                        <StatCard key={card.label} {...card} />
-                    ))}
-                </div>
 
                 <div className="tracking-command-layout">
                     <AdminMapCard
