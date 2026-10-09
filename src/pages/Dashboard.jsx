@@ -208,8 +208,13 @@ const Dashboard = () => {
     }
 
     try {
-    const [summaryR, chartR, trendsR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await Promise.allSettled([
-      getDashboardStats(),
+    // Render as soon as the KPI summary lands — the page must not wait
+    // for the slowest optional feed (visits/geo/trends stream in after).
+    const summaryR = await Promise.resolve(getDashboardStats()).then(
+      (value) => ({ status: "fulfilled", value }),
+      (reason) => ({ status: "rejected", reason })
+    );
+    const othersP = Promise.allSettled([
       getDashboardChartStats(),
       getVisitTrends(),
       getEmployeeGeo(),
@@ -251,6 +256,12 @@ const Dashboard = () => {
         setError("Failed to load dashboard summary. Check your connection and try again.");
       }
     }
+
+    // Unlock the shell now — KPIs render while the remaining feeds stream in.
+    hasLoadedRef.current = true;
+    setLoading(false);
+
+    const [chartR, trendsR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await othersP;
 
     // -- Chart stats (optional) — GET dashboard/stats/ --
     if (chartR.status === "fulfilled") {
@@ -372,8 +383,6 @@ const Dashboard = () => {
     } else {
       setRecentFarmers([]);
     }
-
-    hasLoadedRef.current = true;
     } finally {
       loadInFlightRef.current = false;
       setLoading(false);

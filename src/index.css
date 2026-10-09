@@ -180,14 +180,16 @@ body {
 
 /* ── Raised icon well — tinted face, inner highlight, soft shadow ── */
 .raised-icon-well {
+    position: relative;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     border-radius: 0.875rem;
-    background: linear-gradient(150deg,
+    background: linear-gradient(145deg,
         #ffffff 0%,
-        var(--well-tint, #ecfdf5) 42%,
+        var(--well-tint, #ecfdf5) 36%,
         var(--well-tint-deep, #d1fae5) 100%);
     border: 1px solid var(--well-border, rgba(16, 185, 129, 0.16));
     border-bottom-color: var(--well-border-strong, var(--well-border, rgba(16, 185, 129, 0.16)));
@@ -200,6 +202,19 @@ body {
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Glossy glass sheen — top-half highlight sweep */
+.raised-icon-well::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(165deg,
+        rgba(255, 255, 255, 0.9) 0%,
+        rgba(255, 255, 255, 0.32) 28%,
+        rgba(255, 255, 255, 0) 52%);
+    pointer-events: none;
+}
+
 .raised-icon-well svg {
     filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.18));
 }
@@ -207,7 +222,7 @@ body {
 /* Deeper tone definitions — bottom edge + shade give the 3D tile look */
 .raised-icon-well--emerald {
     --well-tint: #d7f4e6;
-    --well-tint-deep: #a7e8cb;
+    --well-tint-deep: #6ee7b7;
     --well-border: rgba(16, 185, 129, 0.28);
     --well-border-strong: rgba(5, 150, 105, 0.4);
     --well-fg: #047857;
@@ -217,7 +232,7 @@ body {
 
 .raised-icon-well--forest {
     --well-tint: #d8efdf;
-    --well-tint-deep: #aeddc0;
+    --well-tint-deep: #86c9a1;
     --well-border: rgba(20, 90, 50, 0.26);
     --well-border-strong: rgba(20, 90, 50, 0.38);
     --well-fg: #145a32;
@@ -227,7 +242,7 @@ body {
 
 .raised-icon-well--teal {
     --well-tint: #d3f5f0;
-    --well-tint-deep: #9cebe0;
+    --well-tint-deep: #5eead4;
     --well-border: rgba(13, 148, 136, 0.26);
     --well-border-strong: rgba(15, 118, 110, 0.38);
     --well-fg: #0f766e;
@@ -237,7 +252,7 @@ body {
 
 .raised-icon-well--amber {
     --well-tint: #fdf0cd;
-    --well-tint-deep: #fbdf9d;
+    --well-tint-deep: #fcd34d;
     --well-border: rgba(217, 119, 6, 0.26);
     --well-border-strong: rgba(180, 83, 9, 0.36);
     --well-fg: #92400e;
@@ -247,7 +262,7 @@ body {
 
 .raised-icon-well--red {
     --well-tint: #fcdede;
-    --well-tint-deep: #f8b4b4;
+    --well-tint-deep: #fca5a5;
     --well-border: rgba(220, 38, 38, 0.24);
     --well-border-strong: rgba(185, 28, 28, 0.34);
     --well-fg: #991b1b;
@@ -257,7 +272,7 @@ body {
 
 .raised-icon-well--cyan {
     --well-tint: #d0f4fa;
-    --well-tint-deep: #9de9f5;
+    --well-tint-deep: #67e8f9;
     --well-border: rgba(8, 145, 178, 0.26);
     --well-border-strong: rgba(14, 116, 144, 0.38);
     --well-fg: #0e7490;
@@ -267,7 +282,7 @@ body {
 
 .raised-icon-well--indigo {
     --well-tint: #dfe5fb;
-    --well-tint-deep: #c3cdf6;
+    --well-tint-deep: #a5b4fc;
     --well-border: rgba(99, 102, 241, 0.24);
     --well-border-strong: rgba(67, 56, 202, 0.34);
     --well-fg: #4338ca;
@@ -277,7 +292,7 @@ body {
 
 .raised-icon-well--slate {
     --well-tint: #eef2f6;
-    --well-tint-deep: #d2dbe6;
+    --well-tint-deep: #cbd5e1;
     --well-border: rgba(100, 116, 139, 0.24);
     --well-border-strong: rgba(71, 85, 105, 0.32);
     --well-fg: #475569;
@@ -839,6 +854,95 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     .page-enter {
         animation: none !important;
+    }
+}
+
+/* ── Staggered section entrance — sections rise in sequence on page load ── */
+@keyframes pageChildIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .page-enter > .page-container > *,
+    .page-enter > .ops-page > *,
+    .page-enter > .employees-hr > *,
+    .page-enter > .tracking-command > *,
+    .page-enter > .reports-bi > *,
+    .page-enter > .masters-admin > *,
+    .page-enter > .security-suite > *,
+    .page-enter > .audit-console > * {
+        animation: pageChildIn 0.42s var(--ease-enterprise) both;
+    }
+
+    .page-enter > .page-container > *:nth-child(2),
+    .page-enter > .ops-page > *:nth-child(2),
+    .page-enter > .employees-hr > *:nth-child(2),
+    .page-enter > .tracking-command > *:nth-child(2),
+    .page-enter > .reports-bi > *:nth-child(2),
+    .page-enter > .masters-admin > *:nth-child(2),
+    .page-enter > .security-suite > *:nth-child(2),
+    .page-enter > .audit-console > *:nth-child(2) { animation-delay: 45ms; }
+
+    .page-enter > .page-container > *:nth-child(3),
+    .page-enter > .ops-page > *:nth-child(3),
+    .page-enter > .employees-hr > *:nth-child(3),
+    .page-enter > .tracking-command > *:nth-child(3),
+    .page-enter > .reports-bi > *:nth-child(3),
+    .page-enter > .masters-admin > *:nth-child(3),
+    .page-enter > .security-suite > *:nth-child(3),
+    .page-enter > .audit-console > *:nth-child(3) { animation-delay: 90ms; }
+
+    .page-enter > .page-container > *:nth-child(4),
+    .page-enter > .ops-page > *:nth-child(4),
+    .page-enter > .employees-hr > *:nth-child(4),
+    .page-enter > .tracking-command > *:nth-child(4),
+    .page-enter > .reports-bi > *:nth-child(4),
+    .page-enter > .masters-admin > *:nth-child(4),
+    .page-enter > .security-suite > *:nth-child(4),
+    .page-enter > .audit-console > *:nth-child(4) { animation-delay: 135ms; }
+
+    .page-enter > .page-container > *:nth-child(5),
+    .page-enter > .ops-page > *:nth-child(5),
+    .page-enter > .employees-hr > *:nth-child(5),
+    .page-enter > .tracking-command > *:nth-child(5),
+    .page-enter > .reports-bi > *:nth-child(5),
+    .page-enter > .masters-admin > *:nth-child(5),
+    .page-enter > .security-suite > *:nth-child(5),
+    .page-enter > .audit-console > *:nth-child(5) { animation-delay: 180ms; }
+
+    .page-enter > .page-container > *:nth-child(n+6),
+    .page-enter > .ops-page > *:nth-child(n+6),
+    .page-enter > .employees-hr > *:nth-child(n+6),
+    .page-enter > .tracking-command > *:nth-child(n+6),
+    .page-enter > .reports-bi > *:nth-child(n+6),
+    .page-enter > .masters-admin > *:nth-child(n+6),
+    .page-enter > .security-suite > *:nth-child(n+6),
+    .page-enter > .audit-console > *:nth-child(n+6) { animation-delay: 220ms; }
+}
+
+/* ── Icon well entrance pop ── */
+@keyframes iconWellPop {
+    from {
+        opacity: 0;
+        transform: scale(0.7);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .page-enter .raised-icon-well,
+    .page-enter .icon-box {
+        animation: iconWellPop 0.45s var(--ease-enterprise) both;
     }
 }
 
@@ -1602,7 +1706,9 @@ textarea.input {
 /* ── Icon box — gradient ── */
 .icon-box {
     @apply w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0;
-    background: linear-gradient(150deg, #ffffff 0%, #d7f4e6 45%, #a7e8cb 100%);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(145deg, #ffffff 0%, #d7f4e6 38%, #7fdcb6 100%);
     color: #047857;
     border: 1px solid rgba(16, 185, 129, 0.24);
     border-bottom-color: rgba(5, 150, 105, 0.36);
@@ -1611,6 +1717,18 @@ textarea.input {
         inset 0 -2px 3px rgba(5, 95, 70, 0.12),
         0 1px 2px rgba(15, 23, 42, 0.05),
         0 5px 12px rgba(16, 185, 129, 0.2);
+}
+
+.icon-box::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(165deg,
+        rgba(255, 255, 255, 0.9) 0%,
+        rgba(255, 255, 255, 0.3) 28%,
+        rgba(255, 255, 255, 0) 52%);
+    pointer-events: none;
 }
 
 .icon-box svg {
