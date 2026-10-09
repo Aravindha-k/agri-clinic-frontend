@@ -65,6 +65,7 @@ export default function SidebarNavItem({ item, onClose }) {
       <NavLink
         to={path}
         onClick={onClose}
+        data-label={label}
         className={({ isActive }) =>
           `sidebar-nav-item relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13.5px] font-medium transition-all duration-200 group border border-transparent
           ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90 hover:bg-white/[0.04]"}`
