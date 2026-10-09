@@ -14444,3 +14444,179 @@ textarea.input {
         transition: none !important;
     }
 }
+
+/* ========================================================================
+   MODERN SURFACE SYSTEM — glass, depth, sheen sweep, micro-interactions
+   ======================================================================== */
+
+/* Frosted-glass card faces over the page gradient */
+.section-card,
+.dashboard-section-card,
+.visits-card,
+.tracking-stat-card,
+.masters-hub-card,
+.employees-hr-card,
+.security-suite-session-card,
+.audit-console-timeline-card,
+.notifications-shell-card {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(10px) saturate(1.25);
+    -webkit-backdrop-filter: blur(10px) saturate(1.25);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.05),
+        0 10px 28px -12px rgba(15, 23, 42, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    position: relative;
+    overflow: hidden;
+    transition:
+        translate 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color var(--transition-fast);
+}
+
+/* Sheen sweep — light band crosses the card face on hover */
+.section-card::after,
+.dashboard-section-card::after,
+.visits-card::after,
+.tracking-stat-card::after,
+.masters-hub-card::after,
+.employees-hr-card::after,
+.security-suite-session-card::after,
+.audit-console-timeline-card::after,
+.notifications-shell-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg,
+        transparent 42%,
+        rgba(255, 255, 255, 0.38) 50%,
+        transparent 58%);
+    transform: translateX(-130%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .section-card:hover::after,
+    .dashboard-section-card:hover::after,
+    .visits-card:hover::after,
+    .tracking-stat-card:hover::after,
+    .masters-hub-card:hover::after,
+    .employees-hr-card:hover::after,
+    .security-suite-session-card:hover::after,
+    .audit-console-timeline-card:hover::after,
+    .notifications-shell-card:hover::after {
+        transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        transform: translateX(130%);
+    }
+
+    .section-card:hover,
+    .dashboard-section-card:hover,
+    .visits-card:hover,
+    .tracking-stat-card:hover,
+    .masters-hub-card:hover,
+    .security-suite-session-card:hover,
+    .audit-console-timeline-card:hover {
+        translate: 0 -2px;
+        box-shadow:
+            0 2px 4px rgba(15, 23, 42, 0.06),
+            0 16px 36px -12px rgba(4, 120, 87, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+}
+
+/* Vibrant gradient hairline on section-card headers (bento accent) */
+.section-card-header {
+    position: relative;
+}
+
+.section-card-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg,
+        rgba(4, 120, 87, 0.5) 0%,
+        rgba(20, 184, 166, 0.35) 45%,
+        transparent 75%);
+    pointer-events: none;
+}
+
+/* Bold typography — page titles get a slate→forest gradient face */
+.app-header__title {
+    background: linear-gradient(94deg, #0f172a 30%, #1e3a2f 78%, #047857 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.025em;
+}
+
+/* Primary buttons — glossy face + hover sheen */
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.32) 50%,
+        transparent 60%);
+    transform: translateX(-130%);
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .btn-primary:hover:not(:disabled)::after {
+        transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+        transform: translateX(130%);
+    }
+}
+
+/* Universal press feedback — uses `scale` so existing transforms stay intact */
+@media (prefers-reduced-motion: no-preference) {
+    button {
+        transition-property: scale;
+        transition-duration: 0.12s;
+    }
+
+    button:active:not(:disabled) {
+        scale: 0.965;
+    }
+}
+
+/* Input focus — vibrant emerald glow ring */
+.input:focus-visible,
+.search-input:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    box-shadow:
+        0 0 0 3px rgba(16, 185, 129, 0.14),
+        0 1px 2px rgba(15, 23, 42, 0.05) !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+/* KPI tiles — glossy ambient depth */
+.premium-kpi {
+    position: relative;
+    overflow: hidden;
+}
+
+.premium-kpi::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg,
+        rgba(255, 255, 255, 0.32) 0%,
+        rgba(255, 255, 255, 0.08) 34%,
+        transparent 55%);
+    pointer-events: none;
+}
