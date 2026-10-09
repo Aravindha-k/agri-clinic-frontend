@@ -14428,13 +14428,17 @@ textarea.input {
     content: "";
     position: absolute;
     inset: 0;
+    /* Above opaque children (edge-to-edge table headers/panels) that
+       would otherwise cover the ring; pointer-events keep it inert. */
+    z-index: 2;
     border-radius: inherit;
     padding: 1.5px;
     background: conic-gradient(from var(--beam-angle),
         transparent 0%,
-        transparent 68%,
-        rgba(52, 211, 153, 0.65) 82%,
-        rgba(125, 211, 252, 0.45) 90%,
+        transparent 62%,
+        rgba(16, 185, 129, 0.55) 74%,
+        rgba(52, 211, 153, 0.9) 84%,
+        rgba(125, 211, 252, 0.7) 92%,
         transparent 100%);
     -webkit-mask:
         linear-gradient(#000 0 0) content-box,
@@ -14618,13 +14622,15 @@ textarea:focus-visible {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 2;
     border-radius: inherit;
     padding: 1.5px;
     background: conic-gradient(from var(--beam-angle),
         transparent 0%,
-        transparent 68%,
-        rgba(255, 255, 255, 0.7) 82%,
-        rgba(255, 255, 255, 0.5) 90%,
+        transparent 62%,
+        rgba(16, 185, 129, 0.55) 74%,
+        rgba(52, 211, 153, 0.9) 84%,
+        rgba(125, 211, 252, 0.7) 92%,
         transparent 100%);
     -webkit-mask:
         linear-gradient(#000 0 0) content-box,
@@ -14677,13 +14683,15 @@ textarea:focus-visible {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 2;
     border-radius: inherit;
     padding: 1.5px;
     background: conic-gradient(from var(--beam-angle),
         transparent 0%,
-        transparent 68%,
-        rgba(52, 211, 153, 0.65) 82%,
-        rgba(125, 211, 252, 0.45) 90%,
+        transparent 62%,
+        rgba(16, 185, 129, 0.55) 74%,
+        rgba(52, 211, 153, 0.9) 84%,
+        rgba(125, 211, 252, 0.7) 92%,
         transparent 100%);
     -webkit-mask:
         linear-gradient(#000 0 0) content-box,
@@ -14772,6 +14780,12 @@ textarea:focus-visible {
 .masters-admin-form,
 .security-suite-panel,
 .dashboard-quick-actions,
+.filters-bar,
+.employees-hr-table-card,
+.employees-hr-cred-card,
+.employees-hr-toggle-card,
+.employees-hr-workforce-strip,
+.employees-hr-performance__card,
 .login-card {
     position: relative;
 }
@@ -14797,6 +14811,12 @@ textarea:focus-visible {
 .masters-admin-form::before,
 .security-suite-panel::before,
 .dashboard-quick-actions::before,
+.filters-bar::before,
+.employees-hr-table-card::before,
+.employees-hr-cred-card::before,
+.employees-hr-toggle-card::before,
+.employees-hr-workforce-strip::before,
+.employees-hr-performance__card::before,
 .login-card::before {
     content: "";
     position: absolute;
@@ -14806,9 +14826,10 @@ textarea:focus-visible {
     padding: 1.5px;
     background: conic-gradient(from var(--beam-angle),
         transparent 0%,
-        transparent 68%,
-        rgba(52, 211, 153, 0.65) 82%,
-        rgba(125, 211, 252, 0.45) 90%,
+        transparent 62%,
+        rgba(16, 185, 129, 0.55) 74%,
+        rgba(52, 211, 153, 0.9) 84%,
+        rgba(125, 211, 252, 0.7) 92%,
         transparent 100%);
     -webkit-mask:
         linear-gradient(#000 0 0) content-box,
@@ -14842,6 +14863,12 @@ textarea:focus-visible {
     .masters-admin-form::before,
     .security-suite-panel::before,
     .dashboard-quick-actions::before,
+    .filters-bar::before,
+    .employees-hr-table-card::before,
+    .employees-hr-cred-card::before,
+    .employees-hr-toggle-card::before,
+    .employees-hr-workforce-strip::before,
+    .employees-hr-performance__card::before,
     .login-card::before {
         animation: beam-border-spin 5.5s linear infinite;
     }
@@ -14861,6 +14888,9 @@ textarea:focus-visible {
     .cpd-mapped-panel::after,
     .masters-admin-table-card::after,
     .security-suite-panel::after,
+    .employees-hr-table-card::after,
+    .employees-hr-toggle-card::after,
+    .employees-hr-workforce-strip::after,
     .dashboard-quick-actions::after {
         content: "";
         position: absolute;
@@ -14887,6 +14917,9 @@ textarea:focus-visible {
     .cpd-mapped-panel:hover::after,
     .masters-admin-table-card:hover::after,
     .security-suite-panel:hover::after,
+    .employees-hr-table-card:hover::after,
+    .employees-hr-toggle-card:hover::after,
+    .employees-hr-workforce-strip:hover::after,
     .dashboard-quick-actions:hover::after {
         transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
         transform: translateX(130%);
