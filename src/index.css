@@ -623,6 +623,19 @@ body {
 .app-shell__content .page-enter > .security-suite,
 .app-shell__content .page-enter > .audit-console {
     padding-top: 1rem;
+    padding-inline: var(--space-4);
+}
+
+@media (min-width: 640px) {
+    .app-shell__content .page-enter > .ops-page,
+    .app-shell__content .page-enter > .employees-hr,
+    .app-shell__content .page-enter > .tracking-command,
+    .app-shell__content .page-enter > .reports-bi,
+    .app-shell__content .page-enter > .masters-admin,
+    .app-shell__content .page-enter > .security-suite,
+    .app-shell__content .page-enter > .audit-console {
+        padding-inline: var(--space-5);
+    }
 }
 
 @media (min-width: 1024px) {
@@ -634,6 +647,7 @@ body {
     .app-shell__content .page-enter > .security-suite,
     .app-shell__content .page-enter > .audit-console {
         padding-top: 1.125rem;
+        padding-inline: var(--space-8);
     }
 }
 
@@ -980,7 +994,11 @@ table tbody tr {
 
 /* ── Page layout (enterprise density) ── */
 .page-container {
-    @apply mx-auto;
+    /* Anchor to the left gutter — a centered column leaves a floating strip
+       with a dead void beside the sidebar on wide viewports. */
+    margin-inline-start: 0;
+    margin-inline-end: auto;
+    width: 100%;
     max-width: 1680px;
     padding: var(--space-4);
     display: flex;
