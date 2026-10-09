@@ -7213,14 +7213,47 @@ textarea.input {
 }
 
 .sidebar-nav-label {
-    @apply px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em];
-    color: rgba(255, 255, 255, 0.34);
+    @apply px-3 mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] flex items-center gap-2;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.sidebar-nav-label::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    background: rgba(52, 211, 153, 0.55);
+    flex-shrink: 0;
 }
 
 .sidebar-user-card {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-xl;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.sidebar-user-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(52, 211, 153, 0.2);
+}
+
+/* Presence dot on the avatar */
+.sidebar-user-card > div:first-child {
+    position: relative;
+}
+
+.sidebar-user-card > div:first-child::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #34d399;
+    border: 2px solid #0b3b21;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.55);
 }
 
 /* Avatar ring — inline style on the avatar carries the ring now */
@@ -7233,12 +7266,14 @@ textarea.input {
 }
 
 .sidebar-nav-item--active {
-    background: linear-gradient(90deg, rgba(34, 197, 94, 0.16) 0%, rgba(34, 197, 94, 0.09) 100%) !important;
-    border: 1px solid rgba(52, 211, 153, 0.22) !important;
+    font-weight: 600;
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.24) 0%, rgba(34, 197, 94, 0.12) 65%, rgba(34, 197, 94, 0.06) 100%) !important;
+    border: 1px solid rgba(52, 211, 153, 0.32) !important;
     box-shadow:
-        inset 3px 0 0 0 rgba(52, 211, 153, 0.85),
-        inset 0 1px 0 rgba(255, 255, 255, 0.06),
-        0 2px 8px rgba(0, 0, 0, 0.12);
+        inset 3px 0 0 0 rgba(52, 211, 153, 0.95),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 3px 12px rgba(16, 185, 129, 0.22),
+        0 0 0 1px rgba(52, 211, 153, 0.06);
 }
 
 .sidebar-nav-item:not(.sidebar-nav-item--active):hover {
@@ -7275,7 +7310,16 @@ textarea.input {
 
 .sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon {
     background: rgba(255, 255, 255, 0.07);
+    transform: translateX(1px);
 }
+
+/* Tone-tinted wells light up on hover — icons stay bare at idle */
+.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--emerald { background: rgba(16, 185, 129, 0.14); }
+.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--teal { background: rgba(20, 184, 166, 0.14); }
+.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--cyan { background: rgba(6, 182, 212, 0.14); }
+.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--amber { background: rgba(245, 158, 11, 0.14); }
+.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--indigo { background: rgba(99, 102, 241, 0.14); }
+.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--slate { background: rgba(148, 163, 184, 0.14); }
 
 /* Semantic icon-well tints — faint idle tint, lit when active */
 .sidebar-nav-item__icon--emerald svg { color: #6ee7b7; }
