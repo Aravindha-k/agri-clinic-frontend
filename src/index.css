@@ -7174,15 +7174,17 @@ textarea.input {
     border: 1px solid rgba(72, 187, 120, 0.22);
 }
 
-.sidebar--collapsed .sidebar-brand,
-.sidebar-collapsed .sidebar-brand {
-    padding: 12px 8px;
-}
+@media (min-width: 1024px) {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-brand,
+    .sidebar-collapsed .sidebar-brand {
+        padding: 12px 8px;
+    }
 
-.sidebar--collapsed .brand-globe-stage,
-.sidebar-collapsed .brand-globe-stage {
-    width: 3.15rem;
-    height: 3.15rem;
+    .sidebar--collapsed:not(:hover):not(:focus-within) .brand-globe-stage,
+    .sidebar-collapsed .brand-globe-stage {
+        width: 3.15rem;
+        height: 3.15rem;
+    }
 }
 
 @media (max-width: 1023px) {
@@ -7192,9 +7194,11 @@ textarea.input {
     }
 }
 
-.sidebar--collapsed .sidebar-brand__text,
-.sidebar-collapsed .sidebar-brand__text {
-    display: none;
+@media (min-width: 1024px) {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-brand__text,
+    .sidebar-collapsed .sidebar-brand__text {
+        display: none;
+    }
 }
 
 @media (max-width: 767px) {
@@ -7286,7 +7290,7 @@ textarea.input {
     box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.45);
 }
 
-/* Raised icon well — subtle on idle, lit capsule on active */
+/* Dimensional icon tile — permanent 3D face per semantic tone */
 .sidebar-nav-item__icon {
     display: inline-flex;
     align-items: center;
@@ -7295,65 +7299,78 @@ textarea.input {
     height: 1.8rem;
     border-radius: 0.55rem;
     flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        inset 0 -2px 3px rgba(0, 0, 0, 0.3),
+        0 3px 7px rgba(0, 0, 0, 0.35);
     transition:
-        background-color var(--transition-fast),
-        box-shadow var(--transition-fast),
-        transform var(--transition-fast);
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.sidebar-nav-item__icon svg {
+    color: #fff;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+
+.sidebar-nav-item:hover .sidebar-nav-item__icon {
+    transform: translateY(-1px) scale(1.04);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        inset 0 -2px 3px rgba(0, 0, 0, 0.3),
+        0 5px 12px rgba(0, 0, 0, 0.45);
 }
 
 .sidebar-nav-item--active .sidebar-nav-item__icon {
-    background: rgba(16, 185, 129, 0.18);
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.14),
-        0 2px 6px rgba(16, 185, 129, 0.25);
+        inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        inset 0 -2px 3px rgba(0, 0, 0, 0.28),
+        0 3px 8px rgba(0, 0, 0, 0.4),
+        0 0 0 1.5px rgba(255, 255, 255, 0.3);
 }
 
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon {
-    background: rgba(255, 255, 255, 0.07);
-    transform: translateX(1px);
-}
-
-/* Tone-tinted wells light up on hover — icons stay bare at idle */
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--emerald { background: rgba(16, 185, 129, 0.14); }
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--teal { background: rgba(20, 184, 166, 0.14); }
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--cyan { background: rgba(6, 182, 212, 0.14); }
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--amber { background: rgba(245, 158, 11, 0.14); }
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--indigo { background: rgba(99, 102, 241, 0.14); }
-.sidebar-nav-item:not(.sidebar-nav-item--active):hover .sidebar-nav-item__icon--slate { background: rgba(148, 163, 184, 0.14); }
-
-/* Semantic icon-well tints — faint idle tint, lit when active */
-.sidebar-nav-item__icon--emerald svg { color: #6ee7b7; }
-.sidebar-nav-item__icon--teal svg { color: #5eead4; }
-.sidebar-nav-item__icon--cyan svg { color: #67e8f9; }
-.sidebar-nav-item__icon--amber svg { color: #fcd34d; }
-.sidebar-nav-item__icon--indigo svg { color: #a5b4fc; }
-.sidebar-nav-item__icon--slate svg { color: #cbd5e1; }
+/* Saturated 3D faces — each tone reads as a raised tile */
+.sidebar-nav-item__icon--emerald { background: linear-gradient(145deg, #4ade80 0%, #059669 55%, #065f46 100%); }
+.sidebar-nav-item__icon--teal { background: linear-gradient(145deg, #2dd4bf 0%, #0d9488 55%, #115e59 100%); }
+.sidebar-nav-item__icon--cyan { background: linear-gradient(145deg, #38bdf8 0%, #0284c7 55%, #075985 100%); }
+.sidebar-nav-item__icon--amber { background: linear-gradient(145deg, #fbbf24 0%, #d97706 55%, #92400e 100%); }
+.sidebar-nav-item__icon--indigo { background: linear-gradient(145deg, #818cf8 0%, #4f46e5 55%, #3730a3 100%); }
+.sidebar-nav-item__icon--slate { background: linear-gradient(145deg, #94a3b8 0%, #64748b 55%, #334155 100%); }
 
 /* ========================================================================
    SIDEBAR — COLLAPSED ICON RAIL (desktop only)
    ======================================================================== */
 
+.sidebar-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-footer-actions .sidebar-logout-btn {
+    flex: 1;
+    min-width: 0;
+}
+
 .sidebar-collapse-btn {
-    position: absolute;
-    top: 4.6rem;
-    right: -13px;
-    z-index: 50;
-    width: 26px;
-    height: 26px;
+    flex-shrink: 0;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    background: linear-gradient(145deg, #0d4a28 0%, #082b18 100%);
-    border: 1px solid rgba(52, 211, 153, 0.35);
-    color: rgba(255, 255, 255, 0.75);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+    width: 2rem;
+    height: 2.35rem;
+    border-radius: 0.6rem;
+    background: linear-gradient(145deg, rgba(52, 211, 153, 0.14) 0%, rgba(8, 43, 24, 0.6) 100%);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    color: rgba(167, 243, 208, 0.8);
+    transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .sidebar-collapse-btn:hover {
     color: #fff;
-    border-color: rgba(52, 211, 153, 0.65);
-    transform: scale(1.08);
+    border-color: rgba(52, 211, 153, 0.6);
+    background: linear-gradient(145deg, rgba(52, 211, 153, 0.24) 0%, rgba(8, 43, 24, 0.7) 100%);
 }
 
 .sidebar-collapse-btn:focus-visible {
@@ -7361,25 +7378,41 @@ textarea.input {
     outline-offset: 2px;
 }
 
+@media (max-width: 1023px) {
+    .sidebar-collapse-btn {
+        display: none;
+    }
+}
+
 @media (min-width: 1024px) {
+    /* Collapsed = slim icon rail; hovering expands it as an overlay
+       (negative margin keeps the page content from reflowing). */
     .sidebar--collapsed {
         width: 76px !important;
         min-width: 76px !important;
         max-width: 76px !important;
     }
 
+    .sidebar--collapsed:hover,
+    .sidebar--collapsed:focus-within {
+        width: 248px !important;
+        min-width: 248px !important;
+        max-width: 248px !important;
+        margin-right: -172px;
+    }
+
     /* Let icon tooltips escape the scroll container */
-    .sidebar--collapsed .sidebar-nav {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav {
         overflow: visible !important;
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }
 
-    .sidebar--collapsed .sidebar-nav-label {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav-label {
         display: none;
     }
 
-    .sidebar--collapsed .sidebar-nav-item {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav-item {
         justify-content: center;
         padding: 0;
         height: 2.75rem;
@@ -7387,18 +7420,18 @@ textarea.input {
         position: relative;
     }
 
-    .sidebar--collapsed .sidebar-nav-item > span,
-    .sidebar--collapsed .sidebar-nav-item__indicator {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav-item > span,
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav-item__indicator {
         display: none;
     }
 
-    .sidebar--collapsed .sidebar-nav-item__icon {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav-item__icon {
         width: 2rem;
         height: 2rem;
     }
 
-    /* Fly-out label tooltip */
-    .sidebar--collapsed .sidebar-nav-item::after {
+    /* Fly-out label tooltip (only relevant while rail is slim) */
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-nav-item::after {
         content: attr(data-label);
         position: absolute;
         left: calc(100% + 14px);
@@ -7419,37 +7452,36 @@ textarea.input {
         z-index: 60;
     }
 
-    .sidebar--collapsed .sidebar-nav-item:hover::after,
-    .sidebar--collapsed .sidebar-nav-item:focus-visible::after {
-        opacity: 1;
-        transform: translateY(-50%) translateX(0);
-    }
-
-    /* Compact brand + account area */
-    .sidebar--collapsed .sidebar-brand {
+    /* Compact brand + account area while slim */
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-brand {
         padding: 0.75rem 0.5rem 0.65rem;
     }
 
-    .sidebar--collapsed .sidebar-user-card {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-user-card {
         flex-direction: column;
         align-items: center;
         padding: 0.5rem;
         gap: 0;
     }
 
-    .sidebar--collapsed .sidebar-user-card > div:last-child,
-    .sidebar--collapsed .sidebar-logout-btn > span,
-    .sidebar--collapsed .sidebar-footer-note {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-user-card > div:last-child,
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-logout-btn > span,
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-footer-note {
         display: none;
     }
 
-    .sidebar--collapsed .sidebar-logout-btn {
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-footer-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .sidebar--collapsed:not(:hover):not(:focus-within) .sidebar-logout-btn {
         justify-content: center;
         width: 2.5rem;
         height: 2.5rem;
         padding: 0;
         border-radius: 0.7rem;
-        margin: 0 auto;
+        flex: none;
     }
 }
 

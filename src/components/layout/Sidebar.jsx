@@ -169,21 +169,6 @@ export default function Sidebar({ isOpen, onClose }) {
           <X className="w-5 h-5" />
         </button>
 
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          className="sidebar-collapse-btn hidden lg:flex"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-expanded={!collapsed}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? (
-            <ChevronsRight className="w-3.5 h-3.5" aria-hidden="true" />
-          ) : (
-            <ChevronsLeft className="w-3.5 h-3.5" aria-hidden="true" />
-          )}
-        </button>
-
         <div className="relative z-10 flex-shrink-0">
           <div className="sidebar-brand">
             <div className="brand-globe-stage">
@@ -259,14 +244,30 @@ export default function Sidebar({ isOpen, onClose }) {
 
           <SidebarUserCard user={user} loading={authLoading && !user} />
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="sidebar-logout-btn"
-          >
-            <LogOut className="w-[17px] h-[17px]" />
-            <span>Sign Out</span>
-          </button>
+          <div className="sidebar-footer-actions">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="sidebar-logout-btn"
+            >
+              <LogOut className="w-[17px] h-[17px]" />
+              <span>Sign Out</span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              className="sidebar-collapse-btn"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+              title={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <ChevronsRight className="w-3.5 h-3.5" aria-hidden="true" />
+              ) : (
+                <ChevronsLeft className="w-3.5 h-3.5" aria-hidden="true" />
+              )}
+            </button>
+          </div>
 
           <p className="sidebar-footer-note text-[9.5px] text-white/15 text-center pb-1">
             © 2025–2026 Kavya Agri Clinic
