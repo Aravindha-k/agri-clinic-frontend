@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { motion, useReducedMotion, useMotionValue, useTransform, animate } from "framer-motion";
 import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getDashboardChartStats } from "../api/dashboard.api";
@@ -149,6 +150,9 @@ const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
    ================================================================ */
 const Dashboard = () => {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const donutProgress = useMotionValue(0);
+  const donutPctText = useTransform(donutProgress, (v) => `${Math.round(v)}%`);
   // Add new stats for visit dashboard, keep old for existing cards
   const [stats, setStats] = useState({
     farmers: 0,
@@ -449,6 +453,21 @@ const Dashboard = () => {
     navigate(q ? `/farmers?search=${encodeURIComponent(q)}` : "/farmers");
   };
 
+  // Evidence donut sweep — draws the ring while the right column settles.
+  useEffect(() => {
+    const target = Math.min(100, Math.max(0, evidenceStats.rate));
+    if (reduceMotion) {
+      donutProgress.set(target);
+      return undefined;
+    }
+    const controls = animate(donutProgress, target, {
+      delay: 0.4,
+      duration: 1.3,
+      ease: [0.16, 1, 0.3, 1],
+    });
+    return () => controls.stop();
+  }, [evidenceStats.rate, reduceMotion, donutProgress]);
+
   /* ---- Loading state ---- */
   if (loading) {
     return <DashboardSkeleton />;
@@ -487,7 +506,17 @@ const Dashboard = () => {
         />
       )}
 
-      <div className="dashboard-bento">
+      <motion.div
+        className="dashboard-bento"
+        style={{ transformOrigin: "0% 0%" }}
+        initial={
+          reduceMotion
+            ? false
+            : { scale: 1.15, x: 50, y: 40, filter: "blur(4px)" }
+        }
+        animate={{ scale: 1, x: 0, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+      >
       <div className="dashboard-ops-band">
         <div className="dashboard-ops-band__lead">
           <div className="raised-icon-well raised-icon-well--emerald dashboard-ops-band__icon">
@@ -658,7 +687,12 @@ const Dashboard = () => {
         <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
           <AlertsPanel alerts={opsAlerts ?? []} />
         </WidgetErrorBoundary>
-        <div className="dashboard-stack">
+        <motion.div
+          className="dashboard-stack"
+          initial={reduceMotion ? false : { opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.25, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--accent">
             <div className="dashboard-perf-card__head">
               <p className="dashboard-perf-card__title dashboard-perf-card__title--light">
@@ -683,7 +717,7 @@ const Dashboard = () => {
           <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
             <QuickActions />
           </WidgetErrorBoundary>
-        </div>
+        </motion.div>
       </div>
 
       <div className="dashboard-perf-row">
@@ -692,17 +726,17 @@ const Dashboard = () => {
             <p className="dashboard-perf-card__title">Visit Evidence</p>
             <span className="dashboard-perf-card__chip">Latest visits</span>
           </div>
-          <div
+          <motion.div
             className="dashboard-donut"
-            style={{ "--p": Math.min(100, Math.max(0, evidenceStats.rate)) }}
+            style={{ "--p": donutProgress }}
           >
             <div className="dashboard-donut__center">
-              <span className="dashboard-donut__value">
-                {Math.round(evidenceStats.rate)}%
-              </span>
+              <motion.span className="dashboard-donut__value">
+                {donutPctText}
+              </motion.span>
               <span className="dashboard-donut__label">with evidence</span>
             </div>
-          </div>
+          </motion.div>
           <div className="dashboard-donut__legend">
             <span>
               <i className="dashboard-dot dashboard-dot--emerald" aria-hidden />
@@ -918,7 +952,7 @@ const Dashboard = () => {
           </div>
         )}
       </div>
-      </div>
+      </motion.div>
     </div>
     </DashboardShellErrorBoundary>
   );

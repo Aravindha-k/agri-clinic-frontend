@@ -15387,3 +15387,9 @@ textarea:focus-visible {
 .dashboard-stack .dashboard-perf-card {
     min-height: 0;
 }
+
+/* --- Dashboard entrance: clip bleed during pan/zoom settle --- */
+
+.page-container {
+    overflow-x: clip;
+}

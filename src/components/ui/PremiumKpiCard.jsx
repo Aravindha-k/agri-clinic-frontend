@@ -30,7 +30,7 @@ export default function PremiumKpiCard({
   className = "",
   loading = false,
 }) {
-  const animVal = useCountUp(loading ? 0 : value);
+  const animVal = useCountUp(loading ? 0 : value, 1200);
   const trendCfg = trend ? TREND_STYLES[trend.direction] ?? TREND_STYLES.neutral : null;
   const TrendIcon = trendCfg?.Icon;
 
