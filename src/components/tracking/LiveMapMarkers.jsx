@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { Marker, Popup } from "react-leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import MapEmployeeMarkerPane, {
   EMPLOYEE_MARKER_PANE,
@@ -188,6 +188,13 @@ function LiveMapMarkers({ employees, selectedUserId = null, onSelect, onViewEmpl
               click: () => onSelect?.(emp),
             }}
           >
+            <Tooltip
+              className="live-employee-tooltip"
+              direction="top"
+              offset={[0, -(MARKER_PIN_H - 6)]}
+            >
+              <span className="map-marker-tooltip">{name} · {dutyLabel}</span>
+            </Tooltip>
             <Popup
               className="live-employee-popup-pane"
               maxWidth={320}

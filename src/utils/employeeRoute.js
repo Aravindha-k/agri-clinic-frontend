@@ -301,6 +301,11 @@ export function extractDayMapMarkers({
         localSyncId: stop.local_sync_id ?? null,
         captured_at: stop.captured_at ?? stop.submitted_at ?? stop.timestamp ?? null,
         dutySessionId: stop.duty_session_id ?? meta.duty_session_id ?? null,
+        crop_name: stop.crop_name ?? null,
+        problems: Array.isArray(stop.problems) ? stop.problems : null,
+        problem_description: stop.problem_description ?? null,
+        problem_category: stop.problem_category ?? null,
+        visit_type: stop.visit_type ?? stop.purpose ?? null,
       });
     }
   }
@@ -321,6 +326,11 @@ export function extractDayMapMarkers({
       localSyncId: visit.local_sync_id ?? null,
       captured_at: visit.captured_at ?? visit.submitted_at ?? visit.created_at ?? null,
       dutySessionId: visit.duty_session_id ?? meta.duty_session_id ?? null,
+      crop_name: visit.crop_name ?? null,
+      problems: Array.isArray(visit.problems) ? visit.problems : null,
+      problem_description: visit.problem_description ?? null,
+      problem_category: visit.problem_category ?? null,
+      visit_type: visit.visit_type ?? visit.purpose ?? null,
     });
   }
 

@@ -1,19 +1,13 @@
 import { Navigation } from "lucide-react";
-import { Marker, Popup } from "react-leaflet";
-import L from "leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import { useVisitLocationAddress } from "../../hooks/useVisitLocationAddress";
 import AdminMapCard from "../map/AdminMapCard";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import { createAgriMarkerIcon, markerKindLabel } from "../map/agriMarkers";
+import { visitMarkerKind } from "../../utils/mapMarkerKind";
 import { getStoredMapLocationLabel } from "../../utils/mapLocationLabel";
 import { formatVisitConductedAt } from "../../utils/businessDate";
 import "../../utils/leafletSetup";
-
-const visitMarkerIcon = L.divIcon({
-  className: "admin-map-single-marker",
-  html: `<div style="width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#059669;border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 3px 10px rgba(0,0,0,.35)"></div>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 18],
-});
 
 /**
  * Human-readable visit location + coordinates + shared admin map shell.
@@ -39,6 +33,8 @@ export default function VisitLocationDisplay({
   const visitTitle = visit?.farmer_name
     ? `Visit · ${visit.farmer_name}`
     : "Visit location";
+  const kind = visitMarkerKind(visit);
+  const visitMarkerIcon = createAgriMarkerIcon(kind, 32);
 
   return (
     <AdminMapCard
@@ -64,7 +60,16 @@ export default function VisitLocationDisplay({
       }}
       mapChildren={
         showMap ? (
-          <Marker position={[coords.lat, coords.lng]} icon={visitMarkerIcon}>
+          <Marker
+            position={[coords.lat, coords.lng]}
+            icon={visitMarkerIcon}
+            alt={`${markerKindLabel(kind)} marker`}
+          >
+            <Tooltip className="live-employee-tooltip" direction="top" offset={[0, -36]}>
+              <span className="map-marker-tooltip">
+                {`${markerKindLabel(kind)}${visit?.farmer_name ? ` · ${visit.farmer_name}` : ""}`}
+              </span>
+            </Tooltip>
             <Popup
               autoPan
               keepInView

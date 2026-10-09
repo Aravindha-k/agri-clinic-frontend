@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
-import { Marker, Popup } from "react-leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import AdminMapCard from "../map/AdminMapCard";
 import { RouteEndpointMapLegend } from "../map/MapLegendPanel";
 import MapRouteViewport from "../map/MapRouteViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
+import { createAgriMarkerIcon, markerKindLabel } from "../map/agriMarkers";
+import { visitMarkerKind } from "../../utils/mapMarkerKind";
 import { empName } from "../../utils/trackingDisplay";
 import "../../utils/leafletSetup";
 import {
@@ -377,32 +379,59 @@ export default function EmployeeRouteMapView({
             mapChildren={
               <>
                 <MapRouteViewport points={mapPoints} drawerOpen={drawerOpen} fitKey={mapKey} />
-                {markers.map((marker, idx) => (
-                  <Marker
-                    key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
-                    position={[marker.latitude, marker.longitude]}
-                    icon={routeIcon(
-                      MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
-                      marker.type === "visit" ? 16 : 18
-                    )}
-                  >
-                    <Popup autoPan keepInView maxWidth={320}>
-                      <EmployeeMapPopup
-                        name={
-                          marker.type === "start"
-                            ? "Start"
-                            : marker.type === "end"
-                              ? "End"
-                              : marker.label || "Visit"
-                        }
-                        lat={marker.latitude}
-                        lng={marker.longitude}
-                        entity={marker}
-                        lastUpdated={formatRouteTimestamp(marker.captured_at)}
-                      />
-                    </Popup>
-                  </Marker>
-                ))}
+                {markers.map((marker, idx) => {
+                  const isVisit = marker.type === "visit";
+                  const kind = isVisit ? visitMarkerKind(marker) : null;
+                  const tooltipText =
+                    marker.type === "start"
+                      ? `Start · ${formatRouteTimestamp(marker.captured_at)}`
+                      : marker.type === "end"
+                        ? `End · ${formatRouteTimestamp(marker.captured_at)}`
+                        : `${marker.label || "Visit"} · ${formatRouteTimestamp(marker.captured_at)}`;
+                  return (
+                    <Marker
+                      key={`${mapKey}-${marker.type}-${marker.visitId ?? marker.localSyncId ?? idx}`}
+                      position={[marker.latitude, marker.longitude]}
+                      icon={
+                        isVisit
+                          ? createAgriMarkerIcon(kind, 30)
+                          : routeIcon(
+                              MARKER_COLORS[marker.type] ?? MARKER_COLORS.visit,
+                              18
+                            )
+                      }
+                      alt={`${marker.type === "visit" ? markerKindLabel(kind) : marker.type} marker`}
+                    >
+                      <Tooltip
+                        className="live-employee-tooltip"
+                        direction="top"
+                        offset={[0, isVisit ? -36 : -22]}
+                      >
+                        <span className="map-marker-tooltip">{tooltipText}</span>
+                      </Tooltip>
+                      <Popup autoPan keepInView maxWidth={320}>
+                        <EmployeeMapPopup
+                          name={
+                            marker.type === "start"
+                              ? "Start"
+                              : marker.type === "end"
+                                ? "End"
+                                : marker.label || "Visit"
+                          }
+                          lat={marker.latitude}
+                          lng={marker.longitude}
+                          entity={marker}
+                          workStatus={
+                            isVisit && kind
+                              ? `Type: ${markerKindLabel(kind)}`
+                              : null
+                          }
+                          lastUpdated={formatRouteTimestamp(marker.captured_at)}
+                        />
+                      </Popup>
+                    </Marker>
+                  );
+                })}
               </>
             }
           />

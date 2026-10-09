@@ -1,21 +1,12 @@
-import { Marker, Popup } from "react-leaflet";
-import L from "leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import AdminMapCard from "../map/AdminMapCard";
+import { createEmployeePinIcon } from "../map/agriMarkers";
 import MapEmployeeViewport from "../map/MapEmployeeViewport";
 import EmployeeMapPopup from "../map/EmployeeMapPopup";
 import { GpsStatusMapLegend } from "../map/MapLegendPanel";
 import { TAMIL_NADU_CENTER, TAMIL_NADU_ZOOM } from "../../utils/mapCoordinates";
-import { BRAND } from "../../theme/brand";
 import { Radio } from "lucide-react";
 import "../../utils/leafletSetup";
-
-const createMarkerIcon = (isOnline) =>
-  L.divIcon({
-    className: "",
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${isOnline ? BRAND.primaryLight : "#9ca3af"};border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.4),0 2px 8px rgba(0,0,0,0.5)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
 
 export default function DashboardLiveMap({
   mapCenter,
@@ -95,8 +86,15 @@ export default function DashboardLiveMap({
             <Marker
               key={`${loc.userId ?? loc.employeeName}-${loc.lat}-${loc.lng}`}
               position={[loc.lat, loc.lng]}
-              icon={createMarkerIcon(loc.isOnline)}
+              icon={createEmployeePinIcon(loc.isOnline)}
+              alt={`${loc.employeeName || "Employee"} location`}
             >
+              <Tooltip className="live-employee-tooltip" direction="top" offset={[0, -28]}>
+                <span className="map-marker-tooltip">
+                  {loc.employeeName || "Name unavailable"}
+                  {loc.isOnline ? " · Online" : " · Offline"}
+                </span>
+              </Tooltip>
               <Popup autoPan keepInView maxWidth={320}>
                 <EmployeeMapPopup
                   name={loc.employeeName}

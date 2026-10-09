@@ -1,18 +1,14 @@
 import { Navigation } from "lucide-react";
-import { Marker, Popup } from "react-leaflet";
-import L from "leaflet";
+import { Marker, Popup, Tooltip } from "react-leaflet";
 import AdminMapCard from "./AdminMapCard";
 import EmployeeMapPopup from "./EmployeeMapPopup";
+import { createAgriMarkerIcon } from "./agriMarkers";
+import { MARKER_KIND } from "../../utils/mapMarkerKind";
 import { parseGpsLocationPair } from "../../utils/mapUrls";
 import { getStoredMapLocationLabel } from "../../utils/mapLocationLabel";
 import "../../utils/leafletSetup";
 
-const farmerMarkerIcon = L.divIcon({
-  className: "admin-map-single-marker",
-  html: `<div style="width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#059669;border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,0.35),0 3px 10px rgba(0,0,0,.35)"></div>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 18],
-});
+const farmerMarkerIcon = createAgriMarkerIcon(MARKER_KIND.CROP, 32);
 
 /**
  * Farmer field location map — one marker from stored GPS text/coords only.
@@ -50,7 +46,10 @@ export default function FarmerFieldLocationMap({
         showFullscreen: false,
       }}
       mapChildren={
-        <Marker position={[coords.lat, coords.lng]} icon={farmerMarkerIcon}>
+        <Marker position={[coords.lat, coords.lng]} icon={farmerMarkerIcon} alt="Farmer field marker">
+          <Tooltip className="live-employee-tooltip" direction="top" offset={[0, -36]}>
+            <span className="map-marker-tooltip">{title}</span>
+          </Tooltip>
           <Popup autoPan keepInView maxWidth={320}>
             <EmployeeMapPopup
               name={title}

@@ -1,6 +1,9 @@
 /** Shared display helpers for tracking pages. */
 export function empName(e) {
-  return e?.employee_name || e?.username || e?.employee_id || "Unknown";
+  const id = e?.employee_id;
+  // Pure-numeric ids are database keys, not display names.
+  const code = id != null && !/^\d+$/.test(String(id).trim()) ? String(id) : null;
+  return e?.employee_name || e?.username || code || "Unknown";
 }
 
 export function timeAgo(dateStr) {
