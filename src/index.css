@@ -15374,3 +15374,16 @@ textarea:focus-visible {
     color: #94a3b8;
     white-space: nowrap;
 }
+
+/* --- Dashboard: right-column stack (GPS accent + Quick Actions) --- */
+
+.dashboard-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.dashboard-stack .dashboard-perf-card {
+    min-height: 0;
+}

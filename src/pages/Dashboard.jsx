@@ -70,7 +70,6 @@ import {
   Eye,
   Search,
   Satellite,
-  UserPlus,
 } from "lucide-react";
 
 const formatDate = (d) => formatIndiaDate(d);
@@ -659,9 +658,32 @@ const Dashboard = () => {
         <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
           <AlertsPanel alerts={opsAlerts ?? []} />
         </WidgetErrorBoundary>
-        <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
-          <QuickActions />
-        </WidgetErrorBoundary>
+        <div className="dashboard-stack">
+          <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--accent">
+            <div className="dashboard-perf-card__head">
+              <p className="dashboard-perf-card__title dashboard-perf-card__title--light">
+                GPS Compliance
+              </p>
+              <Satellite className="w-5 h-5 dashboard-accent__icon" aria-hidden="true" />
+            </div>
+            <p className="dashboard-accent__value">{gpsCompliancePct}%</p>
+            <p className="dashboard-accent__meta">
+              {stats.onlineNow} of {stats.workingNow || stats.activeEmployees || 0} staff
+              GPS online
+            </p>
+            <SegmentedBar pct={gpsCompliancePct / 100} light />
+            <button
+              type="button"
+              className="dashboard-accent__cta"
+              onClick={() => navigate("/tracking")}
+            >
+              Open live map <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </div>
+          <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
+            <QuickActions />
+          </WidgetErrorBoundary>
+        </div>
       </div>
 
       <div className="dashboard-perf-row">
@@ -737,26 +759,47 @@ const Dashboard = () => {
           )}
         </div>
 
-        <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--accent">
+        <div className="dashboard-section-card dashboard-perf-card dashboard-farmers-card">
           <div className="dashboard-perf-card__head">
-            <p className="dashboard-perf-card__title dashboard-perf-card__title--light">
-              GPS Compliance
-            </p>
-            <Satellite className="w-5 h-5 dashboard-accent__icon" aria-hidden="true" />
+            <p className="dashboard-perf-card__title">Newest Farmers</p>
+            <button
+              type="button"
+              className="dashboard-perf-card__link"
+              onClick={() => navigate("/farmers")}
+            >
+              View all <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <p className="dashboard-accent__value">{gpsCompliancePct}%</p>
-          <p className="dashboard-accent__meta">
-            {stats.onlineNow} of {stats.workingNow || stats.activeEmployees || 0} staff
-            GPS online
-          </p>
-          <SegmentedBar pct={gpsCompliancePct / 100} light />
-          <button
-            type="button"
-            className="dashboard-accent__cta"
-            onClick={() => navigate("/tracking")}
-          >
-            Open live map <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
-          </button>
+          {recentFarmers.length === 0 ? (
+            <p className="dashboard-perf-card__empty">
+              Newly registered farmers will appear here.
+            </p>
+          ) : (
+            <ul className="dashboard-farmers-list">
+              {recentFarmers.slice(0, 5).map((f) => (
+                <li key={f.id ?? f.name}>
+                  <button
+                    type="button"
+                    className="dashboard-farmer-row"
+                    onClick={() => f.id && navigate(`/farmers/${f.id}`)}
+                  >
+                    <ProfileAvatar entity={f} name={f.name} size="sm" />
+                    <span className="dashboard-farmer-row__main">
+                      <span className="dashboard-farmer-row__name">
+                        {f.name || "—"}
+                      </span>
+                      <span className="dashboard-farmer-row__sub">
+                        {farmerVillage(f) || "Village not set"}
+                      </span>
+                    </span>
+                    <span className="dashboard-farmer-row__date">
+                      {formatDate(f.created_at)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -784,8 +827,6 @@ const Dashboard = () => {
         </WidgetErrorBoundary>
       </div>
 
-      {/* ================== RECENT VISITS + TREND ================== */}
-      <div className="dashboard-main-row">
       {/* ================== RECENT VISITS ================== */}
       <div className="dashboard-section-card overflow-hidden">
         <SectionHeader
@@ -876,55 +917,6 @@ const Dashboard = () => {
             </table>
           </div>
         )}
-      </div>
-      <div className="dashboard-section-card dashboard-farmers-card">
-        <SectionHeader
-          icon={UserPlus}
-          title="Newest Farmers"
-          subtitle="Recently added to the registry"
-          right={
-            <button
-              onClick={() => navigate("/farmers")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
-            >
-              View All <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          }
-        />
-        {recentFarmers.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No farmers yet"
-            subtitle="Newly registered farmers will appear here."
-            className="py-14"
-          />
-        ) : (
-          <ul className="dashboard-farmers-list">
-            {recentFarmers.slice(0, 7).map((f) => (
-              <li key={f.id ?? f.name}>
-                <button
-                  type="button"
-                  className="dashboard-farmer-row"
-                  onClick={() => f.id && navigate(`/farmers/${f.id}`)}
-                >
-                  <ProfileAvatar entity={f} name={f.name} size="sm" />
-                  <span className="dashboard-farmer-row__main">
-                    <span className="dashboard-farmer-row__name">
-                      {f.name || "—"}
-                    </span>
-                    <span className="dashboard-farmer-row__sub">
-                      {farmerVillage(f) || "Village not set"}
-                    </span>
-                  </span>
-                  <span className="dashboard-farmer-row__date">
-                    {formatDate(f.created_at)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
       </div>
       </div>
     </div>
