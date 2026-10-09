@@ -102,7 +102,7 @@ const StatCard = memo(({ icon: Icon, label, value, accent, gradient, iconBg }) =
                     <Icon className="w-4 h-4" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="tracking-stat-card__value">{animVal}</p>
+                    <p className="tracking-stat-card__value" style={{ color: accent }}>{animVal}</p>
                     <p className="tracking-stat-card__label">{label}</p>
                 </div>
             </div>
