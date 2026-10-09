@@ -9364,6 +9364,12 @@ textarea.input {
     }
 }
 
+@media (min-width: 1600px) {
+    .employees-hr-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
 .employees-hr-card {
     @apply dashboard-section-card overflow-hidden cursor-pointer transition-all duration-200 flex flex-col h-full;
     border-top: 3px solid #e2e8f0;
