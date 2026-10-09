@@ -14467,7 +14467,9 @@ textarea.input {
     z-index: 1;
 }
 
-/* Frosted-glass card faces over the page gradient */
+/* Frosted-glass card faces — gloss lives in the background layers so it
+   stays BEHIND the text (an absolutely-positioned pseudo was washing
+   the type out). */
 .section-card,
 .dashboard-section-card,
 .visits-card,
@@ -14477,10 +14479,16 @@ textarea.input {
 .security-suite-session-card,
 .audit-console-timeline-card,
 .notifications-shell-card {
-    background: linear-gradient(150deg,
-        rgba(255, 255, 255, 0.92) 0%,
-        rgba(248, 253, 250, 0.8) 55%,
-        rgba(240, 250, 245, 0.72) 100%);
+    background:
+        linear-gradient(160deg,
+            rgba(255, 255, 255, 0.7) 0%,
+            rgba(255, 255, 255, 0.16) 22%,
+            rgba(255, 255, 255, 0) 40%),
+        radial-gradient(18rem 10rem at 100% 0%, rgba(16, 185, 129, 0.06) 0%, transparent 60%),
+        linear-gradient(150deg,
+            rgba(255, 255, 255, 0.94) 0%,
+            rgba(248, 253, 250, 0.86) 55%,
+            rgba(240, 250, 245, 0.78) 100%);
     backdrop-filter: blur(10px) saturate(1.25);
     -webkit-backdrop-filter: blur(10px) saturate(1.25);
     border-color: rgba(4, 120, 87, 0.1);
@@ -14496,7 +14504,14 @@ textarea.input {
         border-color var(--transition-fast);
 }
 
-/* Permanent glass gloss — visible without hover */
+/* Border beam — a light running around each container edge
+   (masked to a 1.5px ring; angle animated via @property). */
+@property --beam-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}
+
 .section-card::before,
 .dashboard-section-card::before,
 .visits-card::before,
@@ -14510,13 +14525,42 @@ textarea.input {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background:
-        linear-gradient(160deg,
-            rgba(255, 255, 255, 0.75) 0%,
-            rgba(255, 255, 255, 0.18) 22%,
-            rgba(255, 255, 255, 0) 40%),
-        radial-gradient(18rem 10rem at 100% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+    padding: 1.5px;
+    background: conic-gradient(from var(--beam-angle),
+        transparent 0%,
+        transparent 68%,
+        rgba(52, 211, 153, 0.65) 82%,
+        rgba(125, 211, 252, 0.45) 90%,
+        transparent 100%);
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
     pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .section-card::before,
+    .dashboard-section-card::before,
+    .visits-card::before,
+    .tracking-stat-card::before,
+    .masters-hub-card::before,
+    .employees-hr-card::before,
+    .security-suite-session-card::before,
+    .audit-console-timeline-card::before,
+    .notifications-shell-card::before {
+        animation: beam-border-spin 5.5s linear infinite;
+    }
+}
+
+@keyframes beam-border-spin {
+    to {
+        --beam-angle: 360deg;
+    }
 }
 
 /* Sheen sweep — light band crosses the card face on hover */
@@ -14660,20 +14704,37 @@ textarea:focus-visible {
     border-color: rgba(16, 185, 129, 0.45) !important;
 }
 
-/* KPI tiles — glossy ambient depth */
+/* KPI tiles — border beam edge light */
 .premium-kpi {
     position: relative;
     overflow: hidden;
 }
 
-.premium-kpi::after {
+.premium-kpi::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(160deg,
-        rgba(255, 255, 255, 0.32) 0%,
-        rgba(255, 255, 255, 0.08) 34%,
-        transparent 55%);
+    padding: 1.5px;
+    background: conic-gradient(from var(--beam-angle),
+        transparent 0%,
+        transparent 68%,
+        rgba(255, 255, 255, 0.7) 82%,
+        rgba(255, 255, 255, 0.5) 90%,
+        transparent 100%);
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
     pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .premium-kpi::before {
+        animation: beam-border-spin 5.5s linear infinite;
+    }
 }
