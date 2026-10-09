@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
-import { getDashboardStats, getDashboardChartStats, getVisitTrends } from "../api/dashboard.api";
+import { getDashboardStats, getDashboardChartStats } from "../api/dashboard.api";
 import {
   getEmployeeGeo,
   getWorkdayHistory,
@@ -26,6 +26,7 @@ import {
   visitEmployeeLabel,
 } from "../utils/visitFarmer";
 import { resolveVillageLabel } from "../utils/displayValue";
+import { farmerVillage } from "../utils/farmerListDisplay";
 import { resolveVisitCropDisplay } from "../utils/visitDisplay";
 import { PageHeader, OpsStatusBadge, GpsIndicator, EmptyState, ErrorRetry } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -55,7 +56,6 @@ import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
 
 import PremiumKpiCard from "../components/ui/PremiumKpiCard";
 const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
-const DashboardVisitChart = lazy(() => import("../components/dashboard/DashboardVisitChart"));
 import {
   Leaf,
   Calendar,
@@ -70,6 +70,7 @@ import {
   Eye,
   Search,
   Satellite,
+  UserPlus,
 } from "lucide-react";
 
 const formatDate = (d) => formatIndiaDate(d);
@@ -162,7 +163,7 @@ const Dashboard = () => {
     onlineNow: 0,
     gpsIssues: 0,
   });
-  const [visitTrends, setVisitTrends] = useState([]);
+
   const [geoData, setGeoData] = useState([]);
   const [workdays, setWorkdays] = useState([]);
   const [recentVisits, setRecentVisits] = useState([]);
@@ -229,7 +230,6 @@ const Dashboard = () => {
     );
     const othersP = Promise.allSettled([
       getDashboardChartStats(),
-      getVisitTrends(),
       getEmployeeGeo(),
       getWorkdayHistory(),
       getVisits({ ordering: "-created_at", page_size: 100 }),
@@ -274,7 +274,7 @@ const Dashboard = () => {
     hasLoadedRef.current = true;
     setLoading(false);
 
-    const [chartR, trendsR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await othersP;
+    const [chartR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await othersP;
 
     // -- Chart stats (optional) — GET dashboard/stats/ --
     if (chartR.status === "fulfilled") {
@@ -302,41 +302,6 @@ const Dashboard = () => {
       }));
     } else if (trackingR.status === "rejected") {
       logApiFailure("GET tracking/admin/dashboard-stats/", trackingR);
-    }
-
-    // -- Visit trends (optional) — GET dashboard/visit-trends/ --
-    if (trendsR.status === "fulfilled") {
-      const raw = extractDashboardObject(trendsR.value) ?? {};
-      const daily = Array.isArray(raw)
-        ? raw
-        : (raw.daily ??
-          raw.monthly ??
-          raw.visits_per_month ??
-          raw.monthly_visits ??
-          raw.results ??
-          raw.data ??
-          []);
-      if (Array.isArray(daily) && daily.length > 0) {
-        setVisitTrends(
-          daily.map((x) => {
-            const rawDate = x.visit_date ?? x.month ?? x.period ?? x.label;
-            const label =
-              x.month_label ??
-              (rawDate
-                ? new Date(rawDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
-                : "—");
-            return {
-              label,
-              count: x.count ?? x.visits ?? x.total ?? 0,
-            };
-          })
-        );
-      } else {
-        setVisitTrends([]);
-      }
-    } else {
-      logApiFailure("GET dashboard/visit-trends/", trendsR);
-      setVisitTrends([]);
     }
 
     // -- Geo map (optional) — GET tracking/admin/geo/employees/ --
@@ -912,11 +877,54 @@ const Dashboard = () => {
           </div>
         )}
       </div>
-      <WidgetErrorBoundary name="VisitChart" title="Visit chart unavailable">
-        <Suspense fallback={<WidgetSuspenseFallback label="Loading analytics…" />}>
-          <DashboardVisitChart visitTrends={visitTrends ?? []} />
-        </Suspense>
-      </WidgetErrorBoundary>
+      <div className="dashboard-section-card dashboard-farmers-card">
+        <SectionHeader
+          icon={UserPlus}
+          title="Newest Farmers"
+          subtitle="Recently added to the registry"
+          right={
+            <button
+              onClick={() => navigate("/farmers")}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+            >
+              View All <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          }
+        />
+        {recentFarmers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No farmers yet"
+            subtitle="Newly registered farmers will appear here."
+            className="py-14"
+          />
+        ) : (
+          <ul className="dashboard-farmers-list">
+            {recentFarmers.slice(0, 7).map((f) => (
+              <li key={f.id ?? f.name}>
+                <button
+                  type="button"
+                  className="dashboard-farmer-row"
+                  onClick={() => f.id && navigate(`/farmers/${f.id}`)}
+                >
+                  <ProfileAvatar entity={f} name={f.name} size="sm" />
+                  <span className="dashboard-farmer-row__main">
+                    <span className="dashboard-farmer-row__name">
+                      {f.name || "—"}
+                    </span>
+                    <span className="dashboard-farmer-row__sub">
+                      {farmerVillage(f) || "Village not set"}
+                    </span>
+                  </span>
+                  <span className="dashboard-farmer-row__date">
+                    {formatDate(f.created_at)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       </div>
       </div>
     </div>

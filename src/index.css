@@ -15303,3 +15303,74 @@ textarea:focus-visible {
         transform: scale(1.03);
     }
 }
+
+/* --- Dashboard: Newest Farmers list (replaces empty trend chart) --- */
+
+.dashboard-farmers-card {
+    min-width: 0;
+}
+
+.dashboard-farmers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dashboard-farmer-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-farmer-row:hover {
+    background: rgba(22, 163, 74, 0.06);
+    transform: translateX(3px);
+}
+
+.dashboard-farmer-row:focus-visible {
+    outline: 2px solid rgba(22, 163, 74, 0.5);
+    outline-offset: 1px;
+}
+
+.dashboard-farmer-row__main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.dashboard-farmer-row__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f2a20;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-farmer-row__sub {
+    font-size: 11.5px;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-farmer-row__date {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+}
