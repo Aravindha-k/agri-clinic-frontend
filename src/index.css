@@ -14858,3 +14858,448 @@ textarea:focus-visible {
         transform: translateX(130%);
     }
 }
+
+/* ============================================================
+   Dashboard — reference-style bento performance row + hero tools
+   (pill search, duty avatar stack, segmented bars, evidence donut,
+   saturated GPS accent card)
+   ============================================================ */
+
+.dashboard-ops-band__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+}
+
+.dashboard-ops-search {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.13);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: rgba(255, 255, 255, 0.85);
+    transition:
+        background 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.dashboard-ops-search:focus-within {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.25);
+}
+
+.dashboard-ops-search input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 500;
+    width: 148px;
+}
+
+.dashboard-ops-search input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.dashboard-ops-avatars {
+    display: flex;
+    align-items: center;
+}
+
+.dashboard-ops-avatars .dashboard-ops-avatar {
+    margin-left: -9px;
+}
+
+.dashboard-ops-avatars .dashboard-ops-avatar:first-child {
+    margin-left: 0;
+}
+
+.dashboard-ops-avatars .dashboard-ops-avatar > * {
+    box-shadow: 0 0 0 2px rgba(11, 46, 30, 0.9);
+    border-radius: 999px;
+}
+
+.dashboard-ops-avatar-more {
+    margin-left: -9px;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #0d9488, #16a34a);
+    box-shadow: 0 0 0 2px rgba(11, 46, 30, 0.9);
+}
+
+/* --- Segmented progress bars (video-style dash bars) --- */
+
+.seg-bar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    min-width: 84px;
+    flex: 1;
+}
+
+.seg-bar__seg {
+    flex: 1;
+    height: 8px;
+    border-radius: 5px;
+    background: rgba(15, 42, 32, 0.1);
+    transition: background 0.35s ease, transform 0.35s ease;
+}
+
+.seg-bar__seg.is-on {
+    background: linear-gradient(180deg, #34d399, #16a34a);
+    box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
+}
+
+.seg-bar--light .seg-bar__seg {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.seg-bar--light .seg-bar__seg.is-on {
+    background: linear-gradient(180deg, #ffffff, #d1fae5);
+    box-shadow: 0 1px 4px rgba(255, 255, 255, 0.35);
+}
+
+/* --- Performance bento row --- */
+
+.dashboard-perf-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: stretch;
+}
+
+@media (min-width: 1024px) and (max-width: 1360px) {
+    .dashboard-perf-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-perf-card--accent {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 1023px) {
+    .dashboard-perf-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dashboard-perf-card {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 220px;
+}
+
+.dashboard-perf-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.dashboard-perf-card__title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #0f3d28;
+}
+
+.dashboard-perf-card__title--light {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.dashboard-perf-card__chip {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.1);
+    color: #15803d;
+    border: 1px solid rgba(22, 163, 74, 0.18);
+}
+
+.dashboard-perf-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #047857;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 0;
+}
+
+.dashboard-perf-card__link:hover {
+    color: #065f46;
+}
+
+.dashboard-perf-card__empty {
+    font-size: 13px;
+    color: #64748b;
+    padding: 24px 0;
+    text-align: center;
+}
+
+/* --- Evidence donut --- */
+
+.dashboard-donut {
+    --p: 0;
+    position: relative;
+    width: 148px;
+    aspect-ratio: 1;
+    margin: 4px auto 0;
+    border-radius: 50%;
+    background:
+        conic-gradient(
+            from -90deg,
+            #16a34a calc(var(--p) * 1%),
+            rgba(22, 163, 74, 0.1) 0
+        );
+    box-shadow: 0 10px 24px -12px rgba(22, 101, 52, 0.45);
+}
+
+.dashboard-donut::before {
+    content: "";
+    position: absolute;
+    inset: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(6, 95, 70, 0.1);
+}
+
+.dashboard-donut__center {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+}
+
+.dashboard-donut__value {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #0f3d28;
+}
+
+.dashboard-donut__label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+
+.dashboard-donut__legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: auto;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.dashboard-donut__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dashboard-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.dashboard-dot--emerald {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.dashboard-dot--slate {
+    background: #cbd5e1;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.18);
+}
+
+/* --- Team performance list --- */
+
+.dashboard-team-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dashboard-team-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 20px 34px minmax(0, 1.2fr) minmax(0, 1fr) 64px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-team-row:hover {
+    background: rgba(22, 163, 74, 0.06);
+    transform: translateX(3px);
+}
+
+.dashboard-team-row:focus-visible {
+    outline: 2px solid rgba(22, 163, 74, 0.5);
+    outline-offset: 1px;
+}
+
+.dashboard-team-row__rank {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.dashboard-team-row__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f2a20;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-team-row__count {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #047857;
+    text-align: right;
+    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    .dashboard-team-row {
+        grid-template-columns: 34px minmax(0, 1.4fr) minmax(0, 1fr);
+    }
+
+    .dashboard-team-row__rank,
+    .dashboard-team-row__count {
+        display: none;
+    }
+}
+
+/* --- Saturated GPS accent card (reference blue card analog) --- */
+
+.dashboard-perf-card--accent {
+    background:
+        radial-gradient(120% 160% at 100% 0%, rgba(52, 211, 153, 0.28), transparent 55%),
+        linear-gradient(140deg, #0b3d24 0%, #145a32 45%, #16a34a 100%);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.dashboard-accent__icon {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.dashboard-accent__value {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: #ffffff;
+}
+
+
+/* --- Saturated GPS accent card (reference blue card analog) --- */
+
+.dashboard-perf-card--accent {
+    background:
+        radial-gradient(120% 160% at 100% 0%, rgba(52, 211, 153, 0.28), transparent 55%),
+        linear-gradient(140deg, #0b3d24 0%, #145a32 45%, #16a34a 100%);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.dashboard-accent__icon {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.dashboard-accent__value {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: #ffffff;
+}
+
+.dashboard-accent__meta {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: -6px;
+}
+
+.dashboard-accent__cta {
+    margin-top: auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #064e2b;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-accent__cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px -8px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .dashboard-donut {
+        transition: transform 0.3s ease;
+    }
+
+    .dashboard-donut:hover {
+        transform: scale(1.03);
+    }
+}

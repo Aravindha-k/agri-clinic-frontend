@@ -75,9 +75,28 @@ import {
   Eye,
   Route,
   Paperclip,
+  Search,
+  Satellite,
 } from "lucide-react";
 
 const formatDate = (d) => formatIndiaDate(d);
+
+const SEGMENTS = 10;
+
+function SegmentedBar({ pct, light = false }) {
+  const filled = Math.round(Math.min(1, Math.max(0, pct)) * SEGMENTS);
+  return (
+    <div
+      className={`seg-bar${light ? " seg-bar--light" : ""}`}
+      role="img"
+      aria-label={`${Math.round(pct * 100)}%`}
+    >
+      {Array.from({ length: SEGMENTS }).map((_, i) => (
+        <span key={i} className={`seg-bar__seg${i < filled ? " is-on" : ""}`} aria-hidden />
+      ))}
+    </div>
+  );
+}
 
 const opsGreeting = () => {
   const h = new Date().getHours();
@@ -162,6 +181,7 @@ const Dashboard = () => {
   });
   const [trackingEmployees, setTrackingEmployees] = useState([]);
   const [recentFarmers, setRecentFarmers] = useState([]);
+  const [quickSearch, setQuickSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -446,6 +466,40 @@ const Dashboard = () => {
     }
   }, [workdays, feedVisits, recentFarmers]);
 
+  const teamPerformance = useMemo(() => {
+    const counts = new Map();
+    (feedVisits ?? []).forEach((v) => {
+      const name = visitEmployeeLabel(v);
+      if (!name || name === "\u2014") return;
+      const prev = counts.get(name) ?? { name, visits: 0 };
+      prev.visits += 1;
+      counts.set(name, prev);
+    });
+    const rows = [...counts.values()]
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 5);
+    const max = rows[0]?.visits ?? 0;
+    return rows.map((r) => ({ ...r, pct: max > 0 ? r.visits / max : 0 }));
+  }, [feedVisits]);
+
+  const dutyAvatars = useMemo(() => {
+    return (trackingEmployees ?? [])
+      .filter((e) => e?.is_working || e?.is_online)
+      .slice(0, 4);
+  }, [trackingEmployees]);
+
+  const gpsCompliancePct = useMemo(() => {
+    const base = stats.workingNow > 0 ? stats.workingNow : stats.activeEmployees;
+    if (!base || base <= 0) return stats.onlineNow > 0 ? 100 : 0;
+    return Math.min(100, Math.round((stats.onlineNow / base) * 100));
+  }, [stats.workingNow, stats.activeEmployees, stats.onlineNow]);
+
+  const handleQuickSearch = (e) => {
+    e.preventDefault();
+    const q = quickSearch.trim();
+    navigate(q ? `/farmers?search=${encodeURIComponent(q)}` : "/farmers");
+  };
+
   const recentUploads = useMemo(() => {
     return (feedVisits ?? [])
       .map((v) => {
@@ -514,21 +568,56 @@ const Dashboard = () => {
             <p className="dashboard-ops-band__sub">Today&apos;s field activity is live</p>
           </div>
         </div>
-        {(stats.workingNow > 0 || stats.onlineNow > 0) && (
-          <div className="dashboard-ops-band__status">
-            <button
-              type="button"
-              onClick={() => navigate("/tracking")}
-              className="dashboard-ops-band__live"
-            >
-              <Radio className="w-3.5 h-3.5" aria-hidden="true" />
-              LIVE
-            </button>
-            <span className="dashboard-ops-band__meta">
-              {stats.workingNow} working · {stats.onlineNow} GPS online
-            </span>
-          </div>
-        )}
+        <div className="dashboard-ops-band__actions">
+          <form
+            className="dashboard-ops-search"
+            onSubmit={handleQuickSearch}
+            role="search"
+          >
+            <Search className="w-4 h-4" aria-hidden="true" />
+            <input
+              type="search"
+              value={quickSearch}
+              onChange={(e) => setQuickSearch(e.target.value)}
+              placeholder="Search farmers…"
+              aria-label="Search farmers"
+            />
+          </form>
+          {dutyAvatars.length > 0 && (
+            <div className="dashboard-ops-avatars" title="On duty now">
+              {dutyAvatars.map((emp, i) => (
+                <ProfileAvatar
+                  key={emp.user_id ?? emp.id ?? i}
+                  entity={emp}
+                  name={emp.employee_name ?? emp.name}
+                  size="sm"
+                  online={emp.is_online ?? emp.is_working}
+                  className="dashboard-ops-avatar"
+                />
+              ))}
+              {stats.workingNow > dutyAvatars.length && (
+                <span className="dashboard-ops-avatar-more">
+                  +{stats.workingNow - dutyAvatars.length}
+                </span>
+              )}
+            </div>
+          )}
+          {(stats.workingNow > 0 || stats.onlineNow > 0) && (
+            <div className="dashboard-ops-band__status">
+              <button
+                type="button"
+                onClick={() => navigate("/tracking")}
+                className="dashboard-ops-band__live"
+              >
+                <Radio className="w-3.5 h-3.5" aria-hidden="true" />
+                LIVE
+              </button>
+              <span className="dashboard-ops-band__meta">
+                {stats.workingNow} working · {stats.onlineNow} GPS online
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="dashboard-kpi-row">
@@ -723,6 +812,102 @@ const Dashboard = () => {
             </div>
           </div>
         </button>
+      </div>
+
+      <div className="dashboard-perf-row">
+        <div className="dashboard-section-card dashboard-perf-card">
+          <div className="dashboard-perf-card__head">
+            <p className="dashboard-perf-card__title">Visit Evidence</p>
+            <span className="dashboard-perf-card__chip">Latest visits</span>
+          </div>
+          <div
+            className="dashboard-donut"
+            style={{ "--p": Math.min(100, Math.max(0, evidenceStats.rate)) }}
+          >
+            <div className="dashboard-donut__center">
+              <span className="dashboard-donut__value">
+                {Math.round(evidenceStats.rate)}%
+              </span>
+              <span className="dashboard-donut__label">with evidence</span>
+            </div>
+          </div>
+          <div className="dashboard-donut__legend">
+            <span>
+              <i className="dashboard-dot dashboard-dot--emerald" aria-hidden />
+              {evidenceStats.withEvidence} with files
+            </span>
+            <span>
+              <i className="dashboard-dot dashboard-dot--slate" aria-hidden />
+              {Math.max(0, (feedVisits?.length ?? 0) - evidenceStats.withEvidence)} without
+            </span>
+          </div>
+        </div>
+
+        <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--team">
+          <div className="dashboard-perf-card__head">
+            <p className="dashboard-perf-card__title">Field Team Performance</p>
+            <button
+              type="button"
+              className="dashboard-perf-card__link"
+              onClick={() => navigate("/visits")}
+            >
+              All visits <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {teamPerformance.length === 0 ? (
+            <p className="dashboard-perf-card__empty">
+              Submitted visits will rank the field team here.
+            </p>
+          ) : (
+            <ul className="dashboard-team-list">
+              {teamPerformance.map((row, i) => (
+                <li key={row.name}>
+                  <button
+                    type="button"
+                    className="dashboard-team-row"
+                    onClick={() => navigate("/visits")}
+                  >
+                    <span className="dashboard-team-row__rank">{i + 1}</span>
+                    <ProfileAvatar
+                      name={row.name}
+                      size="sm"
+                      variant={i % 2 ? "teal" : "emerald"}
+                    />
+                    <span className="dashboard-team-row__name" title={row.name}>
+                      {row.name}
+                    </span>
+                    <SegmentedBar pct={row.pct} />
+                    <span className="dashboard-team-row__count">
+                      {row.visits} visit{row.visits !== 1 ? "s" : ""}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--accent">
+          <div className="dashboard-perf-card__head">
+            <p className="dashboard-perf-card__title dashboard-perf-card__title--light">
+              GPS Compliance
+            </p>
+            <Satellite className="w-5 h-5 dashboard-accent__icon" aria-hidden="true" />
+          </div>
+          <p className="dashboard-accent__value">{gpsCompliancePct}%</p>
+          <p className="dashboard-accent__meta">
+            {stats.onlineNow} of {stats.workingNow || stats.activeEmployees || 0} staff
+            GPS online
+          </p>
+          <SegmentedBar pct={gpsCompliancePct / 100} light />
+          <button
+            type="button"
+            className="dashboard-accent__cta"
+            onClick={() => navigate("/tracking")}
+          >
+            Open live map <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <WidgetErrorBoundary name="LiveOperations" title="Live Operations unavailable">
