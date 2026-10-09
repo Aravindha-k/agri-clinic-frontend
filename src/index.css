@@ -6286,6 +6286,18 @@ textarea.input {
 .visits-action-btn:hover,
 .employees-action-btn:hover {
     @apply bg-emerald-50 text-emerald-700;
+    transform: scale(1.08);
+}
+
+.ops-action-btn,
+.farmers-action-btn,
+.visits-action-btn,
+.employees-action-btn {
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        transform var(--transition-fast);
 }
 
 .farmers-action-btn--primary:hover,
@@ -9203,7 +9215,26 @@ textarea.input {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(4px);
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
+
+.employees-hr-workforce-cell:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-1px);
+}
+
+/* Per-metric tints on the dark band */
+.employees-hr-workforce-cell:nth-child(1) { box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.25); }
+.employees-hr-workforce-cell:nth-child(2) { box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.25); }
+.employees-hr-workforce-cell:nth-child(3) { box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.25); }
+.employees-hr-workforce-cell:nth-child(4) { box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.3); }
+.employees-hr-workforce-cell:nth-child(5) { box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.25); }
+
+.employees-hr-workforce-cell:nth-child(1) .employees-hr-workforce-cell__value { color: #a7f3d0; }
+.employees-hr-workforce-cell:nth-child(2) .employees-hr-workforce-cell__value { color: #99f6e4; }
+.employees-hr-workforce-cell:nth-child(3) .employees-hr-workforce-cell__value { color: #a5f3fc; }
+.employees-hr-workforce-cell:nth-child(4) .employees-hr-workforce-cell__value { color: #fecdd3; }
+.employees-hr-workforce-cell:nth-child(5) .employees-hr-workforce-cell__value { color: #fde68a; }
 
 .employees-hr-workforce-cell__label {
     @apply text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90;
@@ -9335,11 +9366,11 @@ textarea.input {
 
 .employees-hr-card {
     @apply dashboard-section-card overflow-hidden cursor-pointer transition-all duration-200 flex flex-col h-full;
-    border-top: 3px solid transparent;
+    border-top: 3px solid #e2e8f0;
 }
 
 .employees-hr-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: var(--card-shadow-hover);
     border-top-color: var(--brand-primary);
 }
@@ -9348,8 +9379,19 @@ textarea.input {
     border-top-color: #10b981;
 }
 
+.employees-hr-card--online:hover {
+    border-top-color: #059669;
+    box-shadow: 0 12px 28px rgba(16, 185, 129, 0.14), 0 3px 10px rgba(15, 23, 42, 0.06);
+}
+
+.employees-hr-card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-top-color: var(--brand-primary);
+}
+
 .employees-hr-card__body {
-    @apply p-4 flex flex-col flex-1;
+    @apply p-3.5 flex flex-col flex-1;
 }
 
 .employees-hr-card__head {
@@ -9365,19 +9407,22 @@ textarea.input {
 }
 
 .employees-hr-card__meta {
-    @apply flex flex-wrap items-center gap-2 mt-3;
+    @apply flex flex-wrap items-center gap-2 mt-2;
 }
 
 .employees-hr-card__seen {
-    @apply text-[11px] text-slate-400 flex items-center gap-1.5 mt-3;
+    @apply text-[11px] text-slate-400 flex items-center gap-1.5 mt-2;
 }
 
 .employees-hr-card__cta {
-    @apply mt-auto pt-3;
+    @apply mt-auto pt-2;
 }
 
 .employees-hr-card__cta--actions {
     @apply flex justify-end;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 0.5rem;
+    margin-top: auto;
 }
 
 .employees-action-group {
