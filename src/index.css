@@ -14189,6 +14189,20 @@ textarea.input {
     pointer-events: none;
 }
 
+/* Parallax depth layer — drifts slower than the content as the page
+   scrolls (translated via a MotionValue in Dashboard.jsx), giving the
+   command band a camera-depth feel. Behind content, above the band bg. */
+.dashboard-ops-band__backdrop {
+    position: absolute;
+    inset: -45% -15%;
+    pointer-events: none;
+    background:
+        radial-gradient(38% 55% at 22% 28%, rgba(134, 239, 172, 0.20) 0%, transparent 62%),
+        radial-gradient(30% 48% at 76% 24%, rgba(45, 212, 191, 0.16) 0%, transparent 60%),
+        radial-gradient(26% 40% at 58% 78%, rgba(190, 242, 100, 0.10) 0%, transparent 65%);
+    will-change: transform;
+}
+
 .dashboard-ops-band__lead {
     @apply flex items-center gap-3.5 min-w-0;
     position: relative;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { CINE_EASE, SlideIn, useEntrancePlayed } from "../components/motion/Cinematic";
+import { motion, useReducedMotion, useMotionValue } from "framer-motion";
+import { CINE_EASE, SlideIn, ScrollRise, KineticText, useEntrancePlayed } from "../components/motion/Cinematic";
 import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getDashboardChartStats } from "../api/dashboard.api";
@@ -152,6 +152,17 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const entrancePlayed = useEntrancePlayed();
+  // Parallax depth layer — the hero band's glow drifts slower than the
+  // page scroll, giving the canvas a camera-depth feel.
+  const bandBgY = useMotionValue(0);
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const el = document.querySelector(".app-shell__content");
+    if (!el) return undefined;
+    const onScroll = () => bandBgY.set(Math.min(48, el.scrollTop * -0.14));
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [reduceMotion, bandBgY]);
   // Add new stats for visit dashboard, keep old for existing cards
   const [stats, setStats] = useState({
     farmers: 0,
@@ -519,13 +530,22 @@ const Dashboard = () => {
         transition={{ duration: 0.35, ease: CINE_EASE }}
       >
       <div className="dashboard-ops-band">
+        <motion.div
+          className="dashboard-ops-band__backdrop"
+          style={{ y: bandBgY }}
+          aria-hidden="true"
+        />
         <div className="dashboard-ops-band__lead">
           <div className="raised-icon-well raised-icon-well--emerald dashboard-ops-band__icon">
             <Sprout className="w-5 h-5" strokeWidth={2.25} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="dashboard-ops-band__greeting">{opsGreeting()}</p>
-            <h2 className="dashboard-ops-band__title">Kavya Agri Clinic Operations</h2>
+            <p className="dashboard-ops-band__greeting">
+              <KineticText text={opsGreeting()} />
+            </p>
+            <h2 className="dashboard-ops-band__title">
+              <KineticText text="Kavya Agri Clinic Operations" delay={0.12} />
+            </h2>
             <p className="dashboard-ops-band__sub">Today&apos;s field activity is live</p>
           </div>
         </div>
@@ -694,7 +714,7 @@ const Dashboard = () => {
         </SlideIn>
       </div>
 
-      <div className="dashboard-perf-row">
+      <ScrollRise className="dashboard-perf-row">
         <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--team">
           <div className="dashboard-perf-card__head">
             <p className="dashboard-perf-card__title">Field Team Performance</p>
@@ -781,9 +801,9 @@ const Dashboard = () => {
             </ul>
           )}
         </div>
-      </div>
+      </ScrollRise>
 
-      <div className="dashboard-main-row">
+      <ScrollRise className="dashboard-main-row">
         <WidgetErrorBoundary
           name="LiveMap"
           title="Live Field Map unavailable"
@@ -805,10 +825,10 @@ const Dashboard = () => {
         <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
           <UnifiedActivityFeed events={activityFeed ?? []} />
         </WidgetErrorBoundary>
-      </div>
+      </ScrollRise>
 
       {/* ================== RECENT VISITS ================== */}
-      <div className="dashboard-section-card overflow-hidden">
+      <ScrollRise className="dashboard-section-card overflow-hidden">
         <SectionHeader
           icon={Eye}
           title="Recent Visits"
@@ -897,7 +917,7 @@ const Dashboard = () => {
             </table>
           </div>
         )}
-      </div>
+      </ScrollRise>
       </motion.div>
     </div>
     </DashboardShellErrorBoundary>

@@ -87,3 +87,58 @@ export function SlideIn({ children, className, delay = 0.08, duration = 0.3 }) {
     </motion.div>
   );
 }
+
+/**
+ * Scroll-driven reveal — the section rises into place when it scrolls
+ * into view (plays once). Sections already visible render with the
+ * normal entrance; below-fold content reveals as the user scrolls,
+ * giving the page a scrollytelling feel without hijacking the wheel.
+ */
+export function ScrollRise({ children, className, y = 24, duration = 0.55 }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      initial={reduce ? false : { opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-48px" }}
+      transition={{ duration, ease: CINE_EASE }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+const KINETIC_WORD = {
+  hidden: { opacity: 0, y: 10, filter: "blur(3px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.45, ease: CINE_EASE } },
+};
+
+/**
+ * Kinetic typography — reveals text word-by-word with a soft rise,
+ * like a movie title sequence. Renders a plain <span> for
+ * reduced-motion users.
+ */
+export function KineticText({ text, className, delay = 0, stagger = 0.05 }) {
+  const reduce = useReducedMotion();
+  if (reduce) return <span className={className}>{text}</span>;
+  const words = String(text ?? "").split(" ").filter(Boolean);
+  return (
+    <motion.span
+      className={className}
+      style={{ display: "inline-flex", flexWrap: "wrap", columnGap: "0.28em" }}
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: stagger, delayChildren: delay } },
+      }}
+    >
+      {words.map((w, i) => (
+        <motion.span key={`${w}-${i}`} variants={KINETIC_WORD} style={{ display: "inline-block" }}>
+          {w}
+        </motion.span>
+      ))}
+    </motion.span>
+  );
+}
