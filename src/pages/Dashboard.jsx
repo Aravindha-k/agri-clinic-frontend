@@ -418,11 +418,27 @@ const Dashboard = () => {
     }
   }, [workdays, feedVisits, recentFarmers]);
 
+  const employeeNameById = useMemo(() => {
+    const map = new Map();
+    (trackingEmployees ?? []).forEach((e) => {
+      const name = e?.employee_name ?? e?.name;
+      if (!name || name === "Agent") return;
+      [e?.user_id, e?.id, e?.employee_id].forEach((id) => {
+        if (id != null && !map.has(String(id))) map.set(String(id), name);
+      });
+    });
+    return map;
+  }, [trackingEmployees]);
+
   const teamPerformance = useMemo(() => {
     const counts = new Map();
     (feedVisits ?? []).forEach((v) => {
-      const name = visitEmployeeLabel(v);
-      if (!name || name === "\u2014") return;
+      let name = visitEmployeeLabel(v);
+      if (!name || name === "\u2014") {
+        const id = v?.employee?.id ?? v?.employee_id ?? v?.employee;
+        name = id != null ? employeeNameById.get(String(id)) : null;
+      }
+      if (!name || name === "\u2014") name = "Name unavailable";
       const prev = counts.get(name) ?? { name, visits: 0 };
       prev.visits += 1;
       counts.set(name, prev);
@@ -432,7 +448,7 @@ const Dashboard = () => {
       .slice(0, 5);
     const max = rows[0]?.visits ?? 0;
     return rows.map((r) => ({ ...r, pct: max > 0 ? r.visits / max : 0 }));
-  }, [feedVisits]);
+  }, [feedVisits, employeeNameById]);
 
   const dutyAvatars = useMemo(() => {
     return (trackingEmployees ?? [])
@@ -498,16 +514,9 @@ const Dashboard = () => {
 
       <motion.div
         className="dashboard-bento"
-        style={{ transformOrigin: "0% 0%" }}
-        initial={
-          reduceMotion
-            ? false
-            : entrancePlayed
-              ? { opacity: 0, y: 12, filter: "blur(2px)" }
-              : { scale: 1.15, x: 50, y: 40, filter: "blur(4px)" }
-        }
-        animate={{ scale: 1, x: 0, y: 0, opacity: 1, filter: "blur(0px)" }}
-        transition={{ duration: entrancePlayed ? 0.55 : 1.4, ease: CINE_EASE }}
+        initial={reduceMotion || entrancePlayed ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: CINE_EASE }}
       >
       <div className="dashboard-ops-band">
         <div className="dashboard-ops-band__lead">

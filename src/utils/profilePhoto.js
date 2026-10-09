@@ -1,4 +1,4 @@
-import { resolveAttachmentUrl } from "./visitAttachments";
+import { resolveAttachmentUrl } from "./visitAttachments.js";
 
 /** Resolve profile image URL from API row or nested object. */
 export function resolveProfilePhotoUrl(entity) {

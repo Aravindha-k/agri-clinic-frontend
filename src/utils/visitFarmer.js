@@ -11,12 +11,12 @@ import {
   resolveLandLabel,
   resolveFarmerLabel,
   resolveEmployeeLabel,
-} from "./displayValue";
+} from "./displayValue.js";
 import {
   formatIndiaDateTime,
   visitUtcInstantFromFields,
-} from "./businessDate";
-import { resolveProfilePhotoUrl } from "./profilePhoto";
+} from "./businessDate.js";
+import { resolveProfilePhotoUrl } from "./profilePhoto.js";
 
 function pickString(...candidates) {
   for (const c of candidates) {
@@ -239,9 +239,11 @@ export function visitEmployeeLabel(v) {
   const label =
     resolveEmployeeLabel(v?.employee, "") ||
     asDisplayString(v?.employee_name, "") ||
-    asDisplayString(v?.agent_name, "") ||
-    asDisplayString(v?.employee_id, "");
-  const out = label || DISPLAY_FALLBACK;
+    asDisplayString(v?.agent_name, "");
+  // A bare numeric id is never a person's name — prefer the neutral
+  // fallback over presenting "12" as the employee.
+  const isNumericId = label != null && /^\d+$/.test(String(label).trim());
+  const out = !label || isNumericId ? DISPLAY_FALLBACK : label;
   return out === "[object Object]" ? DISPLAY_FALLBACK : out;
 }
 

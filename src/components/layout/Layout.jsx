@@ -25,10 +25,10 @@ function LayoutOutlet() {
         <motion.div
           key={location.pathname}
           className="page-enter"
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.16, ease: "easeOut" }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
         >
           {/* Fragment key remounts the page on soft refresh without a DOM node,
               keeping `.page-enter > .page-root` selectors intact. */}

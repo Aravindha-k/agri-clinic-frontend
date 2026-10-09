@@ -836,122 +836,12 @@ textarea:focus-visible {
 }
 
 /* ── Page transition wrapper ── */
-/* Route fade is handled by the framer-motion transition in Layout —
-   the class stays for layout/padding/child-stagger selectors. */
+/* Route fade and content entrance are owned by framer-motion (Layout
+   transition + PageCanvas). The .page-enter class stays only for
+   layout/padding selectors — no CSS animation layers here, so streamed
+   data and remounts never re-trigger entrance motion. */
 .page-enter {
     animation: none;
-}
-
-@keyframes pageFadeSlide {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .page-enter {
-        animation: none !important;
-    }
-}
-
-/* ── Staggered section entrance — sections rise in sequence on page load ── */
-@keyframes pageChildIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    /* dashboard-bento is animated by framer-motion (canvas entrance) —
-       exclude it so CSS and framer never fight over the same transform. */
-    .page-enter > .page-container > .dashboard-bento {
-        animation: none;
-    }
-
-    .page-enter > .page-container > *,
-    .page-enter > .ops-page > *,
-    .page-enter > .employees-hr > *,
-    .page-enter > .tracking-command > *,
-    .page-enter > .reports-bi > *,
-    .page-enter > .masters-admin > *,
-    .page-enter > .security-suite > *,
-    .page-enter > .audit-console > * {
-        animation: pageChildIn 0.42s var(--ease-enterprise) both;
-    }
-
-    .page-enter > .page-container > *:nth-child(2),
-    .page-enter > .ops-page > *:nth-child(2),
-    .page-enter > .employees-hr > *:nth-child(2),
-    .page-enter > .tracking-command > *:nth-child(2),
-    .page-enter > .reports-bi > *:nth-child(2),
-    .page-enter > .masters-admin > *:nth-child(2),
-    .page-enter > .security-suite > *:nth-child(2),
-    .page-enter > .audit-console > *:nth-child(2) { animation-delay: 45ms; }
-
-    .page-enter > .page-container > *:nth-child(3),
-    .page-enter > .ops-page > *:nth-child(3),
-    .page-enter > .employees-hr > *:nth-child(3),
-    .page-enter > .tracking-command > *:nth-child(3),
-    .page-enter > .reports-bi > *:nth-child(3),
-    .page-enter > .masters-admin > *:nth-child(3),
-    .page-enter > .security-suite > *:nth-child(3),
-    .page-enter > .audit-console > *:nth-child(3) { animation-delay: 90ms; }
-
-    .page-enter > .page-container > *:nth-child(4),
-    .page-enter > .ops-page > *:nth-child(4),
-    .page-enter > .employees-hr > *:nth-child(4),
-    .page-enter > .tracking-command > *:nth-child(4),
-    .page-enter > .reports-bi > *:nth-child(4),
-    .page-enter > .masters-admin > *:nth-child(4),
-    .page-enter > .security-suite > *:nth-child(4),
-    .page-enter > .audit-console > *:nth-child(4) { animation-delay: 135ms; }
-
-    .page-enter > .page-container > *:nth-child(5),
-    .page-enter > .ops-page > *:nth-child(5),
-    .page-enter > .employees-hr > *:nth-child(5),
-    .page-enter > .tracking-command > *:nth-child(5),
-    .page-enter > .reports-bi > *:nth-child(5),
-    .page-enter > .masters-admin > *:nth-child(5),
-    .page-enter > .security-suite > *:nth-child(5),
-    .page-enter > .audit-console > *:nth-child(5) { animation-delay: 180ms; }
-
-    .page-enter > .page-container > *:nth-child(n+6),
-    .page-enter > .ops-page > *:nth-child(n+6),
-    .page-enter > .employees-hr > *:nth-child(n+6),
-    .page-enter > .tracking-command > *:nth-child(n+6),
-    .page-enter > .reports-bi > *:nth-child(n+6),
-    .page-enter > .masters-admin > *:nth-child(n+6),
-    .page-enter > .security-suite > *:nth-child(n+6),
-    .page-enter > .audit-console > *:nth-child(n+6) { animation-delay: 220ms; }
-}
-
-/* ── Icon well entrance pop ── */
-@keyframes iconWellPop {
-    from {
-        opacity: 0;
-        transform: scale(0.7);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .page-enter .raised-icon-well,
-    .page-enter .icon-box {
-        animation: iconWellPop 0.45s var(--ease-enterprise) both;
-    }
 }
 
 /* ── Global page loader ── */
@@ -5885,49 +5775,8 @@ textarea.input {
 
 .dashboard-kpi-row {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.875rem;
-}
-
-.dashboard-kpi-row > * {
-    animation: dashboard-kpi-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-
-.dashboard-kpi-row > *:nth-child(1) { animation-delay: 0.03s; }
-.dashboard-kpi-row > *:nth-child(2) { animation-delay: 0.06s; }
-.dashboard-kpi-row > *:nth-child(3) { animation-delay: 0.09s; }
-.dashboard-kpi-row > *:nth-child(4) { animation-delay: 0.12s; }
-.dashboard-kpi-row > *:nth-child(5) { animation-delay: 0.15s; }
-.dashboard-kpi-row > *:nth-child(6) { animation-delay: 0.18s; }
-.dashboard-kpi-row > *:nth-child(7) { animation-delay: 0.21s; }
-
-@keyframes dashboard-kpi-in {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (min-width: 768px) {
-    .dashboard-kpi-row {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 1280px) {
-    .dashboard-kpi-row {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-}
-
-@media (min-width: 1536px) {
-    .dashboard-kpi-row {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-    }
 }
 
 .dashboard-section-card {
@@ -15380,9 +15229,11 @@ textarea:focus-visible {
     flex-direction: column;
     gap: 20px;
     min-width: 0;
+    height: 100%;
 }
 
-.dashboard-stack .dashboard-perf-card {
+.dashboard-stack > * {
+    flex: 1;
     min-height: 0;
 }
 

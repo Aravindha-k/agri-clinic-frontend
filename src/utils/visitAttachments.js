@@ -2,8 +2,8 @@
  * Normalize visit attachment/evidence records from admin API.
  */
 
-import { getApiOrigin } from "../config/api";
-import { formatIndiaDateTime } from "./businessDate";
+import { getApiOrigin } from "../config/api.js";
+import { formatIndiaDateTime } from "./businessDate.js";
 
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"]);
 const PDF_EXT = new Set(["pdf"]);

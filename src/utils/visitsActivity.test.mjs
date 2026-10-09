@@ -38,6 +38,7 @@ import {
   applyPeriodChange,
   buildVisitsQueryParams,
 } from "./visitsFilters.js";
+import { visitEmployeeLabel } from "./visitFarmer.js";
 
 const wrapped = {
   success: true,
@@ -442,5 +443,23 @@ assert.equal(withDutySummary.employees[0].duty.status, "ON_DUTY");
 assert.equal(withDutySummary.employees[1].duty, null);
 assert.equal(activityEmployeeUserId(withDutySummary.employees[0]), "30");
 assert.equal(employeeActivityMeta(withDutySummary.employees[1], "today").zero, true);
+
+/* visitEmployeeLabel — never present an ID as a person's name */
+assert.equal(visitEmployeeLabel({ employee_name: "Sasi" }), "Sasi");
+assert.equal(visitEmployeeLabel({ employee: { name: "Kavya Field Team" } }), "Kavya Field Team");
+assert.equal(
+  visitEmployeeLabel({ employee: { first_name: "Anitha", last_name: "R" } }),
+  "Anitha R"
+);
+assert.equal(visitEmployeeLabel({ agent_name: "Agent Kumar" }), "Agent Kumar");
+// Numeric ids (bare number, employee object id, employee_id field) → "—"
+assert.equal(visitEmployeeLabel({ employee: 12 }), "—");
+assert.equal(visitEmployeeLabel({ employee_id: 12 }), "—");
+assert.equal(visitEmployeeLabel({ employee_id: "42" }), "—");
+assert.equal(visitEmployeeLabel({ employee_name: "007" }), "—");
+assert.equal(visitEmployeeLabel({}), "—");
+assert.equal(visitEmployeeLabel(null), "—");
+// Non-numeric username remains a usable label
+assert.equal(visitEmployeeLabel({ employee: { username: "field-ops-1" } }), "field-ops-1");
 
 console.log("visitsActivity checks OK");
