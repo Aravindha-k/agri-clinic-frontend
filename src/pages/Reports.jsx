@@ -758,7 +758,7 @@ export default function Reports() {
           boundaryName="Attachments"
         >
           <div className="reports-bi-metric-grid reports-bi-metric-grid--3">
-            <BiMetric value={analytics.visitsWithEvidence} label="Visits with files" tone="violet" />
+            <BiMetric value={analytics.visitsWithEvidence} label="Visits with files" tone="teal" />
             <BiMetric value={analytics.attachmentTotal} label="Total files uploaded" tone="amber" />
             <BiMetric value={`${analytics.evidenceRatePct}%`} label="Evidence upload rate" tone="slate" />
           </div>
@@ -800,7 +800,7 @@ export default function Reports() {
                 value={formatDistanceKm(totalRouteKm)}
                 label="Distance travelled"
                 hint="Combined today"
-                tone="indigo"
+                tone="teal"
                 title={ANALYTICS_TOOLTIPS.routeDistance}
               />
               <BiMetric
@@ -825,7 +825,7 @@ export default function Reports() {
                     ? formatDistanceKm(routeAnalytics.topDistance.km)
                     : "No route data"
                 }
-                tone="violet"
+                tone="amber"
               />
             </div>
             <Suspense fallback={<RouteFallback label="Loading route chart\u2026" />}>

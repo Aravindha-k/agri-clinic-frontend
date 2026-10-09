@@ -393,7 +393,7 @@ body {
 .app-header__eyebrow--teal { color: #0f766e; }
 .app-header__eyebrow--cyan { color: #0e7490; }
 .app-header__eyebrow--amber { color: #b45309; }
-.app-header__eyebrow--indigo { color: #4338ca; }
+.app-header__eyebrow--indigo { color: #047857; }
 .app-header__eyebrow--slate { color: #475569; }
 .app-header__eyebrow--forest { color: #166534; }
 .app-header__eyebrow--red { color: #b91c1c; }
@@ -1787,7 +1787,7 @@ textarea.input {
 .icon-box--violet {
     /* semantic indigo — kept class name for compatibility */
     background: linear-gradient(150deg, #ffffff 0%, #dfe5fb 45%, #c3cdf6 100%);
-    color: #4338ca;
+    color: #047857;
     border-color: rgba(99, 102, 241, 0.24);
     border-bottom-color: rgba(67, 56, 202, 0.34);
     box-shadow:
@@ -10334,15 +10334,15 @@ textarea.input {
 
 .reports-bi-header__icon {
     @apply p-3 rounded-2xl text-white shrink-0;
-    background: linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #6366f1 100%);
-    box-shadow: 0 10px 28px rgba(79, 70, 229, 0.28);
+    background: linear-gradient(135deg, #145A32 0%, #1E8449 55%, #48BB78 100%);
+    box-shadow: 0 10px 28px rgba(30, 132, 73, 0.3);
 }
 
 .reports-bi-header__badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[0.14em];
-    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-    color: #4338ca;
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.22);
 }
 
 .reports-bi-header__title {
@@ -10360,10 +10360,10 @@ textarea.input {
 .reports-bi-export {
     @apply relative rounded-2xl overflow-hidden;
     background:
-        radial-gradient(ellipse at 88% -30%, rgba(196, 181, 253, 0.16) 0%, transparent 55%),
-        linear-gradient(135deg, #231a3a 0%, #2e1f4d 52%, #3b2a63 100%);
-    border: 1px solid rgba(196, 181, 253, 0.14);
-    box-shadow: 0 14px 40px rgba(35, 26, 58, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        radial-gradient(ellipse at 88% -30%, rgba(74, 222, 128, 0.18) 0%, transparent 55%),
+        linear-gradient(135deg, #071713 0%, #0d2b24 48%, #145A32 100%);
+    border: 1px solid rgba(74, 222, 128, 0.16);
+    box-shadow: 0 14px 40px rgba(7, 23, 19, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .reports-bi-export__inner {
@@ -10376,7 +10376,7 @@ textarea.input {
 
 .reports-bi-export__label {
     @apply text-[11px] font-bold uppercase tracking-[0.16em];
-    color: #c4b5fd;
+    color: #86efac;
 }
 
 .reports-bi-export__title {
@@ -10385,12 +10385,12 @@ textarea.input {
 
 .reports-bi-export__range {
     @apply text-[13px] font-semibold mt-1 tabular-nums;
-    color: #ddd6fe;
+    color: #bbf7d0;
 }
 
 .reports-bi-export__hint {
     @apply text-xs mt-1.5;
-    color: rgba(221, 214, 254, 0.75);
+    color: rgba(187, 247, 208, 0.75);
 }
 
 .reports-bi-export__actions {
@@ -10447,7 +10447,7 @@ textarea.input {
 
 .reports-bi-date-field input[type="date"]:focus {
     box-shadow: var(--focus-ring);
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: rgba(16, 185, 129, 0.4);
 }
 
 .reports-bi-date-field select {
@@ -10459,7 +10459,7 @@ textarea.input {
 
 .reports-bi-date-field select:focus {
     box-shadow: var(--focus-ring);
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: rgba(16, 185, 129, 0.4);
 }
 
 .reports-bi-filters__summary {
@@ -10468,9 +10468,9 @@ textarea.input {
     gap: 0.5rem;
     height: var(--control-height-md);
     @apply px-3 rounded-xl text-xs font-semibold shrink-0;
-    background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
-    color: #4338ca;
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.18);
 }
 
 .reports-bi-kpi-grid {
@@ -10486,7 +10486,7 @@ textarea.input {
 
 .reports-bi-kpi:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.08);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.12);
 }
 
 .reports-bi-kpi__accent {
@@ -10585,9 +10585,9 @@ textarea.input {
 .reports-bi-metric--sky .reports-bi-metric__value { @apply text-sky-800; }
 .reports-bi-metric--sky .reports-bi-metric__label { @apply text-sky-700; }
 .reports-bi-metric--sky .reports-bi-metric__hint { @apply text-sky-600; }
-.reports-bi-metric--violet .reports-bi-metric__value { @apply text-violet-800; }
-.reports-bi-metric--violet .reports-bi-metric__label { @apply text-violet-700; }
-.reports-bi-metric--violet .reports-bi-metric__hint { @apply text-violet-600; }
+.reports-bi-metric--teal .reports-bi-metric__value { @apply text-teal-800; }
+.reports-bi-metric--teal .reports-bi-metric__label { @apply text-teal-700; }
+.reports-bi-metric--teal .reports-bi-metric__hint { @apply text-teal-600; }
 .reports-bi-metric--amber .reports-bi-metric__value { @apply text-amber-800; }
 .reports-bi-metric--amber .reports-bi-metric__label { @apply text-amber-700; }
 .reports-bi-metric--amber .reports-bi-metric__hint { @apply text-amber-600; }
@@ -10678,7 +10678,7 @@ textarea.input {
 }
 
 .reports-bi-route-row__km {
-    @apply font-bold text-indigo-700 tabular-nums block text-right;
+    @apply font-bold text-emerald-700 tabular-nums block text-right;
 }
 
 .reports-bi-route-row__hint {
@@ -12313,8 +12313,8 @@ textarea.input {
 
 .security-suite-activity__icon {
     @apply w-9 h-9 rounded-xl flex items-center justify-center shrink-0;
-    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-    color: #4338ca;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #047857;
 }
 
 .security-suite-activity__action {
@@ -14761,5 +14761,92 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: no-preference) {
     .premium-kpi::before {
         animation: beam-border-spin 5.5s linear infinite;
+    }
+}
+
+/* Reports + dark command bands join the glass/beam system */
+.reports-bi-panel,
+.reports-bi-filters,
+.reports-bi-kpi {
+    background:
+        linear-gradient(160deg,
+            rgba(255, 255, 255, 0.7) 0%,
+            rgba(255, 255, 255, 0.16) 22%,
+            rgba(255, 255, 255, 0) 40%),
+        radial-gradient(18rem 10rem at 100% 0%, rgba(16, 185, 129, 0.06) 0%, transparent 60%),
+        linear-gradient(150deg,
+            rgba(255, 255, 255, 0.94) 0%,
+            rgba(248, 253, 250, 0.86) 55%,
+            rgba(240, 250, 245, 0.78) 100%);
+    backdrop-filter: blur(10px) saturate(1.25);
+    -webkit-backdrop-filter: blur(10px) saturate(1.25);
+    border-color: rgba(4, 120, 87, 0.1);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.05),
+        0 10px 28px -12px rgba(15, 23, 42, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    position: relative;
+    overflow: hidden;
+}
+
+.reports-bi-panel::before,
+.reports-bi-filters::before,
+.reports-bi-kpi::before,
+.reports-bi-export::before,
+.tracking-today-summary::before,
+.tracking-roster-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(from var(--beam-angle),
+        transparent 0%,
+        transparent 68%,
+        rgba(52, 211, 153, 0.65) 82%,
+        rgba(125, 211, 252, 0.45) 90%,
+        transparent 100%);
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.reports-bi-panel::after,
+.reports-bi-filters::after,
+.reports-bi-kpi::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg,
+        transparent 42%,
+        rgba(255, 255, 255, 0.38) 50%,
+        transparent 58%);
+    transform: translateX(-130%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .reports-bi-panel::before,
+    .reports-bi-filters::before,
+    .reports-bi-kpi::before,
+    .reports-bi-export::before,
+    .tracking-today-summary::before,
+    .tracking-roster-panel::before {
+        animation: beam-border-spin 5.5s linear infinite;
+    }
+
+    .reports-bi-panel:hover::after,
+    .reports-bi-filters:hover::after,
+    .reports-bi-kpi:hover::after {
+        transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        transform: translateX(130%);
     }
 }
