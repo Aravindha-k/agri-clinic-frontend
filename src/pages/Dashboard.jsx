@@ -650,19 +650,20 @@ const Dashboard = () => {
         </div>
       )}
 
-      <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
-        <QuickActions />
-      </WidgetErrorBoundary>
-
-      <WidgetErrorBoundary name="OwnerControl" title="Owner Control unavailable">
-        <OwnerControlPanel
-          activeEmployees={stats.activeEmployees ?? stats.workingNow ?? 0}
-          gpsIssues={stats.gpsIssues ?? 0}
-          pendingSyncs={liveOps?.pendingSyncs ?? 0}
-          employees={trackingEmployees ?? []}
-          recentUploads={recentUploads}
-        />
-      </WidgetErrorBoundary>
+      <div className="dashboard-main-row">
+        <WidgetErrorBoundary name="OwnerControl" title="Owner Control unavailable">
+          <OwnerControlPanel
+            activeEmployees={stats.activeEmployees ?? stats.workingNow ?? 0}
+            gpsIssues={stats.gpsIssues ?? 0}
+            pendingSyncs={liveOps?.pendingSyncs ?? 0}
+            employees={trackingEmployees ?? []}
+            recentUploads={recentUploads}
+          />
+        </WidgetErrorBoundary>
+        <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
+          <QuickActions />
+        </WidgetErrorBoundary>
+      </div>
 
       <div className="dashboard-insight-row">
         <button
@@ -719,15 +720,11 @@ const Dashboard = () => {
         <LiveOperationsPanel ops={liveOps ?? {}} />
       </WidgetErrorBoundary>
 
-      <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
-        <UnifiedActivityFeed events={activityFeed ?? []} />
-      </WidgetErrorBoundary>
-
-      <div className="dashboard-main-row dashboard-main-row--map-only">
+      <div className="dashboard-main-row">
         <WidgetErrorBoundary
           name="LiveMap"
           title="Live Field Map unavailable"
-          className="lg:col-span-2 min-h-[360px]"
+          className="min-h-[360px]"
         >
           <Suspense fallback={<WidgetSuspenseFallback label="Loading map\u2026" />}>
             <DashboardLiveMap
@@ -742,16 +739,13 @@ const Dashboard = () => {
             />
           </Suspense>
         </WidgetErrorBoundary>
+        <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
+          <UnifiedActivityFeed events={activityFeed ?? []} />
+        </WidgetErrorBoundary>
       </div>
 
-      {/* Visit trends — lazy-loaded chart */}
-      <WidgetErrorBoundary name="VisitChart" title="Visit chart unavailable">
-        <Suspense fallback={<WidgetSuspenseFallback label="Loading analytics\u2026" />}>
-          <DashboardVisitChart visitTrends={visitTrends ?? []} />
-        </Suspense>
-      </WidgetErrorBoundary>
-
-
+      {/* ================== RECENT VISITS + TREND ================== */}
+      <div className="dashboard-main-row">
       {/* ================== RECENT VISITS ================== */}
       <div className="dashboard-section-card overflow-hidden">
         <SectionHeader
@@ -842,6 +836,12 @@ const Dashboard = () => {
             </table>
           </div>
         )}
+      </div>
+      <WidgetErrorBoundary name="VisitChart" title="Visit chart unavailable">
+        <Suspense fallback={<WidgetSuspenseFallback label="Loading analytics…" />}>
+          <DashboardVisitChart visitTrends={visitTrends ?? []} />
+        </Suspense>
+      </WidgetErrorBoundary>
       </div>
       </div>
     </div>

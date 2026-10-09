@@ -6070,6 +6070,23 @@ textarea.input {
     .dashboard-main-row {
         grid-template-columns: 1.65fr 1fr;
     }
+
+    .dashboard-main-row > * {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .dashboard-main-row > * > .dashboard-section-card,
+    .dashboard-main-row > .dashboard-section-card {
+        height: 100%;
+    }
+
+    /* In a side-by-side row, the feed/chart stretches to the map/table height
+       and scrolls internally instead of doubling the page height. */
+    .dashboard-main-row .dashboard-timeline__scroll {
+        max-height: 34rem;
+        overflow-y: auto;
+    }
 }
 
 .dashboard-insight-widget {
@@ -7395,11 +7412,29 @@ textarea.input {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
-    padding: var(--space-5);
+    padding: var(--space-4) var(--space-5);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
     background: var(--surface-0);
     box-shadow: var(--shadow-xs);
+}
+
+@media (min-width: 1280px) {
+    .visits-today-bundle {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+        align-items: start;
+        gap: 0 var(--space-6);
+    }
+
+    .visits-today-bundle > .visits-ops-section + .visits-ops-section {
+        border-left: 1px solid var(--border-subtle);
+        padding-left: var(--space-6);
+    }
+
+    .visits-today-bundle .visits-today-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .visits-ops-section {
@@ -9851,7 +9886,7 @@ textarea.input {
 }
 
 .reports-bi-export__inner {
-    @apply relative z-10 p-4 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-4;
+    @apply relative z-10 px-4 py-3 sm:px-5 sm:py-3.5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4;
 }
 
 .reports-bi-export__copy {
@@ -9864,7 +9899,7 @@ textarea.input {
 }
 
 .reports-bi-export__title {
-    @apply text-xl font-extrabold text-white mt-1 tracking-tight tabular-nums;
+    @apply text-lg font-bold text-white mt-0.5 tracking-tight tabular-nums;
 }
 
 .reports-bi-export__range {
