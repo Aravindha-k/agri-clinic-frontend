@@ -836,8 +836,10 @@ textarea:focus-visible {
 }
 
 /* ── Page transition wrapper ── */
+/* Route fade is handled by the framer-motion transition in Layout —
+   the class stays for layout/padding/child-stagger selectors. */
 .page-enter {
-    animation: pageFadeSlide var(--duration-normal) var(--ease-enterprise) both;
+    animation: none;
 }
 
 @keyframes pageFadeSlide {

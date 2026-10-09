@@ -1,4 +1,5 @@
 import { EmptyState, PageHeader, FilterBar, FilterField, FilterToolbarRow } from "../components/ui/command";
+import { PageCanvas } from "../components/motion/Cinematic";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import { BRAND } from "../theme/brand";
@@ -2253,7 +2254,7 @@ export default function Employees() {
       : `Are you sure you want to delete "${confirmEmpName}"? This action cannot be undone.`;
 
   return (
-    <div className="employees-hr page-container">
+    <PageCanvas className="employees-hr page-container">
 
       <PageHeader
         title="Employees"
@@ -2355,6 +2356,6 @@ export default function Employees() {
           }
         }}
       />
-    </div>
+    </PageCanvas>
   );
 }

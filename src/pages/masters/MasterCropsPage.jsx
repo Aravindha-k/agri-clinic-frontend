@@ -1,4 +1,5 @@
 import { PageHeader } from "../../components/ui/command";
+import { PageCanvas } from "../../components/motion/Cinematic";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { createCrop, updateCrop, deleteCrop } from "../../api/master.api";
@@ -303,7 +304,7 @@ export default function MasterCropsPage() {
   }, [totalCount, crops.length, filtered.length, search]);
 
   return (
-    <div className="masters-admin page-container">
+    <PageCanvas className="masters-admin page-container">
       <PageHeader
         title="Crop / Pest / Disease Master"
         subtitle={
@@ -537,6 +538,6 @@ export default function MasterCropsPage() {
         loading={deleting}
         variant="danger"
       />
-    </div>
+    </PageCanvas>
   );
 }

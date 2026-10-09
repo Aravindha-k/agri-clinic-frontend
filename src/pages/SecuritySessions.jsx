@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PageCanvas } from "../components/motion/Cinematic";
 import {
   LockKeyhole,
   RefreshCw,
@@ -209,14 +210,14 @@ export default function SecuritySessions() {
 
   if (loading) {
     return (
-      <div className="security-suite page-container">
+      <PageCanvas className="security-suite page-container">
         <PageLoader label="Loading security monitoring…" />
-      </div>
+      </PageCanvas>
     );
   }
 
   return (
-    <div className="security-suite page-container">
+    <PageCanvas className="security-suite page-container">
       <PageHeader
         title="Security & Sessions"
         subtitle="Admin inactivity timeout, login lockouts, active sessions, and security audit activity"
@@ -382,6 +383,6 @@ export default function SecuritySessions() {
           </div>
         )}
       </div>
-    </div>
+    </PageCanvas>
   );
 }

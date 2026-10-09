@@ -1,4 +1,5 @@
 import { PageLoader, EmptyState, PageHeader } from "../components/ui/command";
+import { PageCanvas } from "../components/motion/Cinematic";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { useEffect, useMemo, useState } from "react";
 import { getAuditLogs } from "../api/audit.api";
@@ -99,22 +100,22 @@ export default function Audit() {
 
     if (loading) {
         return (
-            <div className="audit-console page-container">
+            <PageCanvas className="audit-console page-container">
                 <PageLoader label="Loading audit log…" />
-            </div>
+            </PageCanvas>
         );
     }
 
     if (error) {
         return (
-            <div className="audit-console page-container">
+            <PageCanvas className="audit-console page-container">
                 <ErrorRetry message={error} onRetry={load} />
-            </div>
+            </PageCanvas>
         );
     }
 
     return (
-        <div className="audit-console page-container">
+        <PageCanvas className="audit-console page-container">
             <PageHeader
                 title="System Audit Logs"
                 subtitle="Monitor system activity and security events across the admin panel"
@@ -267,6 +268,6 @@ export default function Audit() {
                     </div>
                 </>
             )}
-        </div>
+        </PageCanvas>
     );
 }

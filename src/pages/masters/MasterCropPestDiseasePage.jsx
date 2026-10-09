@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageCanvas } from "../../components/motion/Cinematic";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -386,7 +387,7 @@ export default function MasterCropPestDiseasePage() {
   const sectionLabel = tab === CPD_CATEGORY.PEST ? "Pest" : "Disease";
 
   return (
-    <div className="masters-admin page-container cpd-detail-page">
+    <PageCanvas className="masters-admin page-container cpd-detail-page">
       <PageHeader
         title={loading ? "Crop / Pest / Disease" : cropName}
         subtitle={
@@ -789,6 +790,6 @@ export default function MasterCropPestDiseasePage() {
           </button>
         </div>
       ) : null}
-    </div>
+    </PageCanvas>
   );
 }

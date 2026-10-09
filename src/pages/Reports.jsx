@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { Link } from "react-router-dom";
 import { fetchAllVisits, getVisits } from "../api/visit.api";
 import { getReportSummary } from "../api/report.api";
@@ -466,7 +467,7 @@ export default function Reports() {
 
   return (
     <DashboardShellErrorBoundary header={pageHeader}>
-    <div className="reports-bi page-container">
+    <PageCanvas className="reports-bi page-container">
       {pageHeader}
 
       {error && (
@@ -969,7 +970,7 @@ export default function Reports() {
         ) : null}
       </div>
       </WidgetErrorBoundary>
-    </div>
+    </PageCanvas>
     </DashboardShellErrorBoundary>
   );
 }

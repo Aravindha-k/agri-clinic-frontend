@@ -1,4 +1,5 @@
 import { PageLoader, PageHeader, EmptyState, ErrorRetry } from "../components/ui/command";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
@@ -87,7 +88,7 @@ export default function Notifications() {
   const showList = hasLoadedOnce && !error && notifications.length > 0;
 
   return (
-    <div className="page-container notifications-page">
+    <PageCanvas className="page-container notifications-page">
       <PageHeader
         title="Notifications"
         subtitle={
@@ -222,6 +223,6 @@ export default function Notifications() {
           ))}
         </div>
       )}
-    </div>
+    </PageCanvas>
   );
 }

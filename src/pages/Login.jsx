@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginAuthErrorMessage, ADMIN_SESSION_EXPIRED_MESSAGE } from "../utils/authErrors";
@@ -169,7 +170,7 @@ const Login = () => {
   };
 
   return (
-    <div className="login-page login-page--premium">
+    <PageCanvas className="login-page login-page--premium" variant="soft">
       {loading && <AuthOverlay progress={authProgress} />}
 
       {/* LEFT PANEL — Match reference exactly */}
@@ -391,7 +392,7 @@ const Login = () => {
           </div>
         </div>
       </main>
-    </div>
+    </PageCanvas>
   );
 };
 

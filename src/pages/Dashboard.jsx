@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { motion, useReducedMotion, useMotionValue, useTransform, animate } from "framer-motion";
+import { CINE_EASE, SlideIn } from "../components/motion/Cinematic";
 import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
 import { getDashboardStats, getDashboardChartStats } from "../api/dashboard.api";
@@ -463,7 +464,7 @@ const Dashboard = () => {
     const controls = animate(donutProgress, target, {
       delay: 0.4,
       duration: 1.3,
-      ease: [0.16, 1, 0.3, 1],
+      ease: CINE_EASE,
     });
     return () => controls.stop();
   }, [evidenceStats.rate, reduceMotion, donutProgress]);
@@ -515,7 +516,7 @@ const Dashboard = () => {
             : { scale: 1.15, x: 50, y: 40, filter: "blur(4px)" }
         }
         animate={{ scale: 1, x: 0, y: 0, filter: "blur(0px)" }}
-        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 1.4, ease: CINE_EASE }}
       >
       <div className="dashboard-ops-band">
         <div className="dashboard-ops-band__lead">
@@ -687,12 +688,7 @@ const Dashboard = () => {
         <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
           <AlertsPanel alerts={opsAlerts ?? []} />
         </WidgetErrorBoundary>
-        <motion.div
-          className="dashboard-stack"
-          initial={reduceMotion ? false : { opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.25, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
+        <SlideIn className="dashboard-stack">
           <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--accent">
             <div className="dashboard-perf-card__head">
               <p className="dashboard-perf-card__title dashboard-perf-card__title--light">
@@ -717,7 +713,7 @@ const Dashboard = () => {
           <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
             <QuickActions />
           </WidgetErrorBoundary>
-        </motion.div>
+        </SlideIn>
       </div>
 
       <div className="dashboard-perf-row">

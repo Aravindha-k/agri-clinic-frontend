@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFarmers, deleteFarmer } from "../api/farmer.api";
 import { fetchCachedActiveVillages } from "../api/master.api";
@@ -317,7 +318,7 @@ export default function FarmersList() {
   };
 
   return (
-    <div className="page-container page-container--farmers">
+    <PageCanvas className="page-container page-container--farmers">
       <PageHeader
         title="Farmers"
         subtitle={
@@ -707,6 +708,6 @@ export default function FarmersList() {
           }
         }}
       />
-    </div>
+    </PageCanvas>
   );
 }

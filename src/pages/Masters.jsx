@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../components/ui/command";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { Link } from "react-router-dom";
 import { ChevronRight, MapPin, MapPinned, Wheat } from "lucide-react";
 import { getCropPestDiseaseList } from "../api/cropPestDisease.api";
@@ -72,7 +73,7 @@ export default function Masters() {
     }, []);
 
     return (
-        <div className="masters-admin">
+        <PageCanvas className="masters-admin">
             <PageHeader
                 title="Master Data"
                 subtitle="Crops, villages and field territories that power daily operations"
@@ -111,6 +112,6 @@ export default function Masters() {
                     ),
                 )}
             </div>
-        </div>
+        </PageCanvas>
     );
 }

@@ -1,4 +1,5 @@
 import { EmptyState, PageHeader } from "../components/ui/command";
+import { PageCanvas } from "../components/motion/Cinematic";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -758,7 +759,7 @@ export default function Tracking() {
 
     return (
         <>
-            <div className="tracking-command">
+            <PageCanvas className="tracking-command" variant="soft">
                 <PageHeader
                     title="Live Tracking"
                     subtitle="Real-time GPS command center for field operations"
@@ -993,7 +994,7 @@ export default function Tracking() {
                         </div>
                     </aside>
                 </div>
-            </div>
+            </PageCanvas>
 
             <EmployeeDrawer
                 employee={mapSelectedEmployee}

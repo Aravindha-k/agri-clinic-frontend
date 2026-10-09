@@ -1,4 +1,5 @@
 import { PageLoader, PageHeader, EmptyState, ErrorRetry, FilterBar, FilterField, FilterToolbarRow, FilterActiveRow } from "../components/ui/command";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
@@ -70,7 +71,7 @@ export default function Issues() {
   }, [crops, search]);
 
   return (
-    <div className="page-container crop-issues-page">
+    <PageCanvas className="page-container crop-issues-page">
       <PageHeader
         title="Crop Directory"
         subtitle="Browse the crop directory used when recording field visits."
@@ -271,6 +272,6 @@ export default function Issues() {
           </div>
         </div>
       )}
-    </div>
+    </PageCanvas>
   );
 }

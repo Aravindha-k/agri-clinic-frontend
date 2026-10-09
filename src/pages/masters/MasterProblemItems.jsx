@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageCanvas } from "../../components/motion/Cinematic";
 import {
   Bug,
   Plus,
@@ -334,7 +335,7 @@ export default function MasterProblemItems() {
 
   if (apiAvailable === false) {
     return (
-      <div className="masters-admin page-container max-w-3xl">
+      <PageCanvas className="masters-admin page-container max-w-3xl">
         <PageHeader
           title="Pest, Disease & Nutrient Master"
           subtitle="Manage Pest, Disease and Nutrient Deficiency master names."
@@ -346,12 +347,12 @@ export default function MasterProblemItems() {
             subtitle="The backend endpoint masters/problem-masters/ is not deployed yet. Visit Problem Types can still be managed separately."
           />
         </div>
-      </div>
+      </PageCanvas>
     );
   }
 
   return (
-    <div className="masters-admin page-container">
+    <PageCanvas className="masters-admin page-container">
       <input
         ref={fileInputRef}
         type="file"
@@ -676,6 +677,6 @@ export default function MasterProblemItems() {
         onCancel={() => setConfirm({ open: false, item: null })}
         loading={saving}
       />
-    </div>
+    </PageCanvas>
   );
 }

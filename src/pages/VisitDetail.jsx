@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { PageCanvas } from "../components/motion/Cinematic";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { getVisitDetail, updateVisit, deleteVisit } from "../api/visit.api";
 import VisitEvidenceSection from "../components/visits/VisitEvidenceSection";
@@ -469,7 +470,7 @@ export default function VisitDetail(props) {
     }
 
     return (
-        <div className="visit-report">
+        <PageCanvas className="visit-report">
             <header className="visit-report-header">
                 <div className="visit-report-header__top">
                     <div className="visit-report-header__nav">
@@ -956,6 +957,6 @@ export default function VisitDetail(props) {
                     }
                 }}
             />
-        </div>
+        </PageCanvas>
     );
 }
