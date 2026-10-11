@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from "react";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { Link } from "react-router-dom";
 import { fetchAllVisits, getVisits } from "../api/visit.api";
 import { getReportSummary } from "../api/report.api";
@@ -438,7 +437,7 @@ export default function Reports() {
       value: analytics.visitsWithEvidence,
       description: `${analytics.evidenceRatePct}% of visits include uploaded photos or files`,
       accent: BRAND.accent,
-      iconBg: "#fef3c7",
+      iconBg: "#ede9fe",
     },
   ];
 
@@ -467,7 +466,7 @@ export default function Reports() {
 
   return (
     <DashboardShellErrorBoundary header={pageHeader}>
-    <PageCanvas className="reports-bi page-container">
+    <div className="reports-bi page-container">
       {pageHeader}
 
       {error && (
@@ -484,9 +483,6 @@ export default function Reports() {
             <p className="reports-bi-export__label">Export center</p>
             <p className="reports-bi-export__title">
               {visitTotal} visit{visitTotal === 1 ? "" : "s"} in this range
-            </p>
-            <p className="reports-bi-export__range">
-              {dateFrom} → {dateTo}
             </p>
             <p className="reports-bi-export__hint">
               Export downloads matching rows. Opening this page does not load every visit.
@@ -759,7 +755,7 @@ export default function Reports() {
           boundaryName="Attachments"
         >
           <div className="reports-bi-metric-grid reports-bi-metric-grid--3">
-            <BiMetric value={analytics.visitsWithEvidence} label="Visits with files" tone="teal" />
+            <BiMetric value={analytics.visitsWithEvidence} label="Visits with files" tone="violet" />
             <BiMetric value={analytics.attachmentTotal} label="Total files uploaded" tone="amber" />
             <BiMetric value={`${analytics.evidenceRatePct}%`} label="Evidence upload rate" tone="slate" />
           </div>
@@ -801,7 +797,7 @@ export default function Reports() {
                 value={formatDistanceKm(totalRouteKm)}
                 label="Distance travelled"
                 hint="Combined today"
-                tone="teal"
+                tone="indigo"
                 title={ANALYTICS_TOOLTIPS.routeDistance}
               />
               <BiMetric
@@ -826,7 +822,7 @@ export default function Reports() {
                     ? formatDistanceKm(routeAnalytics.topDistance.km)
                     : "No route data"
                 }
-                tone="amber"
+                tone="violet"
               />
             </div>
             <Suspense fallback={<RouteFallback label="Loading route chart\u2026" />}>
@@ -970,7 +966,7 @@ export default function Reports() {
         ) : null}
       </div>
       </WidgetErrorBoundary>
-    </PageCanvas>
+    </div>
     </DashboardShellErrorBoundary>
   );
 }

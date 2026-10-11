@@ -1,6 +1,29 @@
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { BRAND } from "../../theme/brand";
-import { useCountUp } from "../../utils/motion";
+
+function useCountUp(target, duration = 1100) {
+  const [val, setVal] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const start = prev.current;
+    const end = Number(target) || 0;
+    if (start === end) {
+      setVal(end);
+      return;
+    }
+    const t0 = performance.now();
+    const step = (now) => {
+      const p = Math.min((now - t0) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(start + (end - start) * ease));
+      if (p < 1) requestAnimationFrame(step);
+      else prev.current = end;
+    };
+    requestAnimationFrame(step);
+  }, [target, duration]);
+  return val;
+}
 
 const TREND_STYLES = {
   up: {
@@ -30,7 +53,7 @@ export default function PremiumKpiCard({
   className = "",
   loading = false,
 }) {
-  const animVal = useCountUp(loading ? 0 : value, 1200);
+  const animVal = useCountUp(loading ? 0 : value);
   const trendCfg = trend ? TREND_STYLES[trend.direction] ?? TREND_STYLES.neutral : null;
   const TrendIcon = trendCfg?.Icon;
 

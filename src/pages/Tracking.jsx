@@ -1,5 +1,4 @@
 import { EmptyState, PageHeader } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -86,11 +85,9 @@ import { forceEndEmployeeDuty, getTrackingLive } from "../api/adminTracking.api"
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { normalizeForceEndError } from "../utils/apiErrorNormalize";
 import { LIVE_TRACKING_POLL_MS } from "../utils/trackingPoll";
-
-
 const REFRESH_INTERVAL = LIVE_TRACKING_POLL_MS;
 
-/* Shared count-up (reduced-motion aware) lives in utils/motion.js */
+
 function TrackingSkeleton() {
     return (
         <div className="tracking-command" aria-busy="true" aria-label="Loading live tracking">
@@ -735,6 +732,7 @@ export default function Tracking() {
         [loadData]
     );
 
+
     const filterOptions = [
         { key: "all", label: "All active", count: activeEmployees.length },
         { key: "working", label: "Working", count: dutyStats.working },
@@ -745,12 +743,12 @@ export default function Tracking() {
     ];
 
     const todaySummary = [
-        { label: "Working", value: dutyStats.working, icon: Users, accent: "#4ade80", iconBg: "rgba(74, 222, 128, 0.16)" },
-        { label: "Fresh", value: dutyStats.gps_active, icon: MapPin, accent: "#5eead4", iconBg: "rgba(94, 234, 212, 0.14)" },
-        { label: "Delayed", value: dutyStats.gps_stale, icon: Clock, accent: "#fcd34d", iconBg: "rgba(252, 211, 77, 0.15)" },
-        { label: "Lost", value: dutyStats.gps_offline, icon: WifiOff, accent: "#94a3b8", iconBg: "rgba(148, 163, 184, 0.18)" },
-        { label: "On map", value: mapEmployees.length, icon: Navigation, accent: "#67e8f9", iconBg: "rgba(103, 232, 249, 0.14)" },
-        { label: "No GPS", value: dutyStats.no_location, icon: AlertTriangle, accent: "#fca5a5", iconBg: "rgba(252, 165, 165, 0.16)" },
+        { label: "Working", value: dutyStats.working },
+        { label: "Fresh", value: dutyStats.gps_active },
+        { label: "Delayed", value: dutyStats.gps_stale },
+        { label: "Lost", value: dutyStats.gps_offline },
+        { label: "On map", value: mapEmployees.length },
+        { label: "No GPS", value: dutyStats.no_location },
     ];
 
     if (loading && employees.length === 0) {
@@ -759,7 +757,7 @@ export default function Tracking() {
 
     return (
         <>
-            <PageCanvas className="tracking-command" variant="soft">
+            <div className="tracking-command">
                 <PageHeader
                     title="Live Tracking"
                     subtitle="Real-time GPS command center for field operations"
@@ -804,20 +802,9 @@ export default function Tracking() {
                         <p className="tracking-today-summary__label">Today&apos;s field operations</p>
                         <div className="tracking-today-summary__grid">
                             {todaySummary.map((cell) => (
-                                <div key={cell.label} className="visit-report-summary__cell tracking-today-cell">
-                                    <span
-                                        className="tracking-today-cell__icon"
-                                        style={{ background: cell.iconBg, color: cell.accent }}
-                                        aria-hidden="true"
-                                    >
-                                        <cell.icon className="w-3.5 h-3.5" />
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="visit-report-summary__cell-label">{cell.label}</p>
-                                        <p className="visit-report-summary__cell-value tabular-nums" style={{ color: cell.accent }}>
-                                            {cell.value}
-                                        </p>
-                                    </div>
+                                <div key={cell.label} className="visit-report-summary__cell">
+                                    <p className="visit-report-summary__cell-label">{cell.label}</p>
+                                    <p className="visit-report-summary__cell-value tabular-nums">{cell.value}</p>
                                 </div>
                             ))}
                         </div>
@@ -994,7 +981,7 @@ export default function Tracking() {
                         </div>
                     </aside>
                 </div>
-            </PageCanvas>
+            </div>
 
             <EmployeeDrawer
                 employee={mapSelectedEmployee}

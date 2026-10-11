@@ -1,6 +1,5 @@
 import { PageHeader } from "../../components/ui/command";
-import { PageCanvas } from "../../components/motion/Cinematic";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { createCrop, updateCrop, deleteCrop } from "../../api/master.api";
 import { getCropPestDiseaseList } from "../../api/cropPestDisease.api";
@@ -20,8 +19,9 @@ import {
   Plus,
   AlertCircle,
   Loader2,
+  Leaf,
   Bug,
-  Stethoscope,
+  MoreVertical,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -29,8 +29,28 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 const inputClass = "masters-admin-field";
 
 function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const cropName = crop?.name_en || `crop ${crop?.id ?? ""}`;
   const managePath = cropProblemsPath(crop.id);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   if (layout === "card") {
     return (
@@ -54,16 +74,35 @@ function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
           <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
           Edit Crop
         </button>
-        <button
-          type="button"
-          onClick={() => onDeleteRequest(crop)}
-          className="btn btn-danger btn-sm"
-          title="Delete Crop"
-          aria-label={`Delete Crop ${cropName}`}
-        >
-          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-          Delete
-        </button>
+        <div className="cpd-more-menu" ref={menuRef}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm cpd-more-trigger"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={`More actions for ${cropName}`}
+            title="More actions"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <MoreVertical className="w-4 h-4" aria-hidden="true" />
+          </button>
+          {menuOpen ? (
+            <div className="cpd-more-menu__panel" role="menu" aria-label={`More actions for ${cropName}`}>
+              <button
+                type="button"
+                role="menuitem"
+                className="cpd-more-menu__item cpd-more-menu__item--danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDeleteRequest(crop);
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                Delete Crop
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -90,16 +129,35 @@ function CropRowActions({ crop, onEdit, onDeleteRequest, layout = "table" }) {
         <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
         Edit
       </button>
-      <button
-        type="button"
-        onClick={() => onDeleteRequest(crop)}
-        className="cpd-action-btn cpd-action-btn--danger"
-        title="Delete Crop"
-        aria-label={`Delete Crop ${cropName}`}
-      >
-        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-        Delete
-      </button>
+      <div className="cpd-more-menu" ref={menuRef}>
+        <button
+          type="button"
+          className="cpd-more-trigger"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label={`More actions for ${cropName}`}
+          title="More actions"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <MoreVertical className="w-4 h-4" aria-hidden="true" />
+        </button>
+        {menuOpen ? (
+          <div className="cpd-more-menu__panel" role="menu" aria-label={`More actions for ${cropName}`}>
+            <button
+              type="button"
+              role="menuitem"
+              className="cpd-more-menu__item cpd-more-menu__item--danger"
+              onClick={() => {
+                setMenuOpen(false);
+                onDeleteRequest(crop);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              Delete Crop
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -174,10 +232,8 @@ function CropForm({ initial = {}, onSubmit, onCancel, loading }) {
 }
 
 function CountBadge({ value, kind }) {
-  const Icon = kind === "pest" ? Bug : Stethoscope;
   return (
     <span className={`cpd-count-badge cpd-count-badge--${kind}`} title={`${value} ${kind}`}>
-      <Icon className="cpd-count-badge__icon" aria-hidden="true" />
       <span className="cpd-count-badge__value">{value}</span>
       <span className="sr-only">
         {kind === "pest" ? "pests" : "diseases"}
@@ -304,7 +360,7 @@ export default function MasterCropsPage() {
   }, [totalCount, crops.length, filtered.length, search]);
 
   return (
-    <PageCanvas className="masters-admin page-container">
+    <div className="masters-admin page-container">
       <PageHeader
         title="Crop / Pest / Disease Master"
         subtitle={
@@ -407,13 +463,13 @@ export default function MasterCropsPage() {
                     <tr key={c.id}>
                       <td>
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="masters-admin-row-icon raised-icon-well raised-icon-well--emerald">
-                            <Wheat className="w-3.5 h-3.5" aria-hidden="true" />
+                          <div className="masters-admin-row-icon">
+                            <Leaf className="w-3.5 h-3.5" aria-hidden="true" />
                           </div>
                           <div className="min-w-0">
                             <p className="masters-admin-row-name">{c.name_en || "\u2014"}</p>
                             {c.name_ta || c.tamil_name ? (
-                              <p className="masters-admin-row-sub" lang="ta">{c.name_ta || c.tamil_name}</p>
+                              <p className="masters-admin-row-sub">{c.name_ta || c.tamil_name}</p>
                             ) : null}
                           </div>
                         </div>
@@ -458,7 +514,7 @@ export default function MasterCropsPage() {
                   <div className="min-w-0">
                     <p className="masters-admin-row-name">{c.name_en || "\u2014"}</p>
                     {c.name_ta || c.tamil_name ? (
-                      <p className="masters-admin-row-sub" lang="ta">{c.name_ta || c.tamil_name}</p>
+                      <p className="masters-admin-row-sub">{c.name_ta || c.tamil_name}</p>
                     ) : null}
                   </div>
                   <span
@@ -538,6 +594,6 @@ export default function MasterCropsPage() {
         loading={deleting}
         variant="danger"
       />
-    </PageCanvas>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
 import { PageLoader, EmptyState, PageHeader } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { useEffect, useMemo, useState } from "react";
 import { getAuditLogs } from "../api/audit.api";
@@ -26,19 +25,20 @@ const getTimestamp = (log) => log?.timestamp || log?.created_at || log?.date || 
 
 const ACTION_COLORS = {
     green: "audit-console-action--green",
-    teal: "audit-console-action--teal",
+    blue: "audit-console-action--blue",
     red: "audit-console-action--red",
     amber: "audit-console-action--amber",
-    slate: "audit-console-action--slate",
+    violet: "audit-console-action--violet",
+    gray: "audit-console-action--gray",
 };
 
 function getActionColor(action) {
     const lowercase = String(action || "").toLowerCase();
     if (lowercase.includes("create") || lowercase.includes("add")) return "green";
-    if (lowercase.includes("update") || lowercase.includes("edit")) return "teal";
+    if (lowercase.includes("update") || lowercase.includes("edit")) return "blue";
     if (lowercase.includes("delete") || lowercase.includes("remove")) return "red";
     if (lowercase.includes("view") || lowercase.includes("login")) return "amber";
-    return "slate";
+    return "violet";
 }
 
 function AuditStat({ icon: Icon, label, value, accent, iconBg }) {
@@ -100,22 +100,22 @@ export default function Audit() {
 
     if (loading) {
         return (
-            <PageCanvas className="audit-console page-container">
+            <div className="audit-console page-container">
                 <PageLoader label="Loading audit log…" />
-            </PageCanvas>
+            </div>
         );
     }
 
     if (error) {
         return (
-            <PageCanvas className="audit-console page-container">
+            <div className="audit-console page-container">
                 <ErrorRetry message={error} onRetry={load} />
-            </PageCanvas>
+            </div>
         );
     }
 
     return (
-        <PageCanvas className="audit-console page-container">
+        <div className="audit-console page-container">
             <PageHeader
                 title="System Audit Logs"
                 subtitle="Monitor system activity and security events across the admin panel"
@@ -146,8 +146,8 @@ export default function Audit() {
                 <>
                     <div className="audit-console-stats">
                         <AuditStat icon={ShieldCheck} label="Total events" value={logs.length} accent="#166534" iconBg="#dcfce7" />
-                        <AuditStat icon={Filter} label="Showing" value={filteredLogs.length} accent="#0f766e" iconBg="#ccfbf1" />
-                        <AuditStat icon={Clock} label="Action types" value={uniqueActions.length} accent="#b45309" iconBg="#fef3c7" />
+                        <AuditStat icon={Filter} label="Showing" value={filteredLogs.length} accent="#2563eb" iconBg="#dbeafe" />
+                        <AuditStat icon={Clock} label="Action types" value={uniqueActions.length} accent="#7c3aed" iconBg="#ede9fe" />
                     </div>
 
                     <section className="audit-console-filters" aria-label="Audit filters">
@@ -224,9 +224,10 @@ export default function Audit() {
                                                         <span
                                                             className={`w-2 h-2 rounded-full block ${
                                                                 actionColor === "green" ? "bg-emerald-500" :
-                                                                actionColor === "teal" ? "bg-teal-500" :
+                                                                actionColor === "blue" ? "bg-blue-500" :
                                                                 actionColor === "red" ? "bg-red-500" :
-                                                                actionColor === "amber" ? "bg-amber-500" : "bg-slate-400"
+                                                                actionColor === "amber" ? "bg-amber-500" :
+                                                                actionColor === "violet" ? "bg-violet-500" : "bg-slate-400"
                                                             }`}
                                                             aria-hidden="true"
                                                         />
@@ -268,6 +269,6 @@ export default function Audit() {
                     </div>
                 </>
             )}
-        </PageCanvas>
+        </div>
     );
 }

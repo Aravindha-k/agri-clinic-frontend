@@ -1,5 +1,4 @@
 import { PageLoader, PageHeader } from "../../components/ui/command";
-import { PageCanvas } from "../../components/motion/Cinematic";
 import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, Pencil, Trash2, Bug, Tag, X } from "lucide-react";
 import { getProblemCategories, createProblemCategory, updateProblemCategory, deleteProblemCategory } from "../../api/master.api";
@@ -105,7 +104,7 @@ export default function MasterProblemCategories() {
     };
 
     return (
-        <PageCanvas className="masters-admin page-container">
+        <div className="masters-admin page-container">
             <PageHeader
                 title="Visit Problem Types"
                 subtitle={`Manage visit types such as Pest, Disease, Nutrient Deficiency and Others · ${filtered.length} records`}
@@ -225,6 +224,6 @@ export default function MasterProblemCategories() {
                 onCancel={() => setConfirm({ open: false, item: null })}
                 loading={saving}
             />
-        </PageCanvas>
+        </div>
     );
 }

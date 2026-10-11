@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { getVisits, getVisitActivitySummary, deleteVisit } from "../api/visit.api";
 import { getEmployees } from "../api/employee.api";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -517,7 +516,7 @@ export default function Visits() {
   const showVisitEmpty = visitsView === "ready" && visits.length === 0;
 
   return (
-    <PageCanvas className="page-container page-container--visits">
+    <div className="page-container page-container--visits">
       <PageHeader
         title="Field Visits"
         subtitle="Monitor daily field activity and review submitted visits"
@@ -902,6 +901,6 @@ export default function Visits() {
           }
         }}
       />
-    </PageCanvas>
+    </div>
   );
 }

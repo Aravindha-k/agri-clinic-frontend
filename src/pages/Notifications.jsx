@@ -1,5 +1,4 @@
 import { PageLoader, PageHeader, EmptyState, ErrorRetry } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
@@ -21,7 +20,7 @@ function notifIcon(n) {
     return <CheckCircle className="w-4 h-4 text-emerald-500" />;
   if (t.includes("error") || t.includes("fail"))
     return <AlertCircle className="w-4 h-4 text-red-500" />;
-  return <Info className="w-4 h-4 text-teal-600" />;
+  return <Info className="w-4 h-4 text-sky-500" />;
 }
 
 function fmtNotifTime(d) {
@@ -88,7 +87,7 @@ export default function Notifications() {
   const showList = hasLoadedOnce && !error && notifications.length > 0;
 
   return (
-    <PageCanvas className="page-container notifications-page">
+    <div className="page-container notifications-page">
       <PageHeader
         title="Notifications"
         subtitle={
@@ -223,6 +222,6 @@ export default function Notifications() {
           ))}
         </div>
       )}
-    </PageCanvas>
+    </div>
   );
 }

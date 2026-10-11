@@ -1,5 +1,4 @@
 import { EmptyState, PageHeader, FilterBar, FilterField, FilterToolbarRow } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import ErrorRetry from "../components/ui/ErrorRetry";
 import { friendlyErrorMessage } from "../utils/friendlyError";
 import { BRAND } from "../theme/brand";
@@ -52,7 +51,7 @@ import {
   adminResetPasswordErrorMessage,
 } from "../utils/passwordPolicy";
 import {
-  Users, Activity, MapPin, Clock, Search, LayoutGrid, List, X, Phone,
+  Users, Activity, MapPin, WifiOff, Clock, Search, LayoutGrid, List, X, Phone,
   RefreshCw, Eye, EyeOff, ChevronRight, AlertCircle, UserCheck, Signal, Timer,
   Calendar, Shield, Building2, Briefcase, PlayCircle, StopCircle, Radio, Heart,
   Navigation, ToggleLeft, ToggleRight, Loader2, Plus, UserPlus, Hash,
@@ -60,8 +59,29 @@ import {
 } from "lucide-react";
 
 /* ================================================================
-   HOOKS — shared count-up lives in utils/motion.js
+   HOOKS
    ================================================================ */
+const useCountUp = (target, duration = 1000) => {
+  const [val, setVal] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const start = prev.current;
+    const end = Number(target) || 0;
+    if (start === end) { setVal(end); return; }
+    const t0 = performance.now();
+    let raf;
+    const step = (now) => {
+      const p = Math.min((now - t0) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(start + (end - start) * ease));
+      if (p < 1) raf = requestAnimationFrame(step);
+      else prev.current = end;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return val;
+};
 
 /* ================================================================
    HELPERS
@@ -136,9 +156,65 @@ const Bone = ({ className = "" }) => (
   <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />
 );
 
+const KpiSkeleton = () => (
+  <div className="employees-hr-stats">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <div key={i} className="employees-hr-skeleton-card">
+        <div className="skeleton w-9 h-9 rounded-xl" />
+        <div className="skeleton h-8 w-16 mt-3 rounded" />
+        <div className="skeleton h-3 w-24 mt-2 rounded" />
+      </div>
+    ))}
+  </div>
+);
+
 /* ================================================================
    SUB-COMPONENTS
    ================================================================ */
+
+/* --- KPI Card --- */
+const KpiCard = memo(({ icon: Icon, label, value, iconBg, iconColor }) => {
+  const animVal = useCountUp(value);
+  return (
+    <div className="employees-hr-stat">
+      <div className="employees-hr-stat__accent" style={{ background: iconColor }} aria-hidden="true" />
+      <div className="flex items-start gap-3">
+        <div className="employees-hr-stat__icon" style={{ background: iconBg, color: iconColor }}>
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="employees-hr-stat__value">{animVal}</p>
+          <p className="employees-hr-stat__label">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+KpiCard.displayName = "KpiCard";
+
+/* --- Employee Stats Section --- */
+const EmployeeStats = memo(({ stats, loading: isLoading, error: statsErr, onRetry }) => {
+  if (isLoading) return <KpiSkeleton />;
+  if (statsErr) return (
+    <div className="flex items-center gap-3 px-5 py-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+      <span className="font-medium">Failed to load stats.</span>
+      <button onClick={onRetry} className="ml-auto font-semibold text-red-600 hover:underline">Retry</button>
+    </div>
+  );
+
+  const s = stats || {};
+  return (
+    <div className="employees-hr-stats">
+      <KpiCard icon={Users} label="Total employees" value={s.total ?? 0} iconBg="#dcfce7" iconColor={BRAND.primary} />
+      <KpiCard icon={Activity} label="Active now" value={s.online ?? 0} iconBg="#ccfbf1" iconColor={BRAND.info} />
+      <KpiCard icon={MapPin} label="On field" value={s.on_field ?? 0} iconBg={BRAND.infoLight} iconColor={BRAND.info} />
+      <KpiCard icon={WifiOff} label="Offline" value={s.offline ?? 0} iconBg={BRAND.dangerLight} iconColor={BRAND.danger} />
+      <KpiCard icon={Timer} label="Avg hours today" value={s.avg_hours_today ?? 0} iconBg={BRAND.warningLight} iconColor={BRAND.warning} />
+    </div>
+  );
+});
+EmployeeStats.displayName = "EmployeeStats";
 
 const WorkforceStrip = memo(({ stats, loading: isLoading }) => {
   const cells = [
@@ -2254,7 +2330,7 @@ export default function Employees() {
       : `Are you sure you want to delete "${confirmEmpName}"? This action cannot be undone.`;
 
   return (
-    <PageCanvas className="employees-hr page-container">
+    <div className="employees-hr page-container">
 
       <PageHeader
         title="Employees"
@@ -2280,13 +2356,7 @@ export default function Employees() {
 
       <WorkforceStrip stats={stats} loading={loadingStats} />
 
-      {statsError && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span className="font-medium">Failed to load stats.</span>
-          <button onClick={() => loadStats()} className="ml-auto font-semibold text-red-600 hover:underline">Retry</button>
-        </div>
-      )}
+      <EmployeeStats stats={stats} loading={loadingStats} error={statsError} onRetry={() => loadStats()} />
 
       <EmployeeFilters
         searchTerm={searchTerm} setSearchTerm={setSearchTerm}
@@ -2356,6 +2426,6 @@ export default function Employees() {
           }
         }}
       />
-    </PageCanvas>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, RefreshCw, Users } from "lucide-react";
 import RouteFallback from "../components/RouteFallback";
@@ -160,7 +159,7 @@ export default function EmployeeRoutes() {
   }
 
   return (
-    <PageCanvas className="page-container page-container--ops route-history-page">
+    <div className="page-container page-container--ops route-history-page">
       <PageHeader
         title="Employee Route History"
         subtitle="Day markers for Start, submitted visits, and End — matched to mobile Day map"
@@ -225,6 +224,6 @@ export default function EmployeeRoutes() {
         variant="workspace"
       />
       ) : null}
-    </PageCanvas>
+    </div>
   );
 }

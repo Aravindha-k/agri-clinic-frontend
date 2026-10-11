@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PageCanvas } from "../../components/motion/Cinematic";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -12,10 +11,9 @@ import {
   RefreshCw,
   Search,
   Sprout,
-  Stethoscope,
   X,
 } from "lucide-react";
-import { EmptyState, PageHeader } from "../../components/ui/command";
+import { PageHeader } from "../../components/ui/command";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
@@ -69,7 +67,7 @@ function MasterRow({ item, sectionLabel, onEdit, onUnmap, busyId }) {
     <li className="cpd-master-row">
       <div className="cpd-master-row__text min-w-0">
         <p className="cpd-master-row__name">{item.name || "\u2014"}</p>
-        <p className="cpd-master-row__ta" lang="ta">{displayTamilName(item.tamil_name)}</p>
+        <p className="cpd-master-row__ta">{displayTamilName(item.tamil_name)}</p>
       </div>
       <div className="cpd-master-row__meta">
         <StatusPill active={item.is_active} />
@@ -387,7 +385,7 @@ export default function MasterCropPestDiseasePage() {
   const sectionLabel = tab === CPD_CATEGORY.PEST ? "Pest" : "Disease";
 
   return (
-    <PageCanvas className="masters-admin page-container cpd-detail-page">
+    <div className="masters-admin page-container cpd-detail-page">
       <PageHeader
         title={loading ? "Crop / Pest / Disease" : cropName}
         subtitle={
@@ -438,13 +436,13 @@ export default function MasterCropPestDiseasePage() {
         <>
           <section className="cpd-detail-hero" aria-labelledby="cpd-crop-heading">
             <div className="cpd-detail-hero__icon" aria-hidden="true">
-              <Sprout className="w-6 h-6" strokeWidth={2.25} />
+              <Sprout className="w-6 h-6" />
             </div>
             <div className="min-w-0">
               <h2 id="cpd-crop-heading" className="cpd-detail-hero__title">
                 {detail.crop.name_en || cropName}
               </h2>
-              <p className="cpd-detail-hero__ta" lang="ta">
+              <p className="cpd-detail-hero__ta">
                 {displayTamilName(detail.crop.tamil_name || detail.crop.name_ta)}
               </p>
               <div className="cpd-detail-hero__meta">
@@ -466,15 +464,14 @@ export default function MasterCropPestDiseasePage() {
               id="cpd-tab-pest"
               aria-selected={tab === CPD_CATEGORY.PEST}
               aria-controls="cpd-panel-pest"
-              className={`masters-admin-tab masters-admin-tab--pest ${tab === CPD_CATEGORY.PEST ? "masters-admin-tab--active" : ""}`}
+              className={`masters-admin-tab ${tab === CPD_CATEGORY.PEST ? "masters-admin-tab--active" : ""}`}
               onClick={() => {
                 setTab(CPD_CATEGORY.PEST);
                 setMappedSearch("");
               }}
             >
-              <Bug className="w-3.5 h-3.5" aria-hidden="true" />
               Pests
-              <span key={`pest-${detail.pest_count}`} className="masters-admin-tab__count">{detail.pest_count}</span>
+              <span className="masters-admin-tab__count">{detail.pest_count}</span>
             </button>
             <button
               type="button"
@@ -482,15 +479,14 @@ export default function MasterCropPestDiseasePage() {
               id="cpd-tab-disease"
               aria-selected={tab === CPD_CATEGORY.DISEASE}
               aria-controls="cpd-panel-disease"
-              className={`masters-admin-tab masters-admin-tab--disease ${tab === CPD_CATEGORY.DISEASE ? "masters-admin-tab--active" : ""}`}
+              className={`masters-admin-tab ${tab === CPD_CATEGORY.DISEASE ? "masters-admin-tab--active" : ""}`}
               onClick={() => {
                 setTab(CPD_CATEGORY.DISEASE);
                 setMappedSearch("");
               }}
             >
-              <Stethoscope className="w-3.5 h-3.5" aria-hidden="true" />
               Diseases
-              <span key={`disease-${detail.disease_count}`} className="masters-admin-tab__count">{detail.disease_count}</span>
+              <span className="masters-admin-tab__count">{detail.disease_count}</span>
             </button>
           </div>
 
@@ -521,22 +517,13 @@ export default function MasterCropPestDiseasePage() {
 
             {filteredMapped.length === 0 ? (
               <div className="masters-admin-empty cpd-empty">
-                <EmptyState
-                  icon={tab === CPD_CATEGORY.PEST ? Bug : Stethoscope}
-                  title={
-                    mappedSearch.trim()
-                      ? `No matching ${sectionLabel.toLowerCase()} masters found.`
-                      : tab === CPD_CATEGORY.PEST
-                        ? "No pests mapped to this crop."
-                        : "No diseases mapped to this crop."
-                  }
-                  subtitle={
-                    mappedSearch.trim()
-                      ? "Try a different English or Tamil name."
-                      : `Use “Add ${sectionLabel}” to map an existing master or create a new one.`
-                  }
-                  className="py-10"
-                />
+                <p className="text-base font-semibold text-slate-600">
+                  {mappedSearch.trim()
+                    ? `No matching ${sectionLabel.toLowerCase()} masters found.`
+                    : tab === CPD_CATEGORY.PEST
+                      ? "No pests mapped to this crop."
+                      : "No diseases mapped to this crop."}
+                </p>
               </div>
             ) : (
               <ul className="cpd-master-list">
@@ -790,6 +777,6 @@ export default function MasterCropPestDiseasePage() {
           </button>
         </div>
       ) : null}
-    </PageCanvas>
+    </div>
   );
 }

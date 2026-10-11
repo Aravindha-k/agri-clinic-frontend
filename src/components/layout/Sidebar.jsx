@@ -1,7 +1,7 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { lockOverlayScroll } from "../../utils/overlayLock";
-import { ChevronsLeft, ChevronsRight, LayoutDashboard, LogOut, X } from "lucide-react";
+import { LayoutDashboard, LogOut, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
 import companyLogo from "../../assets/logo.png";
@@ -45,8 +45,7 @@ function SidebarUserCard({ user, loading }) {
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs text-white"
         style={{
           background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
-          boxShadow:
-            "0 2px 6px rgba(0,0,0,0.25), 0 0 0 1.5px rgba(52,211,153,0.35)",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
         }}
       >
         {loading ? (
@@ -69,31 +68,10 @@ function SidebarUserCard({ user, loading }) {
   );
 }
 
-const COLLAPSE_KEY = "kavya.sidebar.collapsed";
-
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { logout, user, loading: authLoading } = useAuth();
   const sections = resolveNavSections(user);
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return window.localStorage.getItem(COLLAPSE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
-      } catch {
-        /* storage unavailable */
-      }
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -132,10 +110,10 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside
         className={`fixed lg:sticky lg:top-0 left-0 top-0 z-40 flex flex-col flex-shrink-0
-          h-screen h-dvh w-[248px] min-w-[248px] max-w-[248px]
-          transition-all duration-300 ease-in-out select-none
+          h-screen h-dvh w-[260px] min-w-[260px] max-w-[260px]
+          transition-transform duration-300 ease-in-out select-none
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 ${collapsed ? "sidebar--collapsed" : ""}`}
+          lg:translate-x-0`}
         style={{
           background: "var(--grad-sidebar)",
           borderRight: "1px solid rgba(255,255,255,0.06)",
@@ -214,7 +192,7 @@ export default function Sidebar({ isOpen, onClose }) {
         />
 
         <nav
-          className="sidebar-nav relative z-10 flex-1 min-h-0 px-3 py-3 overflow-y-auto overflow-x-hidden space-y-4
+          className="relative z-10 flex-1 min-h-0 px-3 py-3 overflow-y-auto overflow-x-hidden space-y-4
           [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full"
         >
           {sections.map((section) => (
@@ -244,32 +222,16 @@ export default function Sidebar({ isOpen, onClose }) {
 
           <SidebarUserCard user={user} loading={authLoading && !user} />
 
-          <div className="sidebar-footer-actions">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="sidebar-logout-btn"
-            >
-              <LogOut className="w-[17px] h-[17px]" />
-              <span>Sign Out</span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="sidebar-collapse-btn"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-expanded={!collapsed}
-              title={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
-            >
-              {collapsed ? (
-                <ChevronsRight className="w-3.5 h-3.5" aria-hidden="true" />
-              ) : (
-                <ChevronsLeft className="w-3.5 h-3.5" aria-hidden="true" />
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="sidebar-logout-btn"
+          >
+            <LogOut className="w-[17px] h-[17px]" />
+            <span>Sign Out</span>
+          </button>
 
-          <p className="sidebar-footer-note text-[9.5px] text-white/15 text-center pb-1">
+          <p className="text-[9.5px] text-white/15 text-center pb-1">
             © 2025–2026 Kavya Agri Clinic
           </p>
         </div>

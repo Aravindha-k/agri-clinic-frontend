@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, lazy, Suspense } from "react";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { useParams, useNavigate } from "react-router-dom";
 import { getFarmerDetail, getFarmerFields, getFarmerVisits, uploadFarmerPhoto, deleteFarmer } from "../api/farmer.api";
 import ProfilePhotoUpload from "../components/ui/ProfilePhotoUpload";
@@ -491,7 +490,7 @@ export default function FarmerDetail() {
     ];
 
     return (
-        <PageCanvas className="farmer-detail space-y-5">
+        <div className="farmer-detail space-y-5">
             <div className="farmer-detail-toolbar">
                 <button type="button" onClick={() => navigate("/farmers")} className="farmer-detail-back">
                     <ArrowLeft className="w-4 h-4" /> Back to Farmers
@@ -868,6 +867,6 @@ export default function FarmerDetail() {
                     }
                 }}
             />
-        </PageCanvas>
+        </div>
     );
 }

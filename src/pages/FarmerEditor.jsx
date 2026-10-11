@@ -1,5 +1,4 @@
 import { PageLoader, PageHeader } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
@@ -89,7 +88,7 @@ export default function FarmerEditor({ mode = "create" }) {
     }
 
     return (
-        <PageCanvas className="page-container max-w-3xl">
+        <div className="page-container max-w-3xl">
             <PageHeader
                 title={isEdit ? "Edit Farmer" : "Add Farmer"}
                 subtitle={isEdit ? "Update farmer profile and location" : "Create a farmer profile for visit tracking"}
@@ -118,6 +117,6 @@ export default function FarmerEditor({ mode = "create" }) {
                     fieldErrors={fieldErrors}
                 />
             </div>
-        </PageCanvas>
+        </div>
     );
 }
