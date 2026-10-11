@@ -67,7 +67,7 @@ export default function SidebarNavItem({ item, onClose }) {
         onClick={onClose}
         className={({ isActive }) =>
           `sidebar-nav-item relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 group border border-transparent
-          ${isActive ? "sidebar-nav-item--active text-white" : "text-white/55 hover:text-white/90 hover:bg-white/[0.04]"}`
+          ${isActive ? "sidebar-nav-item--active text-white" : "text-white/70 hover:text-white/95 hover:bg-white/[0.04]"}`
         }
       >
         {({ isActive }) => (
@@ -82,7 +82,7 @@ export default function SidebarNavItem({ item, onClose }) {
               className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${
                 isActive
                   ? "text-emerald-400"
-                  : "text-white/40 group-hover:text-emerald-400/70"
+                  : "text-white/55 group-hover:text-emerald-400/80"
               }`}
             />
             <span className="flex-1 transition-all">{label}</span>

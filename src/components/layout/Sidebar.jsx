@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import SidebarNavItem from "./SidebarNavItem";
 import companyLogo from "../../assets/logo.png";
 import { NAV_SECTIONS } from "./navConfig";
-import { filterNavSectionsForUser } from "../../utils/roles";
+import { filterNavSectionsForUser, isOwnerUser, isStaffAdminUser } from "../../utils/roles";
 
 function resolveNavSections(user) {
   if (!Array.isArray(NAV_SECTIONS) || NAV_SECTIONS.length === 0) {
@@ -27,13 +27,13 @@ function SidebarUserCard({ user, loading }) {
 
   const role = loading
     ? "Signing in…"
-    : user?.is_superuser
-      ? "Owner"
-      : user?.is_staff
-        ? "Administrator"
-        : user
-          ? "Field Agent"
-          : "Administrator";
+    : !user
+      ? "Administrator"
+      : isOwnerUser(user)
+        ? "Owner"
+        : isStaffAdminUser(user)
+          ? "Administrator"
+          : "Field Agent";
 
   const initials = (
     user?.first_name?.[0] || user?.username?.[0] || "A"
@@ -62,7 +62,7 @@ function SidebarUserCard({ user, loading }) {
         >
           {displayName}
         </p>
-        <p className="text-[10px] text-emerald-400/60 truncate">{role}</p>
+        <p className="text-[10px] text-emerald-400/80 truncate">{role}</p>
       </div>
     </div>
   );
@@ -192,7 +192,7 @@ export default function Sidebar({ isOpen, onClose }) {
         />
 
         <nav
-          className="relative z-10 flex-1 min-h-0 px-3 py-3 overflow-y-auto overflow-x-hidden space-y-4
+          className="relative z-10 flex-1 min-h-0 px-3 py-3 overflow-y-auto overflow-x-hidden space-y-3
           [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full"
         >
           {sections.map((section) => (

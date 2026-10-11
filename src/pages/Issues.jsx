@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { matchesAnyFieldPrefix } from "../utils/searchMatch";
+import { Leaf, RefreshCw, Search, Wheat, X } from "lucide-react";
 
 /** Prefer API name fields used by Masters → Crops. */
 function cropName(crop) {
