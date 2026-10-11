@@ -79,9 +79,6 @@ export default function Header({ onMenuClick }) {
   const badge = chrome?.badge ?? null;
   const actions = chrome?.actions ?? null;
   const hasChrome = Boolean(title);
-  const PageIcon = chrome?.icon ?? routeMeta?.icon ?? null;
-  const pageTone = chrome?.tone ?? routeMeta?.tone ?? "emerald";
-  const eyebrow = routeMeta?.crumb ?? routeMeta?.eyebrow ?? null;
 
   return (
     <header
@@ -105,23 +102,7 @@ export default function Header({ onMenuClick }) {
 
             {hasChrome && (
               <div className={`app-header__chrome min-w-0 ${chrome?.className || ""}`}>
-                {eyebrow ? (
-                  <nav
-                    className={`app-header__crumb app-header__eyebrow--${pageTone}`}
-                    aria-label="Breadcrumb"
-                  >
-                    {eyebrow}
-                  </nav>
-                ) : null}
                 <div className="app-header__title-row">
-                  {PageIcon ? (
-                    <span
-                      className={`app-header__icon raised-icon-well raised-icon-well--${pageTone}`}
-                      aria-hidden="true"
-                    >
-                      <PageIcon strokeWidth={2.1} />
-                    </span>
-                  ) : null}
                   <h1 className="app-header__title">{title}</h1>
                   {badge}
                 </div>
@@ -183,10 +164,10 @@ export default function Header({ onMenuClick }) {
                   >
                     <div className="header-profile-avatar" aria-hidden="true">{initials}</div>
                     <div className="hidden md:block text-left min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[140px]">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight max-w-[120px]">
                         {displayName}
                       </p>
-                      <p className="text-[10.5px] text-slate-500 leading-tight capitalize font-semibold tracking-wide">
+                      <p className="text-[10px] text-slate-500 leading-tight capitalize">
                         {user?.is_superuser
                           ? "Owner"
                           : user?.is_staff

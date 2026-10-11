@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PageCanvas } from "../components/motion/Cinematic";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getFarmers, deleteFarmer } from "../api/farmer.api";
 import { fetchCachedActiveVillages } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
@@ -133,10 +132,8 @@ export default function FarmersList() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchParams] = useSearchParams();
-  const initialSearch = searchParams.get("search")?.trim() ?? "";
-  const [searchInput, setSearchInput] = useState(initialSearch);
-  const [search, setSearch] = useState(initialSearch);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [villageFilter, setVillageFilter] = useState("");
   const [page, setPage] = useState(1);
   const [villageOptions, setVillageOptions] = useState([]);
@@ -318,7 +315,7 @@ export default function FarmersList() {
   };
 
   return (
-    <PageCanvas className="page-container page-container--farmers">
+    <div className="page-container page-container--farmers">
       <PageHeader
         title="Farmers"
         subtitle={
@@ -708,6 +705,6 @@ export default function FarmersList() {
           }
         }}
       />
-    </PageCanvas>
+    </div>
   );
 }

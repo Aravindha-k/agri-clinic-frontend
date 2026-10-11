@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { useNavigate, useLocation } from "react-router-dom";
 import CustomDropdown from "../components/CustomDropdown";
 import VisitMediaUploadField from "../components/visits/VisitMediaUploadField";
@@ -263,7 +262,7 @@ export default function CreateVisit() {
   }));
 
   return (
-    <PageCanvas className="page-container page-container--form max-w-5xl" variant="soft">
+    <div className="page-container page-container--form max-w-5xl">
       <PageHeader
         title="Add Visit"
         subtitle="Record a field visit with farmer, crop, problem, and media"
@@ -424,6 +423,6 @@ export default function CreateVisit() {
           </button>
         </div>
       </form>
-    </PageCanvas>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PageCanvas } from "../../components/motion/Cinematic";
 import { Link } from "react-router-dom";
 import {
   ChevronLeft,
@@ -115,7 +114,7 @@ export default function MasterEmployeeLocationsPage() {
   }, [loading, rows.length, total]);
 
   return (
-    <PageCanvas className="masters-admin page-container emp-loc-page">
+    <div className="masters-admin page-container emp-loc-page">
       <PageHeader
         title="Employee Territories"
         subtitle="Assign villages and operational areas to field employees"
@@ -294,6 +293,6 @@ export default function MasterEmployeeLocationsPage() {
         employee={viewEmployee}
         onClose={() => setViewEmployee(null)}
       />
-    </PageCanvas>
+    </div>
   );
 }

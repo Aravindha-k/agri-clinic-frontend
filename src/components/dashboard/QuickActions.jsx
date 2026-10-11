@@ -8,52 +8,50 @@ import {
   Plus,
   ClipboardList,
   Zap,
-  ChevronRight,
 } from "lucide-react";
 
-/* On-brand tint keys → raised-icon-well variants (no off-brand SaaS hues) */
 const ACTIONS = [
   {
     label: "Live Tracking",
     desc: "GPS map & employee status",
     to: "/tracking",
     icon: MapPin,
-    tint: "emerald",
+    color: "from-emerald-500 to-teal-600",
   },
   {
     label: "Route History",
     desc: "Daily field routes",
     to: "/tracking/routes",
     icon: Route,
-    tint: "teal",
+    color: "from-indigo-500 to-violet-600",
   },
   {
     label: "Field Visits",
     desc: "Evidence & visit records",
     to: "/visits",
     icon: ClipboardList,
-    tint: "forest",
+    color: "from-sky-500 to-blue-600",
   },
   {
     label: "Add Farmer",
     desc: "Register new farmer",
     to: "/farmers/new",
     icon: Plus,
-    tint: "amber",
+    color: "from-amber-500 to-orange-600",
   },
   {
     label: "Employees",
     desc: "Staff & device info",
     to: "/employees",
     icon: Users,
-    tint: "slate",
+    color: "from-violet-500 to-purple-600",
   },
   {
     label: "Reports",
     desc: "Analytics & exports",
     to: "/reports",
     icon: BarChart3,
-    tint: "emerald",
+    color: "from-rose-500 to-pink-600",
   },
 ];
 
@@ -65,24 +63,22 @@ export default function QuickActions() {
           <h3 className="dashboard-quick-actions__title">Quick Actions</h3>
           <p className="dashboard-quick-actions__subtitle">Jump to common operations</p>
         </div>
-        <div className="raised-icon-well raised-icon-well--emerald w-9 h-9 !rounded-xl">
-          <Zap className="w-4 h-4" aria-hidden="true" />
+        <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+          <Zap className="w-4 h-4 text-emerald-600" aria-hidden="true" />
         </div>
       </div>
       <div className="dashboard-quick-actions__grid">
-        {ACTIONS.map(({ label, desc, to, icon: Icon, tint }) => (
+        {ACTIONS.map(({ label, desc, to, icon: Icon, color }) => (
           <Link key={to} to={to} className="dashboard-quick-action group">
-            <div className={`raised-icon-well raised-icon-well--${tint} dashboard-quick-action__icon`}>
+            <div
+              className={`dashboard-quick-action__icon bg-gradient-to-br ${color}`}
+            >
               <Icon className="w-4 h-4" strokeWidth={2.25} aria-hidden="true" />
             </div>
-            <div className="min-w-0">
+            <div>
               <p className="dashboard-quick-action__label">{label}</p>
               <p className="dashboard-quick-action__desc">{desc}</p>
             </div>
-            <ChevronRight
-              className="dashboard-quick-action__arrow w-3.5 h-3.5"
-              aria-hidden="true"
-            />
           </Link>
         ))}
       </div>

@@ -1,5 +1,4 @@
 import { PageLoader, PageHeader, ErrorRetry } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getVisitDetail, updateVisit } from "../api/visit.api";
@@ -173,7 +172,7 @@ export default function EditVisit() {
   }
 
   return (
-    <PageCanvas className="page-container page-container--form max-w-5xl" variant="soft">
+    <div className="page-container page-container--form max-w-5xl">
       <PageHeader
         title="Edit Visit"
         subtitle="Update visit details and field observations"
@@ -303,6 +302,6 @@ export default function EditVisit() {
           </button>
         </div>
       </form>
-    </PageCanvas>
+    </div>
   );
 }

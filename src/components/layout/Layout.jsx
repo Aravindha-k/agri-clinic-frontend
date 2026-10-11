@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import PageErrorBoundary from "./PageErrorBoundary";
@@ -16,27 +15,13 @@ import {
 function LayoutOutlet() {
   const location = useLocation();
   const soft = useSoftRefresh();
-  const reduce = useReducedMotion();
   const refreshKey = soft?.refreshKey ?? 0;
 
   return (
     <PageErrorBoundary resetKey={`${location.pathname}:${refreshKey}`}>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={location.pathname}
-          className="page-enter"
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-        >
-          {/* Fragment key remounts the page on soft refresh without a DOM node,
-              keeping `.page-enter > .page-root` selectors intact. */}
-          <React.Fragment key={`${location.pathname}:${refreshKey}`}>
-            <Outlet />
-          </React.Fragment>
-        </motion.div>
-      </AnimatePresence>
+      <div key={`${location.pathname}:${refreshKey}`} className="page-enter">
+        <Outlet />
+      </div>
     </PageErrorBoundary>
   );
 }

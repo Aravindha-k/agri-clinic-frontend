@@ -1,10 +1,8 @@
 import { PageLoader, PageHeader, EmptyState, ErrorRetry, FilterBar, FilterField, FilterToolbarRow, FilterActiveRow } from "../components/ui/command";
-import { PageCanvas } from "../components/motion/Cinematic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAllMasterCrops } from "../api/master.api";
 import { logApiDiagnostics } from "../utils/apiDiagnostics";
 import { matchesAnyFieldPrefix } from "../utils/searchMatch";
-import { Leaf, RefreshCw, Search, Wheat, X } from "lucide-react";
 
 /** Prefer API name fields used by Masters → Crops. */
 function cropName(crop) {
@@ -71,7 +69,7 @@ export default function Issues() {
   }, [crops, search]);
 
   return (
-    <PageCanvas className="page-container crop-issues-page">
+    <div className="page-container crop-issues-page">
       <PageHeader
         title="Crop Directory"
         subtitle="Browse the crop directory used when recording field visits."
@@ -204,7 +202,7 @@ export default function Issues() {
                           <div className="min-w-0">
                             <p className="crop-issues-crop-cell__name">{cropName(crop)}</p>
                             {crop.name_ta ? (
-                              <p className="crop-issues-crop-cell__sub" lang="ta">{crop.name_ta}</p>
+                              <p className="crop-issues-crop-cell__sub">{crop.name_ta}</p>
                             ) : null}
                           </div>
                         </div>
@@ -247,7 +245,7 @@ export default function Issues() {
                     <div className="min-w-0 flex-1">
                       <p className="crop-issues-crop-cell__name">{cropName(crop)}</p>
                       {crop.name_ta ? (
-                        <p className="crop-issues-crop-cell__sub" lang="ta">{crop.name_ta}</p>
+                        <p className="crop-issues-crop-cell__sub">{crop.name_ta}</p>
                       ) : null}
                     </div>
                     <span
@@ -272,6 +270,6 @@ export default function Issues() {
           </div>
         </div>
       )}
-    </PageCanvas>
+    </div>
   );
 }

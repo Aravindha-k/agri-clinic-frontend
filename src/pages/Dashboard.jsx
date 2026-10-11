@@ -1,9 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { motion, useReducedMotion, useMotionValue } from "framer-motion";
-import { CINE_EASE, SlideIn, ScrollRise, KineticText, useEntrancePlayed } from "../components/motion/Cinematic";
 import { extractDashboardObject, extractDashboardList } from "../utils/dashboardData";
 import { useNavigate } from "react-router-dom";
-import { getDashboardStats, getDashboardChartStats } from "../api/dashboard.api";
+import { getDashboardStats, getDashboardChartStats, getVisitTrends } from "../api/dashboard.api";
 import {
   getEmployeeGeo,
   getWorkdayHistory,
@@ -18,6 +16,7 @@ import {
   normalizeTrackingEmployee,
 } from "../utils/trackingNormalize";
 import {
+  buildLiveOpsStats,
   buildOpsAlerts,
   buildUnifiedActivityFeed,
 } from "../utils/dashboardOps";
@@ -28,7 +27,6 @@ import {
   visitEmployeeLabel,
 } from "../utils/visitFarmer";
 import { resolveVillageLabel } from "../utils/displayValue";
-import { farmerVillage } from "../utils/farmerListDisplay";
 import { resolveVisitCropDisplay } from "../utils/visitDisplay";
 import { PageHeader, OpsStatusBadge, GpsIndicator, EmptyState, ErrorRetry } from "../components/ui/command";
 import ProfileAvatar from "../components/ui/ProfileAvatar";
@@ -46,7 +44,9 @@ import {
   getMapCenter,
 } from "../utils/mapCoordinates";
 import QuickActions from "../components/dashboard/QuickActions";
+import LiveOperationsPanel from "../components/dashboard/LiveOperationsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
+import OwnerControlPanel from "../components/dashboard/OwnerControlPanel";
 import { KPI_THEMES } from "../theme/brand";
 import UnifiedActivityFeed from "../components/dashboard/UnifiedActivityFeed";
 import { formatIndiaDate, formatIndiaTime } from "../utils/businessDate";
@@ -55,49 +55,29 @@ import {
   DashboardShellErrorBoundary,
 } from "../components/dashboard/WidgetErrorBoundary";
 import { resolveVisitAttachmentCount } from "../utils/visitAttachments";
+import { formatEvidenceRateLabel } from "../utils/analyticsLabels";
 
 import PremiumKpiCard from "../components/ui/PremiumKpiCard";
 const DashboardLiveMap = lazy(() => import("../components/dashboard/DashboardLiveMap"));
+const DashboardVisitChart = lazy(() => import("../components/dashboard/DashboardVisitChart"));
 import {
   Leaf,
   Calendar,
   RefreshCw,
+  Clock,
   Radio,
   Sprout,
+  LandPlot,
   AlertTriangle,
   Users,
   CalendarCheck,
   ChevronRight,
   Eye,
-  Search,
-  FileCheck2,
+  Route,
+  Paperclip,
 } from "lucide-react";
 
 const formatDate = (d) => formatIndiaDate(d);
-
-const SEGMENTS = 10;
-
-function SegmentedBar({ pct, light = false }) {
-  const filled = Math.round(Math.min(1, Math.max(0, pct)) * SEGMENTS);
-  return (
-    <div
-      className={`seg-bar${light ? " seg-bar--light" : ""}`}
-      role="img"
-      aria-label={`${Math.round(pct * 100)}%`}
-    >
-      {Array.from({ length: SEGMENTS }).map((_, i) => (
-        <span key={i} className={`seg-bar__seg${i < filled ? " is-on" : ""}`} aria-hidden />
-      ))}
-    </div>
-  );
-}
-
-const opsGreeting = () => {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-};
 
 const formatTime = (d) => formatIndiaTime(d);
 
@@ -150,19 +130,6 @@ const SectionHeader = ({ icon: Icon, title, subtitle, right }) => (
    ================================================================ */
 const Dashboard = () => {
   const navigate = useNavigate();
-  const reduceMotion = useReducedMotion();
-  const entrancePlayed = useEntrancePlayed();
-  // Parallax depth layer — the hero band's glow drifts slower than the
-  // page scroll, giving the canvas a camera-depth feel.
-  const bandBgY = useMotionValue(0);
-  useEffect(() => {
-    if (reduceMotion) return undefined;
-    const el = document.querySelector(".app-shell__content");
-    if (!el) return undefined;
-    const onScroll = () => bandBgY.set(Math.min(48, el.scrollTop * -0.14));
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [reduceMotion, bandBgY]);
   // Add new stats for visit dashboard, keep old for existing cards
   const [stats, setStats] = useState({
     farmers: 0,
@@ -176,7 +143,7 @@ const Dashboard = () => {
     onlineNow: 0,
     gpsIssues: 0,
   });
-
+  const [visitTrends, setVisitTrends] = useState([]);
   const [geoData, setGeoData] = useState([]);
   const [workdays, setWorkdays] = useState([]);
   const [recentVisits, setRecentVisits] = useState([]);
@@ -188,7 +155,6 @@ const Dashboard = () => {
   });
   const [trackingEmployees, setTrackingEmployees] = useState([]);
   const [recentFarmers, setRecentFarmers] = useState([]);
-  const [quickSearch, setQuickSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -235,14 +201,10 @@ const Dashboard = () => {
     }
 
     try {
-    // Render as soon as the KPI summary lands — the page must not wait
-    // for the slowest optional feed (visits/geo/trends stream in after).
-    const summaryR = await Promise.resolve(getDashboardStats()).then(
-      (value) => ({ status: "fulfilled", value }),
-      (reason) => ({ status: "rejected", reason })
-    );
-    const othersP = Promise.allSettled([
+    const [summaryR, chartR, trendsR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await Promise.allSettled([
+      getDashboardStats(),
       getDashboardChartStats(),
+      getVisitTrends(),
       getEmployeeGeo(),
       getWorkdayHistory(),
       getVisits({ ordering: "-created_at", page_size: 100 }),
@@ -283,12 +245,6 @@ const Dashboard = () => {
       }
     }
 
-    // Unlock the shell now — KPIs render while the remaining feeds stream in.
-    hasLoadedRef.current = true;
-    setLoading(false);
-
-    const [chartR, geoR, wdR, visitsR, trackingR, adminR, farmersR] = await othersP;
-
     // -- Chart stats (optional) — GET dashboard/stats/ --
     if (chartR.status === "fulfilled") {
       const d = extractDashboardObject(chartR.value) ?? {};
@@ -315,6 +271,41 @@ const Dashboard = () => {
       }));
     } else if (trackingR.status === "rejected") {
       logApiFailure("GET tracking/admin/dashboard-stats/", trackingR);
+    }
+
+    // -- Visit trends (optional) — GET dashboard/visit-trends/ --
+    if (trendsR.status === "fulfilled") {
+      const raw = extractDashboardObject(trendsR.value) ?? {};
+      const daily = Array.isArray(raw)
+        ? raw
+        : (raw.daily ??
+          raw.monthly ??
+          raw.visits_per_month ??
+          raw.monthly_visits ??
+          raw.results ??
+          raw.data ??
+          []);
+      if (Array.isArray(daily) && daily.length > 0) {
+        setVisitTrends(
+          daily.map((x) => {
+            const rawDate = x.visit_date ?? x.month ?? x.period ?? x.label;
+            const label =
+              x.month_label ??
+              (rawDate
+                ? new Date(rawDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+                : "—");
+            return {
+              label,
+              count: x.count ?? x.visits ?? x.total ?? 0,
+            };
+          })
+        );
+      } else {
+        setVisitTrends([]);
+      }
+    } else {
+      logApiFailure("GET dashboard/visit-trends/", trendsR);
+      setVisitTrends([]);
     }
 
     // -- Geo map (optional) — GET tracking/admin/geo/employees/ --
@@ -374,6 +365,8 @@ const Dashboard = () => {
     } else {
       setRecentFarmers([]);
     }
+
+    hasLoadedRef.current = true;
     } finally {
       loadInFlightRef.current = false;
       setLoading(false);
@@ -408,6 +401,14 @@ const Dashboard = () => {
         ? "No valid employee GPS location available yet."
         : null;
 
+  const liveOps = useMemo(() => {
+    try {
+      return buildLiveOpsStats(stats ?? {}, trackingEmployees ?? [], workdays ?? []);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("[Dashboard] liveOps build failed:", err);
+      return {};
+    }
+  }, [stats, trackingEmployees, workdays]);
   const opsAlerts = useMemo(() => {
     try {
       return buildOpsAlerts(trackingEmployees ?? [], workdays ?? []);
@@ -429,61 +430,23 @@ const Dashboard = () => {
     }
   }, [workdays, feedVisits, recentFarmers]);
 
-  const employeeNameById = useMemo(() => {
-    const map = new Map();
-    (trackingEmployees ?? []).forEach((e) => {
-      const name = e?.employee_name ?? e?.name;
-      if (!name || name === "Agent") return;
-      [e?.user_id, e?.id, e?.employee_id].forEach((id) => {
-        if (id != null && !map.has(String(id))) map.set(String(id), name);
-      });
-    });
-    return map;
-  }, [trackingEmployees]);
-
-  const teamPerformance = useMemo(() => {
-    const counts = new Map();
-    (feedVisits ?? []).forEach((v) => {
-      let name = visitEmployeeLabel(v);
-      if (!name || name === "\u2014") {
-        const id = v?.employee?.id ?? v?.employee_id ?? v?.employee;
-        name = id != null ? employeeNameById.get(String(id)) : null;
-      }
-      if (!name || name === "\u2014") name = "Name unavailable";
-      const prev = counts.get(name) ?? { name, visits: 0 };
-      prev.visits += 1;
-      counts.set(name, prev);
-    });
-    const rows = [...counts.values()]
-      .sort((a, b) => b.visits - a.visits)
-      .slice(0, 5);
-    const max = rows[0]?.visits ?? 0;
-    return rows.map((r) => ({ ...r, pct: max > 0 ? r.visits / max : 0 }));
-  }, [feedVisits, employeeNameById]);
-
-  const dutyAvatars = useMemo(() => {
-    return (trackingEmployees ?? [])
-      .filter((e) => e?.is_working || e?.is_online)
-      .slice(0, 4);
-  }, [trackingEmployees]);
-
-  const farmersVisitedToday = useMemo(() => {
-    const today = new Date().toDateString();
-    const ids = new Set();
-    (feedVisits ?? []).forEach((v) => {
-      const d = new Date(v.visit_date ?? v.created_at);
-      if (!Number.isFinite(d.getTime()) || d.toDateString() !== today) return;
-      const key = v.farmer_id ?? v.farmer?.id ?? resolveVisitFarmer(v).name;
-      if (key && key !== "—") ids.add(String(key));
-    });
-    return ids.size;
+  const recentUploads = useMemo(() => {
+    return (feedVisits ?? [])
+      .map((v) => {
+        const count = resolveVisitAttachmentCount(v);
+        if (!count || count <= 0) return null;
+        const farmer = resolveVisitFarmer(v);
+        return {
+          id: `upload-${v.id}`,
+          title: `${count} file${count === 1 ? "" : "s"} uploaded`,
+          detail: `${farmer.name !== "—" ? farmer.name : "Farmer"} · Visit #${v.id}`,
+          at: v.visit_date ?? v.created_at,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.at) - new Date(a.at))
+      .slice(0, 6);
   }, [feedVisits]);
-
-  const handleQuickSearch = (e) => {
-    e.preventDefault();
-    const q = quickSearch.trim();
-    navigate(q ? `/farmers?search=${encodeURIComponent(q)}` : "/farmers");
-  };
 
   /* ---- Loading state ---- */
   if (loading) {
@@ -523,85 +486,66 @@ const Dashboard = () => {
         />
       )}
 
-      <motion.div
-        className="dashboard-bento"
-        initial={reduceMotion || entrancePlayed ? false : { opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: CINE_EASE }}
-      >
-      <div className="dashboard-ops-band">
-        <motion.div
-          className="dashboard-ops-band__backdrop"
-          style={{ y: bandBgY }}
-          aria-hidden="true"
-        />
-        <div className="dashboard-ops-band__lead">
-          <div className="raised-icon-well raised-icon-well--emerald dashboard-ops-band__icon">
-            <Sprout className="w-5 h-5" strokeWidth={2.25} aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <p className="dashboard-ops-band__greeting">
-              <KineticText text={opsGreeting()} />
-            </p>
-            <h2 className="dashboard-ops-band__title">
-              <KineticText text="Kavya Agri Clinic Operations" delay={0.12} />
-            </h2>
-            <p className="dashboard-ops-band__sub">Today&apos;s field activity is live</p>
-          </div>
-        </div>
-        <div className="dashboard-ops-band__actions">
-          <form
-            className="dashboard-ops-search"
-            onSubmit={handleQuickSearch}
-            role="search"
-          >
-            <Search className="w-4 h-4" aria-hidden="true" />
-            <input
-              type="search"
-              value={quickSearch}
-              onChange={(e) => setQuickSearch(e.target.value)}
-              placeholder="Search farmers…"
-              aria-label="Search farmers"
-            />
-          </form>
-          {dutyAvatars.length > 0 && (
-            <div className="dashboard-ops-avatars" title="On duty now">
-              {dutyAvatars.map((emp, i) => (
-                <ProfileAvatar
-                  key={emp.user_id ?? emp.id ?? i}
-                  entity={emp}
-                  name={emp.employee_name ?? emp.name}
-                  size="sm"
-                  online={emp.is_online ?? emp.is_working}
-                  className="dashboard-ops-avatar"
-                />
-              ))}
-              {stats.workingNow > dutyAvatars.length && (
-                <span className="dashboard-ops-avatar-more">
-                  +{stats.workingNow - dutyAvatars.length}
-                </span>
-              )}
-            </div>
-          )}
-          {(stats.workingNow > 0 || stats.onlineNow > 0) && (
-            <div className="dashboard-ops-band__status">
-              <button
-                type="button"
-                onClick={() => navigate("/tracking")}
-                className="dashboard-ops-band__live"
-              >
-                <Radio className="w-3.5 h-3.5" aria-hidden="true" />
-                LIVE
-              </button>
-              <span className="dashboard-ops-band__meta">
-                {stats.workingNow} working · {stats.onlineNow} GPS online
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
+      <div className="dashboard-bento">
       <div className="dashboard-kpi-row">
+        <PremiumKpiCard
+          icon={Sprout}
+          label="All Farmers"
+          value={stats.farmers}
+          gradient={KPI_THEMES.farmers.gradient}
+          iconBg={KPI_THEMES.farmers.iconBg}
+          iconColor={KPI_THEMES.farmers.iconColor}
+          onClick={() => navigate("/farmers")}
+          trend={{ direction: "neutral", text: "Registry total" }}
+        />
+        <PremiumKpiCard
+          icon={LandPlot}
+          label="Total Fields"
+          value={stats.fields}
+          gradient={KPI_THEMES.fields.gradient}
+          iconBg={KPI_THEMES.fields.iconBg}
+          iconColor={KPI_THEMES.fields.iconColor}
+          trend={{ direction: "neutral", text: "Mapped fields" }}
+        />
+        <PremiumKpiCard
+          icon={Calendar}
+          label="Total Visits"
+          value={stats.totalVisits}
+          gradient={KPI_THEMES.visits.gradient}
+          iconBg={KPI_THEMES.visits.iconBg}
+          iconColor={KPI_THEMES.visits.iconColor}
+          onClick={() => navigate("/visits")}
+          subValue={stats.todayVisits > 0 ? `${stats.todayVisits} today` : undefined}
+          trend={{ direction: "neutral", text: "All-time total" }}
+        />
+        <PremiumKpiCard
+          icon={AlertTriangle}
+          label="Open Issues"
+          value={stats.issues_open}
+          gradient={KPI_THEMES.issues.gradient}
+          iconBg={KPI_THEMES.issues.iconBg}
+          iconColor={KPI_THEMES.issues.iconColor}
+          onClick={() => navigate("/crop-issues")}
+          trend={
+            stats.issues_open > 0
+              ? { direction: "neutral", text: "Open now" }
+              : { direction: "neutral", text: "None open" }
+          }
+        />
+        <PremiumKpiCard
+          icon={CalendarCheck}
+          label="Today's Visits"
+          value={stats.todayVisits}
+          gradient={KPI_THEMES.today.gradient}
+          iconBg={KPI_THEMES.today.iconBg}
+          iconColor={KPI_THEMES.today.iconColor}
+          onClick={() => navigate("/visits")}
+          trend={
+            stats.todayVisits > 0
+              ? { direction: "neutral", text: "Submitted today" }
+              : { direction: "neutral", text: "No visits yet" }
+          }
+        />
         <PremiumKpiCard
           icon={Users}
           label="Working Now"
@@ -625,7 +569,7 @@ const Dashboard = () => {
         />
         <PremiumKpiCard
           icon={Radio}
-          label="GPS Online"
+          label="GPS Compliance"
           value={stats.onlineNow}
           gradient={KPI_THEMES.gps.gradient}
           iconBg={KPI_THEMES.gps.iconBg}
@@ -633,7 +577,7 @@ const Dashboard = () => {
           onClick={() => navigate("/tracking")}
           subValue={
             stats.workingNow > 0
-              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% of working`
+              ? `${Math.round((stats.onlineNow / stats.workingNow) * 100)}% online`
               : mappedGeoCount > 0
                 ? `${mappedGeoCount} on map`
                 : "Live GPS status"
@@ -644,170 +588,111 @@ const Dashboard = () => {
               : { direction: "neutral", text: "Live snapshot" }
           }
         />
-        <PremiumKpiCard
-          icon={CalendarCheck}
-          label="Today's Visits"
-          value={stats.todayVisits}
-          gradient={KPI_THEMES.today.gradient}
-          iconBg={KPI_THEMES.today.iconBg}
-          iconColor={KPI_THEMES.today.iconColor}
-          onClick={() => navigate("/visits")}
-          trend={
-            stats.todayVisits > 0
-              ? { direction: "neutral", text: "Submitted today" }
-              : { direction: "neutral", text: "No visits yet" }
-          }
-        />
-        <PremiumKpiCard
-          icon={Sprout}
-          label="Farmers Visited Today"
-          value={farmersVisitedToday}
-          gradient={KPI_THEMES.farmers.gradient}
-          iconBg={KPI_THEMES.farmers.iconBg}
-          iconColor={KPI_THEMES.farmers.iconColor}
-          onClick={() => navigate("/visits")}
-          trend={{
-            direction: "neutral",
-            text:
-              farmersVisitedToday > 0 ? "Unique farmers" : "No visits yet",
-          }}
-        />
-        <PremiumKpiCard
-          icon={FileCheck2}
-          label="Visits with Evidence"
-          value={evidenceStats.withEvidence}
-          gradient={KPI_THEMES.fields.gradient}
-          iconBg={KPI_THEMES.fields.iconBg}
-          iconColor={KPI_THEMES.fields.iconColor}
-          onClick={() => navigate("/visits")}
-          subValue={
-            feedVisits?.length > 0
-              ? `${Math.round(evidenceStats.rate)}% of latest ${feedVisits.length}`
-              : undefined
-          }
-          trend={{ direction: "neutral", text: "Photo/file proof" }}
-        />
-        <PremiumKpiCard
-          icon={AlertTriangle}
-          label="Open Issues"
-          value={stats.issues_open}
-          gradient={KPI_THEMES.issues.gradient}
-          iconBg={KPI_THEMES.issues.iconBg}
-          iconColor={KPI_THEMES.issues.iconColor}
-          onClick={() => navigate("/crop-issues")}
-          trend={
-            stats.issues_open > 0
-              ? { direction: "neutral", text: "Need attention" }
-              : { direction: "neutral", text: "None open" }
-          }
-        />
       </div>
 
-      <div className="dashboard-main-row">
-        <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
+      <WidgetErrorBoundary name="Alerts" title="Alerts unavailable">
+        <div className="dashboard-alerts-primary">
           <AlertsPanel alerts={opsAlerts ?? []} />
-        </WidgetErrorBoundary>
-        <SlideIn className="dashboard-stack">
-          <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
-            <QuickActions />
-          </WidgetErrorBoundary>
-        </SlideIn>
+        </div>
+      </WidgetErrorBoundary>
+
+      {(stats.workingNow > 0 || stats.onlineNow > 0 || stats.gpsIssues > 0) && (
+        <div className="dashboard-status-strip">
+          <button
+            type="button"
+            onClick={() => navigate("/tracking")}
+            className="dashboard-status-chip dashboard-status-chip--live"
+          >
+            <Radio className="w-4 h-4" />
+            {stats.workingNow} working now · {stats.onlineNow} GPS online
+          </button>
+          {stats.gpsIssues > 0 && (
+            <span className="dashboard-status-chip dashboard-status-chip--alert">
+              <AlertTriangle className="w-4 h-4" />
+              {stats.gpsIssues} GPS issue{stats.gpsIssues !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      )}
+
+      <WidgetErrorBoundary name="QuickActions" title="Quick Actions unavailable">
+        <QuickActions />
+      </WidgetErrorBoundary>
+
+      <WidgetErrorBoundary name="OwnerControl" title="Owner Control unavailable">
+        <OwnerControlPanel
+          activeEmployees={stats.activeEmployees ?? stats.workingNow ?? 0}
+          gpsIssues={stats.gpsIssues ?? 0}
+          pendingSyncs={liveOps?.pendingSyncs ?? 0}
+          employees={trackingEmployees ?? []}
+          recentUploads={recentUploads}
+        />
+      </WidgetErrorBoundary>
+
+      <div className="dashboard-insight-row">
+        <button
+          type="button"
+          onClick={() => navigate("/tracking/routes")}
+          className="dashboard-insight-widget group"
+        >
+          <div className="flex items-start gap-3.5">
+            <div className="dashboard-insight-widget__icon bg-emerald-50 text-emerald-700">
+              <Route className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="dashboard-insight-widget__title">Route Tracking Summary</p>
+              <p className="dashboard-insight-widget__body">
+                {stats.workingNow} employee{stats.workingNow !== 1 ? "s" : ""} working today
+                <br />
+                {stats.onlineNow} with live GPS tracking
+                <br />
+                {mappedGeoCount} shown on route map
+              </p>
+              <span className="dashboard-insight-widget__link text-emerald-700">
+                View route history <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/visits")}
+          className="dashboard-insight-widget group"
+        >
+          <div className="flex items-start gap-3.5">
+            <div className="dashboard-insight-widget__icon bg-teal-50 text-teal-700">
+              <Paperclip className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="dashboard-insight-widget__title">Evidence Upload Summary</p>
+              <p className="dashboard-insight-widget__body">
+                {evidenceStats.withEvidence} visits include uploaded evidence
+                <br />
+                {evidenceStats.totalAttachments} file{evidenceStats.totalAttachments !== 1 ? "s" : ""} uploaded
+                <br />
+                {formatEvidenceRateLabel(evidenceStats.rate)}
+              </p>
+              <span className="dashboard-insight-widget__link text-teal-700">
+                Browse visits <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+        </button>
       </div>
 
-      <ScrollRise className="dashboard-perf-row">
-        <div className="dashboard-section-card dashboard-perf-card dashboard-perf-card--team">
-          <div className="dashboard-perf-card__head">
-            <p className="dashboard-perf-card__title">Field Team Performance</p>
-            <button
-              type="button"
-              className="dashboard-perf-card__link"
-              onClick={() => navigate("/visits")}
-            >
-              All visits <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {teamPerformance.length === 0 ? (
-            <p className="dashboard-perf-card__empty">
-              Submitted visits will rank the field team here.
-            </p>
-          ) : (
-            <ul className="dashboard-team-list">
-              {teamPerformance.map((row, i) => (
-                <li key={row.name}>
-                  <button
-                    type="button"
-                    className="dashboard-team-row"
-                    onClick={() => navigate("/visits")}
-                  >
-                    <span className="dashboard-team-row__rank">{i + 1}</span>
-                    <ProfileAvatar
-                      name={row.name}
-                      size="sm"
-                      variant={i % 2 ? "teal" : "emerald"}
-                    />
-                    <span className="dashboard-team-row__name" title={row.name}>
-                      {row.name}
-                    </span>
-                    <SegmentedBar pct={row.pct} />
-                    <span className="dashboard-team-row__count">
-                      {row.visits} visit{row.visits !== 1 ? "s" : ""}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <WidgetErrorBoundary name="LiveOperations" title="Live Operations unavailable">
+        <LiveOperationsPanel ops={liveOps ?? {}} />
+      </WidgetErrorBoundary>
 
-        <div className="dashboard-section-card dashboard-perf-card dashboard-farmers-card">
-          <div className="dashboard-perf-card__head">
-            <p className="dashboard-perf-card__title">Newest Farmers</p>
-            <button
-              type="button"
-              className="dashboard-perf-card__link"
-              onClick={() => navigate("/farmers")}
-            >
-              View all <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {recentFarmers.length === 0 ? (
-            <p className="dashboard-perf-card__empty">
-              Newly registered farmers will appear here.
-            </p>
-          ) : (
-            <ul className="dashboard-farmers-list">
-              {recentFarmers.slice(0, 5).map((f) => (
-                <li key={f.id ?? f.name}>
-                  <button
-                    type="button"
-                    className="dashboard-farmer-row"
-                    onClick={() => f.id && navigate(`/farmers/${f.id}`)}
-                  >
-                    <ProfileAvatar entity={f} name={f.name} size="sm" />
-                    <span className="dashboard-farmer-row__main">
-                      <span className="dashboard-farmer-row__name">
-                        {f.name || "—"}
-                      </span>
-                      <span className="dashboard-farmer-row__sub">
-                        {farmerVillage(f) || "Village not set"}
-                      </span>
-                    </span>
-                    <span className="dashboard-farmer-row__date">
-                      {formatDate(f.created_at)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </ScrollRise>
+      <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
+        <UnifiedActivityFeed events={activityFeed ?? []} />
+      </WidgetErrorBoundary>
 
-      <ScrollRise className="dashboard-main-row">
+      <div className="dashboard-main-row dashboard-main-row--map-only">
         <WidgetErrorBoundary
           name="LiveMap"
           title="Live Field Map unavailable"
-          className="min-h-[360px]"
+          className="lg:col-span-2 min-h-[360px]"
         >
           <Suspense fallback={<WidgetSuspenseFallback label="Loading map\u2026" />}>
             <DashboardLiveMap
@@ -822,13 +707,18 @@ const Dashboard = () => {
             />
           </Suspense>
         </WidgetErrorBoundary>
-        <WidgetErrorBoundary name="ActivityFeed" title="Activity feed unavailable">
-          <UnifiedActivityFeed events={activityFeed ?? []} />
-        </WidgetErrorBoundary>
-      </ScrollRise>
+      </div>
+
+      {/* Visit trends — lazy-loaded chart */}
+      <WidgetErrorBoundary name="VisitChart" title="Visit chart unavailable">
+        <Suspense fallback={<WidgetSuspenseFallback label="Loading analytics\u2026" />}>
+          <DashboardVisitChart visitTrends={visitTrends ?? []} />
+        </Suspense>
+      </WidgetErrorBoundary>
+
 
       {/* ================== RECENT VISITS ================== */}
-      <ScrollRise className="dashboard-section-card overflow-hidden">
+      <div className="dashboard-section-card overflow-hidden">
         <SectionHeader
           icon={Eye}
           title="Recent Visits"
@@ -869,8 +759,7 @@ const Dashboard = () => {
                   return (
                   <tr
                     key={v.id || i}
-                    className="dashboard-visit-row hover:bg-emerald-50/30 transition-colors duration-150 cursor-pointer group"
-                    style={{ "--row-i": Math.min(i, 7) }}
+                    className="hover:bg-emerald-50/30 transition-colors duration-150 cursor-pointer group"
                     onClick={() => navigate(`/visits/${v.id}`)}
                   >
                     <td className="px-5 py-3.5">
@@ -917,8 +806,8 @@ const Dashboard = () => {
             </table>
           </div>
         )}
-      </ScrollRise>
-      </motion.div>
+      </div>
+      </div>
     </div>
     </DashboardShellErrorBoundary>
   );

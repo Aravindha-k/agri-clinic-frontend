@@ -1,5 +1,4 @@
 import { PageLoader, PageHeader } from "../../components/ui/command";
-import { PageCanvas } from "../../components/motion/Cinematic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     fetchAllVillages,
@@ -182,7 +181,7 @@ export default function MasterLocationsPage() {
     };
 
     return (
-        <PageCanvas className="masters-admin page-container master-locations-page">
+        <div className="masters-admin page-container">
             <PageHeader
                 title="Village Master"
                 subtitle="Manage villages used for employee territories, farmers and visits."
@@ -351,6 +350,6 @@ export default function MasterLocationsPage() {
                 variant="danger"
                 confirmLabel="Delete"
             />
-        </PageCanvas>
+        </div>
     );
 }
