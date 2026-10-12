@@ -8373,9 +8373,7 @@ textarea.input {
     position: absolute;
     inset: 0;
     z-index: 0;
-    background: rgba(15, 23, 42, 0.82);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(15, 23, 42, 0.86);
 }
 
 .evidence-viewer__workspace {
@@ -8542,14 +8540,6 @@ textarea.input {
     display: flex;
     align-items: center;
     justify-content: center;
-    will-change: transform;
-    transition: transform 0.08s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .evidence-viewer__img-layer {
-        transition: none;
-    }
 }
 
 .evidence-viewer__img {

@@ -80,6 +80,7 @@ export default function EvidenceImageViewer({
   const pinchRef = useRef(null);
 
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
+  const [imgError, setImgError] = useState(false);
   const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
   const [viewMode, setViewMode] = useState(VIEW_MODES.FIT);
   const [userScale, setUserScale] = useState(1);
@@ -177,6 +178,7 @@ export default function EvidenceImageViewer({
     if (!open) return undefined;
     resetView();
     setNaturalSize({ w: 0, h: 0 });
+    setImgError(false);
     return undefined;
   }, [open, safeIndex, resetView]);
 
@@ -259,6 +261,10 @@ export default function EvidenceImageViewer({
   const handleImageLoad = useCallback((event) => {
     const img = event.currentTarget;
     setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setImgError(true);
   }, []);
 
   const handleWheel = useCallback(
@@ -544,12 +550,16 @@ export default function EvidenceImageViewer({
                             width: displayW,
                             height: displayH,
                           }
-                        : undefined
+                        : { visibility: "hidden" }
                     }
                     draggable={false}
                     decoding="async"
                     onLoad={handleImageLoad}
+                    onError={handleImageError}
                   />
+                  {imgError ? (
+                    <p className="evidence-viewer__unavailable">Image failed to load.</p>
+                  ) : null}
                 </div>
               ) : (
                 <p className="evidence-viewer__unavailable">Preview unavailable for this file.</p>
