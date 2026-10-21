@@ -11,6 +11,7 @@ import {
   Database,
   ShieldCheck,
   LockKeyhole,
+  Clock3,
 } from "lucide-react";
 
 /** Static nav — shared by Sidebar (keeps Fast Refresh stable). */
@@ -36,6 +37,7 @@ export const NAV_SECTIONS = [
     label: "Administration",
     items: [
       { label: "Masters", icon: Database, path: "/masters" },
+      { label: "Attendance", icon: Clock3, path: "/attendance" },
       { label: "Reports", icon: BarChart3, path: "/reports" },
       { label: "Notifications", icon: Bell, path: "/notifications" },
       { label: "Audit Log", icon: ShieldCheck, path: "/audit", ownerOnly: true },

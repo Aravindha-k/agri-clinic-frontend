@@ -55,6 +55,42 @@ const EXACT = {
     title: "Employee Territories",
     subtitle: "Assign villages and operational areas to field employees",
   },
+  "/attendance": {
+    title: "Attendance Dashboard",
+    subtitle: "Shop-wise daily attendance statistics",
+  },
+  "/attendance/records": {
+    title: "Daily Attendance Records",
+    subtitle: "Check-in and check-out events",
+  },
+  "/attendance/reports": {
+    title: "Attendance Reports",
+    subtitle: "Daily summaries by date, shop and employee",
+  },
+  "/attendance/employees": {
+    title: "Attendance Employees",
+    subtitle: "Shop employee identities for kiosk attendance",
+  },
+  "/attendance/assignments": {
+    title: "Shop Assignments",
+    subtitle: "Employee-to-shop assignments and shifts",
+  },
+  "/attendance/shops": {
+    title: "Attendance Shops",
+    subtitle: "Shop locations where attendance devices operate",
+  },
+  "/attendance/shifts": {
+    title: "Attendance Shifts",
+    subtitle: "Shift windows for employee assignments",
+  },
+  "/attendance/devices": {
+    title: "Attendance Devices",
+    subtitle: "Registered kiosks and biometric scanners",
+  },
+  "/attendance/biometric-enrollment": {
+    title: "Biometric Enrollment",
+    subtitle: "Employee biometric enrollment (coming soon)",
+  },
   "/reports": {
     title: "Analytics & Reports",
     subtitle: "Field visits, coverage, GPS compliance, and routes",

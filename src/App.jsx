@@ -30,6 +30,15 @@ const VisitDetail = lazy(() => import("./pages/VisitDetail"));
 const FarmerDetail = lazy(() => import("./pages/FarmerDetail"));
 const Audit = lazy(() => import("./pages/Audit"));
 const SecuritySessions = lazy(() => import("./pages/SecuritySessions"));
+const AttendanceDashboard = lazy(() => import("./pages/attendance/AttendanceDashboard"));
+const AttendanceRecords = lazy(() => import("./pages/attendance/AttendanceRecords"));
+const AttendanceReports = lazy(() => import("./pages/attendance/AttendanceReports"));
+const AttendanceEmployees = lazy(() => import("./pages/attendance/AttendanceEmployees"));
+const AttendanceAssignments = lazy(() => import("./pages/attendance/AttendanceAssignments"));
+const AttendanceShops = lazy(() => import("./pages/attendance/AttendanceShops"));
+const AttendanceShifts = lazy(() => import("./pages/attendance/AttendanceShifts"));
+const AttendanceDevices = lazy(() => import("./pages/attendance/AttendanceDevices"));
+const AttendanceEnrollment = lazy(() => import("./pages/attendance/AttendanceEnrollment"));
 
 function LazyPage({ children, label }) {
   return <Suspense fallback={<RouteFallback label={label} />}>{children}</Suspense>;
@@ -125,6 +134,78 @@ function App() {
               <OwnerRoute>
                 <Navigate to="/settings/security" replace />
               </OwnerRoute>
+            }
+          />
+          <Route
+            path="attendance"
+            element={
+              <LazyPage label="Loading attendance dashboard…">
+                <AttendanceDashboard />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/records"
+            element={
+              <LazyPage label="Loading attendance records…">
+                <AttendanceRecords />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/reports"
+            element={
+              <LazyPage label="Loading attendance reports…">
+                <AttendanceReports />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/employees"
+            element={
+              <LazyPage label="Loading attendance employees…">
+                <AttendanceEmployees />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/assignments"
+            element={
+              <LazyPage label="Loading shop assignments…">
+                <AttendanceAssignments />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/shops"
+            element={
+              <LazyPage label="Loading shops…">
+                <AttendanceShops />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/shifts"
+            element={
+              <LazyPage label="Loading shifts…">
+                <AttendanceShifts />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/devices"
+            element={
+              <LazyPage label="Loading devices…">
+                <AttendanceDevices />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="attendance/biometric-enrollment"
+            element={
+              <LazyPage label="Loading biometric enrollment…">
+                <AttendanceEnrollment />
+              </LazyPage>
             }
           />
           <Route path="masters" element={<Masters />} />
