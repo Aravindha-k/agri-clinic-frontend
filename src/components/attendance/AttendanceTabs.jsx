@@ -5,9 +5,7 @@ const TABS = [
   { to: "/attendance/records", label: "Daily Records" },
   { to: "/attendance/reports", label: "Reports" },
   { to: "/attendance/employees", label: "Employees" },
-  { to: "/attendance/assignments", label: "Assignments" },
   { to: "/attendance/shops", label: "Shops" },
-  { to: "/attendance/shifts", label: "Shifts" },
   { to: "/attendance/devices", label: "Devices" },
   { to: "/attendance/biometric-enrollment", label: "Biometric Enrollment" },
 ];

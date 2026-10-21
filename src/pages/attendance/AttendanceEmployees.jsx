@@ -22,19 +22,21 @@ import {
   updateAttendanceEmployee,
   activateAttendanceEmployee,
   deactivateAttendanceEmployee,
+  transferAttendanceEmployee,
+  getAttendanceShops,
 } from "../../api/attendance.api";
 import { attendanceErrorMessage } from "../../utils/attendance";
 
 const inputClass = "masters-admin-field";
 
-function EmployeeForm({ initial = {}, onSubmit, onCancel, loading }) {
+function EmployeeForm({ initial = {}, shops, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState({
-    employee_code: initial.employee_code || "",
     full_name: initial.full_name || "",
-    phone: initial.phone || "",
+    shop: initial.shop_id ?? "",
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const valid = form.employee_code.trim() && form.full_name.trim();
+  const valid = form.full_name.trim() && form.shop !== "";
+  const shopChanged = !!initial.id && Number(form.shop) !== initial.shop_id;
 
   return (
     <form
@@ -45,18 +47,7 @@ function EmployeeForm({ initial = {}, onSubmit, onCancel, loading }) {
       className="masters-admin-form"
     >
       <div className={inputClass}>
-        <label>Employee Code *</label>
-        <input
-          type="text"
-          required
-          value={form.employee_code}
-          onChange={(e) => set("employee_code", e.target.value)}
-          placeholder="e.g. SHOP-001"
-          disabled={!!initial.id}
-        />
-      </div>
-      <div className={inputClass}>
-        <label>Full Name *</label>
+        <label>Employee Name *</label>
         <input
           type="text"
           required
@@ -66,17 +57,31 @@ function EmployeeForm({ initial = {}, onSubmit, onCancel, loading }) {
         />
       </div>
       <div className={inputClass}>
-        <label>Phone</label>
-        <input
-          type="tel"
-          value={form.phone}
-          onChange={(e) => set("phone", e.target.value)}
-          placeholder="e.g. 98xxxxxx01"
-        />
+        <label>Assign to Shop *</label>
+        <select
+          required
+          value={form.shop}
+          onChange={(e) => set("shop", e.target.value)}
+        >
+          <option value="">Select shop…</option>
+          {shops.map((s) => (
+            <option key={s.id} value={s.id} disabled={!s.is_active && s.id !== initial.shop_id}>
+              {s.name}
+              {s.area ? ` — ${s.area}` : ""}
+              {s.is_active ? "" : " (inactive)"}
+            </option>
+          ))}
+        </select>
       </div>
+      {shopChanged ? (
+        <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Saving will transfer this employee to the selected shop. Attendance
+          history is preserved.
+        </p>
+      ) : null}
       <p className="text-[12px] text-slate-500 leading-relaxed">
-        Attendance-only identity — this does not create a login or grant Field Officer
-        mobile access.
+        Employee codes are generated automatically. This identity has no login
+        and no Field Officer mobile access.
       </p>
       <div className="masters-admin-form__foot">
         <button type="submit" disabled={loading || !valid} className="btn btn-primary btn-md">
@@ -95,6 +100,7 @@ function EmployeeForm({ initial = {}, onSubmit, onCancel, loading }) {
 
 export default function AttendanceEmployees() {
   const [employees, setEmployees] = useState([]);
+  const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -111,11 +117,16 @@ export default function AttendanceEmployees() {
     setLoading(true);
     setError(null);
     try {
-      const page = await getAttendanceEmployees();
-      setEmployees(page.results);
+      const [empPage, shopPage] = await Promise.all([
+        getAttendanceEmployees(),
+        getAttendanceShops(),
+      ]);
+      setEmployees(empPage.results);
+      setShops(shopPage.results);
     } catch (err) {
       setError(attendanceErrorMessage(err, "Failed to load attendance employees."));
       setEmployees([]);
+      setShops([]);
     } finally {
       setLoading(false);
     }
@@ -143,10 +154,15 @@ export default function AttendanceEmployees() {
       if (editTarget?.id) {
         await updateAttendanceEmployee(editTarget.id, {
           full_name: data.full_name,
-          phone: data.phone,
         });
+        if (Number(data.shop) !== editTarget.shop_id) {
+          await transferAttendanceEmployee(editTarget.id, Number(data.shop));
+        }
       } else {
-        await createAttendanceEmployee(data);
+        await createAttendanceEmployee({
+          full_name: data.full_name,
+          shop: Number(data.shop),
+        });
       }
       setFormOpen(false);
       setEditTarget(null);
@@ -276,10 +292,8 @@ export default function AttendanceEmployees() {
             <table className="data-table compact-table masters-admin-table w-full">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Linked field officer</th>
+                  <th>Employee</th>
+                  <th>Shop</th>
                   <th>Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -287,10 +301,20 @@ export default function AttendanceEmployees() {
               <tbody>
                 {filtered.map((e) => (
                   <tr key={e.id}>
-                    <td className="font-semibold">{e.employee_code}</td>
-                    <td className="font-medium">{e.full_name}</td>
-                    <td>{e.phone || "—"}</td>
-                    <td className="text-slate-500">{e.linked_employee_id || "—"}</td>
+                    <td>
+                      <p className="masters-admin-row-name">{e.full_name}</p>
+                      <p className="masters-admin-row-sub">{e.employee_code}</p>
+                    </td>
+                    <td>
+                      {e.shop_name ? (
+                        <span>
+                          {e.shop_name}
+                          <span className="text-slate-400 text-[11.5px]"> ({e.shop_code})</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                     <td>
                       <ActiveBadge active={e.is_active} />
                     </td>
@@ -354,6 +378,7 @@ export default function AttendanceEmployees() {
         )}
         <EmployeeForm
           initial={editTarget || {}}
+          shops={shops}
           onSubmit={handleSave}
           onCancel={() => {
             setFormOpen(false);

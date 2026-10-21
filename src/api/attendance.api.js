@@ -28,6 +28,11 @@ export const createAttendanceEmployee = (data) => api.post(`${BASE}/employees/`,
 export const updateAttendanceEmployee = (id, data) => api.patch(`${BASE}/employees/${id}/`, data);
 export const activateAttendanceEmployee = (id) => api.post(`${BASE}/employees/${id}/activate/`);
 export const deactivateAttendanceEmployee = (id) => api.post(`${BASE}/employees/${id}/deactivate/`);
+/** Transfer employee to another shop — POST /employees/{id}/transfer/ */
+export const transferAttendanceEmployee = async (id, shopId) => {
+    const res = await api.post(`${BASE}/employees/${id}/transfer/`, { shop_id: shopId });
+    return unwrapSuccessEnvelope(res);
+};
 
 /* ── Shifts ────────────────────────────────────────────────────────────── */
 export const getShifts = async (params = {}) => {

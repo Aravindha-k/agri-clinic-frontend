@@ -26,42 +26,23 @@ const inputClass = "masters-admin-field";
 
 function ShopForm({ initial = {}, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState({
-    code: initial.code || "",
     name: initial.name || "",
-    address: initial.address || "",
-    latitude: initial.latitude ?? "",
-    longitude: initial.longitude ?? "",
-    geofence_radius_m: initial.geofence_radius_m ?? 200,
+    area: initial.area || "",
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const valid = form.code.trim() && form.name.trim();
+  const valid = form.name.trim() && form.area.trim();
 
   const submit = (e) => {
     e.preventDefault();
     if (!valid) return;
     onSubmit({
-      code: form.code.trim(),
       name: form.name.trim(),
-      address: form.address,
-      latitude: form.latitude === "" ? null : Number(form.latitude),
-      longitude: form.longitude === "" ? null : Number(form.longitude),
-      geofence_radius_m: Number(form.geofence_radius_m) || 200,
+      area: form.area.trim(),
     });
   };
 
   return (
     <form onSubmit={submit} className="masters-admin-form">
-      <div className={inputClass}>
-        <label>Shop Code *</label>
-        <input
-          type="text"
-          required
-          value={form.code}
-          onChange={(e) => set("code", e.target.value)}
-          placeholder="e.g. LGD-01"
-          disabled={!!initial.id}
-        />
-      </div>
       <div className={inputClass}>
         <label>Shop Name *</label>
         <input
@@ -73,46 +54,19 @@ function ShopForm({ initial = {}, onSubmit, onCancel, loading }) {
         />
       </div>
       <div className={inputClass}>
-        <label>Address</label>
-        <textarea
-          rows={2}
-          value={form.address}
-          onChange={(e) => set("address", e.target.value)}
-          placeholder="Street, town, district"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className={inputClass}>
-          <label>Latitude</label>
-          <input
-            type="number"
-            step="any"
-            value={form.latitude}
-            onChange={(e) => set("latitude", e.target.value)}
-            placeholder="10.87"
-          />
-        </div>
-        <div className={inputClass}>
-          <label>Longitude</label>
-          <input
-            type="number"
-            step="any"
-            value={form.longitude}
-            onChange={(e) => set("longitude", e.target.value)}
-            placeholder="78.81"
-          />
-        </div>
-      </div>
-      <div className={inputClass}>
-        <label>Geofence radius (m)</label>
+        <label>Area / Location *</label>
         <input
-          type="number"
-          min="0"
-          value={form.geofence_radius_m}
-          onChange={(e) => set("geofence_radius_m", e.target.value)}
+          type="text"
+          required
+          value={form.area}
+          onChange={(e) => set("area", e.target.value)}
+          placeholder="e.g. Old Market, Lalgudi"
         />
-        <p className="text-[11.5px] text-slate-500 mt-1">Advisory only for kiosk check-ins.</p>
       </div>
+      <p className="text-[12px] text-slate-500 leading-relaxed">
+        Shop codes, addresses and geofence settings are managed internally and
+        are not required here.
+      </p>
       <div className="masters-admin-form__foot">
         <button type="submit" disabled={loading || !valid} className="btn btn-primary btn-md">
           {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
@@ -163,8 +117,7 @@ export default function AttendanceShops() {
     setSaving(true);
     try {
       if (editTarget?.id) {
-        const { code, ...rest } = data;
-        await updateShop(editTarget.id, rest);
+        await updateShop(editTarget.id, data);
       } else {
         await createShop(data);
       }
@@ -257,10 +210,8 @@ export default function AttendanceShops() {
             <table className="data-table compact-table masters-admin-table w-full">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Location</th>
-                  <th>Geofence</th>
+                  <th>Shop</th>
+                  <th>Area / Location</th>
                   <th>Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -268,19 +219,20 @@ export default function AttendanceShops() {
               <tbody>
                 {shops.map((s) => (
                   <tr key={s.id}>
-                    <td className="font-semibold">{s.code}</td>
-                    <td className="font-medium">{s.name}</td>
                     <td>
-                      {s.latitude != null && s.longitude != null ? (
+                      <p className="masters-admin-row-name">{s.name}</p>
+                      <p className="masters-admin-row-sub">{s.code}</p>
+                    </td>
+                    <td>
+                      {s.area ? (
                         <span className="inline-flex items-center gap-1 text-slate-600">
                           <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                          {s.latitude}, {s.longitude}
+                          {s.area}
                         </span>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td>{s.geofence_radius_m} m</td>
                     <td>
                       <ActiveBadge active={s.is_active} />
                     </td>
