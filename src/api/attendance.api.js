@@ -62,6 +62,17 @@ export const registerDevice = async (data) => {
     const res = await api.post(`${BASE}/devices/`, data);
     return unwrapSuccessEnvelope(res);
 };
+/**
+ * Generate a one-time 6-digit pairing code for a new device.
+ * POST devices/pairing-codes/ {"shop_id": N} →
+ * { pairing_code, expires_in_seconds, expires_at, device_uid, shop_id, shop_code }
+ * The device token is issued later, directly to the kiosk — it never
+ * passes through the admin panel.
+ */
+export const createPairingCode = async (shopId) => {
+    const res = await api.post(`${BASE}/devices/pairing-codes/`, { shop_id: shopId });
+    return unwrapSuccessEnvelope(res);
+};
 export const revokeDevice = async (id) => {
     const res = await api.post(`${BASE}/devices/${id}/revoke/`);
     return unwrapSuccessEnvelope(res);

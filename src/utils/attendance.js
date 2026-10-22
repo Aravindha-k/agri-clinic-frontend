@@ -121,3 +121,28 @@ export function aggregateByShop(rows = []) {
   }
   return [...map.values()].sort((a, b) => a.shop_code.localeCompare(b.shop_code));
 }
+
+/**
+ * Seconds until a pairing code expires — 0 once expired, null if no expiry
+ * supplied. Kept pure so the countdown logic is unit-testable.
+ */
+export function pairingSecondsLeft(expiresAt, nowMs = Date.now()) {
+    if (!expiresAt) return null;
+    const left = Math.floor((new Date(expiresAt).getTime() - nowMs) / 1000);
+    return Number.isNaN(left) ? 0 : Math.max(0, left);
+}
+
+/** Display format for a pairing countdown, e.g. 305 → "5:05". */
+export function formatPairingCountdown(secondsLeft) {
+    if (secondsLeft == null) return "";
+    const mm = Math.floor(secondsLeft / 60);
+    const ss = String(secondsLeft % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+}
+
+/** True when a redeemed (now-active) device matches the issued device_uid. */
+export function isDevicePaired(devices, deviceUid) {
+    return Array.isArray(devices) && devices.some(
+        (d) => d.device_uid === deviceUid && d.is_active === true
+    );
+}

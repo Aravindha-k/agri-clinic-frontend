@@ -6,6 +6,9 @@ import {
   statusLabel,
   aggregateByShop,
   attendanceErrorMessage,
+  pairingSecondsLeft,
+  formatPairingCountdown,
+  isDevicePaired,
 } from "./attendance.js";
 
 assert.equal(formatWorkedSeconds(null), "—");
@@ -51,3 +54,26 @@ assert.equal(
 assert.equal(attendanceErrorMessage({ message: "x" }), "Network error — is the API reachable?");
 
 console.log("attendance.test.mjs: all assertions passed");
+
+// --- pairing helpers -------------------------------------------------------
+{
+  const expires = new Date(Date.now() + 300_000).toISOString();
+  assert.equal(pairingSecondsLeft(null), null);
+  const left = pairingSecondsLeft(expires, Date.now());
+  assert.ok(left > 295 && left <= 300, `expected ~300s, got ${left}`);
+  assert.equal(pairingSecondsLeft(new Date(Date.now() - 1000).toISOString(), Date.now()), 0);
+  assert.equal(pairingSecondsLeft("not-a-date", Date.now()), 0); // NaN → treated expired... check
+  assert.equal(formatPairingCountdown(305), "5:05");
+  assert.equal(formatPairingCountdown(0), "0:00");
+  assert.equal(formatPairingCountdown(null), "");
+  assert.equal(
+    isDevicePaired([{ device_uid: "K1", is_active: true }], "K1"),
+    true
+  );
+  assert.equal(
+    isDevicePaired([{ device_uid: "K1", is_active: false }], "K1"),
+    false
+  );
+  assert.equal(isDevicePaired([], "K1"), false);
+  assert.equal(isDevicePaired(null, "K1"), false);
+}

@@ -14,95 +14,54 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import AttendanceTabs from "../../components/attendance/AttendanceTabs";
 import { ActiveBadge } from "../../components/attendance/AttendanceBadges";
 import DeviceTokenModal from "../../components/attendance/DeviceTokenModal";
+import PairingCodeModal from "../../components/attendance/PairingCodeModal";
 import {
   getDevices,
-  registerDevice,
+  createPairingCode,
   revokeDevice,
   rotateDeviceToken,
   getAttendanceShops,
 } from "../../api/attendance.api";
-import { attendanceErrorMessage, formatDateTime, DEVICE_TYPES } from "../../utils/attendance";
+import { attendanceErrorMessage, formatDateTime, DEVICE_TYPES, isDevicePaired } from "../../utils/attendance";
 
 const inputClass = "masters-admin-field";
+const PAIR_POLL_MS = 5000;
 
 function DeviceForm({ shops, onSubmit, onCancel, loading }) {
-  const [form, setForm] = useState({
-    shop: "",
-    device_uid: "",
-    name: "",
-    device_type: "KIOSK",
-  });
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const valid = form.shop !== "" && form.device_uid.trim() && form.name.trim();
+  const [shop, setShop] = useState("");
+  const valid = shop !== "";
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid) onSubmit({ ...form, shop: Number(form.shop) });
+        if (valid) onSubmit(Number(shop));
       }}
       className="masters-admin-form"
     >
       <div className={inputClass}>
         <label>Shop *</label>
-        <select required value={form.shop} onChange={(e) => set("shop", e.target.value)}>
+        <select required value={shop} onChange={(e) => setShop(e.target.value)}>
           <option value="">Select shop…</option>
           {shops
             .filter((s) => s.is_active)
             .map((s) => (
               <option key={s.id} value={s.id}>
-                {s.code} — {s.name}
+                {s.name}
+                {s.area ? ` — ${s.area}` : ""}
               </option>
             ))}
         </select>
       </div>
-      <div className={inputClass}>
-        <label>Device UID *</label>
-        <input
-          type="text"
-          required
-          value={form.device_uid}
-          onChange={(e) => set("device_uid", e.target.value)}
-          placeholder="e.g. KIOSK-LGD-01"
-        />
-        <p className="text-[11.5px] text-slate-500 mt-1">
-          Public identifier the device sends in its X-Device-Id header.
-        </p>
-      </div>
-      <div className={inputClass}>
-        <label>Display Name *</label>
-        <input
-          type="text"
-          required
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-          placeholder="e.g. Lalgudi front-desk kiosk"
-        />
-      </div>
-      <div className={inputClass}>
-        <label>Device Type</label>
-        <select value={form.device_type} onChange={(e) => set("device_type", e.target.value)}>
-          {Object.entries(DEVICE_TYPES).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        {form.device_type === "BIOMETRIC" && (
-          <p className="text-[11.5px] text-amber-700 mt-1">
-            Biometric verification is not yet integrated — events will still be
-            recorded as test / manual until scanner integration ships.
-          </p>
-        )}
-      </div>
       <p className="text-[12px] text-slate-500 leading-relaxed">
-        A credential token is issued on registration and shown only once — store it
-        on the device immediately.
+        A one-time 6-digit setup code is generated for this shop. Give it to
+        the Android device operator — they enter it in the Attendance Kiosk
+        App. No device ID or token needs to be copied manually.
       </p>
       <div className="masters-admin-form__foot">
         <button type="submit" disabled={loading || !valid} className="btn btn-primary btn-md">
           {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-          Register Device
+          Generate Setup Code
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className="btn btn-secondary btn-md">
@@ -124,6 +83,8 @@ export default function AttendanceDevices() {
   const [saveError, setSaveError] = useState(null);
   const [issuedToken, setIssuedToken] = useState(null);
   const [issuedName, setIssuedName] = useState("");
+  const [pairing, setPairing] = useState(null);
+  const [paired, setPaired] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [rotateTarget, setRotateTarget] = useState(null);
   const [acting, setActing] = useState(false);
@@ -148,21 +109,49 @@ export default function AttendanceDevices() {
     load();
   }, [load]);
 
-  const handleRegister = async (data) => {
+  const handleGenerate = async (shopId) => {
     setSaveError(null);
     setSaving(true);
     try {
-      const res = await registerDevice(data);
+      const res = await createPairingCode(shopId);
+      const shop = shops.find((s) => s.id === res?.shop_id || s.id === shopId);
       setFormOpen(false);
-      setIssuedToken(res?.token || null);
-      setIssuedName(res?.device?.name || data.name);
+      setPairing({
+        code: res?.pairing_code,
+        expiresAt: res?.expires_at,
+        deviceUid: res?.device_uid,
+        shopCode: res?.shop_code,
+        shopId: res?.shop_id ?? shopId,
+        shopName: shop?.name,
+      });
+      setPaired(false);
       load();
     } catch (err) {
-      setSaveError(attendanceErrorMessage(err, "Registration failed. Please try again."));
+      setSaveError(attendanceErrorMessage(err, "Could not generate a setup code."));
     } finally {
       setSaving(false);
     }
   };
+
+  // Poll the device list while a pairing code is active — when the kiosk
+  // redeems the code the device turns active and we show success.
+  useEffect(() => {
+    if (!pairing?.deviceUid || paired) return undefined;
+    const poll = async () => {
+      try {
+        const page = await getDevices();
+        if (isDevicePaired(page.results, pairing.deviceUid)) {
+          setPaired(true);
+          setDevices(page.results);
+        }
+      } catch {
+        /* transient poll failure — keep waiting */
+      }
+    };
+    poll();
+    const t = setInterval(poll, PAIR_POLL_MS);
+    return () => clearInterval(t);
+  }, [pairing?.deviceUid, paired]);
 
   const handleRevoke = async () => {
     if (!revokeTarget) return;
@@ -210,7 +199,7 @@ export default function AttendanceDevices() {
         actions={
           <>
             <button type="button" onClick={() => setFormOpen(true)} className="btn btn-primary btn-md">
-              <Plus className="w-4 h-4" aria-hidden="true" /> Register Device
+              <Plus className="w-4 h-4" aria-hidden="true" /> Add Device
             </button>
             <button type="button" onClick={load} className="btn btn-secondary btn-md">
               <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
@@ -323,7 +312,7 @@ export default function AttendanceDevices() {
           setFormOpen(false);
           setSaveError(null);
         }}
-        title="Register Attendance Device"
+        title="Add Device — choose shop"
       >
         {saveError && (
           <div className="masters-admin-alert masters-admin-alert--error mb-4">
@@ -333,7 +322,7 @@ export default function AttendanceDevices() {
         )}
         <DeviceForm
           shops={shops}
-          onSubmit={handleRegister}
+          onSubmit={handleGenerate}
           onCancel={() => {
             setFormOpen(false);
             setSaveError(null);
@@ -341,6 +330,16 @@ export default function AttendanceDevices() {
           loading={saving}
         />
       </SlidePanel>
+
+      <PairingCodeModal
+        pairing={pairing}
+        paired={paired}
+        onRegenerate={pairing ? () => handleGenerate(pairing.shopId) : undefined}
+        onClose={() => {
+          setPairing(null);
+          setPaired(false);
+        }}
+      />
 
       <DeviceTokenModal
         token={issuedToken}
