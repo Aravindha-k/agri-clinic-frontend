@@ -9,6 +9,9 @@ import {
   pairingSecondsLeft,
   formatPairingCountdown,
   isDevicePaired,
+  deviceLifecycleState,
+  deviceShopName,
+  deviceNickname,
 } from "./attendance.js";
 
 assert.equal(formatWorkedSeconds(null), "—");
@@ -76,4 +79,30 @@ console.log("attendance.test.mjs: all assertions passed");
   );
   assert.equal(isDevicePaired([], "K1"), false);
   assert.equal(isDevicePaired(null, "K1"), false);
+}
+
+// Device lifecycle / display helpers
+{
+  const awaiting = { is_active: false, revoked_at: null };
+  const paired = { is_active: true, revoked_at: null };
+  const revoked = { is_active: false, revoked_at: "2026-10-23T10:00:00Z" };
+  assert.equal(deviceLifecycleState(awaiting), "AWAITING");
+  assert.equal(deviceLifecycleState(paired), "PAIRED");
+  assert.equal(deviceLifecycleState(revoked), "REVOKED");
+  assert.equal(deviceLifecycleState(null), "UNKNOWN");
+
+  const shops = { 7: { name: "Kavya Agri Clinic — VILLUPURAM" } };
+  assert.equal(
+    deviceShopName({ shop: 7, shop_code: "SHOP-0001" }, shops),
+    "Kavya Agri Clinic — VILLUPURAM"
+  );
+  assert.equal(
+    deviceShopName({ shop: 7, shop_code: "SHOP-0001", shop_name: "Kavya Agri Clinic — VILLUPURAM" }, {}),
+    "Kavya Agri Clinic — VILLUPURAM"
+  );
+  assert.equal(deviceShopName({ shop: 9, shop_code: "SHOP-0002" }, shops), "SHOP-0002");
+
+  assert.equal(deviceNickname({ name: "Kiosk @ SHOP-0001" }), null); // auto default
+  assert.equal(deviceNickname({ name: "Front-desk scanner" }), "Front-desk scanner");
+  assert.equal(deviceNickname({ name: "" }), null);
 }

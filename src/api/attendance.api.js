@@ -86,8 +86,14 @@ export const registerDevice = async (data) => {
  * The device token is issued later, directly to the kiosk — it never
  * passes through the admin panel.
  */
-export const createPairingCode = async (shopId) => {
-    const res = await api.post(`${BASE}/devices/pairing-codes/`, { shop_id: shopId });
+export const createPairingCode = async (payload) => {
+    const body = typeof payload === "object" ? payload : { shop_id: payload };
+    const res = await api.post(`${BASE}/devices/pairing-codes/`, body);
+    return unwrapSuccessEnvelope(res);
+};
+/** Issue a NEW setup code for an EXISTING device — never creates a duplicate. */
+export const reissueDevicePairingCode = async (deviceId) => {
+    const res = await api.post(`${BASE}/devices/pairing-codes/`, { device_id: deviceId });
     return unwrapSuccessEnvelope(res);
 };
 export const revokeDevice = async (id) => {

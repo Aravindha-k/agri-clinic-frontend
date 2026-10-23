@@ -146,3 +146,57 @@ export function isDevicePaired(devices, deviceUid) {
         (d) => d.device_uid === deviceUid && d.is_active === true
     );
 }
+
+/** Face-enrollment lifecycle statuses (backend FaceEnrollment model). */
+export const ENROLLMENT_STATUSES = {
+    PENDING: "Pending",
+    ACTIVE: "Active",
+    REVOKED: "Revoked",
+    REPLACED: "Replaced",
+    FAILED: "Failed",
+    EXPIRED: "Expired",
+    NONE: "Not enrolled",
+};
+
+/** Tailwind badge classes per enrollment status. */
+export const ENROLLMENT_BADGE_CLASSES = {
+    PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+    ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    REVOKED: "bg-red-50 text-red-700 border-red-200",
+    REPLACED: "bg-slate-50 text-slate-500 border-slate-200",
+    FAILED: "bg-red-50 text-red-700 border-red-200",
+    EXPIRED: "bg-slate-50 text-slate-500 border-slate-200",
+    NONE: "bg-slate-50 text-slate-400 border-slate-200",
+};
+
+export function enrollmentStatusLabel(status) {
+    return ENROLLMENT_STATUSES[status] || status || "—";
+}
+
+export function enrollmentBadgeClass(status) {
+    return ENROLLMENT_BADGE_CLASSES[status] || ENROLLMENT_BADGE_CLASSES.NONE;
+}
+
+/** True when a device is usable for new pairing/enrollment (not revoked). */
+export function deviceAvailable(device) {
+    return !!device && device.is_active === true && !device.revoked_at;
+}
+
+/** Device lifecycle: REVOKED → paired (active credential) → awaiting setup. */
+export function deviceLifecycleState(d) {
+    if (!d) return "UNKNOWN";
+    if (d.revoked_at) return "REVOKED";
+    return d.is_active ? "PAIRED" : "AWAITING";
+}
+
+/** Authoritative display name for a device = its shop's name. */
+export function deviceShopName(d, shopsById = {}) {
+    return d?.shop_name || shopsById[d?.shop]?.name || d?.shop_code || "—";
+}
+
+/** Custom nickname — the auto-generated "Kiosk @ …" default is not one. */
+export function deviceNickname(d) {
+    const n = (d?.name || "").trim();
+    if (!n || n.startsWith("Kiosk @")) return null;
+    return n;
+}

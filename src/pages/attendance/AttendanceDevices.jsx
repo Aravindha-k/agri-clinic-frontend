@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../../components/ui/command";
 import {
   RefreshCw,
@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Pencil,
   Trash2,
+  Eye,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -20,6 +21,7 @@ import PairingCodeModal from "../../components/attendance/PairingCodeModal";
 import {
   getDevices,
   createPairingCode,
+  reissueDevicePairingCode,
   revokeDevice,
   restoreDevice,
   updateDevice,
@@ -27,7 +29,15 @@ import {
   rotateDeviceToken,
   getAttendanceShops,
 } from "../../api/attendance.api";
-import { attendanceErrorMessage, formatDateTime, DEVICE_TYPES, isDevicePaired } from "../../utils/attendance";
+import {
+  attendanceErrorMessage,
+  formatDateTime,
+  DEVICE_TYPES,
+  isDevicePaired,
+  deviceLifecycleState,
+  deviceShopName,
+  deviceNickname,
+} from "../../utils/attendance";
 
 const inputClass = "masters-admin-field";
 const PAIR_POLL_MS = 5000;
@@ -97,6 +107,13 @@ export default function AttendanceDevices() {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [repairTarget, setRepairTarget] = useState(null);
+  const [detailTarget, setDetailTarget] = useState(null);
+
+  const shopsById = useMemo(
+    () => Object.fromEntries(shops.map((s) => [s.id, s])),
+    [shops]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,7 +138,7 @@ export default function AttendanceDevices() {
     setSaveError(null);
     setSaving(true);
     try {
-      const res = await createPairingCode(shopId);
+      const res = await createPairingCode({ shop_id: shopId });
       const shop = shops.find((s) => s.id === res?.shop_id || s.id === shopId);
       setFormOpen(false);
       setPairing({
@@ -160,6 +177,54 @@ export default function AttendanceDevices() {
     const t = setInterval(poll, PAIR_POLL_MS);
     return () => clearInterval(t);
   }, [pairing?.deviceUid, paired]);
+
+  /**
+   * Issue a NEW 6-digit code for an EXISTING device (complete setup after a
+   * closed modal, or re-pair after rotation). The backend re-issues the
+   * credential in place on redemption — no duplicate device is created.
+   */
+  const openSetupCodeForDevice = async (d) => {
+    setActionError(null);
+    setNotice(null);
+    setActing(true);
+    try {
+      const res = await reissueDevicePairingCode(d.id);
+      setRepairTarget(null);
+      setPairing({
+        code: res?.pairing_code,
+        expiresAt: res?.expires_at,
+        deviceUid: res?.device_uid || d.device_uid,
+        shopCode: res?.shop_code || d.shop_code,
+        shopId: res?.shop_id ?? d.shop,
+        shopName: deviceShopName(d, shopsById),
+        deviceId: d.id,
+      });
+      setPaired(false);
+      load();
+    } catch (err) {
+      const msg = attendanceErrorMessage(err, "Could not generate a setup code.");
+      setActionError(msg);
+      setError(msg);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  /** Regenerate inside the modal — always targets the same device row. */
+  const handleRegenerate = async () => {
+    const d = devices.find((dev) => dev.device_uid === pairing?.deviceUid);
+    if (d) {
+      await openSetupCodeForDevice(d);
+      return;
+    }
+    // Device list not loaded yet — fall back to the shop flow.
+    if (pairing?.shopId) await handleGenerate(pairing.shopId);
+  };
+
+  const handleRePair = async () => {
+    if (!repairTarget) return;
+    await openSetupCodeForDevice(repairTarget);
+  };
 
   const handleRevoke = async () => {
     if (!revokeTarget) return;
@@ -234,14 +299,13 @@ export default function AttendanceDevices() {
     setActionError(null);
     setActing(true);
     try {
-      await rotateDeviceToken(rotateTarget.id);
+      const d = rotateTarget;
+      await rotateDeviceToken(d.id);
       setRotateTarget(null);
-      // The rotated credential is never displayed — the device re-pairs via a
-      // new 6-digit setup code (Add Device → select its shop).
-      setNotice(
-        `${rotateTarget.device_uid} token rotated. The old credential is dead — generate a new setup code to re-pair the device.`
-      );
       load();
+      // The rotated credential is never displayed — immediately offer the
+      // supported re-pair path: a fresh 6-digit setup code for this device.
+      await openSetupCodeForDevice(d);
     } catch (err) {
       setActionError(attendanceErrorMessage(err, "Token rotation failed."));
     } finally {
@@ -325,11 +389,18 @@ export default function AttendanceDevices() {
                 </tr>
               </thead>
               <tbody>
-                {devices.map((d) => (
+                {devices.map((d) => {
+                  const state = deviceLifecycleState(d);
+                  const shopName = deviceShopName(d, shopsById);
+                  const nickname = deviceNickname(d);
+                  return (
                   <tr key={d.id}>
                     <td>
-                      <p className="masters-admin-row-name">{d.name}</p>
-                      <p className="masters-admin-row-sub font-mono">{d.device_uid}</p>
+                      <p className="masters-admin-row-name">{shopName}</p>
+                      <p className="masters-admin-row-sub font-mono">ID {d.device_uid}</p>
+                      {nickname && (
+                        <p className="masters-admin-row-sub text-[11.5px]">{nickname}</p>
+                      )}
                     </td>
                     <td>{d.shop_code}</td>
                     <td>{DEVICE_TYPES[d.device_type] || d.device_type}</td>
@@ -338,11 +409,11 @@ export default function AttendanceDevices() {
                     </td>
                     <td>{d.revoked_at ? `Revoked ${formatDateTime(d.revoked_at)}` : formatDateTime(d.last_seen_at)}</td>
                     <td>
-                      {d.revoked_at ? (
+                      {state === "REVOKED" ? (
                         <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11.5px] font-semibold text-red-700">
                           Revoked
                         </span>
-                      ) : d.is_active ? (
+                      ) : state === "PAIRED" ? (
                         <ActiveBadge active={d.is_active} />
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
@@ -352,59 +423,100 @@ export default function AttendanceDevices() {
                     </td>
                     <td className="text-right">
                       <div className="cpd-row-actions">
-                        <button
-                          type="button"
-                          className="cpd-action-btn"
-                          onClick={() => {
-                            setRenameTarget(d);
-                            setRenameValue(d.name || "");
-                            setActionError(null);
-                          }}
-                          aria-label={`Rename ${d.device_uid}`}
-                          title="Rename device"
-                        >
-                          <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Rename
-                        </button>
-                        <button
-                          type="button"
-                          className="cpd-action-btn"
-                          disabled={!d.is_active}
-                          onClick={() => {
-                            setRotateTarget(d);
-                            setActionError(null);
-                          }}
-                          aria-label={`Rotate token for ${d.device_uid}`}
-                          title="Rotate credential token"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" aria-hidden="true" /> Rotate token
-                        </button>
-                        {d.revoked_at ? (
+                        {state === "AWAITING" && (
+                          <button
+                            type="button"
+                            className="cpd-action-btn"
+                            disabled={acting}
+                            onClick={() => openSetupCodeForDevice(d)}
+                            aria-label={`Complete setup for ${d.device_uid}`}
+                            title="Generate a new 6-digit setup code for this device"
+                          >
+                            <KeyRound className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Complete Setup
+                          </button>
+                        )}
+                        {state === "PAIRED" && (
+                          <button
+                            type="button"
+                            className="cpd-action-btn"
+                            disabled={acting}
+                            onClick={() => {
+                              setRepairTarget(d);
+                              setActionError(null);
+                            }}
+                            aria-label={`Re-pair ${d.device_uid}`}
+                            title="Generate a new setup code to re-pair this device"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" aria-hidden="true" /> Re-pair
+                          </button>
+                        )}
+                        {state !== "REVOKED" && (
                           <button
                             type="button"
                             className="cpd-action-btn"
                             onClick={() => {
-                              setRestoreTarget(d);
+                              setRenameTarget(d);
+                              setRenameValue(nickname || "");
                               setActionError(null);
                             }}
-                            aria-label={`Restore ${d.device_uid}`}
-                            title="Restore revoked device"
+                            aria-label={`Rename ${d.device_uid}`}
+                            title="Rename device"
                           >
-                            <RotateCcw className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Restore
+                            <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Rename
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="cpd-action-btn"
-                            disabled={!d.is_active}
-                            onClick={() => {
-                              setRevokeTarget(d);
-                              setActionError(null);
-                            }}
-                            aria-label={`Revoke ${d.device_uid}`}
-                            title="Revoke device access"
-                          >
-                            <Ban className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Revoke
-                          </button>
+                        )}
+                        {state === "PAIRED" && (
+                          <>
+                            <button
+                              type="button"
+                              className="cpd-action-btn"
+                              disabled={acting}
+                              onClick={() => {
+                                setRotateTarget(d);
+                                setActionError(null);
+                              }}
+                              aria-label={`Rotate credential for ${d.device_uid}`}
+                              title="Invalidate the current credential and re-pair"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" /> Rotate
+                            </button>
+                            <button
+                              type="button"
+                              className="cpd-action-btn"
+                              onClick={() => {
+                                setRevokeTarget(d);
+                                setActionError(null);
+                              }}
+                              aria-label={`Revoke ${d.device_uid}`}
+                              title="Revoke device access"
+                            >
+                              <Ban className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Revoke
+                            </button>
+                          </>
+                        )}
+                        {state === "REVOKED" && (
+                          <>
+                            <button
+                              type="button"
+                              className="cpd-action-btn"
+                              onClick={() => {
+                                setRestoreTarget(d);
+                                setActionError(null);
+                              }}
+                              aria-label={`Restore ${d.device_uid}`}
+                              title="Restore revoked device"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Restore
+                            </button>
+                            <button
+                              type="button"
+                              className="cpd-action-btn"
+                              onClick={() => setDetailTarget(d)}
+                              aria-label={`View details for ${d.device_uid}`}
+                            >
+                              <Eye className="w-3.5 h-3.5" aria-hidden="true" /> Details
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"
@@ -421,7 +533,8 @@ export default function AttendanceDevices() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -457,11 +570,28 @@ export default function AttendanceDevices() {
       <PairingCodeModal
         pairing={pairing}
         paired={paired}
-        onRegenerate={pairing ? () => handleGenerate(pairing.shopId) : undefined}
+        onRegenerate={pairing ? handleRegenerate : undefined}
         onClose={() => {
           setPairing(null);
           setPaired(false);
         }}
+      />
+
+      <ConfirmDialog
+        open={!!repairTarget}
+        title="Re-pair Device"
+        message={
+          actionError ||
+          `Generate a new setup code for ${repairTarget?.device_uid}? Enter it in the kiosk app to re-pair — a fresh credential is issued on redemption.`
+        }
+        onConfirm={handleRePair}
+        onCancel={() => {
+          setRepairTarget(null);
+          setActionError(null);
+        }}
+        loading={acting}
+        variant="primary"
+        confirmLabel="Generate code"
       />
 
       <ConfirmDialog
@@ -486,7 +616,7 @@ export default function AttendanceDevices() {
         title="Rotate Device Token"
         message={
           actionError ||
-          `Rotate the token for ${rotateTarget?.device_uid}? The current credential stops working immediately — the device must then re-pair with a new 6-digit setup code.`
+          `Rotate the credential for ${rotateTarget?.device_uid}? The credential on the Android kiosk stops working immediately. A new 6-digit setup code is generated so the kiosk can re-pair.`
         }
         onConfirm={handleRotate}
         onCancel={() => {
@@ -495,7 +625,7 @@ export default function AttendanceDevices() {
         }}
         loading={acting}
         variant="primary"
-        confirmLabel="Rotate token"
+        confirmLabel="Rotate and re-pair"
       />
 
       <ConfirmDialog
@@ -575,6 +705,55 @@ export default function AttendanceDevices() {
             </button>
           </div>
         </form>
+      </SlidePanel>
+
+      <SlidePanel
+        tone="masters"
+        open={!!detailTarget}
+        onClose={() => setDetailTarget(null)}
+        title={`Device ${detailTarget?.device_uid || ""}`}
+      >
+        {detailTarget && (
+          <dl className="grid grid-cols-1 gap-y-3 text-[13px]">
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Shop</dt>
+              <dd className="font-medium text-slate-800">
+                {deviceShopName(detailTarget, shopsById)}{" "}
+                <span className="text-slate-400">({detailTarget.shop_code})</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Device ID</dt>
+              <dd className="font-mono text-slate-800">{detailTarget.device_uid}</dd>
+            </div>
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Nickname</dt>
+              <dd className="text-slate-800">{deviceNickname(detailTarget) || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Type</dt>
+              <dd className="text-slate-800">{DEVICE_TYPES[detailTarget.device_type] || detailTarget.device_type}</dd>
+            </div>
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Status</dt>
+              <dd className="text-slate-800">{deviceLifecycleState(detailTarget)}</dd>
+            </div>
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Registered</dt>
+              <dd className="text-slate-800">{formatDateTime(detailTarget.created_at)}</dd>
+            </div>
+            {detailTarget.revoked_at && (
+              <div>
+                <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Revoked</dt>
+                <dd className="text-slate-800">{formatDateTime(detailTarget.revoked_at)}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">Last seen</dt>
+              <dd className="text-slate-800">{formatDateTime(detailTarget.last_seen_at)}</dd>
+            </div>
+          </dl>
+        )}
       </SlidePanel>
     </div>
   );
