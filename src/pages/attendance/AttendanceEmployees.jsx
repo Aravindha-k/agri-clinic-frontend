@@ -11,11 +11,14 @@ import {
   UserCheck,
   UserX,
   Users,
+  Fingerprint,
+  History,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import AttendanceTabs from "../../components/attendance/AttendanceTabs";
-import { ActiveBadge } from "../../components/attendance/AttendanceBadges";
 import {
   getAttendanceEmployees,
   createAttendanceEmployee,
@@ -24,10 +27,129 @@ import {
   deactivateAttendanceEmployee,
   transferAttendanceEmployee,
   getAttendanceShops,
+  getEventReport,
 } from "../../api/attendance.api";
-import { attendanceErrorMessage } from "../../utils/attendance";
+import {
+  ActiveBadge,
+  VerificationBadge,
+} from "../../components/attendance/AttendanceBadges";
+import {
+  attendanceErrorMessage,
+  formatDateTime,
+  formatTimeOnly,
+} from "../../utils/attendance";
 
 const inputClass = "masters-admin-field";
+
+const ENROLLMENT_STYLES = {
+  ACTIVE: "bg-emerald-100 text-emerald-800",
+  PENDING: "bg-amber-100 text-amber-800",
+  REVOKED: "bg-red-50 text-red-700",
+  REPLACED: "bg-slate-100 text-slate-600",
+  NONE: "bg-slate-50 text-slate-400",
+};
+
+function EnrollmentBadge({ status }) {
+  const s = status || "NONE";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${ENROLLMENT_STYLES[s] || ENROLLMENT_STYLES.NONE}`}
+    >
+      <Fingerprint className="w-3 h-3" aria-hidden="true" />
+      {s === "NONE" ? "Not enrolled" : s.charAt(0) + s.slice(1).toLowerCase()}
+    </span>
+  );
+}
+
+function HistoryPanel({ employee, onClose }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!employee) return undefined;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    getEventReport({ employee_id: employee.employee_code, include_test: true })
+      .then((rows) => {
+        if (!cancelled) setEvents(rows.slice(0, 100));
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(attendanceErrorMessage(err, "Could not load attendance history."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employee]);
+
+  return (
+    <SlidePanel
+      tone="masters"
+      open={!!employee}
+      onClose={onClose}
+      title={`Attendance — ${employee?.full_name || ""}`}
+    >
+      {employee && (
+        <p className="text-[12.5px] text-slate-500 mb-4">
+          {employee.employee_code} · {employee.shop_name || "Unassigned"} · showing the
+          most recent 100 events
+        </p>
+      )}
+      {loading ? (
+        <div className="flex items-center gap-2 text-slate-500 text-[13px]">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Loading history…
+        </div>
+      ) : error ? (
+        <div className="masters-admin-alert masters-admin-alert--error" role="alert">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
+      ) : events.length === 0 ? (
+        <p className="text-[13px] text-slate-500">No attendance events recorded yet.</p>
+      ) : (
+        <table className="data-table compact-table masters-admin-table w-full">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Shop</th>
+              <th>Verification</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((ev) => (
+              <tr key={ev.id}>
+                <td>
+                  {ev.event_type === "CHECK_IN" ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                      <LogIn className="w-3.5 h-3.5" aria-hidden="true" /> In
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                      <LogOut className="w-3.5 h-3.5" aria-hidden="true" /> Out
+                    </span>
+                  )}
+                </td>
+                <td>{formatDateTime(ev.occurred_at).split(",")[0] || formatDateTime(ev.occurred_at)}</td>
+                <td>{formatTimeOnly(ev.occurred_at)}</td>
+                <td>{ev.shop_code}</td>
+                <td>
+                  <VerificationBadge method={ev.verification_method} isTest={ev.is_test_mode} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </SlidePanel>
+  );
+}
 
 function EmployeeForm({ initial = {}, shops, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState({
@@ -110,6 +232,7 @@ export default function AttendanceEmployees() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [toggleTarget, setToggleTarget] = useState(null);
+  const [historyTarget, setHistoryTarget] = useState(null);
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState(null);
 
@@ -294,6 +417,7 @@ export default function AttendanceEmployees() {
                 <tr>
                   <th>Employee</th>
                   <th>Shop</th>
+                  <th>Face enrollment</th>
                   <th>Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -316,10 +440,21 @@ export default function AttendanceEmployees() {
                       )}
                     </td>
                     <td>
+                      <EnrollmentBadge status={e.enrollment_status} />
+                    </td>
+                    <td>
                       <ActiveBadge active={e.is_active} />
                     </td>
                     <td className="text-right">
                       <div className="cpd-row-actions">
+                        <button
+                          type="button"
+                          className="cpd-action-btn"
+                          onClick={() => setHistoryTarget(e)}
+                          aria-label={`Attendance history for ${e.full_name}`}
+                        >
+                          <History className="w-3.5 h-3.5" aria-hidden="true" /> History
+                        </button>
                         <button
                           type="button"
                           className="cpd-action-btn"
@@ -407,6 +542,8 @@ export default function AttendanceEmployees() {
         variant={toggleTarget?.is_active ? "danger" : "primary"}
         confirmLabel={toggleTarget?.is_active ? "Deactivate" : "Activate"}
       />
+
+      <HistoryPanel employee={historyTarget} onClose={() => setHistoryTarget(null)} />
     </div>
   );
 }

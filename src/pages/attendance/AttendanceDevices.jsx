@@ -8,6 +8,9 @@ import {
   MonitorSmartphone,
   Ban,
   KeyRound,
+  RotateCcw,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -19,6 +22,9 @@ import {
   getDevices,
   createPairingCode,
   revokeDevice,
+  restoreDevice,
+  updateDevice,
+  deleteDevice,
   rotateDeviceToken,
   getAttendanceShops,
 } from "../../api/attendance.api";
@@ -87,8 +93,13 @@ export default function AttendanceDevices() {
   const [paired, setPaired] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [rotateTarget, setRotateTarget] = useState(null);
+  const [restoreTarget, setRestoreTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -168,6 +179,59 @@ export default function AttendanceDevices() {
     }
   };
 
+  const handleRestore = async () => {
+    if (!restoreTarget) return;
+    setActionError(null);
+    setActing(true);
+    try {
+      await restoreDevice(restoreTarget.id);
+      setRestoreTarget(null);
+      setNotice(`${restoreTarget.device_uid} restored.`);
+      load();
+    } catch (err) {
+      setActionError(attendanceErrorMessage(err, "Restore failed."));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleRename = async (e) => {
+    e.preventDefault();
+    if (!renameTarget || !renameValue.trim()) return;
+    setActionError(null);
+    setActing(true);
+    try {
+      await updateDevice(renameTarget.id, { name: renameValue.trim() });
+      setRenameTarget(null);
+      setNotice(`${renameTarget.device_uid} renamed.`);
+      load();
+    } catch (err) {
+      setActionError(attendanceErrorMessage(err, "Rename failed."));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setActionError(null);
+    setActing(true);
+    try {
+      const res = await deleteDevice(deleteTarget.id);
+      setDeleteTarget(null);
+      setNotice(
+        res?.permanently_deleted
+          ? `${deleteTarget.device_uid} permanently deleted (no protected history).`
+          : `${deleteTarget.device_uid} has attendance history — it was revoked instead of deleted.`
+      );
+      load();
+    } catch (err) {
+      setActionError(attendanceErrorMessage(err, "Delete failed."));
+    } finally {
+      setActing(false);
+    }
+  };
+
   const handleRotate = async () => {
     if (!rotateTarget) return;
     setActionError(null);
@@ -208,6 +272,15 @@ export default function AttendanceDevices() {
         }
       />
       <AttendanceTabs />
+
+      {notice && (
+        <div className="mb-3 flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-[13px] font-medium text-emerald-800" role="status">
+          <span>{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} className="ml-auto font-semibold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="masters-admin-alert masters-admin-alert--error" role="alert">
@@ -265,10 +338,33 @@ export default function AttendanceDevices() {
                     </td>
                     <td>{d.revoked_at ? `Revoked ${formatDateTime(d.revoked_at)}` : formatDateTime(d.last_seen_at)}</td>
                     <td>
-                      <ActiveBadge active={d.is_active} />
+                      {d.revoked_at ? (
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11.5px] font-semibold text-red-700">
+                          Revoked
+                        </span>
+                      ) : d.is_active ? (
+                        <ActiveBadge active={d.is_active} />
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11.5px] font-semibold text-amber-700">
+                          Awaiting pairing
+                        </span>
+                      )}
                     </td>
                     <td className="text-right">
                       <div className="cpd-row-actions">
+                        <button
+                          type="button"
+                          className="cpd-action-btn"
+                          onClick={() => {
+                            setRenameTarget(d);
+                            setRenameValue(d.name || "");
+                            setActionError(null);
+                          }}
+                          aria-label={`Rename ${d.device_uid}`}
+                          title="Rename device"
+                        >
+                          <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Rename
+                        </button>
                         <button
                           type="button"
                           className="cpd-action-btn"
@@ -282,18 +378,45 @@ export default function AttendanceDevices() {
                         >
                           <KeyRound className="w-3.5 h-3.5" aria-hidden="true" /> Rotate token
                         </button>
+                        {d.revoked_at ? (
+                          <button
+                            type="button"
+                            className="cpd-action-btn"
+                            onClick={() => {
+                              setRestoreTarget(d);
+                              setActionError(null);
+                            }}
+                            aria-label={`Restore ${d.device_uid}`}
+                            title="Restore revoked device"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Restore
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="cpd-action-btn"
+                            disabled={!d.is_active}
+                            onClick={() => {
+                              setRevokeTarget(d);
+                              setActionError(null);
+                            }}
+                            aria-label={`Revoke ${d.device_uid}`}
+                            title="Revoke device access"
+                          >
+                            <Ban className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Revoke
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="cpd-action-btn"
-                          disabled={!d.is_active}
                           onClick={() => {
-                            setRevokeTarget(d);
+                            setDeleteTarget(d);
                             setActionError(null);
                           }}
-                          aria-label={`Revoke ${d.device_uid}`}
-                          title="Revoke device access"
+                          aria-label={`Delete ${d.device_uid}`}
+                          title="Delete device (revokes if it has history)"
                         >
-                          <Ban className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Revoke
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Delete
                         </button>
                       </div>
                     </td>
@@ -383,6 +506,85 @@ export default function AttendanceDevices() {
         variant="primary"
         confirmLabel="Rotate token"
       />
+
+      <ConfirmDialog
+        open={!!restoreTarget}
+        title="Restore Device"
+        message={
+          actionError ||
+          `Restore ${restoreTarget?.device_uid}? Its existing credential starts working again immediately.`
+        }
+        onConfirm={handleRestore}
+        onCancel={() => {
+          setRestoreTarget(null);
+          setActionError(null);
+        }}
+        loading={acting}
+        variant="primary"
+        confirmLabel="Restore"
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Device"
+        message={
+          actionError ||
+          `Delete ${deleteTarget?.device_uid}? If it has attendance history or enrollments it is revoked instead — history is never deleted.`
+        }
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setActionError(null);
+        }}
+        loading={acting}
+        variant="danger"
+        confirmLabel="Delete"
+      />
+
+      <SlidePanel
+        tone="masters"
+        open={!!renameTarget}
+        onClose={() => {
+          setRenameTarget(null);
+          setActionError(null);
+        }}
+        title={`Rename ${renameTarget?.device_uid || "device"}`}
+      >
+        {actionError && (
+          <div className="masters-admin-alert masters-admin-alert--error mb-4">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+            <span>{actionError}</span>
+          </div>
+        )}
+        <form onSubmit={handleRename} className="masters-admin-form">
+          <div className={inputClass}>
+            <label>Display Name *</label>
+            <input
+              type="text"
+              required
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="e.g. Lalgudi front-desk kiosk"
+            />
+          </div>
+          <div className="masters-admin-form__foot">
+            <button type="submit" disabled={acting || !renameValue.trim()} className="btn btn-primary btn-md">
+              {acting && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+              Save Name
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRenameTarget(null);
+                setActionError(null);
+              }}
+              className="btn btn-secondary btn-md"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </SlidePanel>
     </div>
   );
 }

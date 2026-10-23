@@ -3,7 +3,7 @@ import { PageHeader } from "../../components/ui/command";
 import { RefreshCw, AlertCircle, LogIn, LogOut, ListChecks, X } from "lucide-react";
 import AttendanceTabs from "../../components/attendance/AttendanceTabs";
 import { VerificationBadge } from "../../components/attendance/AttendanceBadges";
-import { getEventReport, getAttendanceShops } from "../../api/attendance.api";
+import { getEventReport, getAttendanceShops, getAttendanceEmployees } from "../../api/attendance.api";
 import {
   attendanceErrorMessage,
   formatDateTime,
@@ -17,6 +17,7 @@ export default function AttendanceRecords() {
   const [employeeCode, setEmployeeCode] = useState("");
   const [includeTest, setIncludeTest] = useState(false);
   const [shops, setShops] = useState([]);
+  const [empNames, setEmpNames] = useState({});
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,6 +26,13 @@ export default function AttendanceRecords() {
     getAttendanceShops({ is_active: true })
       .then((p) => setShops(p.results))
       .catch(() => setShops([]));
+    getAttendanceEmployees()
+      .then((p) =>
+        setEmpNames(
+          Object.fromEntries(p.results.map((e) => [e.employee_code, e.full_name]))
+        )
+      )
+      .catch(() => setEmpNames({}));
   }, []);
 
   const load = useCallback(async () => {
@@ -178,7 +186,12 @@ export default function AttendanceRecords() {
                         {ev.event_type === "CHECK_IN" ? "Check in" : "Check out"}
                       </span>
                     </td>
-                    <td className="font-medium">{ev.employee_ref || "—"}</td>
+                    <td>
+                      <p className="masters-admin-row-name">{empNames[ev.employee_ref] || ev.employee_ref || "—"}</p>
+                      {empNames[ev.employee_ref] && (
+                        <p className="masters-admin-row-sub">{ev.employee_ref}</p>
+                      )}
+                    </td>
                     <td>{ev.shop_code || "—"}</td>
                     <td>{formatDateTime(ev.occurred_at)}</td>
                     <td className="text-slate-500">{ev.device_uid || "—"}</td>

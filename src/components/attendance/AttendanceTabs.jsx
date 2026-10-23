@@ -7,7 +7,7 @@ const TABS = [
   { to: "/attendance/employees", label: "Employees" },
   { to: "/attendance/shops", label: "Shops" },
   { to: "/attendance/devices", label: "Devices" },
-  { to: "/attendance/biometric-enrollment", label: "Biometric Enrollment" },
+  { to: "/attendance/biometric-enrollment", label: "Face Enrollment" },
 ];
 
 /** Horizontal sub-navigation shared by all Attendance admin pages. */

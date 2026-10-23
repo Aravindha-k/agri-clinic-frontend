@@ -88,8 +88,8 @@ const EXACT = {
     subtitle: "Registered kiosks and biometric scanners",
   },
   "/attendance/biometric-enrollment": {
-    title: "Biometric Enrollment",
-    subtitle: "Employee biometric enrollment (coming soon)",
+    title: "Face Enrollment",
+    subtitle: "Employee face enrollment authorization and lifecycle",
   },
   "/reports": {
     title: "Analytics & Reports",

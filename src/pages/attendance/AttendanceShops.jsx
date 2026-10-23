@@ -10,6 +10,7 @@ import {
   MapPin,
   Power,
   PowerOff,
+  Archive,
 } from "lucide-react";
 import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -20,7 +21,8 @@ import {
   createShop,
   updateShop,
 } from "../../api/attendance.api";
-import { attendanceErrorMessage } from "../../utils/attendance";
+import ShopLifecycleModal from "../../components/attendance/ShopLifecycleModal";
+import { attendanceErrorMessage, formatDateTime } from "../../utils/attendance";
 
 const inputClass = "masters-admin-field";
 
@@ -93,12 +95,17 @@ export default function AttendanceShops() {
   const [toggleTarget, setToggleTarget] = useState(null);
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState(null);
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [lifecycleTarget, setLifecycleTarget] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const page = await getAttendanceShops();
+      const page = await getAttendanceShops(
+        includeArchived ? { include_archived: true } : {}
+      );
       setShops(page.results);
     } catch (err) {
       setError(attendanceErrorMessage(err, "Failed to load shops."));
@@ -106,7 +113,7 @@ export default function AttendanceShops() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [includeArchived]);
 
   useEffect(() => {
     load();
@@ -177,6 +184,27 @@ export default function AttendanceShops() {
       />
       <AttendanceTabs />
 
+      <div className="mb-3 flex items-center gap-2">
+        <label className="inline-flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeArchived}
+            onChange={(e) => setIncludeArchived(e.target.checked)}
+            className="rounded border-slate-300"
+          />
+          Show archived shops
+        </label>
+      </div>
+
+      {notice && (
+        <div className="mb-3 flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-[13px] font-medium text-emerald-800" role="status">
+          <span>{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} className="ml-auto font-semibold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="masters-admin-alert masters-admin-alert--error" role="alert">
           <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
@@ -234,39 +262,63 @@ export default function AttendanceShops() {
                       )}
                     </td>
                     <td>
-                      <ActiveBadge active={s.is_active} />
+                      {s.archived_at ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600"
+                          title={`Archived ${formatDateTime(s.archived_at)}${s.archive_reason ? ` — ${s.archive_reason}` : ""}`}
+                        >
+                          <Archive className="w-3 h-3" aria-hidden="true" /> Archived
+                        </span>
+                      ) : (
+                        <ActiveBadge active={s.is_active} />
+                      )}
                     </td>
                     <td className="text-right">
                       <div className="cpd-row-actions">
+                        {!s.archived_at && (
+                          <>
+                            <button
+                              type="button"
+                              className="cpd-action-btn"
+                              onClick={() => {
+                                setEditTarget(s);
+                                setFormOpen(true);
+                              }}
+                              aria-label={`Edit shop ${s.code}`}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" aria-hidden="true" /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="cpd-action-btn"
+                              onClick={() => {
+                                setToggleTarget(s);
+                                setToggleError(null);
+                              }}
+                              aria-label={`${s.is_active ? "Deactivate" : "Activate"} shop ${s.code}`}
+                            >
+                              {s.is_active ? (
+                                <>
+                                  <PowerOff className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <Power className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Activate
+                                </>
+                              )}
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           className="cpd-action-btn"
                           onClick={() => {
-                            setEditTarget(s);
-                            setFormOpen(true);
+                            setLifecycleTarget(s);
+                            setNotice(null);
                           }}
-                          aria-label={`Edit shop ${s.code}`}
+                          aria-label={`Archive or delete shop ${s.code}`}
                         >
-                          <Edit3 className="w-3.5 h-3.5" aria-hidden="true" /> Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="cpd-action-btn"
-                          onClick={() => {
-                            setToggleTarget(s);
-                            setToggleError(null);
-                          }}
-                          aria-label={`${s.is_active ? "Deactivate" : "Activate"} shop ${s.code}`}
-                        >
-                          {s.is_active ? (
-                            <>
-                              <PowerOff className="w-3.5 h-3.5 text-red-500" aria-hidden="true" /> Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <Power className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Activate
-                            </>
-                          )}
+                          <Archive className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" /> Archive / Delete
                         </button>
                       </div>
                     </td>
@@ -324,6 +376,22 @@ export default function AttendanceShops() {
         variant={toggleTarget?.is_active ? "danger" : "primary"}
         confirmLabel={toggleTarget?.is_active ? "Deactivate" : "Activate"}
       />
+
+      {lifecycleTarget && (
+        <ShopLifecycleModal
+          shop={lifecycleTarget}
+          onClose={() => setLifecycleTarget(null)}
+          onDone={(_res, mode) => {
+            setLifecycleTarget(null);
+            setNotice(
+              mode === "archive"
+                ? `${lifecycleTarget.name} archived — attendance history preserved.`
+                : `${lifecycleTarget.name} permanently deleted (it had no protected history).`
+            );
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }

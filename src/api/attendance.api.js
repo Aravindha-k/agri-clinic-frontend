@@ -17,7 +17,24 @@ export const getAttendanceShops = async (params = {}) => {
 };
 export const createShop = (data) => api.post(`${BASE}/shops/`, data);
 export const updateShop = (id, data) => api.patch(`${BASE}/shops/${id}/`, data);
-export const deleteShop = (id) => api.delete(`${BASE}/shops/${id}/`);
+/** GET shops/{id}/dependency-summary/ → { shop, dependencies, archived, can_archive, can_permanently_delete } */
+export const getShopDependencySummary = async (id) => {
+    const res = await api.get(`${BASE}/shops/${id}/dependency-summary/`);
+    return unwrapSuccessEnvelope(res);
+};
+/** Archive a shop (DELETE without permanent flag). Attendance history is preserved. */
+export const archiveShop = async (id, reason = "") => {
+    const res = await api.delete(`${BASE}/shops/${id}/`, { data: { reason } });
+    return unwrapSuccessEnvelope(res);
+};
+/** Permanently delete a shop — only succeeds when it has zero protected history (409 otherwise). */
+export const deleteShopPermanently = async (id, reason = "") => {
+    const res = await api.delete(`${BASE}/shops/${id}/`, {
+        params: { permanent: true },
+        data: { reason },
+    });
+    return unwrapSuccessEnvelope(res);
+};
 
 /* ── Employees (attendance-only identities) ────────────────────────────── */
 export const getAttendanceEmployees = async (params = {}) => {
@@ -77,6 +94,21 @@ export const revokeDevice = async (id) => {
     const res = await api.post(`${BASE}/devices/${id}/revoke/`);
     return unwrapSuccessEnvelope(res);
 };
+/** Restore a revoked device — POST devices/{id}/restore/ (409 if not revoked). */
+export const restoreDevice = async (id) => {
+    const res = await api.post(`${BASE}/devices/${id}/restore/`);
+    return unwrapSuccessEnvelope(res);
+};
+/** Rename / update a device (PATCH devices/{id}/). device_uid is read-only. */
+export const updateDevice = async (id, data) => {
+    const res = await api.patch(`${BASE}/devices/${id}/`, data);
+    return res?.data?.data ?? res?.data ?? res;
+};
+/** Delete a device — backend revokes it if it has history, hard-deletes if disposable. */
+export const deleteDevice = async (id, reason = "") => {
+    const res = await api.delete(`${BASE}/devices/${id}/`, { data: { reason } });
+    return unwrapSuccessEnvelope(res);
+};
 /** Returns { device, token } — plaintext token is shown ONCE. */
 export const rotateDeviceToken = async (id) => {
     const res = await api.post(`${BASE}/devices/${id}/rotate/`);
@@ -105,4 +137,20 @@ export const getEventReport = async (params = {}) => {
 export const getAttendanceAuditLogs = async (params = {}) => {
     const res = await api.get(`${BASE}/audit-logs/`, { params });
     return resolveList(res.data);
+};
+
+/* ── Face enrollments (metadata only — no images/embeddings) ───────────── */
+export const getFaceEnrollments = async (params = {}) => {
+    const res = await api.get(`${BASE}/face-enrollments/`, { params: { page_size: 200, ...params } });
+    return resolvePaginated(res);
+};
+/** Authorize enrollment: { employee, shop, device, consent_recorded: true } → PENDING enrollment. */
+export const authorizeFaceEnrollment = async (data) => {
+    const res = await api.post(`${BASE}/face-enrollments/`, data);
+    return unwrapSuccessEnvelope(res);
+};
+/** Revoke a PENDING/ACTIVE enrollment. Optional { reason }. */
+export const revokeFaceEnrollment = async (id, reason = "") => {
+    const res = await api.post(`${BASE}/face-enrollments/${id}/revoke/`, { reason });
+    return unwrapSuccessEnvelope(res);
 };
