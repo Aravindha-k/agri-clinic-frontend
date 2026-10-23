@@ -35,8 +35,8 @@ export default function AttendanceRecords() {
       .catch(() => setEmpNames({}));
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const data = await getEventReport({
@@ -59,6 +59,21 @@ export default function AttendanceRecords() {
     load();
   }, [load]);
 
+  // Auto-refresh every 15s while the page is visible — silently, so the
+  // table doesn't flicker. Pauses when the tab is hidden.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") load(true);
+    };
+    const t = setInterval(tick, 15000);
+    const onVisible = () => tick();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
+
   return (
     <div className="masters-admin page-container">
       <PageHeader
@@ -71,7 +86,7 @@ export default function AttendanceRecords() {
           </span>
         }
         actions={
-          <button type="button" onClick={load} className="btn btn-secondary btn-md">
+          <button type="button" onClick={() => load()} className="btn btn-secondary btn-md">
             <RefreshCw className="w-4 h-4" aria-hidden="true" /> Refresh
           </button>
         }
@@ -122,7 +137,9 @@ export default function AttendanceRecords() {
               <X className="w-3.5 h-3.5" aria-hidden="true" /> All dates
             </button>
           ) : null}
-          <p className="masters-admin-filters__meta lg:ml-auto">{events.length} events</p>
+          <p className="masters-admin-filters__meta lg:ml-auto">
+            {events.length} events · auto-refreshes every 15s
+          </p>
         </div>
       </section>
 
