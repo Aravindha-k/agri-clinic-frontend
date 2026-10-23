@@ -16,7 +16,6 @@ import SlidePanel from "../../components/ui/SlidePanel";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import AttendanceTabs from "../../components/attendance/AttendanceTabs";
 import { ActiveBadge } from "../../components/attendance/AttendanceBadges";
-import DeviceTokenModal from "../../components/attendance/DeviceTokenModal";
 import PairingCodeModal from "../../components/attendance/PairingCodeModal";
 import {
   getDevices,
@@ -87,8 +86,6 @@ export default function AttendanceDevices() {
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  const [issuedToken, setIssuedToken] = useState(null);
-  const [issuedName, setIssuedName] = useState("");
   const [pairing, setPairing] = useState(null);
   const [paired, setPaired] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState(null);
@@ -237,10 +234,13 @@ export default function AttendanceDevices() {
     setActionError(null);
     setActing(true);
     try {
-      const res = await rotateDeviceToken(rotateTarget.id);
+      await rotateDeviceToken(rotateTarget.id);
       setRotateTarget(null);
-      setIssuedToken(res?.token || null);
-      setIssuedName(res?.device?.name || rotateTarget.name);
+      // The rotated credential is never displayed — the device re-pairs via a
+      // new 6-digit setup code (Add Device → select its shop).
+      setNotice(
+        `${rotateTarget.device_uid} token rotated. The old credential is dead — generate a new setup code to re-pair the device.`
+      );
       load();
     } catch (err) {
       setActionError(attendanceErrorMessage(err, "Token rotation failed."));
@@ -464,15 +464,6 @@ export default function AttendanceDevices() {
         }}
       />
 
-      <DeviceTokenModal
-        token={issuedToken}
-        deviceName={issuedName}
-        onClose={() => {
-          setIssuedToken(null);
-          setIssuedName("");
-        }}
-      />
-
       <ConfirmDialog
         open={!!revokeTarget}
         title="Revoke Device"
@@ -495,7 +486,7 @@ export default function AttendanceDevices() {
         title="Rotate Device Token"
         message={
           actionError ||
-          `Rotate the token for ${rotateTarget?.device_uid}? The current token stops working immediately; you must install the new token on the device.`
+          `Rotate the token for ${rotateTarget?.device_uid}? The current credential stops working immediately — the device must then re-pair with a new 6-digit setup code.`
         }
         onConfirm={handleRotate}
         onCancel={() => {
