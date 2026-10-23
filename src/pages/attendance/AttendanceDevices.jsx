@@ -402,7 +402,10 @@ export default function AttendanceDevices() {
                         <p className="masters-admin-row-sub text-[11.5px]">{nickname}</p>
                       )}
                     </td>
-                    <td>{d.shop_code}</td>
+                    <td>
+                      {shopName}
+                      <span className="text-slate-400 text-[11.5px]"> ({d.shop_code})</span>
+                    </td>
                     <td>{DEVICE_TYPES[d.device_type] || d.device_type}</td>
                     <td className="font-mono text-[12px] text-slate-500">
                       {d.token_prefix ? `${d.token_prefix}…` : "—"}
